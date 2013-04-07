@@ -6,7 +6,8 @@ Acteur is a framework for writing web server applications with
 <code>Acteur</code>s (think of the Actor pattern, but a little bit foreign :-)).
 
 A further description of the framework's aims can be found in
-[this blog](http://timboudreau.com/blog/Acteur/read).
+[this blog](http://timboudreau.com/blog/Acteur/read).  This project uses 
+[Netty's](http://netty.io) 4.x (with its revised API) for HTTP.
 
 It's goal is to make it easy to write small, fast, scalable HTTP servers
 while ending up with reusable code as a natural side effect of using
@@ -253,7 +254,20 @@ More Complex Output
 -------------------
 
 The above example simply uses a Java ``String`` to send all of its output at
-once.
+once.  If you want to do something more complex, you will simply use Netty's clean and
+simple API for writing output to a channel.  Instead of passing the string to
+the ``RespondWith`` constructor, leave it out.  Say you want to pipeline a bunch
+of output which may take some time to compute:
+
+    static class MyOutputter implements ChannelFutureListener {
+        @Override
+        public void operationComplete(ChannelFuture future) throws Exception {
+            future = future.channel().write(Unpooled.wrappedBuffer("The output".getBytes()));
+            // add this as a listener to write more output, or add
+            // ChannelFutureListener.CLOSE
+        }
+    }
+
 
 Configuration
 -------------
