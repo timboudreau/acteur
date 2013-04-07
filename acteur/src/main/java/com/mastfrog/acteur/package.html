@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title></title>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+    <body>
+        <h1>Acteur</h1>
+        This is a lightweight web framework that sits on top of
+        <a href="http://netty.io">Netty</a>, the asynchronous Java NIO
+        server framework.
+        <p/>
+        Its goal is to solve a specific problem that must be addressed to
+        make asynchronous frameworks usable for non-trivial tasks:  That
+        most back-end APIs in Java <i>are synchronous</i>.  It's wonderful
+        that you can write a non-blocking, asynchronous web server that
+        can handle thousands of connections at a time with a single thread.
+        But as soon as that server needs to talk to something else - say 
+        a database, or even just a file, all of that scalability goes
+        away and you have a single-threaded server which is offline until
+        its done having a conversation with something else.
+        <p/>
+        In other words, asynchronous is only useful if <i>the entire
+        stack is asynchronous</i>.  One of the wonderful things about
+        Java is the amount of libraries available, and most of them
+        expect to do blocking I/O.  So you need, at the least, some sort
+        of threading model that lets you pretend your blocking back-end
+        calls are actually non-blocking.
+        <p/>
+        The standard way to do asynchronous programming is callbacks.
+        That is how you do it in popular frameworks
+        such as Node.js.  But that creates its own problem:  Such programs
+        usually have deeply nested callback structures which are hard to read
+        and harder to reuse;
+        and in a language like javascript, it is easy to have bugs by doing
+        things like referencing a loop variable from a callback that runs long
+        after the loop completed.  The Java equivalent would have you writing
+        scads of deeply nested inner classes - which you can do, but that
+        tends not to result in readable or maintainable code.
+        <p/>
+        So we have a few problems to solve:
+        <ol>
+            <li>People like to think about programming as linear sequences 
+                of events, not callbacks</li>
+            <li>The closest Java comes to function objects are anonymous 
+                inner classes, and they are verbose</li>
+            <li>Deeply nested <i>inline</i> callbacks, even if they do 
+                something useful, are painful to extract into actually 
+                reusable logic</li>
+        </ol>
+        
+        These can be solved fairly cleanly with a simple observation:
+        All of those callbacks consist of synchronous code - you're just carving
+        up the handling of a request into small chunks of synchronous code
+        which don't necessarily get run in linear fashion.
+        <p/>
+        <i>So, if you can provide a list of the chunks of logic to run, 
+        that <u>feels</u> sequential - as in, you can reason about it the way
+        you would about sequential code - whether it actually runs that way or not</i>.
+        <p/>
+        So, we actually don't want to standardize on anonymous inner classes as
+        the programming model;  and we want to provide a way to stick together
+        a list of chunks of logic to run.
+        <p/>
+        Those chunks of logic are called:
+        
+        <h2>Acteurs</h2>
+        The name comes from <a href="http://apidesign.org">Jaroslav Tulach</a>'s 
+        observation that this library is more-or-less the
+        Actor pattern, but looks a little strange.  So, an Acteur is 
+        an Actor...but slightly foreign :-)
+        <p/>
+        An Acteur does all of its work either in its constructor, culminating in a 
+        call to <code>setState()</code>, or in its override of <code>getState()</code>.
+        You bundle together a list of Acteurs in a Page - a Page is really a list
+        of Acteurs to run to validate a request and set up a response, and an aggregation
+        point for things like response headers and whatever will write response data.
+        Acteurs are instantiated by Google Guice - in fact, you assemble a page largely
+        by giving it a list of Acteur subclasses;  they will be instantiated as
+        needed.
+        <p/>
+        In particular, each Acteur only plays one role.  Say that the logic involved
+        in loading a page involves:
+        <ol>
+            <li>Check that the URL requested is legal</li>
+            <li>Check the request cache header IF_MODIFIED_SINCE, and if present and its condition holds, respond with NOT_MODIFIED</li>
+            <li>Authenticate the user</li>
+            <li>Find the object expressed by the URL</li>
+            <li>Write it into the response</li>
+        </ol>
+        Each of these is handled by a separate Acteur.
+        <p/>
+        Now, a trick is needed so each one of these can use the results of the earlier
+        one's work.  This is handled transparently by the framework, using Guice scopes.
+        <p/>
+        The output of an Acteur's work is a State.  A State can include an array
+        of <i>context objects</i>.  Under the hood, before the next Acteur is created,
+        we re-enter the Scope, adding into it all of the context objects included
+        in the previous Acteur's exit state.
+        <p/>
+        Take, for example, authentication.  This is what <code>AuthenticateBasicActeur</code>
+        actually does:
+        <pre>
+public class AuthenticateBasicActeur extends Acteur {
+
+    @Inject
+    AuthenticateBasicActeur(Event event, Authenticator authenticator, @Named("realm") String realm) throws IOException {
+        Realm r = Realm.createSimple(realm);
+        BasicCredentials credentials = event.getHeader(Headers.AUTHORIZATION);
+        if (credentials == null) {
+            unauthorized(r);
+        } else {
+            LoginInfo info = authenticator.authenticate(realm, credentials);
+            if (info == null) {
+                unauthorized(r);
+            } else {
+                setState(new ConsumedLockedState(info, r, info.getRole(), info.getUser()));
+            }
+        }
+    }
+
+    private void unauthorized(Realm realm) {
+        add(Headers.WWW_AUTHENTICATE, realm);
+        setState(new RespondWith(HttpResponseStatus.UNAUTHORIZED));
+    }
+}
+        </pre>
+        The next Acteur in the chain can then ask for the <code>User</code> object
+        found in the above one's state in its constructor:
+<pre> 
+public class FileFinder extends Acteur {
+   @Inject
+   FileFinder (Event event, User user) throws IOException {
+       File f = new File (user.getFolder(), event.getPath().toString());
+       if (!f.exists) {
+          setState (new RespondWith(HttpResponseStatus.NOT_FOUND));
+       } else {
+          setState (new ConsumedLockedState(f));
+       }
+   }
+}
+</pre>
+        and the next one can start sending chunks of the file back to respond
+        to the request - by simply having a constructor that takes <code>File</code>
+        as one of its arguments.
+        
+    </body>
+</html>

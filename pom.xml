@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <artifactId>scopes-parent</artifactId>
+    <parent>
+        <groupId>com.mastfrog</groupId>
+        <artifactId>mastfrog-parent</artifactId>
+        <version>1.3.4</version>
+    </parent>
+    <name>Scopes Parent</name>
+    <description>Guice custom scope tols</description>
+    <packaging>pom</packaging>
+    <modules>
+        <module>scopes</module>
+        <module>treadmill</module>
+    </modules>
+    <repositories>
+        <repository>
+            <id>timboudreau-builds</id>
+            <name>timboudreau.com builds</name>
+            <url>http://timboudreau.com/builds/plugin/repository/everything/</url>
+            <releases>
+                <enabled>true</enabled>
+                <updatePolicy>never</updatePolicy>
+            </releases>
+            <snapshots>
+                <enabled>true</enabled>
+                <updatePolicy>never</updatePolicy>
+            </snapshots>
+        </repository>
+    </repositories>
+</project>
+
