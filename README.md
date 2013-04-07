@@ -1,5 +1,5 @@
 Acteur
-------
+======
 
 Acteur is a framework for writing web server applications with 
 [Netty](http://netty.io) by composing together reusable chunks of logic called
