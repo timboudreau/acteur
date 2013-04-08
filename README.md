@@ -27,7 +27,7 @@ constructor, and most of it consists of adding `Page` subtypes (`Class` objects)
 to the application.
 
 Essentially we are treating constructors as function objects.  Each Acteur construtor
-outputs a ``State`` which can contain additional objects that the next Acteur in
+outputs a `State` which can contain additional objects that the next Acteur in
 the chain can request by mentioning them in their constructor arguments.
 
 An Application is a list of Pages, and each Page is a list of Acteurs.  Typically
@@ -63,11 +63,13 @@ your code is correct.
 This ends up adding up to something resembling recursive callbacks, without the
 mess.  Whereas in Javascript one might write
 
-    blogs.find(id, function(err, blog) {
-        blog.withContent(function(err, content) {
-           response.write(content);
-        });
+```java
+blogs.find(id, function(err, blog) {
+    blog.withContent(function(err, content) {
+       response.write(content);
     });
+});
+```
 
 with the caveat that in fact, not of the nested functions run sequentially,
 in Acteur, one would write one Acteur to locate the blog and inject it into
@@ -137,8 +139,8 @@ HTTP calls can be implemented cleanly as separate pieces.
 
 So, Acteur does not hide Netty's API for actually writing data.  Very simple
 HTTP responses can be composed by passing a string to the constructor of the
-``RespondWith`` state;  for doing more complicated output processing, you probably
-want to implement Netty's ``ChannelFutureListener`` and write directly to the
+`RespondWith` state;  for doing more complicated output processing, you probably
+want to implement Netty's `ChannelFutureListener` and write directly to the
 output channel.
 
 There are a lot of well-done solutions for generating HTML or
@@ -151,38 +153,40 @@ A Basic Application
 As mentioned above, an application is composed from Pages, and a Page is 
 composed from Acteurs.  Here is what that looks like:
 
-    public class App extends Application {
+```java
+public class App extends Application {
 
-        App() {
-            add(HelloPage.class);
-        }
+    App() {
+        add(HelloPage.class);
+    }
 
-        static class HelloPage extends Page {
+    static class HelloPage extends Page {
 
-            @Inject
-            HelloPage(ActeurFactory factory) {
-                add(factory.matchMethods(Method.GET));
-                add(factory.matchPath("^hello$")); // A regular expression
-                add(SayHelloActeur.class);
-            }
-        }
-
-        static class SayHelloActeur extends Acteur {
-
-            @Inject
-            SayHelloActeur(Page page, Event evt) {
-                page.getReponseHeaders().setContentType("text/html; charset=utf8");
-                setState(new RespondWith(HttpResponseStatus.OK,
-                        "<html><head><title>Hello</title></head><body><h1>Hello World</h1>"
-                        + "Hello from Acteur</body></html>"));
-            }
-        }
-
-        public static void main(String[] args) throws IOException, InterruptedException {
-            ServerModule<App> module = new ServerModule<>(App.class);
-            module.start(8192);
+        @Inject
+        HelloPage(ActeurFactory factory) {
+            add(factory.matchMethods(Method.GET));
+            add(factory.matchPath("^hello$")); // A regular expression
+            add(SayHelloActeur.class);
         }
     }
+
+    static class SayHelloActeur extends Acteur {
+
+        @Inject
+        SayHelloActeur(Page page, Event evt) {
+            page.getReponseHeaders().setContentType("text/html; charset=utf8");
+            setState(new RespondWith(HttpResponseStatus.OK,
+                    "<html><head><title>Hello</title></head><body><h1>Hello World</h1>"
+                    + "Hello from Acteur</body></html>"));
+        }
+    }
+
+    public static void main(String[] args) throws IOException, InterruptedException {
+        ServerModule<App> module = new ServerModule<>(App.class);
+        module.start(8192);
+    }
+}
+```
 
 Now, say we would like to have this application look for a url parameter `name`
 and generate some customized output.  That lets us show off what you can do with
@@ -192,7 +196,9 @@ We'll add one line to the the application (outermost) class itself, to tell Guic
 that `java.lang.String` is a type which may be injected from one Acteur into another
 (in practice, String is an odd choice, but it works for a demo):
 
-    @ImplicitBindings ( String.class )
+```java
+@ImplicitBindings ( String.class )
+```
 
 The framework lets Acteurs dynamically create objects for injection into subsequent
 Acteurs.  Guice demands that all type-bindings be configured at application
@@ -201,45 +207,47 @@ tell Guice that String is one of the classes it should bind.
 
 Then we modify our Acteurs and page slightly.
 
-    static class HelloPage extends Page {
-        @Inject
-        HelloPage(ActeurFactory factory) {
-            add(factory.matchMethods(Method.GET));
-            add(factory.matchPath("^hello$"));
-            add(factory.requireParameters("name"));
-            add(FindNameActeur.class);
-            add(SayHelloActeur.class);
-        }
+```java
+static class HelloPage extends Page {
+    @Inject
+    HelloPage(ActeurFactory factory) {
+        add(factory.matchMethods(Method.GET));
+        add(factory.matchPath("^hello$"));
+        add(factory.requireParameters("name"));
+        add(FindNameActeur.class);
+        add(SayHelloActeur.class);
     }
+}
     
-    static class FindNameActeur extends Acteur {
-        @Inject
-        FindNameActeur(Event evt) {
-            // name will always be non-null - requireParameters() will have
-            // aborted the request with a 400 BAD REQUEST response before we
-            // get here if it is missing
-            String name = evt.getParameter("name");
-            // name will be injected into SayHelloActeur's constructor
-            setState(new ConsumedLockedState(name));
-        }
+static class FindNameActeur extends Acteur {
+    @Inject
+    FindNameActeur(Event evt) {
+        // name will always be non-null - requireParameters() will have
+        // aborted the request with a 400 BAD REQUEST response before we
+        // get here if it is missing
+        String name = evt.getParameter("name");
+        // name will be injected into SayHelloActeur's constructor
+        setState(new ConsumedLockedState(name));
     }
+}
 
-    static class SayHelloActeur extends Acteur {
-        @Inject
-        SayHelloActeur(Page page, String name) {
-            page.getReponseHeaders().setContentType("text/html; charset=utf8");
-            setState(new RespondWith(HttpResponseStatus.OK,
-                    "<html><head><title>Hello</title></head><body><h1>Hello " + name + "</h1>"
-                    + "Hello from Acteur to " + name + "</body></html>"));
-        }
+static class SayHelloActeur extends Acteur {
+    @Inject
+    SayHelloActeur(Page page, String name) {
+        page.getReponseHeaders().setContentType("text/html; charset=utf8");
+        setState(new RespondWith(HttpResponseStatus.OK,
+                "<html><head><title>Hello</title></head><body><h1>Hello " + name + "</h1>"
+                + "Hello from Acteur to " + name + "</body></html>"));
     }
+}
+```
 
 So if you run this application and run, say
 
     curl -i http://localhost:8192/hello?name=Tim
 
 you will get a nice personalized hello page.  Admittedly this example is a bit
-contrived;  for more real-world uses, see the two ActeurFactory methods:
+contrived;  for more real-world uses, see the two `ActeurFactory` methods:
 
  * `injectRequestBodyAsJSON(Class<T> type)` - this uses Jackson to parse the 
 request body into the type requested (if an error occurs, you can handle it by
@@ -255,20 +263,22 @@ write an Acteur that requests a `MyType` in its constructor.
 More Complex Output
 -------------------
 
-The above example simply uses a Java ``String`` to send all of its output at
+The above example simply uses a Java `String` to send all of its output at
 once.  If you want to do something more complex, you will simply use Netty's clean and
 simple API for writing output to a channel.  Instead of passing the string to
-the ``RespondWith`` constructor, leave it out.  Say you want to pipeline a bunch
+the `RespondWith` constructor, leave it out.  Say you want to pipeline a bunch
 of output which may take some time to compute:
 
-    static class MyOutputter implements ChannelFutureListener {
-        @Override
-        public void operationComplete(ChannelFuture future) throws Exception {
-            future = future.channel().write(Unpooled.wrappedBuffer("The output".getBytes()));
-            // add this as a listener to write more output, or add
-            // ChannelFutureListener.CLOSE
-        }
+```java
+static class MyOutputter implements ChannelFutureListener {
+    @Override
+    public void operationComplete(ChannelFuture future) throws Exception {
+        future = future.channel().write(Unpooled.wrappedBuffer("The output".getBytes()));
+        // add this as a listener to write more output, or add
+        // ChannelFutureListener.CLOSE
     }
+}
+```
 
 
 Configuration
@@ -276,7 +286,7 @@ Configuration
 
 Acteur uses the [Giulius](https://github.com/timboudreau/giulius) library 
 to facilitate binding values in properties
-files to @Named values which Guice can inject.  While not going into exhaustive
+files to `@Named` values which Guice can inject.  While not going into exhaustive
 detail here, what this does is it makes it easy to configure an application
 using a hierarchy of properties files.  The default file name is `defaults.properties`
 (but you can use something different by specifying it at startup time).  In 
@@ -298,11 +308,15 @@ To set base values for things, the easy (and reliable) way is to use the
 and there are always sane default values.  `@Defaults` simply takes an array
 of strings, and uses properties-file syntax, e.g.
 
-    @Defaults({"port=8192","dbserver=localhost"})
+```java
+@Defaults({"port=8192","dbserver=localhost"})
+```
 
 This could also be written
 
-    @Defaults("port=8192\ndbserver=localhost")
+```java
+@Defaults("port=8192\ndbserver=localhost")
+```
 
 but the former is more readable.
 
@@ -310,17 +324,17 @@ Technical Details
 -----------------
 
 A lot of the heavy lifting in creating Acteurs which are injected by objects from
-other Acteurs is handled by the utility class <code>ReentrantScope</code>.  Each
+other Acteurs is handled by the utility class `ReentrantScope`.  Each
 Acteur is instantiated within this scope (available from a getter on the Application).
 The scope is entered multiple times, each time contributing any objects provided
 by the previous Acteur in the chain.  It is also possible to inject an 
-ExecutorService which will wrap any Runnables or Callables posted to it in the
+`ExecutorService` which will wrap any Runnables or Callables posted to it in the
 current scope contents, so it is possible to run code on a background thread 
 with the same scope contents as when it was posted (and in fact, this is how
 Acteurs are run).
 
-An Acteur *must* set its state, either by calling <code>setState()</code> within
-its constructor, or overriding <code>getState()</code>.  Three State subclasses
+An Acteur *must* set its state, either by calling `setState()` within
+its constructor, or overriding `getState()`.  Three State subclasses
 are provided as inner classes of the superclass (so they can only be instantiated
 inside an Acteur subclass):
 
