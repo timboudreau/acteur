@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title></title>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+    <body>
+        <h1>MongoDB Guice Bindings</h1>
+        This package provides simple bindings to MongoDB, using
+        <a href="https://github.com/timboudreau/giulius">giulius</a> for loading
+        the host and port and setting up Guice bindings.
+        <p/>
+        The entry-point is the Guice module <a href="MongoModule.html">MongoModule</a>.
+        You can pass a database name to its constructor, or it will try to
+        extract the application's main-class name if the default constructor is
+        used.
+        <p/>
+        Individual collections can be bound so they can be injected using
+        <code>&#064;Named("someName") DBCollection</code> - you need to tell
+        the <a href="MongoModule.html">MongoModule</a> what the mapping between
+        collection names and names used in code is.  I.e. if you want to have a
+        collection named "ttusers" injected when a class references
+        <code>&#064;Named ("users") DbCollection users</code> then you would
+        do:
+
+        <pre>
+new MongoModule("myDb").bindCollection("users", "ttusers")
+        </pre>
+
+    </body>
+</html>

@@ -31,6 +31,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.handler.codec.http.HttpMessage;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.net.SocketAddress;
 import java.util.Map;
 
@@ -142,6 +143,14 @@ public interface Event {
      <T> T getContentAsJSON(Class<T> type) throws IOException;
 
     ByteBuf getContent() throws IOException;
+    
+    /**
+     * Get the request body as an input stream.  This method may block until
+     * the request has been closed.
+     * @return An output stream
+     * @throws IOException If something goes wrong
+     */
+    OutputStream getContentAsStream() throws IOException;
     
     Optional<Integer> getIntParameter(String name);
     Optional<Long> getLongParameter(String name);

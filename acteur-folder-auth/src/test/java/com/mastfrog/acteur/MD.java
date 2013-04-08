@@ -26,7 +26,9 @@ import io.netty.util.Attribute;
 import io.netty.util.AttributeKey;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GenericFutureListener;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.Collections;
@@ -451,5 +453,10 @@ class MD extends AbstractModule implements Event {
     @Override
     public boolean isKeepAlive() {
         return false;
+    }
+
+    @Override
+    public OutputStream getContentAsStream() throws IOException {
+        return new ByteArrayOutputStream(0);
     }
 }

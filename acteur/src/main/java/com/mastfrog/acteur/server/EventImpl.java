@@ -1,4 +1,4 @@
-/* 
+/*
  * The MIT License
  *
  * Copyright 2013 Tim Boudreau.
@@ -34,6 +34,7 @@ import com.mastfrog.acteur.Event;
 import com.mastfrog.acteur.util.HeaderValueType;
 import com.mastfrog.acteur.util.Headers;
 import com.mastfrog.acteur.util.Connection;
+import com.mastfrog.util.Streams;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;
 import io.netty.buffer.Unpooled;
@@ -41,7 +42,9 @@ import io.netty.channel.Channel;
 import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.QueryStringDecoder;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Proxy;
 import java.net.InetSocketAddress;
@@ -81,7 +84,7 @@ public final class EventImpl implements Event {
         this.channel = channel;
         this.mapper = mapper;
     }
-    
+
     @Override
     public String toString() {
         return req.getUri() + " (" + address + ") as " + getPath();
@@ -98,12 +101,37 @@ public final class EventImpl implements Event {
 
     @Override
     public ByteBuf getContent() {
-        return req instanceof FullHttpRequest ? ((FullHttpRequest) req).data() : 
-                Unpooled.EMPTY_BUFFER;
+        return req instanceof FullHttpRequest ? ((FullHttpRequest) req).data()
+                : Unpooled.EMPTY_BUFFER;
+    }
+
+    public OutputStream getContentAsStream() throws IOException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream(40);
+        getChannel().read();
+        ByteBuf inbound = getContent();
+        int count;
+        do {
+            count = inbound.readableBytes();
+            if (count > 0) {
+                inbound.readBytes(out, count);
+            }
+        } while (count > 0);
+        return out;
     }
 
     @Override
     public <T> T getContentAsJSON(Class<T> type) throws IOException {
+        // Special handling for strings
+        if (type == String.class || type == CharSequence.class) {
+            String result = Streams.readString(new ByteBufInputStream(getContent()));
+            if (result.length() > 0 && result.charAt(0) == '"') {
+                result = result.substring(1);
+            }
+            if (result.length() > 1 && result.charAt(result.length() - 1) == '"') {
+                result = result.substring(0, result.length() - 2);
+            }
+            return (T) result;
+        }
         ObjectMapper om = new ObjectMapper();
         return om.readValue(new ByteBufInputStream(getContent()), type);
     }
@@ -159,9 +187,8 @@ public final class EventImpl implements Event {
         }
         return null;
     }
+    private Map<String, String> paramsMap;
 
-    
-    private Map<String,String> paramsMap;
     @Override
     public synchronized Map<String, String> getParametersAsMap() {
         if (paramsMap == null) {

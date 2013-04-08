@@ -1,4 +1,4 @@
-/* 
+/*
  * The MIT License
  *
  * Copyright 2013 Tim Boudreau.
@@ -26,9 +26,12 @@ package com.mastfrog.acteur.server;
 import com.mastfrog.jackson.JacksonModule;
 import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
+import com.google.inject.Key;
 import com.google.inject.Module;
 import com.google.inject.Provider;
 import com.google.inject.TypeLiteral;
+import com.google.inject.binder.AnnotatedBindingBuilder;
+import com.google.inject.binder.LinkedBindingBuilder;
 import com.google.inject.name.Names;
 import com.mastfrog.guicy.annotations.Defaults;
 import com.mastfrog.settings.Settings;
