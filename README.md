@@ -9,7 +9,7 @@ A further description of the framework's aims can be found in
 [this blog](http://timboudreau.com/blog/Acteur/read).  This project uses 
 [Netty's](http://netty.io) 4.x (with its revised API) for HTTP.
 
-Read the [acteur tutorial here](../../acteur-tutorial).
+Read the [acteur tutorial here](../../../acteur-tutorial).
 
 It's goal is to make it easy to write small, fast, scalable HTTP servers
 while ending up with reusable code as a natural side effect of using
