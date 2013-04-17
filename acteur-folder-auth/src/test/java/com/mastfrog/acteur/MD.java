@@ -16,6 +16,7 @@ import io.netty.channel.ChannelConfig;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelMetadata;
 import io.netty.channel.ChannelPipeline;
+import io.netty.channel.ChannelProgressivePromise;
 import io.netty.channel.ChannelPromise;
 import io.netty.channel.EventLoop;
 import io.netty.channel.FileRegion;
@@ -390,6 +391,11 @@ class MD extends AbstractModule implements Event {
 
             public boolean isWritable() {
                 return true;
+            }
+
+            @Override
+            public ChannelProgressivePromise newProgressivePromise() {
+                throw new UnsupportedOperationException();
             }
         };
     }
