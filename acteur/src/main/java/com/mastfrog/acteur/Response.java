@@ -208,7 +208,10 @@ final class Response {
         }
 
         if (!canHaveBody(getResponseCode()) && (message != null || listener != null)) {
-            System.err.println(evt.getMethod() + " " + evt.getPath() + " attempts to attach a body to " + getResponseCode() + " which cannot have one: " + resp + " - " + message + " - " + listener);
+            System.err.println(evt.getMethod() + " " + evt.getPath() 
+                    + " attempts to attach a body to " + getResponseCode() 
+                    + " which cannot have one: " + resp + " - " + message 
+                    + " - " + listener);
             if (closer != null) {
                 future.addListener(closer);
             }
@@ -219,7 +222,6 @@ final class Response {
             return;
         }
         if (getMessage() == null) {
-            System.out.println("adding closer? " + (closer != null));
             if (closer != null) {
                 future.addListener(closer);
             }

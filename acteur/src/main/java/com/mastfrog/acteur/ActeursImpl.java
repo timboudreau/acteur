@@ -228,7 +228,6 @@ public class ActeursImpl implements Acteurs {
                 // Merge in the response, in case some headers were added
                 
                 boolean done = state.isRejected();
-                System.out.println("IS LAST " + isLast + " with " + acteur + " for " + state.getLockedPage());
 //                if (!done || isLast) {
                   response.merge(acteur.getResponse());
 //                }
