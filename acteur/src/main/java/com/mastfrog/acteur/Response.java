@@ -138,6 +138,9 @@ final class Response {
         List<Entry<?>> old = new LinkedList<>();
         for (Iterator<Entry<?>> it = headers.iterator(); it.hasNext();) {
             Entry<?> e = it.next();
+            if (e.decorator.equals(Headers.SET_COOKIE)) {
+                continue;
+            }
             if (e.match(decorator) != null) {
                 old.add(e);
                 it.remove();
