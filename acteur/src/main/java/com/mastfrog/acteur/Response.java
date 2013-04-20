@@ -136,6 +136,7 @@ final class Response {
 
     public <T> void add(HeaderValueType<T> decorator, T value) {
         List<Entry<?>> old = new LinkedList<>();
+        // XXX set cookie!
         for (Iterator<Entry<?>> it = headers.iterator(); it.hasNext();) {
             Entry<?> e = it.next();
             if (e.decorator.equals(Headers.SET_COOKIE)) {
