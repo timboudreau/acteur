@@ -225,7 +225,9 @@ public final class Headers {
         Checks.notNull("msg", msg);
         Checks.notNull("value " + type, value);
         String val = type.toString(value);
-        msg.headers().set(type.name(), val);
+//        msg.headers().set(type.name(), val);
+        System.out.println("ADD " + type.name() + ": " + val);
+        msg.headers().add(type.name(), val);
         return val;
     }
 
