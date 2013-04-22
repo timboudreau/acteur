@@ -25,8 +25,12 @@ package com.mastfrog.url;
 
 import com.mastfrog.util.AbstractBuilder;
 import com.mastfrog.util.Checks;
+import com.mastfrog.util.Exceptions;
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 import java.util.regex.Pattern;
 import org.openide.util.NbBundle;
@@ -36,7 +40,7 @@ import org.openide.util.NbBundle;
  *
  * @author Tim Boudreau
  */
-public final class Path implements URLComponent {
+public final class Path implements URLComponent, Iterable<PathElement> {
     private static final long serialVersionUID = 1L;
     private final PathElement[] elements;
     private final boolean illegal;
@@ -61,6 +65,10 @@ public final class Path implements URLComponent {
      * @return
      */
     public static Path parse(String path) {
+        return Path.parse(path, false);
+    }
+
+    public static Path parse(String path, boolean decode) {
         Checks.notNull("path", path);
         //XXX handle relative paths
         List<PathElement> l = new ArrayList<>(12);
@@ -69,35 +77,69 @@ public final class Path implements URLComponent {
 
         // http://foo.com/relative/path/../../stuff = http://foo.com/stuff
         // http://foo.com/./,/stuff = http://foo.com/stuff
+        try {
+            for (int i = 0; i < ch.length; i++) {
+                char c = ch[i];
+                switch (c) {
+                    case '/':
+                        if (i == 0) {
+                            continue;
+                        }
+                        if (i == ch.length - 1) {
+                            if (decode) {
+                                l.add(new PathElement(URLDecoder.decode(sb.toString(), "UTF-8"), true, decode));
+                            } else {
+                                l.add(new PathElement(sb.toString(), true));
+                            }
+                        } else {
+                            if (decode) {
+                                l.add(new PathElement(URLDecoder.decode(sb.toString(), "UTF-8"), false, decode));
 
-        for (int i = 0; i < ch.length; i++) {
-            char c = ch[i];
-            switch (c) {
-                case '/':
-                    if (i == 0) {
-                        continue;
-                    }
-                    if (i == ch.length - 1) {
-                        l.add (new PathElement(sb.toString(), true));
-                    } else {
-                        l.add (new PathElement(sb.toString(), false));
-                    }
-                    sb.setLength(0);
-                    break;
-                default:
-                    sb.append (c);
+                            } else {
+                                l.add(new PathElement(sb.toString(), false));
+                            }
+                        }
+                        sb.setLength(0);
+                        break;
+                    default:
+                        sb.append(c);
+                }
             }
-        }
-        if (sb.length() > 0) {
-            l.add (new PathElement(sb.toString(), false));
-        }
-        if (!l.isEmpty() && path.endsWith("/")) {
-            PathElement el = l.get(l.size() - 1);
-            l.set (l.size() - 1, el.toTrailingSlashElement());
+            if (sb.length() > 0) {
+                if (decode) {
+                    l.add(new PathElement(URLDecoder.decode(sb.toString()), false, decode));
+
+                } else {
+                    l.add(new PathElement(sb.toString(), false));
+                }
+            }
+            if (!l.isEmpty() && path.endsWith("/")) {
+                PathElement el = l.get(l.size() - 1);
+                l.set(l.size() - 1, el.toTrailingSlashElement());
+            }
+        } catch (UnsupportedEncodingException e) {
+            return Exceptions.chuck(e);
         }
         return new Path(l.toArray(new PathElement[l.size()]));
     }
-    
+
+    public Path toURLDecodedPath() {
+        List<PathElement> el = new ArrayList<>(size());
+        for (PathElement p : this) {
+            try {
+                el.add(new PathElement(URLDecoder.decode(p.toString(), "UTF-8"), true));
+            } catch (UnsupportedEncodingException ex) {
+                return Exceptions.chuck(ex);
+            }
+        }
+        Path result = new Path(el.toArray(new PathElement[size()]));
+        return result.equals(this) ? this : result;
+    }
+
+    public Iterator<PathElement> iterator() {
+        return Arrays.asList(elements).iterator();
+    }
+
     public Path normalize() {
         return new Path (normalizePath());
     }
@@ -115,7 +157,7 @@ public final class Path implements URLComponent {
     }
 
     NormalizeResult normalizePath() {
-        List<PathElement> result = new ArrayList<PathElement>();
+        List<PathElement> result = new ArrayList<>();
         boolean illegal = false;
         for (PathElement e : elements) {
             if (".".equals(e.rawText())) {
@@ -349,7 +391,7 @@ public final class Path implements URLComponent {
     }
 
     private static final class PathBuilder extends AbstractBuilder<PathElement, Path> {
-
+        
         @Override
         public Path create() {
             PathElement[] elements = new PathElement[size()];

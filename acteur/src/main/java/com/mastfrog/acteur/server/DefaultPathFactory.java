@@ -98,7 +98,7 @@ class DefaultPathFactory implements PathFactory {
             if (uri.length() > 1 && uri.endsWith("/")) {
                 uri = uri.substring(0, uri.length() - 1);
             }
-            result = Path.parse(uri);
+            result = Path.parse(uri, true);
             return result;
         }
     }

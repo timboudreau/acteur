@@ -20,6 +20,11 @@
     <dependencies>
         <dependency>
             <groupId>com.mastfrog</groupId>
+            <artifactId>acteur</artifactId>
+            <type>jar</type>
+        </dependency>        
+        <dependency>
+            <groupId>com.mastfrog</groupId>
             <artifactId>giulius</artifactId>
             <type>jar</type>
         </dependency>        

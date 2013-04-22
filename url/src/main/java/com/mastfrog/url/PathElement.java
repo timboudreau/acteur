@@ -36,15 +36,20 @@ public final class PathElement implements URLComponent {
     private static final long serialVersionUID = 1L;
     private final String element;
     private final boolean trailingSlash;
+    private final boolean noEncode;
 
     public PathElement(String element) {
         this(element, false);
     }
 
     public PathElement(String element, boolean trailingSlash) {
+        this(element, trailingSlash, false);
+    }
+    public PathElement(String element, boolean trailingSlash, boolean noEncode) {
         Checks.notNull("element", element);
         this.element = element;
         this.trailingSlash = trailingSlash;
+        this.noEncode = noEncode;
     }
 
     String rawText() {
@@ -52,7 +57,7 @@ public final class PathElement implements URLComponent {
     }
 
     PathElement toTrailingSlashElement() {
-        return trailingSlash ? this : new PathElement(element, true);
+        return trailingSlash ? this : new PathElement(element, true, noEncode);
     }
 
     PathElement toNonTrailingSlashElement() {
@@ -66,7 +71,7 @@ public final class PathElement implements URLComponent {
 
     @Override
     public String toString() {
-        return URLBuilder.escape(element, '/', '+', ':', '?', '=');
+        return noEncode ? element : URLBuilder.escape(element, '/', '+', ':', '?', '=');
     }
 
     @Override
@@ -80,7 +85,11 @@ public final class PathElement implements URLComponent {
     }
 
     public void appendTo(StringBuilder sb, boolean includeTrailingSlashIfPresent) {
-        URLBuilder.append(sb, element, '/', '+', ':', '?', '=');
+        if (noEncode) {
+            sb.append(element);
+        } else {
+            URLBuilder.append(sb, element, '/', '+', ':', '?', '=');
+        }
         if (trailingSlash && includeTrailingSlashIfPresent) {
             sb.append('/');
         }

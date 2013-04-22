@@ -287,7 +287,7 @@ public final class Headers {
         return dt.toDateTime(DateTimeZone.UTC).toDateTimeISO().toString(
                 ISO2822DateFormat);
     }
-    
+
     public static HeaderValueType<String> custom(String name) {
         return new StringHeader(name);
     }
