@@ -136,8 +136,12 @@ final class Response {
 
     public <T> void add(HeaderValueType<T> decorator, T value) {
         List<Entry<?>> old = new LinkedList<>();
+        // XXX set cookie!
         for (Iterator<Entry<?>> it = headers.iterator(); it.hasNext();) {
             Entry<?> e = it.next();
+            if (e.decorator.equals(Headers.SET_COOKIE)) {
+                continue;
+            }
             if (e.match(decorator) != null) {
                 old.add(e);
                 it.remove();
@@ -205,7 +209,10 @@ final class Response {
         }
 
         if (!canHaveBody(getResponseCode()) && (message != null || listener != null)) {
-            System.err.println(evt.getMethod() + " " + evt.getPath() + " attempts to attach a body to " + getResponseCode() + " which cannot have one: " + resp + " - " + message + " - " + listener);
+            System.err.println(evt.getMethod() + " " + evt.getPath() 
+                    + " attempts to attach a body to " + getResponseCode() 
+                    + " which cannot have one: " + resp + " - " + message 
+                    + " - " + listener);
             if (closer != null) {
                 future.addListener(closer);
             }
@@ -216,7 +223,6 @@ final class Response {
             return;
         }
         if (getMessage() == null) {
-            System.out.println("adding closer? " + (closer != null));
             if (closer != null) {
                 future.addListener(closer);
             }

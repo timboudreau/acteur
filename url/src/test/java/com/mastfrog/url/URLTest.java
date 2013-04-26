@@ -1,7 +1,9 @@
 package com.mastfrog.url;
 
 import java.io.File;
+import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
+import java.net.URLEncoder;
 import org.junit.Test;
 import static org.junit.Assert.*;
 import org.netbeans.validation.api.Problems;
@@ -793,5 +795,22 @@ public class URLTest {
         b.addPathElement("xyz");
         URL y = b.create();
         assertTrue (y.getProblems() + "", y.isValid());
+    }
+
+    @Test
+    public void testPathDecoding() throws UnsupportedEncodingException {
+        String orig = "path/to/My Image-small.gif";
+        String encoded = "path/to/" + URLEncoder.encode("My Image-small.gif", "UTF-8").replace("+", "%20").replace("-", "%2d");
+        System.out.println("ENCODED "+ encoded);
+        assertNotEquals(orig, encoded);
+        Path p = Path.parse(orig);
+        assertEquals(encoded, p.toString());
+        Path p2 = Path.parse(encoded, true);
+
+        System.out.println("P: " + p);
+        System.out.println("R: " + p2);
+
+        assertEquals(orig, p2.toString());
+        assertEquals (p, p2);
     }
 }

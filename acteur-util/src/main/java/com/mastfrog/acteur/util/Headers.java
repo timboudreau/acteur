@@ -225,7 +225,7 @@ public final class Headers {
         Checks.notNull("msg", msg);
         Checks.notNull("value " + type, value);
         String val = type.toString(value);
-        msg.headers().set(type.name(), val);
+        msg.headers().add(type.name(), val);
         return val;
     }
 
@@ -287,7 +287,7 @@ public final class Headers {
         return dt.toDateTime(DateTimeZone.UTC).toDateTimeISO().toString(
                 ISO2822DateFormat);
     }
-    
+
     public static HeaderValueType<String> custom(String name) {
         return new StringHeader(name);
     }

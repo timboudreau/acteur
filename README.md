@@ -15,6 +15,9 @@ It's goal is to make it easy to write small, fast, scalable HTTP servers
 while ending up with reusable code as a natural side effect of using
 the framework.
 
+If you think this project is worthwhile, or there are features you'd like
+to see, consider [donating](http://timboudreau.com/donate.html).
+
 It uses a few best-of-breed libraries in addition to Netty to work its magic
 (such as Joda Time for dates and times, Jackson for JSON processing and
 Guava or MIME types and a few other things).  
