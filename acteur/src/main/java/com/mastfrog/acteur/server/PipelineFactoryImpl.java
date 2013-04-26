@@ -101,12 +101,5 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
         public MessageBuf<ByteBuf> newOutboundBuffer(ChannelHandlerContext ctx) throws Exception {
             return Unpooled.messageBuffer();
         }
-        
-        @Override
-        public void freeOutboundBuffer(ChannelHandlerContext ctx) throws Exception {
-//            System.out.println("Free outbound buffer " + ctx);
-            // PENDING:  Find the MessageBuf we allocated and decrement its 
-            // reference count
-        }
     }
 }
