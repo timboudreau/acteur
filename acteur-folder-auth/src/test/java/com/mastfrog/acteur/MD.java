@@ -393,7 +393,6 @@ class MD extends AbstractModule implements Event {
                 return true;
             }
 
-            @Override
             public ChannelProgressivePromise newProgressivePromise() {
                 throw new UnsupportedOperationException();
             }
