@@ -6,7 +6,7 @@ import com.mastfrog.acteur.Event;
 import com.mastfrog.acteur.Application;
 import com.mastfrog.acteur.ResponseSender;
 import com.mastfrog.acteur.State;
-import com.mastfrog.acteur.Response;
+import com.mastfrog.acteur.ResponseImpl;
 import com.mastfrog.acteur.ActeursImpl;
 import com.mastfrog.acteur.Acteur;
 import com.mastfrog.acteur.util.Headers;
@@ -256,7 +256,7 @@ public class AppTest {
         }
 
         @Override
-        public void receive(Acteur action, State state, Response response) {
+        public void receive(Acteur action, State state, ResponseImpl response) {
             assertNotNull(state);
             System.err.println("Received " + state);
             synchronized (this) {

@@ -26,8 +26,12 @@ package com.mastfrog.acteur.util;
 import com.google.common.net.MediaType;
 import com.mastfrog.url.Host;
 import com.mastfrog.util.Checks;
+import io.netty.handler.codec.http.Cookie;
+import io.netty.handler.codec.http.CookieDecoder;
+import io.netty.handler.codec.http.DefaultCookie;
 import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpMessage;
+import io.netty.handler.codec.http.ServerCookieEncoder;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.Charset;
@@ -86,10 +90,43 @@ public final class Headers {
     public static final HeaderValueType<Realm> WWW_AUTHENTICATE = new AuthHeader();
     public static final HeaderValueType<Method[]> ALLOW = new AllowHeader(false);
     public static final HeaderValueType<Method[]> ACCESS_CONTROL_ALLOW = new AllowHeader(true);
-    public static final HeaderValueType<String> SET_COOKIE = stringHeader(HttpHeaders.Names.SET_COOKIE);
+    public static final HeaderValueType<Cookie> SET_COOKIE = new SetCookieHeader();
+    public static final HeaderValueType<Cookie[]> COOKIE = new CookieHeader();
 
     public static HeaderValueType<String> stringHeader(String key) {
         return new StringHeader(key);
+    }
+    
+    private static final class CookieHeader extends AbstractHeader<Cookie[]> {
+        CookieHeader() {
+            super(Cookie[].class, HttpHeaders.Names.COOKIE);
+        }
+
+        @Override
+        public String toString(Cookie[] value) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public Cookie[] toValue(String value) {
+            return CookieDecoder.decode(value).toArray(new Cookie[0]);
+        }
+        
+    }
+    private static final class SetCookieHeader extends AbstractHeader<Cookie> {
+        SetCookieHeader() {
+            super(Cookie.class, HttpHeaders.Names.SET_COOKIE);
+        }
+
+        @Override
+        public String toString(Cookie value) {
+            return ServerCookieEncoder.encode(value);
+        }
+
+        @Override
+        public Cookie toValue(String value) {
+            return CookieDecoder.decode(value).iterator().next();
+        }
     }
     
     private static final class MediaTypeHeader extends AbstractHeader<MediaType> {

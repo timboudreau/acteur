@@ -237,7 +237,7 @@ public class TestHeaderWriting {
             }
 
             @Override
-            Response getResponse() {
+            ResponseImpl getResponse() {
                 return del().getResponse();
             }
 
@@ -271,7 +271,7 @@ public class TestHeaderWriting {
         }
 
         @Override
-        Response getResponse() {
+        ResponseImpl getResponse() {
             return wrapped.getResponse();
         }
 
