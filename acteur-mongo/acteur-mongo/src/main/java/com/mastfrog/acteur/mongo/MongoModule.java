@@ -95,7 +95,8 @@ public final class MongoModule extends AbstractModule {
 
         for (Map.Entry<String, String> e : collectionForName.entrySet()) {
             bind(DBCollection.class).annotatedWith(Names.named(e.getKey())).toProvider(
-                    new CollectionProvider(binder().getProvider(DB.class), e.getValue()));
+                    new CollectionProvider(binder().getProvider(DB.class), 
+                    e.getValue(), binder().getProvider(MongoInitializer.Registry.class)));
         }
     }
 }

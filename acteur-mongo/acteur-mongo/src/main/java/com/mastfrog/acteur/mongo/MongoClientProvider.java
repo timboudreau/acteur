@@ -19,11 +19,13 @@ final class MongoClientProvider implements Provider<MongoClient>, Runnable {
     private final Settings settings;
     private volatile MongoClient client;
     private final ShutdownHookRegistry hooks;
+    private final MongoInitializer.Registry registry;
 
     @Inject
-    public MongoClientProvider(Settings settings, ShutdownHookRegistry hooks) {
+    public MongoClientProvider(Settings settings, ShutdownHookRegistry hooks, MongoInitializer.Registry registry) {
         this.settings = settings;
         this.hooks = hooks;
+        this.registry = registry;
     }
 
     @Override
@@ -35,6 +37,7 @@ final class MongoClientProvider implements Provider<MongoClient>, Runnable {
                         String host = settings.getString(MongoModule.MONGO_HOST, "localhost");
                         int port = settings.getInt(MongoModule.MONGO_PORT, 27017);
                         client = new MongoClient(host, port);
+                        registry.onMongoClientCreated(client);
                         hooks.add(this);
                     } catch (UnknownHostException ex) {
                         Exceptions.chuck(ex);
