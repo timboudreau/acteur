@@ -81,7 +81,7 @@ public class ActeursImpl implements Acteurs {
         Checks.notNull("receiver", receiver);
         Checks.notNull("event", event);
         // Create a new empty response
-        Response response = new Response();
+        ResponseImpl response = new ResponseImpl();
         // A holder for the last state
         final AtomicReference<State> lastState = new AtomicReference<>();
         // A runnable which will be called if the request completes normally,
@@ -118,11 +118,11 @@ public class ActeursImpl implements Acteurs {
     private static class ActeurToCallable implements Converter<Callable<Object[]>, Acteur> {
 
         private final Page page;
-        private final Response response;
+        private final ResponseImpl response;
         private final AtomicReference<State> lastState;
         private final Iterator<Acteur> acteurs;
 
-        ActeurToCallable(Page page, Response response, AtomicReference<State> lastState, Iterator<Acteur> acteurs) {
+        ActeurToCallable(Page page, ResponseImpl response, AtomicReference<State> lastState, Iterator<Acteur> acteurs) {
             this.page = page;
             this.response = response;
             this.lastState = lastState;
@@ -150,11 +150,11 @@ public class ActeursImpl implements Acteurs {
     private static class FinishRequest implements Runnable {
 
         private final AtomicReference<State> lastState;
-        private final Response response;
+        private final ResponseImpl response;
         private final ResponseSender receiver;
         private final boolean debug;
 
-        public FinishRequest(AtomicReference<State> lastState, Response response, ResponseSender receiver, Settings settings) {
+        public FinishRequest(AtomicReference<State> lastState, ResponseImpl response, ResponseSender receiver, Settings settings) {
             this.lastState = lastState;
             this.response = response;
             this.receiver = receiver;
@@ -192,11 +192,11 @@ public class ActeursImpl implements Acteurs {
 
         private final Page page;
         final Acteur acteur;
-        private final Response response;
+        private final ResponseImpl response;
         private final AtomicReference<State> lastState;
         private final boolean isLast;
 
-        public ActeurCallable(Page page, Acteur acteur, Response response, AtomicReference<State> lastState, boolean isLast) {
+        public ActeurCallable(Page page, Acteur acteur, ResponseImpl response, AtomicReference<State> lastState, boolean isLast) {
             this.page = page;
             this.acteur = acteur;
             this.response = response;

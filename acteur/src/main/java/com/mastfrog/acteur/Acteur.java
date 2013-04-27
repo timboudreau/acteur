@@ -94,17 +94,17 @@ public abstract class Acteur {
         }
     }
 
-    private volatile Response response;
+    private volatile ResponseImpl response;
 
     protected <T> void add(HeaderValueType<T> decorator, T value) {
         getResponse().add(decorator, value);
     }
 
-    Response getResponse() {
+    ResponseImpl getResponse() {
         if (response == null) {
             synchronized(this) {
                 if (response == null) {
-                    response = new Response();
+                    response = new ResponseImpl();
                 }
             }
         }
@@ -130,6 +130,10 @@ public abstract class Acteur {
 
     public void setChunked(boolean chunked) {
         getResponse().setChunked(chunked);
+    }
+    
+    protected Response response() {
+        return getResponse();
     }
     
     static Acteur error(Page page, Throwable t) {
@@ -417,7 +421,7 @@ public abstract class Acteur {
                 return "Scope wrapper for " + listener;
             }
         }
-        getResponse().setOnSaveListener(new WL());
+        getResponse().setBodyWriter(new WL());
     }
 
     public State getState() {
@@ -439,7 +443,7 @@ public abstract class Acteur {
             }
 
             @Override
-            Response getResponse() {
+            ResponseImpl getResponse() {
                 if (acteur != null) {
                     return acteur.getResponse();
                 }

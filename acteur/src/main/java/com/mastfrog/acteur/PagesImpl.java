@@ -111,7 +111,7 @@ final class PagesImpl implements Pages {
         }
 
         @Override
-        public void receive(Acteur acteur, State state, Response response) {
+        public void receive(Acteur acteur, State state, ResponseImpl response) {
             if (response.isModified() && response.status != null) {
                 // Actually send the response
                 try {
