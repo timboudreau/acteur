@@ -114,7 +114,7 @@ public enum Protocols implements Protocol {
 
     private static final class GenericProtocol implements Protocol {
         private static final long serialVersionUID = 1L;
-        private String name;
+        private final String name;
 
         GenericProtocol (String name) {
             this.name = name;

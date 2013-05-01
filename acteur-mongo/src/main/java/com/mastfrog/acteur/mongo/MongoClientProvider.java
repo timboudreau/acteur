@@ -8,6 +8,8 @@ import com.mastfrog.settings.Settings;
 import com.mastfrog.util.Exceptions;
 import com.mongodb.MongoClient;
 import java.net.UnknownHostException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  *
@@ -19,6 +21,7 @@ final class MongoClientProvider implements Provider<MongoClient>, Runnable {
     private final Settings settings;
     private volatile MongoClient client;
     private final ShutdownHookRegistry hooks;
+    private volatile boolean added;
     private final MongoInitializer.Registry registry;
 
     @Inject
@@ -26,6 +29,18 @@ final class MongoClientProvider implements Provider<MongoClient>, Runnable {
         this.settings = settings;
         this.hooks = hooks;
         this.registry = registry;
+    }
+
+    public void reset() {
+        if (client != null) {
+            try {
+                client.close();
+            } catch (Exception e) {
+                Logger.getLogger(MongoClientProvider.class.getName())
+                        .log(Level.INFO, "Exception closing client", e);
+            }
+        }
+        client = null;
     }
 
     @Override
@@ -38,7 +53,10 @@ final class MongoClientProvider implements Provider<MongoClient>, Runnable {
                         int port = settings.getInt(MongoModule.MONGO_PORT, 27017);
                         client = new MongoClient(host, port);
                         registry.onMongoClientCreated(client);
-                        hooks.add(this);
+                        if (!added) {
+                            hooks.add(this);
+                            added = true;
+                        }
                     } catch (UnknownHostException ex) {
                         Exceptions.chuck(ex);
                     }

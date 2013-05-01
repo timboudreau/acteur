@@ -210,7 +210,7 @@ public final class Path implements URLComponent, Iterable<PathElement> {
      */
     public static Path merge(Path... paths) {
         Checks.notEmptyOrNull("paths", paths);
-        List<PathElement> l = new ArrayList<PathElement>(paths.length * 10);
+        List<PathElement> l = new ArrayList<>(paths.length * 10);
         for (Path p : paths) {
             l.addAll (Arrays.asList(p.getElements()));
         }
@@ -377,10 +377,7 @@ public final class Path implements URLComponent, Iterable<PathElement> {
             return false;
         }
         final Path other = (Path) obj;
-        if (!Arrays.equals(this.elements, other.elements)) {
-            return false;
-        }
-        return true;
+        return Arrays.equals(this.elements, other.elements);
     }
 
     @Override

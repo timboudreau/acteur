@@ -26,6 +26,7 @@ package com.mastfrog.acteur.util;
 import com.google.common.net.MediaType;
 import com.mastfrog.url.Host;
 import com.mastfrog.util.Checks;
+import io.netty.handler.codec.http.ClientCookieEncoder;
 import io.netty.handler.codec.http.Cookie;
 import io.netty.handler.codec.http.CookieDecoder;
 import io.netty.handler.codec.http.DefaultCookie;
@@ -104,14 +105,13 @@ public final class Headers {
 
         @Override
         public String toString(Cookie[] value) {
-            throw new UnsupportedOperationException();
+            return ClientCookieEncoder.encode(value);
         }
 
         @Override
         public Cookie[] toValue(String value) {
             return CookieDecoder.decode(value).toArray(new Cookie[0]);
         }
-        
     }
     private static final class SetCookieHeader extends AbstractHeader<Cookie> {
         SetCookieHeader() {
@@ -248,7 +248,7 @@ public final class Headers {
 
         @Override
         public Realm toValue(String value) {
-            throw new UnsupportedOperationException("Not supported");
+            return Realm.createSimple(value);
         }
     }
 

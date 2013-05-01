@@ -30,6 +30,7 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.handler.codec.http.HttpResponse;
+import io.netty.handler.codec.http.HttpResponseStatus;
 import java.util.Iterator;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
@@ -145,6 +146,8 @@ final class PagesImpl implements Pages {
                         application.onBeforeRespond(id, event, response.getResponseCode());
                         // Send the response
                         response.sendMessage(event, fut, httpResponse, closer);
+                        
+                        application.onAfterRespond(id, event, acteur, state.getLockedPage(), state, HttpResponseStatus.OK, httpResponse);
                     } finally {
                         latch.countDown();
                     }

@@ -7,7 +7,9 @@ import com.mongodb.DB;
 import com.mongodb.DBCollection;
 import com.mongodb.MongoClient;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Simple bindings for MongoDB
@@ -22,10 +24,11 @@ public final class MongoModule extends AbstractModule {
     private boolean configured;
     private final Map<String, String> collectionForName = new HashMap<>();
     private final String databaseName;
+    private final Set<Class<? extends MongoInitializer>> initializers = new HashSet<>();
 
     /**
-     * Create a new module, attempting to find the main class name and
-     * use that as the database name.
+     * Create a new module, attempting to find the main class name and use that
+     * as the database name.
      */
     public MongoModule() {
         this(getMainClassName());
@@ -33,11 +36,16 @@ public final class MongoModule extends AbstractModule {
 
     /**
      * Create a new module, and use the specified database name
-     * 
-     * @param databaseName 
+     *
+     * @param databaseName
      */
     public MongoModule(String databaseName) {
         this.databaseName = databaseName;
+    }
+
+    public MongoModule addInitializer(Class<? extends MongoInitializer> type) {
+        initializers.add(type);
+        return this;
     }
 
     private static String getMainClassName() {
@@ -55,9 +63,9 @@ public final class MongoModule extends AbstractModule {
     }
 
     /**
-     * Bind a collection so it can be injected using &#064;Named, using
-     * the same name in code and as a collection name
-     * 
+     * Bind a collection so it can be injected using &#064;Named, using the same
+     * name in code and as a collection name
+     *
      * @param bindingName The name that will be used in code
      * @return this
      */
@@ -67,7 +75,7 @@ public final class MongoModule extends AbstractModule {
 
     /**
      * Bind a collection so it can be injected using &#064;Named
-     * 
+     *
      * @param bindingName The name that will be used in code
      * @param collectionName The name of the actual collection
      * @return this
@@ -93,9 +101,13 @@ public final class MongoModule extends AbstractModule {
         bind(MongoClient.class).toProvider(MongoClientProvider.class).asEagerSingleton();
         bind(DB.class).toProvider(DatabaseProvider.class);
 
+        for (Class<? extends MongoInitializer> c : initializers) {
+            bind(c).asEagerSingleton();
+        }
+
         for (Map.Entry<String, String> e : collectionForName.entrySet()) {
             bind(DBCollection.class).annotatedWith(Names.named(e.getKey())).toProvider(
-                    new CollectionProvider(binder().getProvider(DB.class), 
+                    new CollectionProvider(binder().getProvider(DB.class),
                     e.getValue(), binder().getProvider(MongoInitializer.Registry.class)));
         }
     }

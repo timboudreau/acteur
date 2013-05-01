@@ -26,12 +26,9 @@ package com.mastfrog.acteur.server;
 import com.mastfrog.jackson.JacksonModule;
 import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
-import com.google.inject.Key;
 import com.google.inject.Module;
 import com.google.inject.Provider;
 import com.google.inject.TypeLiteral;
-import com.google.inject.binder.AnnotatedBindingBuilder;
-import com.google.inject.binder.LinkedBindingBuilder;
 import com.google.inject.name.Names;
 import com.mastfrog.guicy.annotations.Defaults;
 import com.mastfrog.settings.Settings;
@@ -176,13 +173,28 @@ public class ServerModule<A extends Application> extends AbstractModule {
                 Server.SCOPED_BACKGROUND_THREAD_POOL_NAME)).toProvider(
                 new WrappedWorkerThreadPoolProvider(backgroundProvider, scope));
 
-        bind(DateTime.class).toInstance(new DateTime());
+        bind(DateTime.class).toInstance(DateTime.now());
         bind(Duration.class).toProvider(UptimeProvider.class);
         bind(new CKTL()).toProvider(CookiesProvider.class);
+        
+        bind (String.class).annotatedWith(Names.named("application")).toProvider(ApplicationNameProvider.class);
 
         bind(ServerImpl.class).asEagerSingleton();
         for (Module m : otherModules) {
             install(m);
+        }
+    }
+    
+    private static final class ApplicationNameProvider implements Provider<String> {
+        private final Provider<Application> app;
+        @Inject
+        ApplicationNameProvider(Provider<Application> app) {
+            this.app = app;
+        }
+
+        @Override
+        public String get() {
+            return app.get().getName();
         }
     }
 

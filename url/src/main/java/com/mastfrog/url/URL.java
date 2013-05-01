@@ -23,13 +23,17 @@
  */
 package com.mastfrog.url;
 
+import com.mastfrog.util.AbstractBuilder;
 import org.netbeans.validation.api.Validating;
 import com.mastfrog.util.Checks;
 import com.mastfrog.util.NullArgumentException;
 import java.io.File;
 import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 import org.netbeans.validation.api.Problems;
 import org.netbeans.validation.api.Severity;
@@ -433,6 +437,28 @@ public final class URL implements URLComponent, Validating, Comparable<URL> {
      */
     public URL toSimpleURL() {
         return new URL(null, null, protocol, host, port, path, null, null);
+    }
+    
+    public URI toURI() throws URISyntaxException {
+        return new URI(toString());
+    }
+    
+    public URL withParameter(String name, String value) {
+        AbstractBuilder<ParametersElement, Parameters> b = ParsedParameters.builder();
+        List<ParametersElement> els = new LinkedList<>();
+        if (this.parameters != null) {
+            for (URLComponent comp : this.parameters.getElements()) {
+                if (comp instanceof ParametersElement) {
+                    b.add((ParametersElement) comp);
+                } else {
+                    b.add(comp.toString());
+                }
+            }
+        }
+        b.add(new ParametersElement(name, value));
+        
+        URL url = new URL(null, null, protocol, host, port, path, b.create(), null);
+        return url;
     }
 
     /**

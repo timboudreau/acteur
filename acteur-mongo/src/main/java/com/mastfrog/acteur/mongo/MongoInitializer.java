@@ -34,18 +34,24 @@ public abstract class MongoInitializer {
      * Called once the client is created
      * @param client 
      */
-    protected abstract void onMongoClientCreated(MongoClient client);
+    protected void onMongoClientCreated(MongoClient client) {
+        
+    }
 
     /**
      * Override to ensure indexes, etc..
      * @param collection 
      */
-    protected abstract void onCreateCollection(DBCollection collection);
+    protected void onCreateCollection(DBCollection collection) {
+        
+    }
     
     /**
      * Called to set up parameters for a collection which is being created
      */
-    protected abstract void onBeforeCreateCollection(String name, BasicDBObject params);
+    protected void onBeforeCreateCollection(String name, BasicDBObject params) {
+        
+    }
     
     @Singleton
     protected static final class Registry implements Iterable<MongoInitializer> {

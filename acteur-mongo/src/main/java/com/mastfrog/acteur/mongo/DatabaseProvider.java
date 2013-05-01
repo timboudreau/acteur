@@ -11,18 +11,18 @@ import com.mongodb.MongoClient;
  * @author Tim Boudreau
  */
 final class DatabaseProvider implements Provider<DB> {
-    private final MongoClient client;
+    private final Provider<MongoClient> client;
     private final String name;
 
     @Inject
-    public DatabaseProvider(MongoClient client, @Named(value = "_dbName") String name) {
+    public DatabaseProvider(Provider<MongoClient> client, @Named(value = "_dbName") String name) {
         this.client = client;
         this.name = name;
     }
 
     @Override
     public DB get() {
-        return client.getDB(name);
+        return client.get().getDB(name);
     }
 
 }

@@ -53,7 +53,8 @@ abstract class AbstractHeader<T> implements HeaderValueType<T> {
 
     @Override
     public boolean equals(Object obj) {
-        return obj instanceof HeaderValueType<?> && ((HeaderValueType<?>) obj).type() == type() && ((HeaderValueType<?>) obj).name().equals(name());
+        return obj instanceof HeaderValueType<?> && ((HeaderValueType<?>) obj).type() == type() 
+                && ((HeaderValueType<?>) obj).name().equals(name());
     }
 
     @Override

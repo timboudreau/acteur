@@ -126,7 +126,7 @@ public final class URLBuilder extends AbstractBuilder<PathElement, URL> {
             throw new IllegalStateException ("Host explicitly set");
         }
         if (this.labels == null) {
-            this.labels = new LinkedList<Label>();
+            this.labels = new LinkedList<>();
         }
         labels.add (domain);
         return this;
@@ -144,7 +144,7 @@ public final class URLBuilder extends AbstractBuilder<PathElement, URL> {
             throw new IllegalStateException ("Query explictly set");
         }
         if (queryElements == null) {
-            queryElements = new LinkedList<ParametersElement>();
+            queryElements = new LinkedList<>();
         }
         queryElements.add (new ParametersElement(key, value));
         return this;
@@ -206,7 +206,7 @@ public final class URLBuilder extends AbstractBuilder<PathElement, URL> {
     public URLBuilder setPath(String path) {
         Checks.notNull("path", path);
         String[] els = path.split(URLBuilder.PATH_ELEMENT_DELIMITER);
-        List<PathElement> l = new LinkedList<PathElement>();
+        List<PathElement> l = new LinkedList<>();
         for (int i= 0; i < els.length; i++) {
             String el = els[i];
             if (i == els.length - 1 && path.trim().endsWith("/")) {
@@ -242,7 +242,7 @@ public final class URLBuilder extends AbstractBuilder<PathElement, URL> {
     public URLBuilder setHost (String host) {
         Checks.notNull("host", host);
         String[] labels = host.split("\\" + LABEL_DELIMITER);
-        List<Label> lbls = new LinkedList<Label>();
+        List<Label> lbls = new LinkedList<>();
         for (String label : labels) {
             lbls.add(new Label(label));
         }

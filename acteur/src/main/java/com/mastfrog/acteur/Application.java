@@ -72,7 +72,7 @@ import org.joda.time.DateTime;
  */
 public class Application implements Iterable<Page> {
 
-    private static Set<String> checkedTypes = Collections.synchronizedSet(new HashSet<String>());
+    private static final Set<String> checkedTypes = Collections.synchronizedSet(new HashSet<String>());
     private final List<Class<? extends Page>> pages = new ArrayList<>();
     @Inject
     private Dependencies deps;
@@ -86,13 +86,17 @@ public class Application implements Iterable<Page> {
     private Exception stackTrace = new Exception();
     @Inject
     private Pages runner;
+    
+    @Inject(optional=true)
+    @Named("acteur.debug")
+    private boolean debug = true;
 
     protected Application(Class<?>... types) {
         for (Class<?> type : types) {
             add((Class<? extends Page>) type);
         }
     }
-    
+
     /**
      * Get the type of the built in help page class, which uses
      * Acteur.describeYourself() to generate a JSON description of all
@@ -102,7 +106,7 @@ public class Application implements Iterable<Page> {
     public static Class<? extends Page> helpPageType() {
         return HelpPage.class;
     }
-    
+
     /**
      * Create an application
      * @param types
@@ -186,7 +190,9 @@ public class Application implements Iterable<Page> {
     protected HttpResponse decorateResponse(Event event, Page page, Acteur action, HttpResponse response) {
         Headers.write(Headers.SERVER, getName(), response);
         Headers.write(Headers.DATE, new DateTime(), response);
-        Headers.write(Headers.custom("X-Req-Path"), event.getPath().toString(), response);
+        if (debug) {
+            Headers.write(Headers.custom("X-Req-Path"), event.getPath().toString(), response);
+        }
         return response;
     }
 
@@ -206,10 +212,16 @@ public class Application implements Iterable<Page> {
         Headers.write(Headers.CONTENT_LANGUAGE, Locale.ENGLISH, resp);
         Headers.write(Headers.CACHE_CONTROL, new CacheControl(CacheControlTypes.no_cache), resp);
         Headers.write(Headers.DATE, new DateTime(), resp);
-        Headers.write(Headers.custom("X-Req-Path"), event.getPath().toString(), resp);
+        if (debug) {
+            Headers.write(Headers.custom("X-Req-Path"), event.getPath().toString(), resp);
+        }
         return resp;
     }
 
+    protected void onAfterRespond(RequestID id, Event event, Acteur acteur, Page page, State state, HttpResponseStatus status, HttpResponse resp) {
+        
+    }
+    
     protected void onBeforeRespond(RequestID id, Event event, HttpResponseStatus status) {
         logger.onRespond(id, event, status);
     }

@@ -710,7 +710,17 @@ public class URLTest {
         u = URL.parse(":12/");
         assertFalse(u.isValid());
         u = URL.parse("::::::::::::::::::::::::::::::::::::::::::::::::::");
+        assertFalse(u.isValid());
         u = URL.parse("..................................................");
+        assertFalse(u.isValid());
+        u = URL.parse("//////////////////////////");
+        assertFalse(u.isValid());
+        u = URL.parse("http://////////////////////////");
+        assertFalse(u.isValid());
+        u = URL.parse("http:foo@bar//////////////////////////");
+        assertFalse(u.isValid());
+        u = URL.parse("http:foo@//////////////////////////");
+        assertFalse(u.isValid());
         u = URL.parse(":./:./:./:./:");
         assertFalse(u.isValid());
         long l = Integer.MAX_VALUE + 1;
@@ -801,16 +811,22 @@ public class URLTest {
     public void testPathDecoding() throws UnsupportedEncodingException {
         String orig = "path/to/My Image-small.gif";
         String encoded = "path/to/" + URLEncoder.encode("My Image-small.gif", "UTF-8").replace("+", "%20").replace("-", "%2d");
-        System.out.println("ENCODED "+ encoded);
         assertNotEquals(orig, encoded);
         Path p = Path.parse(orig);
         assertEquals(encoded, p.toString());
         Path p2 = Path.parse(encoded, true);
-
-        System.out.println("P: " + p);
-        System.out.println("R: " + p2);
-
         assertEquals(orig, p2.toString());
         assertEquals (p, p2);
+    }
+
+    @Test
+    public void testAddParameters() throws Throwable {
+        URL url = URL.parse("http://foo.com/foo/bar");
+        url = url.withParameter("baz", "quux");
+        assertEquals("http://foo.com/foo/bar?baz=quux", url.toString());
+        
+        url = URL.parse("http://foo.com/foo/bar?monkey=beetle");
+        url = url.withParameter("baz", "quux");
+        assertEquals("http://foo.com/foo/bar?monkey=beetle&baz=quux", url.toString());
     }
 }
