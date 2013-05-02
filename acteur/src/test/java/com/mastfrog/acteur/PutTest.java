@@ -1,10 +1,5 @@
 package com.mastfrog.acteur;
 
-import com.mastfrog.acteur.Page;
-import com.mastfrog.acteur.ActeurFactory;
-import com.mastfrog.acteur.Event;
-import com.mastfrog.acteur.Application;
-import com.mastfrog.acteur.Acteur;
 import com.google.inject.Inject;
 import com.mastfrog.giulius.tests.TestWith;
 import com.mastfrog.acteur.AppTest.M;
@@ -24,6 +19,7 @@ import java.io.IOException;
 import java.net.SocketException;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.http.Header;
 import org.apache.http.HttpResponse;
 import org.apache.http.NoHttpResponseException;
 import org.apache.http.client.methods.HttpGet;
@@ -47,6 +43,9 @@ public class PutTest {
         DefaultHttpClient client = new DefaultHttpClient();
         HttpGet get = new HttpGet("http://localhost:8193/foo/bar/baz");
         HttpResponse res = client.execute(get);
+        for (Header h : res.getAllHeaders()) {
+            System.out.println(h.getName() + ": " + h.getValue());
+        }
         assertNotNull(res);
         assertEquals(200, res.getStatusLine().getStatusCode());
         String body = Streams.readString(res.getEntity().getContent());
@@ -68,7 +67,11 @@ public class PutTest {
                 put.setEntity(new StringEntity(ent));
                 res = client.execute(put);
                 body = Streams.readString(res.getEntity().getContent());
-                assertEquals(ent, body);
+                for(Header h : res.getAllHeaders()) {
+                    System.out.println(h.getName() + ": " + h.getValue());
+                }
+                assertEquals("Failed on " + i + " content length " 
+                        + res.getEntity().getContentLength(), ent, body);
             } catch (NoHttpResponseException e) {
                 s.add(i);
                 System.out.println("No response on iteration " + i + "\n" + e);
@@ -116,9 +119,12 @@ public class PutTest {
 
         @Inject
         EchoActeur(Event evt) {
+            System.out.println("EVENT " + evt.getMethod() + " " + evt.getPath());
             if (evt.getMethod() == Method.GET) {
+                System.out.println("Send hello world");
                 setState(new RespondWith(HttpResponseStatus.OK, "Hello world"));
             } else {
+//                setChunked(true);
                 setState(new RespondWith(HttpResponseStatus.OK));
                 setResponseBodyWriter(EchoWriter.class);
             }
@@ -140,7 +146,9 @@ public class PutTest {
             FullHttpRequest req = evt.getRequest() instanceof FullHttpRequest
                     ? (FullHttpRequest) evt.getRequest() : null;
             if (req != null) {
-                ByteBuf buf = req.data();
+                System.out.println("READ CONTENT");
+                ByteBuf buf = req.content();
+                System.out.println("SIZE " + buf.capacity());
                 future = ch.write(buf);
                 future.addListener(CLOSE);
             } else {

@@ -10,7 +10,6 @@ import com.mastfrog.acteur.server.ServerModule;
 import com.mastfrog.url.Path;
 import com.mastfrog.url.URL;
 import java.io.UnsupportedEncodingException;
-import java.net.URLDecoder;
 import java.net.URLEncoder;
 import static org.junit.Assert.*;
 import org.junit.Test;

@@ -1,9 +1,5 @@
 package com.mastfrog.acteur;
 
-import com.mastfrog.acteur.Page;
-import com.mastfrog.acteur.Event;
-import com.mastfrog.acteur.Application;
-import com.mastfrog.acteur.Acteur;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import com.mastfrog.acteur.server.ServerModule;

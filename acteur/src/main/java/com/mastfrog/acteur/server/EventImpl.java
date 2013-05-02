@@ -35,6 +35,7 @@ import com.mastfrog.acteur.util.HeaderValueType;
 import com.mastfrog.acteur.util.Headers;
 import com.mastfrog.acteur.util.Connection;
 import com.mastfrog.util.Streams;
+import com.mastfrog.util.Types;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;
 import io.netty.buffer.Unpooled;
@@ -101,7 +102,8 @@ public final class EventImpl implements Event {
 
     @Override
     public ByteBuf getContent() {
-        return req instanceof FullHttpRequest ? ((FullHttpRequest) req).data()
+        System.out.println("REQ IS " + Types.list(req.getClass()));
+        return req instanceof FullHttpRequest ? ((FullHttpRequest) req).content()
                 : Unpooled.EMPTY_BUFFER;
     }
 

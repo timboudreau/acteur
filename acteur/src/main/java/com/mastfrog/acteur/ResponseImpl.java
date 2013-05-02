@@ -32,13 +32,14 @@ import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
-import io.netty.handler.codec.http.DefaultHttpContent;
-import io.netty.handler.codec.http.HttpContent;
+import io.netty.handler.codec.http.DefaultHttpResponse;
 import io.netty.handler.codec.http.HttpHeaders;
+import static io.netty.handler.codec.http.HttpHeaders.addHeader;
+import static io.netty.handler.codec.http.HttpHeaders.removeHeader;
 import io.netty.handler.codec.http.HttpMessage;
+import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpVersion;
-import io.netty.handler.codec.http.LastHttpContent;
 import io.netty.util.CharsetUtil;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -47,11 +48,12 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
- * Aggregates the set of headers and a body writer which is used to respond
- * to an HTTP request.
+ * Aggregates the set of headers and a body writer which is used to respond to
+ * an HTTP request.
  *
  * @author Tim Boudreau
  */
@@ -114,23 +116,148 @@ final class ResponseImpl extends Response {
         return status == null ? HttpResponseStatus.OK : status;
     }
 
-    public DefaultFullHttpResponse toResponse() {
-        DefaultFullHttpResponse resp = new DefaultFullHttpResponse(
-                HttpVersion.HTTP_1_1, getResponseCode());
-        if (message != null) {
-            if (!chunked) {
-                long len = message.getBytes(CharsetUtil.UTF_8).length;
-                add (Headers.CONTENT_LENGTH, len);
+    static class HackHttpHeaders extends HttpHeaders {
+
+        private final HttpHeaders orig;
+
+        public HackHttpHeaders(HttpHeaders orig, boolean chunked) {
+            this.orig = orig;
+            if (chunked) {
+                orig.set(Names.TRANSFER_ENCODING, Values.CHUNKED);
+                orig.remove(Names.CONTENT_LENGTH);
+            } else {
+                orig.remove(Names.TRANSFER_ENCODING);
             }
+        }
+
+        @Override
+        public String get(String name) {
+            return orig.get(name);
+        }
+
+        @Override
+        public List<String> getAll(String name) {
+            return orig.getAll(name);
+        }
+
+        @Override
+        public List<Map.Entry<String, String>> entries() {
+            return orig.entries();
+        }
+
+        @Override
+        public boolean contains(String name) {
+            return orig.contains(name);
+        }
+
+        @Override
+        public boolean isEmpty() {
+            return orig.isEmpty();
+        }
+
+        @Override
+        public Set<String> names() {
+            return orig.names();
+        }
+
+        @Override
+        public HttpHeaders add(String name, Object value) {
+            if (Names.TRANSFER_ENCODING.equals(name)) {
+                return this;
+            }
+            return orig.add(name, value);
+        }
+
+        @Override
+        public HttpHeaders add(String name, Iterable<?> values) {
+            if (Names.TRANSFER_ENCODING.equals(name)) {
+                return this;
+            }
+            return orig.add(name, values);
+        }
+
+        @Override
+        public HttpHeaders set(String name, Object value) {
+            if (Names.TRANSFER_ENCODING.equals(name)) {
+                return this;
+            }
+            return orig.set(name, value);
+        }
+
+        @Override
+        public HttpHeaders set(String name, Iterable<?> values) {
+            if (Names.TRANSFER_ENCODING.equals(name)) {
+                return this;
+            }
+            return orig.set(name, values);
+        }
+
+        @Override
+        public HttpHeaders remove(String name) {
+            if (Names.TRANSFER_ENCODING.equals(name)) {
+                return this;
+            }
+            return orig.remove(name);
+        }
+
+        @Override
+        public HttpHeaders clear() {
+            return orig.clear();
+        }
+
+        @Override
+        public Iterator<Map.Entry<String, String>> iterator() {
+            return orig.iterator();
+        }
+    }
+
+    private static class HackHttpResponse extends DefaultHttpResponse {
+        private final HackHttpHeaders hdrs;
+        // Workaround for https://github.com/netty/netty/issues/1326
+
+        HackHttpResponse(HttpResponseStatus status, boolean chunked) {
+            super(HttpVersion.HTTP_1_1, status);
+            hdrs = new HackHttpHeaders(super.headers(), chunked);
+        }
+
+        @Override
+        public HttpHeaders headers() {
+            return hdrs;
+        }
+    }
+
+    public HttpResponse toResponse(Event evt) {
+        if (!canHaveBody(getResponseCode()) && (message != null || listener != null)) {
+            System.err.println(evt.getMethod() + " " + evt.getPath()
+                    + " attempts to attach a body to " + getResponseCode()
+                    + " which cannot have one: " + message
+                    + " - " + listener);
+//            if (closer != null) {
+//                future.addListener(closer);
+//            }
+//            return;
+        }
+        String msg = getMessage();
+        HttpResponse resp;
+        if (msg != null) {
+            ByteBuf buf = Unpooled.copiedBuffer(msg, CharsetUtil.UTF_8);
+            long size = buf.readableBytes();
+            add(Headers.CONTENT_LENGTH, size);
+            DefaultFullHttpResponse r = new DefaultFullHttpResponse(
+                    HttpVersion.HTTP_1_1, getResponseCode(), buf);
+
+            resp = r;
+        } else {
+            resp = new HackHttpResponse(getResponseCode(), chunked);
         }
         for (Entry<?> e : headers) {
             e.write(resp);
         }
-        if (chunked) {
-            HttpHeaders.setTransferEncodingChunked(resp);
-        } else {
-            HttpHeaders.removeTransferEncodingChunked(resp);
-        }
+//        if (chunked) {
+//            HttpHeaders.setTransferEncodingChunked(resp);
+//        } else {
+//            HttpHeaders.removeTransferEncodingChunked(resp);
+//        }
         return resp;
     }
 
@@ -152,14 +279,14 @@ final class ResponseImpl extends Response {
         // Longer term, should HeaderValueType.isArray() and a way to 
         // coalesce
         if (!old.isEmpty() && decorator == Headers.ALLOW) {
-          old.add(e);
-          Set<Method> all = new HashSet<>();
-          for (Entry<?> en : old) {
-            Method[] m = (Method[]) en.value;
-            all.addAll(Arrays.asList(m));
-          }
-          value = (T) all.toArray(new Method[0]);
-          e = new Entry<>(decorator, value);
+            old.add(e);
+            Set<Method> all = new HashSet<>();
+            for (Entry<?> en : old) {
+                Method[] m = (Method[]) en.value;
+                all.addAll(Arrays.asList(m));
+            }
+            value = (T) all.toArray(new Method[0]);
+            e = new Entry<>(decorator, value);
         }
         headers.add(e);
         modify();
@@ -202,22 +329,16 @@ final class ResponseImpl extends Response {
                 return true;
         }
     }
-    
+
     void sendMessage(Event evt, ChannelFuture future, HttpMessage resp, final ChannelFutureListener closer) {
+        for (Map.Entry<String, String> e : resp.headers().entries()) {
+            System.out.println(e.getKey() + ": " + e.getValue());
+        }
+
         if (!future.channel().isOpen()) {
 //            return;
         }
 
-        if (!canHaveBody(getResponseCode()) && (message != null || listener != null)) {
-            System.err.println(evt.getMethod() + " " + evt.getPath() 
-                    + " attempts to attach a body to " + getResponseCode() 
-                    + " which cannot have one: " + resp + " - " + message 
-                    + " - " + listener);
-            if (closer != null) {
-                future.addListener(closer);
-            }
-            return;
-        }
         if (listener != null) {
             future.addListener(listener);
             return;
@@ -226,37 +347,6 @@ final class ResponseImpl extends Response {
             if (closer != null) {
                 future.addListener(closer);
             }
-        } else {
-            future.addListener(new ChannelFutureListener() {
-                @Override
-                public void operationComplete(ChannelFuture future) throws Exception {
-                    if (!future.channel().isOpen()) {
-                        return;
-                    }
-                    ByteBuf buf = Unpooled.copiedBuffer(getMessage(), CharsetUtil.UTF_8);
-                    if (chunked) {
-                        HttpContent chunk = new DefaultHttpContent(buf);
-                        future = future.channel().write(chunk);
-                        future.addListener(new ChannelFutureListener() {
-                            @Override
-                            public void operationComplete(ChannelFuture future) throws Exception {
-                                if (!future.channel().isOpen()) {
-                                    return;
-                                }
-                                future = future.channel().write(LastHttpContent.EMPTY_LAST_CONTENT);
-                                if (closer != null) {
-                                    future.addListener(closer);
-                                }
-                            }
-                        });
-                    } else {
-                        future = future.channel().write(buf);
-                        if (closer != null) {
-                            future.addListener(closer);
-                        }
-                    }
-                }
-            });
         }
     }
 

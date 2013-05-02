@@ -1,14 +1,5 @@
 package com.mastfrog.acteur;
 
-import com.mastfrog.acteur.Page;
-import com.mastfrog.acteur.ActeurFactory;
-import com.mastfrog.acteur.Event;
-import com.mastfrog.acteur.Application;
-import com.mastfrog.acteur.ResponseSender;
-import com.mastfrog.acteur.State;
-import com.mastfrog.acteur.ResponseImpl;
-import com.mastfrog.acteur.ActeursImpl;
-import com.mastfrog.acteur.Acteur;
 import com.mastfrog.acteur.util.Headers;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.net.MediaType;
@@ -263,7 +254,7 @@ public class AppTest {
                 this.received = state;
                 notifyAll();
             }
-            System.err.println(response.toResponse());
+            System.err.println(response);
         }
 
         @Override

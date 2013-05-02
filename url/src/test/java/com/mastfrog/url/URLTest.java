@@ -339,22 +339,22 @@ public class URLTest {
     public void testAddedLabelsAreUsed() {
         URLBuilder builder = URL.builder(Protocols.HTTP);
         builder.addDomain("www");
-        builder.addDomain("getservo");
+        builder.addDomain("goofball");
         builder.addDomain("com");
-        assertEquals("http://www.getservo.com/", builder.create().toString());
+        assertEquals("http://www.goofball.com/", builder.create().toString());
     }
 
     @Test
     public void testValidation() {
         URLBuilder builder = URL.builder(Protocols.HTTP);
         builder.addDomain("www");
-        builder.addDomain("getservo");
+        builder.addDomain("goofball");
         builder.addDomain("com");
         assertTrue(builder.create().getHost().isValid());
 
         builder = URL.builder(Protocols.HTTP);
         builder.addDomain("www");
-        builder.addDomain("getservo");
+        builder.addDomain("goofball");
         builder.addDomain("com");
 
         Host h = Host.parse("x%20%%y%%20zqr%20hello%20world%0g52rp.foo.com");
@@ -629,8 +629,8 @@ public class URLTest {
 
     @Test
     public void testEquality() {
-        URL a = URL.parse("http://getservo.com/");
-        URL b = URL.parse("http://getservo.com/");
+        URL a = URL.parse("http://goofball.com/");
+        URL b = URL.parse("http://goofball.com/");
 
         URLComponent[] ac = a.allComponents();
         URLComponent[] bc = b.allComponents();
@@ -643,28 +643,28 @@ public class URLTest {
             assertEquals(i + ": " + ac[i] + " (" + ac[i].getComponentName() + " - " + ac[i].getClass().getName() + ") equal? " + ac[i].equals(bc[i]), ac[i], bc[i]);
         }
 
-        URL c = URL.parse("http://getservo.com");
+        URL c = URL.parse("http://goofball.com");
         assertEquals(a, b);
         assertEquals(a, c);
 
         URL d = URL.parse("http://foo.com");
         assertFalse(a.equals(d));
 
-        a = URL.parse("http://getservo.com/");
-        b = URL.parse("http://getservo.com:80/");
+        a = URL.parse("http://goofball.com/");
+        b = URL.parse("http://goofball.com:80/");
         assertEquals(a, b);
 
-        a = URL.parse("https://getservo.com/");
+        a = URL.parse("https://goofball.com/");
         assertFalse(a.equals(b));
 
-        b = URL.parse("https://getservo.com:443");
+        b = URL.parse("https://goofball.com:443");
         assertEquals(a, b);
 
-        b = URL.parse("https://getservo.com:443/");
+        b = URL.parse("https://goofball.com:443/");
         assertEquals(a, b);
 
-        b = URL.parse("https://getservo.com:/ "); //XXX legal?
-        a = URL.parse("https://getservo.com/%20");
+        b = URL.parse("https://goofball.com:/ "); //XXX legal?
+        a = URL.parse("https://goofball.com/%20");
         assertEquals(a, b);
     }
 
@@ -724,7 +724,7 @@ public class URLTest {
         u = URL.parse(":./:./:./:./:");
         assertFalse(u.isValid());
         long l = Integer.MAX_VALUE + 1;
-        u = URL.parse("http://getservo.com:" + l);
+        u = URL.parse("http://goofball.com:" + l);
         assertFalse(u.isValid());
     }
 
