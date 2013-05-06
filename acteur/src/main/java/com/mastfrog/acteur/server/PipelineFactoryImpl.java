@@ -30,19 +30,23 @@ import io.netty.handler.codec.http.HttpRequestDecoder;
 import io.netty.handler.codec.http.HttpResponseEncoder;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
+import com.google.inject.Singleton;
 import com.google.inject.name.Named;
 import com.mastfrog.acteur.Application;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.MessageBuf;
 import io.netty.buffer.Unpooled;
+import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.codec.MessageToByteEncoder;
 import io.netty.handler.codec.http.HttpContentCompressor;
 
-//@Singleton
+@Singleton
+@Sharable
 class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
+
     static final boolean DEFAULT_AGGREGATE_CHUNKS = true;
 
     private final Provider<ChannelHandler> handler;
@@ -66,7 +70,7 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
         app.get().onError(cause);
     }
-    
+
     @Override
     public void initChannel(SocketChannel ch) throws Exception {
         if (maxContentLength == 0) {

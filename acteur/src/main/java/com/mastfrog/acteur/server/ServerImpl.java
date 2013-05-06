@@ -57,6 +57,7 @@ final class ServerImpl implements Server {
     private final ThreadCount eventThreadCount;
     private final ThreadFactory workerThreadFactory;
     private final ThreadCount workerThreadCount;
+    private final String applicationName;
     private final ServerBootstrap bootstrap;
 
     @Inject
@@ -66,6 +67,7 @@ final class ServerImpl implements Server {
             @Named("event") ThreadCount eventThreadCount,
             @Named("workers") ThreadFactory workerThreadFactory,
             @Named("workers") ThreadCount workerThreadCount,
+            @Named("application") String applicationName,
             ServerBootstrap bootstrap,
             ShutdownHookRegistry registry,
             Settings settings) {
@@ -75,6 +77,7 @@ final class ServerImpl implements Server {
         this.eventThreadCount = eventThreadCount;
         this.workerThreadFactory = workerThreadFactory;
         this.workerThreadCount = workerThreadCount;
+        this.applicationName = applicationName;
         this.bootstrap = bootstrap;
         registry.add(new ServerShutdown(this));
     }
@@ -111,7 +114,7 @@ final class ServerImpl implements Server {
 
     @Override
     public String toString() {
-        return super.toString() + " on port " + port;
+        return applicationName + " on port " + port;
     }
     private Channel localChannel;
 
@@ -181,9 +184,15 @@ final class ServerImpl implements Server {
         } finally {
             if (events != null) {
                 events.awaitTermination(timeout, unit);
+                if (events.isTerminated()) {
+                    events = null;
+                }
             }
             if (workers != null) {
                 workers.awaitTermination(timeout, unit);
+                if (workers.isTerminated()) {
+                    workers = null;
+                }
             }
         }
     }
@@ -202,6 +211,9 @@ final class ServerImpl implements Server {
 
     @Override
     public void await() throws InterruptedException {
+        if (events == null) {
+            return;
+        }
         if (events != null) {
             events.awaitTermination(1, TimeUnit.DAYS);
         }

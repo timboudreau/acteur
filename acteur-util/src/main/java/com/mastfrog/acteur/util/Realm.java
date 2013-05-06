@@ -23,24 +23,15 @@
  */
 package com.mastfrog.acteur.util;
 
-import com.google.inject.ImplementedBy;
-import com.google.inject.Inject;
-import com.google.inject.name.Named;
-import com.mastfrog.guicy.annotations.Defaults;
-import com.mastfrog.acteur.util.Realm.RealmImpl;
-
 /**
  *
  * @author Tim Boudreau
  */
-@Defaults("realm=Users")
-@ImplementedBy(RealmImpl.class)
 public class Realm implements Comparable<Realm> {
 
     private final String name;
 
-    @Inject
-    protected Realm(@Named("realm") String name) {
+    protected Realm(String name) {
         this.name = name;
     }
 
@@ -65,12 +56,5 @@ public class Realm implements Comparable<Realm> {
 
     public static Realm createSimple(String name) {
         return new Realm(name);
-    }
-
-    static final class RealmImpl extends Realm {
-
-        RealmImpl() {
-            super("Users");
-        }
     }
 }

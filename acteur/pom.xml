@@ -46,5 +46,10 @@
             <artifactId>netty-buffer</artifactId>
             <type>jar</type>
         </dependency>
+        <dependency>
+            <groupId>org.javassist</groupId>
+            <artifactId>javassist</artifactId>
+            <version>3.17.1-GA</version>
+        </dependency>
     </dependencies>
 </project>

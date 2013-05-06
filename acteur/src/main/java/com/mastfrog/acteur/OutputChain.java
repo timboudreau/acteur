@@ -84,7 +84,6 @@ public class OutputChain implements ChannelFutureListener {
                 if (canFinish) {
                     finish(cf);
                 } else {
-                    Thread.sleep(200);
                     cf.addListener(this);
                 }
             }
@@ -92,7 +91,6 @@ public class OutputChain implements ChannelFutureListener {
             if (canFinish) {
                 finish(cf);
             } else {
-                Thread.sleep(200);
                 cf.addListener(this);
             }
         }

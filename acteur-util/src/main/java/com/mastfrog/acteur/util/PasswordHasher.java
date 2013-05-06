@@ -23,10 +23,6 @@
  */
 package com.mastfrog.acteur.util;
 
-import com.google.inject.Inject;
-import com.google.inject.Singleton;
-import com.mastfrog.giulius.Dependencies;
-import com.mastfrog.guicy.annotations.Defaults;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.util.ConfigurationError;
 import com.mastfrog.util.Exceptions;
@@ -34,6 +30,8 @@ import io.netty.util.CharsetUtil;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
+import javax.inject.Inject;
+import javax.inject.Singleton;
 import org.apache.commons.codec.binary.Base64;
 
 /**
@@ -43,8 +41,6 @@ import org.apache.commons.codec.binary.Base64;
  *
  * @author Tim Boudreau
  */
-@Defaults(value = {"passwordHashingAlgorithm=SHA-512",
-    "salt=" + PasswordHasher.DEFAULT_SALT})
 @Singleton
 public final class PasswordHasher {
 
@@ -56,10 +52,10 @@ public final class PasswordHasher {
             + "aoeifa222222222222o(#(#(&@^!";
 
     @Inject
-    PasswordHasher(Dependencies deps, Settings settings) throws NoSuchAlgorithmException {
+    PasswordHasher(Settings settings) throws NoSuchAlgorithmException {
         String salt = settings.getString("salt", DEFAULT_SALT);
         String alg = settings.getString("passwordHashingAlgorithm", "SHA-512");
-        if (deps.isProductionMode() && DEFAULT_SALT.equals(salt)) {
+        if (settings.getBoolean("production.mode", false) && DEFAULT_SALT.equals(salt)) {
             throw new ConfigurationError("Default password salt should not be used in "
                     + "production mode.  Set property salt for namespace timetracker to "
                     + "be something else");
