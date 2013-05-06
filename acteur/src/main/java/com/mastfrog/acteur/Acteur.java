@@ -344,6 +344,21 @@ public abstract class Acteur {
         }
     }
 
+    protected <T extends ResponseWriter> void setResponseWriter(Class<T> writerType) {
+        Page page = Page.get();
+        Dependencies deps = page.getApplication().getDependencies();
+        Event evt = deps.getInstance(Event.class);
+        getResponse().setWriter(writerType, deps, evt);
+    }
+
+    protected <T extends ResponseWriter> void setResponseWriter(T writer) {
+        Page page = Page.get();
+        Dependencies deps = page.getApplication().getDependencies();
+        Event evt = deps.getInstance(Event.class);
+        getResponse().setWriter(writer, deps, evt);
+    }
+    
+    @Deprecated
     protected final <T extends ChannelFutureListener>void setResponseBodyWriter(final Class<T> type) {
         final Page page = Page.get();
         final Dependencies deps = page.getApplication().getDependencies();
@@ -396,6 +411,7 @@ public abstract class Acteur {
         setResponseBodyWriter(l);
     }
     
+    @Deprecated
     public final void setResponseBodyWriter(final ChannelFutureListener listener) {
         final Page p = Page.get();
         final Application app = p.getApplication();

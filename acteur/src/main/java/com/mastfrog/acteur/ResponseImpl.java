@@ -23,24 +23,34 @@
  */
 package com.mastfrog.acteur;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mastfrog.acteur.ResponseWriter.AbstractOutput;
+import com.mastfrog.acteur.ResponseWriter.Output;
+import com.mastfrog.acteur.ResponseWriter.Status;
 import com.mastfrog.acteur.util.HeaderValueType;
 import com.mastfrog.acteur.util.Headers;
 import com.mastfrog.acteur.util.Method;
+import com.mastfrog.giulius.Dependencies;
+import com.mastfrog.guicy.scope.ReentrantScope;
 import com.mastfrog.util.Checks;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.Unpooled;
+import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
+import io.netty.handler.codec.http.DefaultHttpContent;
 import io.netty.handler.codec.http.DefaultHttpResponse;
 import io.netty.handler.codec.http.HttpHeaders;
-import static io.netty.handler.codec.http.HttpHeaders.addHeader;
-import static io.netty.handler.codec.http.HttpHeaders.removeHeader;
 import io.netty.handler.codec.http.HttpMessage;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpVersion;
+import io.netty.handler.codec.http.LastHttpContent;
 import io.netty.util.CharsetUtil;
+import java.io.IOException;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -50,6 +60,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Aggregates the set of headers and a body writer which is used to respond to
@@ -212,6 +224,7 @@ final class ResponseImpl extends Response {
     }
 
     private static class HackHttpResponse extends DefaultHttpResponse {
+
         private final HackHttpHeaders hdrs;
         // Workaround for https://github.com/netty/netty/issues/1326
 
@@ -307,6 +320,125 @@ final class ResponseImpl extends Response {
         modify();
     }
 
+    <T extends ResponseWriter> void setWriter(T w, Dependencies deps, Event evt) {
+        Charset charset = deps.getInstance(Charset.class);
+        ByteBufAllocator allocator = deps.getInstance(ByteBufAllocator.class);
+        ObjectMapper mapper = deps.getInstance(ObjectMapper.class);
+        setWriter(w, charset, allocator, mapper, evt);
+    }
+
+    <T extends ResponseWriter> void setWriter(Class<T> w, Dependencies deps, Event evt) {
+        Charset charset = deps.getInstance(Charset.class);
+        ByteBufAllocator allocator = deps.getInstance(ByteBufAllocator.class);
+        ObjectMapper mapper = deps.getInstance(ObjectMapper.class);
+        setWriter(new DynResponseWriter(w, deps), charset, allocator, mapper, evt);
+    }
+
+    static class DynResponseWriter extends ResponseWriter {
+
+        private final Class<? extends ResponseWriter> type;
+        private final AtomicReference<ResponseWriter> actual = new AtomicReference<>();
+        private final Callable<ResponseWriter> resp;
+
+        public DynResponseWriter(final Class<? extends ResponseWriter> type, final Dependencies deps) {
+            this.type = type;
+            ReentrantScope scope = deps.getInstance(ReentrantScope.class);
+            assert scope.inScope();
+            resp = scope.wrap(new Callable<ResponseWriter>() {
+
+                @Override
+                public ResponseWriter call() throws Exception {
+                    ResponseWriter w = actual.get();
+                    if (w == null) {
+                        actual.set(w = deps.getInstance(type));
+                    }
+                    return w;
+                }
+            });
+        }
+
+        @Override
+        public ResponseWriter.Status write(Event evt, Output out) throws Exception {
+            ResponseWriter actual = resp.call();
+            return actual.write(evt, out);
+        }
+
+        @Override
+        public Status write(Event evt, Output out, int iteration) throws Exception {
+            ResponseWriter actual = resp.call();
+            return actual.write(evt, out, iteration);
+        }
+    }
+
+    void setWriter(ResponseWriter w, Charset charset, ByteBufAllocator allocator, ObjectMapper mapper, Event evt) {
+        setBodyWriter(new ResponseWriterListener(evt, w, charset, allocator,
+                mapper, chunked, !evt.isKeepAlive()));
+    }
+
+    private static final class ResponseWriterListener extends AbstractOutput implements ChannelFutureListener {
+
+        private volatile ChannelFuture future;
+        private volatile int callCount = 0;
+        private final boolean chunked;
+        private final ResponseWriter writer;
+        private final boolean shouldClose;
+        private final Event evt;
+
+        public ResponseWriterListener(Event evt, ResponseWriter writer, Charset charset, ByteBufAllocator allocator, ObjectMapper mapper, boolean chunked, boolean shouldClose) {
+            super(charset, allocator, mapper);
+            this.chunked = chunked;
+            this.writer = writer;
+            this.shouldClose = shouldClose;
+            this.evt = evt;
+        }
+
+        public Channel channel() {
+            if (future == null) {
+                throw new IllegalStateException("No future -> no channel");
+            }
+            return future.channel();
+        }
+
+        @Override
+        public Output write(ByteBuf buf) throws IOException {
+            System.out.println("Write a byte buf " + buf.readableBytes());
+            assert future != null;
+            if (chunked) {
+                future = future.channel().write(new DefaultHttpContent(buf));
+            } else {
+                future = future.channel().write(buf);
+            }
+            return this;
+        }
+
+        @Override
+        public void operationComplete(ChannelFuture future) throws Exception {
+            this.future = future;
+            System.out.println("Call ResponseWriter " + writer);
+            ResponseWriter.Status status = writer.write(evt, this, callCount++);
+            System.out.println("Status is " + status);
+            if (status.isCallback()) {
+                this.future = this.future.addListener(this);
+            } else if (status == Status.DONE) {
+                System.out.println("Close the channel");
+                if (chunked) {
+                    System.out.println("send last http content");
+                    this.future = this.future.channel().write(LastHttpContent.EMPTY_LAST_CONTENT);
+                }
+                if (shouldClose) {
+                    System.out.println("add close listener");
+                    this.future = this.future.addListener(CLOSE);
+                }
+            }
+        }
+
+        @Override
+        public ChannelFuture future() {
+            return future;
+        }
+    }
+
+    @Deprecated
     public void setBodyWriter(ChannelFutureListener listener) {
 //        modify();
         if (this.listener != null) {
@@ -331,10 +463,6 @@ final class ResponseImpl extends Response {
     }
 
     void sendMessage(Event evt, ChannelFuture future, HttpMessage resp, final ChannelFutureListener closer) {
-        for (Map.Entry<String, String> e : resp.headers().entries()) {
-            System.out.println(e.getKey() + ": " + e.getValue());
-        }
-
         if (!future.channel().isOpen()) {
 //            return;
         }

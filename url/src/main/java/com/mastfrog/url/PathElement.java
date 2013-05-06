@@ -88,7 +88,7 @@ public final class PathElement implements URLComponent {
         if (noEncode) {
             sb.append(element);
         } else {
-            URLBuilder.append(sb, element, '/', '+', ':', '?', '=');
+            URLBuilder.append(sb, element, '/', '+', ':', '?', '=', '-');
         }
         if (trailingSlash && includeTrailingSlashIfPresent) {
             sb.append('/');

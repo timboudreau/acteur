@@ -25,6 +25,7 @@ package com.mastfrog.acteur;
 
 import com.google.inject.Inject;
 import com.mastfrog.acteur.util.RequestID;
+import com.mastfrog.settings.Settings;
 import com.mastfrog.util.Exceptions;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
@@ -44,10 +45,12 @@ import java.util.concurrent.CountDownLatch;
 final class PagesImpl implements Pages {
 
     private final Application application;
+    private static boolean debug;
 
     @Inject
-    PagesImpl(Application application) {
+    PagesImpl(Application application, Settings settings) {
         this.application = application;
+        debug = settings.getBoolean("acteur.debug", true);
     }
 
     /**
@@ -91,6 +94,9 @@ final class PagesImpl implements Pages {
             // See if any pages are left
             if (pages.hasNext()) {
                 Page page = pages.next();
+//                if (debug) {
+//                    System.out.println("PAGE " + page);
+//                }
                 Page.set(page);
                 try (AutoCloseable ac = application.getRequestScope().enter(page)) {
                     // if so, grab its acteur runner
@@ -146,7 +152,7 @@ final class PagesImpl implements Pages {
                         application.onBeforeRespond(id, event, response.getResponseCode());
                         // Send the response
                         response.sendMessage(event, fut, httpResponse, closer);
-                        
+
                         application.onAfterRespond(id, event, acteur, state.getLockedPage(), state, HttpResponseStatus.OK, httpResponse);
                     } finally {
                         latch.countDown();
@@ -164,6 +170,9 @@ final class PagesImpl implements Pages {
             } else {
                 // Do we have more pages?
                 if (pages.hasNext()) {
+//                    if (debug) {
+//                        System.out.println("Try next page");
+//                    }
                     try {
                         call();
                     } catch (Exception ex) {
@@ -172,6 +181,9 @@ final class PagesImpl implements Pages {
                 } else {
                     // Otherwise, we're done - no page handled the request
                     try {
+//                        if (debug) {
+//                            System.out.println("Send 404");
+//                        }
                         application.send404(id, event, channel);
                     } finally {
                         latch.countDown();

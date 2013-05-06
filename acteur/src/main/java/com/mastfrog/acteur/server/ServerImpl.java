@@ -24,18 +24,17 @@
 package com.mastfrog.acteur.server;
 
 import com.google.inject.Inject;
-import com.google.inject.Provider;
 import com.google.inject.name.Named;
+import com.mastfrog.giulius.ShutdownHookRegistry;
 import com.mastfrog.settings.Settings;
 import io.netty.bootstrap.ServerBootstrap;
-import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelInitializer;
-import io.netty.channel.ChannelOption;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import java.io.IOException;
+import java.lang.ref.WeakReference;
 import java.net.InetSocketAddress;
 import java.util.Date;
 import java.util.concurrent.ExecutorService;
@@ -44,6 +43,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import org.openide.util.Exceptions;
 
 /**
  *
@@ -51,8 +51,6 @@ import java.util.logging.Logger;
  */
 final class ServerImpl implements Server {
 
-    private final ExecutorService workerThreadPool;
-    private final ExecutorService backgroundThreadPool;
     private final ChannelInitializer<SocketChannel> pipelineFactory;
     private int port = 8123;
     private final ThreadFactory eventThreadFactory;
@@ -62,26 +60,50 @@ final class ServerImpl implements Server {
     private final ServerBootstrap bootstrap;
 
     @Inject
-    ServerImpl(@Named(ServerImpl.WORKER_THREAD_POOL_NAME) ExecutorService workerThreadPool,
-            @Named(ServerImpl.BACKGROUND_THREAD_POOL_NAME) ExecutorService backgroundThreadPool,
+    ServerImpl(
             ChannelInitializer<SocketChannel> pipelineFactory,
-            @Named("event") ThreadFactory eventThreadFactory, 
+            @Named("event") ThreadFactory eventThreadFactory,
             @Named("event") ThreadCount eventThreadCount,
-            @Named("workers") ThreadFactory workerThreadFactory, 
+            @Named("workers") ThreadFactory workerThreadFactory,
             @Named("workers") ThreadCount workerThreadCount,
             ServerBootstrap bootstrap,
+            ShutdownHookRegistry registry,
             Settings settings) {
         this.port = settings.getInt("port", 8123);
-        this.workerThreadPool = workerThreadPool;
-        this.backgroundThreadPool = backgroundThreadPool;
         this.pipelineFactory = pipelineFactory;
         this.eventThreadFactory = eventThreadFactory;
         this.eventThreadCount = eventThreadCount;
         this.workerThreadFactory = workerThreadFactory;
         this.workerThreadCount = workerThreadCount;
         this.bootstrap = bootstrap;
+        registry.add(new ServerShutdown(this));
     }
-    
+
+    private static final class ServerShutdown implements Runnable {
+
+        private final WeakReference<ServerImpl> server;
+
+        public ServerShutdown(ServerImpl server) {
+            this.server = new WeakReference<>(server);
+        }
+
+        @Override
+        public void run() {
+            ServerImpl im = server.get();
+            if (im != null && im.isStarted()) {
+                try {
+                    im.shutdown(false, 10, TimeUnit.SECONDS);
+                } catch (InterruptedException ex) {
+                    Exceptions.printStackTrace(ex);
+                }
+            }
+        }
+    }
+
+    boolean isStarted() {
+        return events != null && !events.isTerminated();
+    }
+
     @Override
     public int getPort() {
         return port;
@@ -98,18 +120,24 @@ final class ServerImpl implements Server {
         this.port = port;
         return start();
     }
-    
+
+    NioEventLoopGroup events;
+    NioEventLoopGroup workers;
+
     public Condition start() throws IOException {
+        if (events != null) {
+            throw new IllegalStateException("Already started");
+        }
         try {
 
-            NioEventLoopGroup events = new NioEventLoopGroup(eventThreadCount.get(), eventThreadFactory);
-            NioEventLoopGroup workers = new NioEventLoopGroup(workerThreadCount.get(), workerThreadFactory);
+            events = new NioEventLoopGroup(eventThreadCount.get(), eventThreadFactory);
+            workers = new NioEventLoopGroup(workerThreadCount.get(), workerThreadFactory);
 
             bootstrap.group(events, workers)
-             .channel(NioServerSocketChannel.class)
-             .childHandler(pipelineFactory)
-             .localAddress(new InetSocketAddress(port));
-            
+                    .channel(NioServerSocketChannel.class)
+                    .childHandler(pipelineFactory)
+                    .localAddress(new InetSocketAddress(port));
+
             localChannel = bootstrap.bind().sync().channel();
             System.err.println("Starting " + this);
 
@@ -123,7 +151,7 @@ final class ServerImpl implements Server {
     public void shutdown(boolean immediately, long timeout, TimeUnit unit) throws InterruptedException {
         shutdown(immediately, timeout, unit, true);
     }
-    
+
     private void shutdownThreadPool(ExecutorService threadPool, boolean immediately) {
         if (immediately) {
             threadPool.shutdownNow();
@@ -133,8 +161,13 @@ final class ServerImpl implements Server {
     }
 
     private void shutdown(boolean immediately, long timeout, TimeUnit unit, boolean await) throws InterruptedException {
-        shutdownThreadPool (workerThreadPool, immediately);
-        shutdownThreadPool (backgroundThreadPool, immediately);
+        // XXX this can actually take 3x the timeout
+        if (events != null) {
+            events.shutdownGracefully(0, immediately ? 0L : timeout / 2, unit);
+        }
+        if (workers != null) {
+            workers.shutdownGracefully(0, immediately ? 0L : timeout / 2, unit);
+        }
         try {
             if (localChannel != null) {
                 if (localChannel.isOpen()) {
@@ -146,9 +179,11 @@ final class ServerImpl implements Server {
                 }
             }
         } finally {
-            if (await) {
-                workerThreadPool.awaitTermination(timeout, unit);
-                backgroundThreadPool.awaitTermination(timeout, unit);
+            if (events != null) {
+                events.awaitTermination(timeout, unit);
+            }
+            if (workers != null) {
+                workers.awaitTermination(timeout, unit);
             }
         }
     }
@@ -156,35 +191,27 @@ final class ServerImpl implements Server {
     @Override
     public void shutdown(boolean immediately) throws InterruptedException {
         if (immediately) {
-            workerThreadPool.shutdownNow();
-            backgroundThreadPool.shutdownNow();
-        } else {
-            workerThreadPool.shutdown();
-            backgroundThreadPool.shutdown();
-        }
-        try {
-            if (localChannel != null) {
-                if (localChannel.isOpen()) {
-                    localChannel.close().awaitUninterruptibly();
-                }
+            if (events != null) {
+                events.shutdownNow();
             }
-        } finally {
-            await();
+        } else {
+            shutdown(false, 10, TimeUnit.SECONDS, true);
         }
+        await();
     }
 
     @Override
     public void await() throws InterruptedException {
-        while (!workerThreadPool.isTerminated()) {
-            workerThreadPool.awaitTermination(1, TimeUnit.SECONDS);
+        if (events != null) {
+            events.awaitTermination(1, TimeUnit.DAYS);
         }
-        while (!backgroundThreadPool.isTerminated()) {
-            backgroundThreadPool.awaitTermination(1, TimeUnit.SECONDS);
+        if (workers != null) {
+            workers.awaitTermination(1, TimeUnit.DAYS);
         }
     }
 
     private boolean isTerminated() {
-        return workerThreadPool.isTerminated();
+        return events == null ? true : events.isTerminated();
     }
 
     @Override
@@ -212,15 +239,17 @@ final class ServerImpl implements Server {
 
         @Override
         public long awaitNanos(long nanosTimeout) throws InterruptedException {
-            if (!isTerminated()) {
-                workerThreadPool.awaitTermination(nanosTimeout, TimeUnit.NANOSECONDS);
+            if (!isTerminated() && events != null) {
+                events.awaitTermination(nanosTimeout, TimeUnit.NANOSECONDS);
             }
             return 0;
         }
 
         @Override
         public boolean await(long time, TimeUnit unit) throws InterruptedException {
-            workerThreadPool.awaitTermination(time, unit);
+            if (events != null) {
+                events.awaitTermination(time, unit);
+            }
             return isTerminated();
         }
 

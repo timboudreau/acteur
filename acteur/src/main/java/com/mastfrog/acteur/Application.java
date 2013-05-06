@@ -37,6 +37,7 @@ import com.mastfrog.acteur.util.RequestID;
 import com.mastfrog.acteur.server.Server;
 import com.mastfrog.util.ConfigurationError;
 import com.mastfrog.util.Checks;
+import com.mastfrog.util.Exceptions;
 import com.mastfrog.util.Invokable;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
@@ -86,8 +87,8 @@ public class Application implements Iterable<Page> {
     private Exception stackTrace = new Exception();
     @Inject
     private Pages runner;
-    
-    @Inject(optional=true)
+
+    @Inject(optional = true)
     @Named("acteur.debug")
     private boolean debug = true;
 
@@ -99,8 +100,9 @@ public class Application implements Iterable<Page> {
 
     /**
      * Get the type of the built in help page class, which uses
-     * Acteur.describeYourself() to generate a JSON description of all
-     * URLs the application responnds to
+     * Acteur.describeYourself() to generate a JSON description of all URLs the
+     * application responnds to
+     *
      * @return A page type
      */
     public static Class<? extends Page> helpPageType() {
@@ -109,8 +111,9 @@ public class Application implements Iterable<Page> {
 
     /**
      * Create an application
+     *
      * @param types
-     * @return 
+     * @return
      */
     public static Application create(Class<?>... types) {
         return new Application(types);
@@ -123,9 +126,9 @@ public class Application implements Iterable<Page> {
     ExecutorService getWorkerThreadPool() {
         return exe;
     }
-    
-    Map<String,Object> describeYourself() {
-        Map<String,Object> m = new HashMap<>();
+
+    Map<String, Object> describeYourself() {
+        Map<String, Object> m = new HashMap<>();
         for (Page page : this) {
             page.describeYourself(m);
         }
@@ -133,9 +136,10 @@ public class Application implements Iterable<Page> {
     }
 
     /**
-     * Add a subtype of Page which should be instantiated on demand when responding
-     * to requests
-     * @param page A page 
+     * Add a subtype of Page which should be instantiated on demand when
+     * responding to requests
+     *
+     * @param page A page
      */
     protected final void add(Class<? extends Page> page) {
         if ((page.getModifiers() & Modifier.ABSTRACT) != 0) {
@@ -181,11 +185,12 @@ public class Application implements Iterable<Page> {
     /**
      * Add any custom headers or other attributes - override to intercept all
      * requests.
+     *
      * @param event
      * @param page
      * @param action
      * @param response
-     * @return 
+     * @return
      */
     protected HttpResponse decorateResponse(Event event, Page page, Acteur action, HttpResponse response) {
         Headers.write(Headers.SERVER, getName(), response);
@@ -198,8 +203,9 @@ public class Application implements Iterable<Page> {
 
     /**
      * Create a 404 response
+     *
      * @param event
-     * @return 
+     * @return
      */
     protected HttpResponse createNotFoundResponse(Event event) {
         ByteBuf buf = Unpooled.copiedBuffer("<html><head>"
@@ -219,9 +225,8 @@ public class Application implements Iterable<Page> {
     }
 
     protected void onAfterRespond(RequestID id, Event event, Acteur acteur, Page page, State state, HttpResponseStatus status, HttpResponse resp) {
-        
     }
-    
+
     protected void onBeforeRespond(RequestID id, Event event, HttpResponseStatus status) {
         logger.onRespond(id, event, status);
     }
@@ -232,7 +237,8 @@ public class Application implements Iterable<Page> {
 
     /**
      * Called when an error is encountered
-     * @param err 
+     *
+     * @param err
      */
     public void onError(Throwable err) {
         err.printStackTrace();
@@ -240,9 +246,10 @@ public class Application implements Iterable<Page> {
 
     /**
      * Called when an event occurs
+     *
      * @param event
      * @param channel
-     * @return 
+     * @return
      */
     public CountDownLatch onEvent(final Event event, final Channel channel) {
         //XXX get rid of channel param?
@@ -290,10 +297,15 @@ public class Application implements Iterable<Page> {
 
             @Override
             public Page next() {
-                Class<? extends Page> clazz = it.next();
-                Page result = deps.getInstance(clazz);
-                result.setApplication(Application.this);
-                return result;
+                try {
+                    Class<? extends Page> clazz = it.next();
+                    Page result = deps.getInstance(clazz);
+                    result.setApplication(Application.this);
+                    return result;
+                } catch (Exception e) {
+                    Application.this.onError(e);
+                    return Exceptions.chuck(e);
+                }
             }
 
             @Override

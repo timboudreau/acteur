@@ -13,6 +13,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
+import static io.netty.channel.ChannelFutureListener.CLOSE;
 import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import java.io.IOException;
@@ -120,14 +121,32 @@ public class PutTest {
         @Inject
         EchoActeur(Event evt) {
             System.out.println("EVENT " + evt.getMethod() + " " + evt.getPath());
+            setChunked(true);
             if (evt.getMethod() == Method.GET) {
                 System.out.println("Send hello world");
                 setState(new RespondWith(HttpResponseStatus.OK, "Hello world"));
             } else {
-//                setChunked(true);
                 setState(new RespondWith(HttpResponseStatus.OK));
-                setResponseBodyWriter(EchoWriter.class);
+//                setResponseBodyWriter(EchoWriter.class);
+                setResponseWriter(RWriter.class);
             }
+        }
+    }
+    
+    private static class RWriter extends ResponseWriter {
+        @Override
+        public ResponseWriter.Status write(Event evt, Output out) throws Exception {
+            FullHttpRequest req = evt.getRequest() instanceof FullHttpRequest
+                    ? (FullHttpRequest) evt.getRequest() : null;
+            if (req != null) {
+                System.out.println("READ CONTENT");
+                ByteBuf buf = req.content();
+                System.out.println("SIZE " + buf.capacity() + " rb " + buf.readableBytes());
+                out.write(buf);
+            } else {
+                throw new AssertionError("Not a FullHttpRequest: " + evt.getRequest() + " " + Types.list(evt.getRequest().getClass()));
+            }
+            return ResponseWriter.Status.DONE;
         }
     }
 
@@ -142,7 +161,8 @@ public class PutTest {
 
         @Override
         public void operationComplete(ChannelFuture future) throws Exception {
-            Channel ch = evt.getChannel();
+//            Channel ch = evt.getChannel();
+            Channel ch = future.channel();
             FullHttpRequest req = evt.getRequest() instanceof FullHttpRequest
                     ? (FullHttpRequest) evt.getRequest() : null;
             if (req != null) {

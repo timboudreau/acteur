@@ -28,6 +28,7 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 import com.google.inject.Module;
 import com.google.inject.Provider;
+import com.google.inject.Singleton;
 import com.google.inject.TypeLiteral;
 import com.google.inject.name.Names;
 import com.mastfrog.guicy.annotations.Defaults;
@@ -44,6 +45,7 @@ import com.mastfrog.acteur.util.BasicCredentials;
 import com.mastfrog.acteur.server.ServerModule.TF;
 import com.mastfrog.util.ConfigurationError;
 import io.netty.bootstrap.ServerBootstrap;
+import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.buffer.UnpooledByteBufAllocator;
 import io.netty.channel.ChannelHandler;
@@ -52,8 +54,11 @@ import io.netty.channel.ChannelOption;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.codec.http.Cookie;
 import io.netty.handler.codec.http.CookieDecoder;
+import io.netty.handler.codec.http.HttpHeaders;
+import io.netty.util.CharsetUtil;
 import java.io.IOException;
 import java.lang.Thread.UncaughtExceptionHandler;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -74,34 +79,39 @@ public class ServerModule<A extends Application> extends AbstractModule {
 
     /**
      * Property name for setting which byte buffer allocator Netty uses (heap,
-     * direct, pooled)
+     * direct, pooled).
      */
     public static final String BYTEBUF_ALLOCATOR_SETTINGS_KEY = "propeller.bytebuf.allocator";
     /**
      * Property value for telling the server to use the direct byte buffer
-     * allocator (non-heap)
+     * allocator (non-heap).
      */
     public static final String DIRECT_ALLOCATOR = "direct";
     /**
      * Property value for telling the server to use the heap byte buffer
-     * allocator
+     * allocator.
      */
     public static final String HEAP_ALLOCATOR = "heap";
     /**
      * Property value for telling the server to use the pooled byte buffer
-     * allocator
+     * allocator.
      */
     public static final String POOLED_ALLOCATOR = "pooled";
+    /**
+     * Property value for telling the server to use the heap or direct byte
+     * buffer allocator as decided by Netty's PlatformDependent class.
+     */
+    public static final String DIRECT_OR_HEAP_BY_PLATFORM = "directOrHeap";
     /**
      * The default allocator to use if none is specified
      */
     public static final String DEFAULT_ALLOCATOR = POOLED_ALLOCATOR;
     private final Class<A> appType;
-    private ReentrantScope scope = new ReentrantScope();
+    private final ReentrantScope scope = new ReentrantScope();
     private final int eventThreads;
     private final int workerThreads;
     private final int backgroundThreads;
-    private List<Module> otherModules = new ArrayList<>();
+    private final List<Module> otherModules = new ArrayList<>();
 
     public ServerModule(Class<A> appType, int workerThreadCount, int eventThreadCount, int backgroundThreadCount) {
         this.appType = appType;
@@ -125,7 +135,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
         bind(ChannelHandler.class).to(UpstreamHandlerImpl.class);
         bind(new CISC()).to(PipelineFactoryImpl.class);
         install(new JacksonModule());
-        bind(ServerBootstrap.class).toProvider(new ServerBootstrapProvider(binder().getProvider(Settings.class)));
+        bind(ServerBootstrap.class).toProvider(new ServerBootstrapProvider(binder().getProvider(Settings.class), binder().getProvider(ByteBufAllocator.class)));
 
         scope.bindTypes(binder(), Event.class,
                 Page.class, BasicCredentials.class);
@@ -176,17 +186,42 @@ public class ServerModule<A extends Application> extends AbstractModule {
         bind(DateTime.class).toInstance(DateTime.now());
         bind(Duration.class).toProvider(UptimeProvider.class);
         bind(new CKTL()).toProvider(CookiesProvider.class);
-        
-        bind (String.class).annotatedWith(Names.named("application")).toProvider(ApplicationNameProvider.class);
+
+        bind(String.class).annotatedWith(Names.named("application")).toProvider(ApplicationNameProvider.class);
 
         bind(ServerImpl.class).asEagerSingleton();
         for (Module m : otherModules) {
             install(m);
         }
+        bind(Charset.class).toProvider(CharsetProvider.class);
+        bind(ByteBufAllocator.class).toProvider(ByteBufAllocatorProvider.class);
     }
-    
+
+    @Singleton
+    private static final class CharsetProvider implements Provider<Charset> {
+
+        private final Charset charset;
+
+        @Inject
+        CharsetProvider(Settings settings) {
+            String set = settings.getString("charset");
+            if (set == null) {
+                charset = CharsetUtil.UTF_8;
+            } else {
+                charset = Charset.forName(set);
+            }
+        }
+
+        @Override
+        public Charset get() {
+            return charset;
+        }
+    }
+
     private static final class ApplicationNameProvider implements Provider<String> {
+
         private final Provider<Application> app;
+
         @Inject
         ApplicationNameProvider(Provider<Application> app) {
             this.app = app;
@@ -217,37 +252,64 @@ public class ServerModule<A extends Application> extends AbstractModule {
      * @return The same bootstrap or optionally another one
      */
     protected ServerBootstrap configureServerBootstrap(ServerBootstrap bootstrap, Settings settings) {
-        String s = settings.getString(BYTEBUF_ALLOCATOR_SETTINGS_KEY, DEFAULT_ALLOCATOR);
-        switch (s) {
-            case DIRECT_ALLOCATOR:
-                // XXX where did direct go?
-                bootstrap.childOption(ChannelOption.ALLOCATOR, UnpooledByteBufAllocator.DEFAULT);
-                break;
-            case HEAP_ALLOCATOR:
-                bootstrap.childOption(ChannelOption.ALLOCATOR, UnpooledByteBufAllocator.DEFAULT);
-                break;
-            case POOLED_ALLOCATOR:
-                bootstrap.childOption(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT);
-                break;
-            default:
-                throw new ConfigurationError("Unknown value for " + BYTEBUF_ALLOCATOR_SETTINGS_KEY
-                        + " '" + s + "'; valid values are " + DIRECT_ALLOCATOR + ", "
-                        + HEAP_ALLOCATOR + ", " + POOLED_ALLOCATOR);
-        }
         return bootstrap;
+    }
+
+    @Singleton
+    private static final class ByteBufAllocatorProvider implements Provider<ByteBufAllocator> {
+
+        private final Settings settings;
+        private volatile ByteBufAllocator allocator;
+        @Inject
+        public ByteBufAllocatorProvider(Settings settings) {
+            this.settings = settings;
+        }
+
+        public ByteBufAllocator get() {
+            String s = settings.getString(BYTEBUF_ALLOCATOR_SETTINGS_KEY, DEFAULT_ALLOCATOR);
+            ByteBufAllocator result = this.allocator;
+            if (result == null) {
+                synchronized (this) {
+                    if (result == null) {
+                        switch (s) {
+                            case DIRECT_OR_HEAP_BY_PLATFORM:
+                                result = UnpooledByteBufAllocator.DEFAULT;
+                                break;
+                            case DIRECT_ALLOCATOR:
+                                result = new UnpooledByteBufAllocator(true);
+                                break;
+                            case HEAP_ALLOCATOR:
+                                result = new UnpooledByteBufAllocator(false);
+                                break;
+                            case POOLED_ALLOCATOR:
+                                result = PooledByteBufAllocator.DEFAULT;
+                                break;
+                            default:
+                                throw new ConfigurationError("Unknown value for " + BYTEBUF_ALLOCATOR_SETTINGS_KEY
+                                        + " '" + s + "'; valid values are " + DIRECT_ALLOCATOR + ", "
+                                        + HEAP_ALLOCATOR + ", " + POOLED_ALLOCATOR);
+                        }
+                        this.allocator = result;
+                    }
+                }
+            }
+            return this.allocator;
+        }
     }
 
     private final class ServerBootstrapProvider implements Provider<ServerBootstrap> {
 
         private final Provider<Settings> settings;
-
-        public ServerBootstrapProvider(Provider<Settings> settings) {
+        private final Provider<ByteBufAllocator> allocator;
+        public ServerBootstrapProvider(Provider<Settings> settings, Provider<ByteBufAllocator> allocator) {
             this.settings = settings;
+            this.allocator = allocator;
         }
 
         @Override
         public ServerBootstrap get() {
             ServerBootstrap result = new ServerBootstrap();
+            result = result.childOption(ChannelOption.ALLOCATOR, allocator.get());
             return configureServerBootstrap(result, settings.get());
         }
     }
@@ -280,7 +342,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
         @Override
         public Set<Cookie> get() {
             Event evt = ev.get();
-            String h = evt.getHeader("Cookie");
+            String h = evt.getHeader(HttpHeaders.Names.COOKIE);
             if (h != null) {
                 Set<Cookie> result = CookieDecoder.decode(h);
                 if (result != null) {
@@ -331,10 +393,12 @@ public class ServerModule<A extends Application> extends AbstractModule {
         private final String name;
         private final Provider<Application> app;
         private final AtomicInteger count = new AtomicInteger();
+        private final ThreadGroup tg;
 
         public TF(String name, Provider<Application> app) {
             this.name = name;
             this.app = app;
+            tg = new ThreadGroup(Thread.currentThread().getThreadGroup(), name + "s");
         }
 
         public String name() {
@@ -343,9 +407,9 @@ public class ServerModule<A extends Application> extends AbstractModule {
 
         @Override
         public Thread newThread(Runnable r) {
-            Thread t = new Thread(r);
+            Thread t = new Thread(tg, r);
             t.setDaemon(true);
-            t.setPriority(Thread.NORM_PRIORITY - 1);
+//            t.setPriority(Thread.NORM_PRIORITY - 1);
             t.setUncaughtExceptionHandler(this);
             String nm = name + "-" + count.getAndIncrement();
             t.setName(nm);

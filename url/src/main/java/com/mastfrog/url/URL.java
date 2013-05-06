@@ -271,6 +271,21 @@ public final class URL implements URLComponent, Validating, Comparable<URL> {
             anchor.appendTo(sb);
         }
     }
+    
+    public String getPathAndQuery() {
+        StringBuilder sb = new StringBuilder();
+        if (path != null) {
+            sb.append('/');
+            path.appendTo(sb);
+        }
+        if (anchor != null) {
+            anchor.appendTo(sb);
+        }
+        if (this.parameters != null) {
+            this.parameters.appendTo(sb);
+        }
+        return sb.toString();
+    }
 
     /**
      * Returns true if the protocol is non-null, is a known protocol, and
@@ -605,7 +620,12 @@ public final class URL implements URLComponent, Validating, Comparable<URL> {
             } else {
                 if (h != null && !h.isValid()) {
                     try {
-                        problems.putAll (h.getProblems());
+                        Problems p = h.getProblems();
+                        if (p == null) {
+                            p = new Problems();
+                            p.add("Host '" + h + "' reports itself invalid but lists no problems");
+                        }
+                        problems.putAll (p);
                     } catch (NullArgumentException e) {
                         throw new IllegalStateException (h.toString() + " reports itself invalid but returns no problems", e);
                     }

@@ -49,6 +49,7 @@ public class ActeursImpl implements Acteurs {
     private final ExecutorService exe;
     private final Page page;
     private final Settings settings;
+    private static boolean debug;
 
     @Inject
     ActeursImpl(@Named(Server.BACKGROUND_THREAD_POOL_NAME) ExecutorService exe, ReentrantScope scope, Page page, Settings settings) {
@@ -61,6 +62,7 @@ public class ActeursImpl implements Acteurs {
         // perform sanity checks if assertions are on
         assert check(page.getActeurs());
         this.settings = settings;
+        debug = settings.getBoolean("acteur.debug", true);
     }
 
     private boolean check(List<Object> actionsOrTypes) {
@@ -206,6 +208,9 @@ public class ActeursImpl implements Acteurs {
 
         @Override
         public Object[] call() throws Exception {
+//            if (debug) {
+//                System.out.println("ACTEUR " + acteur);
+//            }
             // Set the Page ThreadLocal, for things that will call Page.get()
             Page.set(page);
             try {
@@ -225,6 +230,9 @@ public class ActeursImpl implements Acteurs {
                 }
                 // Set the atomic reference used by the finisher
                 lastState.set(state);
+//                if (debug) {
+//                    System.out.println(acteur + " - " + state);
+//                }
                 // Merge in the response, in case some headers were added
                 
                 boolean done = state.isRejected();

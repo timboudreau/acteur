@@ -11,7 +11,8 @@ public final class CursorWriterActeur extends Acteur {
     
     @Inject
     CursorWriterActeur(CursorWriter writer) {
+        setChunked(true);
         setState(new RespondWith(200));
-        setResponseBodyWriter(writer);
+        setResponseWriter(writer);
     }
 }

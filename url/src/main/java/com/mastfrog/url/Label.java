@@ -105,6 +105,11 @@ public final class Label implements URLComponent {
             boolean number = URLBuilder.isNumber(c);
             boolean letter = URLBuilder.isLetter(c);
             if (!number && !letter) {
+                switch(c) {
+                    case '-' : 
+                        return true;
+                        
+                }
                 return false;
             }
         }
