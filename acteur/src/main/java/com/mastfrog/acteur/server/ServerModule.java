@@ -41,6 +41,7 @@ import com.mastfrog.acteur.Application;
 import com.mastfrog.acteur.Event;
 import com.mastfrog.acteur.ImplicitBindings;
 import com.mastfrog.acteur.Page;
+import static com.mastfrog.acteur.server.Server.BACKGROUND_THREAD_POOL_NAME;
 import com.mastfrog.acteur.util.BasicCredentials;
 import com.mastfrog.acteur.server.ServerModule.TF;
 import com.mastfrog.util.ConfigurationError;
@@ -152,6 +153,10 @@ public class ServerModule<A extends Application> extends AbstractModule {
         TF workerThreadFactory = new TF("worker", appProvider);
         TF backgroundThreadFactory = new TF(Server.BACKGROUND_THREAD_POOL_NAME, appProvider);
 
+        bind(ThreadGroup.class).annotatedWith(Names.named(BACKGROUND_THREAD_POOL_NAME)).toInstance(backgroundThreadFactory.tg);
+        bind(ThreadGroup.class).annotatedWith(Names.named("worker")).toInstance(workerThreadFactory.tg);
+        bind(ThreadGroup.class).annotatedWith(Names.named("event")).toInstance(eventThreadFactory.tg);
+
         ThreadCount workerThreadCount = new ThreadCount(set, 8, workerThreads, "workerThreads");
         ThreadCount eventThreadCount = new ThreadCount(set, 8, eventThreads, "eventThreads");
         ThreadCount backgroundThreadCount = new ThreadCount(set, 128, backgroundThreads, "backgroundThreads");
@@ -260,6 +265,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
 
         private final Settings settings;
         private volatile ByteBufAllocator allocator;
+
         @Inject
         public ByteBufAllocatorProvider(Settings settings) {
             this.settings = settings;
@@ -301,6 +307,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
 
         private final Provider<Settings> settings;
         private final Provider<ByteBufAllocator> allocator;
+
         public ServerBootstrapProvider(Provider<Settings> settings, Provider<ByteBufAllocator> allocator) {
             this.settings = settings;
             this.allocator = allocator;
@@ -355,7 +362,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
 
     private static final class ExecutorServiceProvider implements Provider<ExecutorService> {
 
-        private final TF tf;
+        final TF tf;
         private volatile ExecutorService svc;
         private final ThreadCount count;
 
@@ -399,6 +406,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
             this.name = name;
             this.app = app;
             tg = new ThreadGroup(Thread.currentThread().getThreadGroup(), name + "s");
+            tg.setDaemon(true);
         }
 
         public String name() {
@@ -408,8 +416,11 @@ public class ServerModule<A extends Application> extends AbstractModule {
         @Override
         public Thread newThread(Runnable r) {
             Thread t = new Thread(tg, r);
-            t.setDaemon(true);
-//            t.setPriority(Thread.NORM_PRIORITY - 1);
+            if ("event".equals(tg.getName())) {
+                t.setPriority(Thread.MAX_PRIORITY);
+            } else {
+                t.setPriority(Thread.NORM_PRIORITY - 1);
+            }
             t.setUncaughtExceptionHandler(this);
             String nm = name + "-" + count.getAndIncrement();
             t.setName(nm);

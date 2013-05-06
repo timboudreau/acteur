@@ -37,7 +37,6 @@ import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.net.InetSocketAddress;
 import java.util.Date;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
@@ -55,8 +54,10 @@ final class ServerImpl implements Server {
     private int port = 8123;
     private final ThreadFactory eventThreadFactory;
     private final ThreadCount eventThreadCount;
+    private final ThreadGroup eventThreadGroup;
     private final ThreadFactory workerThreadFactory;
     private final ThreadCount workerThreadCount;
+    private final ThreadGroup workerThreadGroup;
     private final String applicationName;
     private final ServerBootstrap bootstrap;
 
@@ -65,8 +66,10 @@ final class ServerImpl implements Server {
             ChannelInitializer<SocketChannel> pipelineFactory,
             @Named("event") ThreadFactory eventThreadFactory,
             @Named("event") ThreadCount eventThreadCount,
+            @Named("event") ThreadGroup eventThreadGroup,
             @Named("workers") ThreadFactory workerThreadFactory,
             @Named("workers") ThreadCount workerThreadCount,
+            @Named("worker") ThreadGroup workerThreadGroup,
             @Named("application") String applicationName,
             ServerBootstrap bootstrap,
             ShutdownHookRegistry registry,
@@ -75,8 +78,10 @@ final class ServerImpl implements Server {
         this.pipelineFactory = pipelineFactory;
         this.eventThreadFactory = eventThreadFactory;
         this.eventThreadCount = eventThreadCount;
+        this.eventThreadGroup = eventThreadGroup;
         this.workerThreadFactory = workerThreadFactory;
         this.workerThreadCount = workerThreadCount;
+        this.workerThreadGroup = workerThreadGroup;
         this.applicationName = applicationName;
         this.bootstrap = bootstrap;
         registry.add(new ServerShutdown(this));
@@ -155,22 +160,16 @@ final class ServerImpl implements Server {
         shutdown(immediately, timeout, unit, true);
     }
 
-    private void shutdownThreadPool(ExecutorService threadPool, boolean immediately) {
-        if (immediately) {
-            threadPool.shutdownNow();
-        } else {
-            threadPool.shutdown();
-        }
-    }
-
     private void shutdown(boolean immediately, long timeout, TimeUnit unit, boolean await) throws InterruptedException {
         // XXX this can actually take 3x the timeout
+        eventThreadGroup.interrupt();
         if (events != null) {
             events.shutdownGracefully(0, immediately ? 0L : timeout / 2, unit);
         }
         if (workers != null) {
             workers.shutdownGracefully(0, immediately ? 0L : timeout / 2, unit);
         }
+        workerThreadGroup.interrupt();
         try {
             if (localChannel != null) {
                 if (localChannel.isOpen()) {
