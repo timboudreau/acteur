@@ -29,7 +29,7 @@ import org.openide.util.NbBundle;
 /**
  * One Label in a <a href="Host.html"><code>Host</code></a> - i.e.
  * one component of an IP address or host name such as
- * <code>www.<b>getservo</b>.com</code> or <code>192.<b>168</b>.2.32</code>.
+ * <code>www.<b>example</b>.com</code> or <code>192.<b>168</b>.2.32</code>.
  *
  * @author Tim Boudreau
  */

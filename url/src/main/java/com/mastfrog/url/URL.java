@@ -532,9 +532,9 @@ public final class URL implements URLComponent, Validating, Comparable<URL> {
     }
 
     /**
-     * Convert a java.net.URL to a com.servo.url.URL.
+     * Convert a java.net.URL to URL.
      * @param url A Java URL
-     * @return A Servo URL
+     * @return A URL
      */
     public static URL fromJavaUrl (java.net.URL url) {
         Checks.notNull("url", url);

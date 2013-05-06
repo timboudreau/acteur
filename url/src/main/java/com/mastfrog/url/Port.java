@@ -27,7 +27,7 @@ import org.openide.util.NbBundle;
 
 /**
  * A TCP port.  Represents the optional port portion of a URL, such as
- * <code>https://www.getservo.com:<b>8443</b>/management/</code>
+ * <code>https://www.timboudreau.com:<b>8443</b>/management/</code>
  *
  * @author Tim Boudreau
  */
