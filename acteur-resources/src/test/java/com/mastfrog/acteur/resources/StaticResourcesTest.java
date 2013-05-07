@@ -64,7 +64,7 @@ public class StaticResourcesTest {
             // should be server start time since that's all we know
             assertEquals(helloLastModified, aLastModified);
         } else {
-            DateTime subLastModified = har.get("sub", "subfile.txt").go()
+            DateTime subLastModified = har.get("sub/subfile.txt").go()
                     .assertStateSeen(Closed)
                     .assertHasContent()
                     .assertStatus(OK)

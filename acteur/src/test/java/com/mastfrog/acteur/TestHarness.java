@@ -188,7 +188,7 @@ public class TestHarness implements ErrorHandler {
                 if (part.isEmpty()) {
                     continue;
                 }
-                result.addPathElement(el);
+                result.addPathElement(part);
             }
         }
         return result;
