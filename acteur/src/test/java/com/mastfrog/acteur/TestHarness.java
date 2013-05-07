@@ -1,5 +1,7 @@
 package com.mastfrog.acteur;
 
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Sets;
 import com.google.common.net.MediaType;
@@ -31,11 +33,13 @@ import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.lang.reflect.Array;
 import java.net.DatagramSocket;
 import java.net.ServerSocket;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
@@ -44,6 +48,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.joda.time.Duration;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import org.openide.util.Exceptions;
@@ -381,7 +386,7 @@ public class TestHarness implements ErrorHandler {
             try {
                 Thread.sleep(timeout.getMillis());
                 if (!states.contains(StateType.Closed)) {
-                    System.out.println("Cancelling request for timeout " 
+                    System.out.println("Cancelling request for timeout "
                             + timeout + " " + url.getPathAndQuery());
                     if (future != null) {
                         future.cancel();
@@ -446,7 +451,7 @@ public class TestHarness implements ErrorHandler {
 
         void await(CountDownLatch latch) throws InterruptedException {
             System.out.println("WAIT ON " + latch);
-            latch.await(30, TimeUnit.SECONDS);
+            latch.await(timeout.getMillis(), TimeUnit.MILLISECONDS);
         }
 
         @Override
@@ -460,7 +465,7 @@ public class TestHarness implements ErrorHandler {
         public CallResult assertCode(int code) throws Throwable {
             await(HeadersReceived);
 //            if (code != 100 && HttpResponseStatus.CONTINUE.equals(getStatus())) {
-                await(Closed);
+            await(Closed);
 //            }
             assertNotNull("Status is null, not " + code, getStatus());
             assertEquals(code, getStatus().code());
@@ -513,7 +518,7 @@ public class TestHarness implements ErrorHandler {
         @Override
         public CallResult assertStatus(HttpResponseStatus status) throws Throwable {
             await(HeadersReceived);
-            if (HttpResponseStatus.CONTINUE != status && HttpResponseStatus.CONTINUE.equals(this.getStatus())) {
+            if (HttpResponseStatus.CONTINUE != status && HttpResponseStatus.CONTINUE.equals(this.getStatus()) || getStatus() == null) {
                 await(Closed);
             }
 
@@ -553,13 +558,46 @@ public class TestHarness implements ErrorHandler {
         }
 
         public <T> CallResult assertHeader(HeaderValueType<T> hdr, T value) throws Throwable {
-            await(HeadersReceived);
+            waitForHeaders(hdr.name());
             assertNotNull("Headers never sent", getHeaders());
             String val = getHeaders().get(hdr.name());
             assertNotNull("No value for '" + hdr.name() + "' in \n" + headersToString(), val);
             T obj = hdr.toValue(val);
             assertEquals(value, obj);
             return this;
+        }
+
+        private HttpHeaders waitForHeaders(String lookingFor) throws InterruptedException {
+            await(HeadersReceived);
+            HttpHeaders h = getHeaders();
+            if (h == null) {
+                await(Closed);
+                h = getHeaders();
+            } else {
+                String s = h.get(lookingFor);
+                if (s == null) {
+                    await(Closed);
+                }
+            }
+            return h;
+        }
+
+        public <T> CallResult assertHeaderNotEquals(HeaderValueType<T> hdr, T value) throws Throwable {
+            HttpHeaders h = waitForHeaders(hdr.name());
+            assertNotNull("Headers never arrived", h);
+            T obj = hdr.toValue(h.get(hdr.name()));
+            assertNotEquals(value, obj);
+            return this;
+        }
+
+        public <T> T getHeader(HeaderValueType<T> hdr) throws InterruptedException {
+            HttpHeaders h = waitForHeaders(hdr.name());
+            assertNotNull("Headers never sent", h);
+            String result = h.get(hdr.name());
+            if (result != null) {
+                return hdr.toValue(result);
+            }
+            return null;
         }
 
         @Override
@@ -571,8 +609,8 @@ public class TestHarness implements ErrorHandler {
         @Override
         public <T> T content(Class<T> type) throws Throwable {
             await(FullContentReceived);
+            assertHasContent();
             ByteBuf buf = getContent();
-            assertNotNull("No content", buf);
             assertTrue("Content not readable", buf.isReadable());
             getContent().resetReaderIndex();
             if (type == byte[].class) {
@@ -587,13 +625,59 @@ public class TestHarness implements ErrorHandler {
                 return type.cast(new String(b, "UTF-8"));
             } else {
                 ObjectMapper m = new ObjectMapper();
-                return m.readValue(new ByteBufInputStream(buf), type);
+                try {
+                    return m.readValue(new ByteBufInputStream(buf), type);
+                } catch (JsonParseException | JsonMappingException ex) {
+                    buf.resetReaderIndex();
+                    String data = bufToString(buf);
+                    throw new IOException(ex.getMessage() + " - data: " + data, ex);
+                }
             }
         }
 
-        public <T> CallResult contentEquals(Class<T> type, T compareTo) throws Throwable {
+        public <T> CallResult assertContentNotEquals(Class<T> type, T compareTo) throws Throwable {
+            assertHasContent();
             T obj = this.content(type);
-            assertEquals(compareTo, obj);
+            if (obj != null && compareTo != null && obj.getClass().isArray() && compareTo.getClass().isArray()) {
+                assertFalse("Should not be equal: " + Objects.toString(compareTo) + " and "
+                        + Objects.toString(obj), Objects.equals(compareTo, obj));
+            } else {
+                assertNotEquals(compareTo, obj);
+            }
+            return this;
+        }
+
+        private String arrayToString(Object o) {
+            StringBuilder sb = new StringBuilder();
+            int count = Array.getLength(o);
+            for (int i = 0; i < count; i++) {
+                Object elem = Array.get(o, i);
+                sb.append("" + elem);
+                if (i != count - 1) {
+                    sb.append(",");
+                }
+            }
+            return sb.toString();
+        }
+
+        public <T> CallResult assertContent(Class<T> type, T compareTo) throws Throwable {
+            assertHasContent();
+            T obj = this.content(type);
+            if (obj != null && compareTo != null && obj.getClass().isArray() && compareTo.getClass().isArray()) {
+                assertTrue("Not equal: " + arrayToString(compareTo) + " and "
+                        + arrayToString(obj), Objects.deepEquals(compareTo, obj));
+            } else {
+                assertEquals(compareTo, obj);
+            }
+            return this;
+        }
+
+        public <T> CallResult assertHasContent() throws Throwable {
+            await(FullContentReceived);
+            if (getContent() == null) {
+                await(Closed);
+            }
+            assertNotNull("No content received", getContent());
             return this;
         }
 
@@ -645,9 +729,9 @@ public class TestHarness implements ErrorHandler {
                 for (Map.Entry<String, String> e : curr) {
                     hdrs.add(e.getKey(), e.getValue());
                 }
-                headers.set(hdrs);
+                this.headers.set(hdrs);
             } else {
-                headers.set(headers);
+                this.headers.set(headers);
             }
         }
 
@@ -660,7 +744,7 @@ public class TestHarness implements ErrorHandler {
             buf.readBytes(b);
             return new String(b);
         }
-        
+
         /**
          * @param content the content to set
          */
@@ -693,6 +777,8 @@ public class TestHarness implements ErrorHandler {
 
         <T> CallResult assertHeader(HeaderValueType<T> hdr, T value) throws Throwable;
 
+        <T> CallResult assertHeaderNotEquals(HeaderValueType<T> hdr, T value) throws Throwable;
+
         CallResult await() throws Throwable;
 
         String content() throws UnsupportedEncodingException, InterruptedException;
@@ -705,7 +791,13 @@ public class TestHarness implements ErrorHandler {
 
         CallResult assertHasHeader(String name) throws Throwable;
 
-        <T> CallResult contentEquals(Class<T> type, T compareTo) throws Throwable;
+        <T> T getHeader(HeaderValueType<T> hdr) throws InterruptedException;
+
+        <T> CallResult assertContent(Class<T> type, T compareTo) throws Throwable;
+
+        <T> CallResult assertContentNotEquals(Class<T> type, T compareTo) throws Throwable;
+
+        <T> CallResult assertHasContent() throws Throwable;
     }
 
     private static class NamedLatch extends CountDownLatch {
