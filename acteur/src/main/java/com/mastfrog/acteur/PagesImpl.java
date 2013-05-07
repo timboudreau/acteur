@@ -29,9 +29,9 @@ import com.mastfrog.settings.Settings;
 import com.mastfrog.util.Exceptions;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelFutureListener;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
+import java.nio.charset.Charset;
 import java.util.Iterator;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
@@ -127,8 +127,10 @@ final class PagesImpl implements Pages {
                         latch.countDown();
                         return;
                     }
+                    
+                    Charset charset = application.getDependencies().getInstance(Charset.class);
                     // Create a netty response
-                    HttpResponse httpResponse = response.toResponse(event);
+                    HttpResponse httpResponse = response.toResponse(event, charset);
                     // Allow the application to add headers
                     httpResponse = application.decorateResponse(event, state.getLockedPage(), acteur, httpResponse);
 
@@ -141,17 +143,14 @@ final class PagesImpl implements Pages {
                     }
 
                     try {
+                        // Give the application a last chance to do something
+                        application.onBeforeRespond(id, event, response.getResponseCode());
+
                         // Send the headers
                         ChannelFuture fut = channel.write(httpResponse);
 
-                        // Create a closer
-                        ChannelFutureListener closer = !event.isKeepAlive()
-                                ? ChannelFutureListener.CLOSE : null;
-
-                        // Give the application a last chance to do something
-                        application.onBeforeRespond(id, event, response.getResponseCode());
                         // Send the response
-                        response.sendMessage(event, fut, httpResponse, closer);
+                        fut = response.sendMessage(event, fut, httpResponse);
 
                         application.onAfterRespond(id, event, acteur, state.getLockedPage(), state, HttpResponseStatus.OK, httpResponse);
                     } finally {
@@ -161,7 +160,7 @@ final class PagesImpl implements Pages {
                     Exceptions.chuck(ee);
                 } catch (Exception | Error e) {
                     e.printStackTrace();
-                    application.onError(e);
+                    application.internalOnError(e);
                     // Send an error message
                     Acteur err = Acteur.error(state.getLockedPage(), e);
                     // XXX this might recurse badly
@@ -176,7 +175,7 @@ final class PagesImpl implements Pages {
                     try {
                         call();
                     } catch (Exception ex) {
-                        application.onError(ex);
+                        application.internalOnError(ex);
                     }
                 } else {
                     // Otherwise, we're done - no page handled the request
@@ -194,7 +193,7 @@ final class PagesImpl implements Pages {
 
         @Override
         public void uncaughtException(Thread thread, Throwable thrwbl) {
-            application.onError(thrwbl);
+            application.internalOnError(thrwbl);
         }
     }
 }

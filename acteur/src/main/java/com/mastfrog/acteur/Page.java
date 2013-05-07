@@ -187,7 +187,7 @@ public abstract class Page implements Iterable<Acteur> {
                     return Exceptions.chuck(e);
                 } catch (final Exception t) {
                     if (logErrors) {
-                        application.onError(t);
+                        application.internalOnError(t);
                     }
                     return new Acteur() {
                         @Override
@@ -197,7 +197,7 @@ public abstract class Page implements Iterable<Acteur> {
                     };
                 } catch (final Error t) {
                     if (logErrors) {
-                        application.onError(t);
+                        application.internalOnError(t);
                     }
                     return new Acteur() {
                         @Override

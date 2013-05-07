@@ -239,41 +239,6 @@ final class ResponseImpl extends Response {
         }
     }
 
-    public HttpResponse toResponse(Event evt) {
-        if (!canHaveBody(getResponseCode()) && (message != null || listener != null)) {
-            System.err.println(evt.getMethod() + " " + evt.getPath()
-                    + " attempts to attach a body to " + getResponseCode()
-                    + " which cannot have one: " + message
-                    + " - " + listener);
-//            if (closer != null) {
-//                future.addListener(closer);
-//            }
-//            return;
-        }
-        String msg = getMessage();
-        HttpResponse resp;
-        if (msg != null) {
-            ByteBuf buf = Unpooled.copiedBuffer(msg, CharsetUtil.UTF_8);
-            long size = buf.readableBytes();
-            add(Headers.CONTENT_LENGTH, size);
-            DefaultFullHttpResponse r = new DefaultFullHttpResponse(
-                    HttpVersion.HTTP_1_1, getResponseCode(), buf);
-
-            resp = r;
-        } else {
-            resp = new HackHttpResponse(getResponseCode(), chunked);
-        }
-        for (Entry<?> e : headers) {
-            e.write(resp);
-        }
-//        if (chunked) {
-//            HttpHeaders.setTransferEncodingChunked(resp);
-//        } else {
-//            HttpHeaders.removeTransferEncodingChunked(resp);
-//        }
-        return resp;
-    }
-
     public <T> void add(HeaderValueType<T> decorator, T value) {
         List<Entry<?>> old = new LinkedList<>();
         // XXX set cookie!
@@ -321,6 +286,7 @@ final class ResponseImpl extends Response {
     }
 
     <T extends ResponseWriter> void setWriter(T w, Dependencies deps, Event evt) {
+        setChunked(true);
         Charset charset = deps.getInstance(Charset.class);
         ByteBufAllocator allocator = deps.getInstance(ByteBufAllocator.class);
         ObjectMapper mapper = deps.getInstance(ObjectMapper.class);
@@ -328,6 +294,7 @@ final class ResponseImpl extends Response {
     }
 
     <T extends ResponseWriter> void setWriter(Class<T> w, Dependencies deps, Event evt) {
+        setChunked(true);
         Charset charset = deps.getInstance(Charset.class);
         ByteBufAllocator allocator = deps.getInstance(ByteBufAllocator.class);
         ObjectMapper mapper = deps.getInstance(ObjectMapper.class);
@@ -336,12 +303,10 @@ final class ResponseImpl extends Response {
 
     static class DynResponseWriter extends ResponseWriter {
 
-        private final Class<? extends ResponseWriter> type;
         private final AtomicReference<ResponseWriter> actual = new AtomicReference<>();
         private final Callable<ResponseWriter> resp;
 
         public DynResponseWriter(final Class<? extends ResponseWriter> type, final Dependencies deps) {
-            this.type = type;
             ReentrantScope scope = deps.getInstance(ReentrantScope.class);
             assert scope.inScope();
             resp = scope.wrap(new Callable<ResponseWriter>() {
@@ -462,20 +427,43 @@ final class ResponseImpl extends Response {
         }
     }
 
-    void sendMessage(Event evt, ChannelFuture future, HttpMessage resp, final ChannelFutureListener closer) {
-        if (!future.channel().isOpen()) {
-//            return;
+    public HttpResponse toResponse(Event evt, Charset charset) {
+        if (!canHaveBody(getResponseCode()) && (message != null || listener != null)) {
+            System.err.println(evt.getMethod() + " " + evt.getPath()
+                    + " attempts to attach a body to " + getResponseCode()
+                    + " which cannot have one: " + message
+                    + " - " + listener);
         }
+        String msg = getMessage();
+        HttpResponse resp;
+        if (msg != null) {
+            System.out.println("CREATE FULL RESPONSE FOR MESSAGE " + msg);
+            ByteBuf buf = Unpooled.copiedBuffer(msg, charset);
+            long size = buf.readableBytes();
+            add(Headers.CONTENT_LENGTH, size);
+            DefaultFullHttpResponse r = new DefaultFullHttpResponse(
+                    HttpVersion.HTTP_1_1, getResponseCode(), buf);
 
+            resp = r;
+        } else {
+            resp = new HackHttpResponse(getResponseCode(), chunked);
+        }
+        for (Entry<?> e : headers) {
+            e.write(resp);
+        }
+        return resp;
+    }
+
+    ChannelFuture sendMessage(Event evt, ChannelFuture future, HttpMessage resp) {
+        System.out.println("SEND MESSAGE ka " + evt.isKeepAlive() + " my message " + getMessage());
         if (listener != null) {
-            future.addListener(listener);
-            return;
+            future = future.addListener(listener);
+            return future;
+        } else if (!evt.isKeepAlive() && getMessage() != null) {
+            System.out.println("Attach closer");
+            future = future.addListener(ChannelFutureListener.CLOSE);
         }
-        if (getMessage() == null) {
-            if (closer != null) {
-                future.addListener(closer);
-            }
-        }
+        return future;
     }
 
     @Override

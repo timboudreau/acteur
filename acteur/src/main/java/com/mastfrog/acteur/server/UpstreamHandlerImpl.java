@@ -69,7 +69,7 @@ final class UpstreamHandlerImpl extends ChannelInboundMessageHandlerAdapter<Obje
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-        application.onError(cause);
+        application.internalOnError(cause);
     }
     
     @Override

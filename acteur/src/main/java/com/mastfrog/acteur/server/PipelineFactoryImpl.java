@@ -68,7 +68,7 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-        app.get().onError(cause);
+        app.get().internalOnError(cause);
     }
 
     @Override

@@ -28,7 +28,9 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
 import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.http.DefaultFullHttpRequest;
+import io.netty.util.CharsetUtil;
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import org.joda.time.DateTime;
@@ -54,14 +56,12 @@ public class AppTest {
 
         @Override
         protected void configure() {
+            bind(Charset.class).toInstance(CharsetUtil.UTF_8);
             bind(Application.class).to(App.class);
             ReentrantScope scope = new ReentrantScope();
             bind(ReentrantScope.class).toInstance(scope);
             ExecutorService exe = Executors.newSingleThreadExecutor();
             bind(ExecutorService.class).annotatedWith(Names.named(Server.BACKGROUND_THREAD_POOL_NAME)).toInstance(exe);
-            bind(ExecutorService.class).annotatedWith(Names.named(Server.WORKER_THREAD_POOL_NAME)).toInstance(exe);
-            bind(ExecutorService.class).annotatedWith(Names.named(Server.SCOPED_WORKER_THREAD_POOL_NAME)).toInstance(scope.wrapThreadPool(exe));
-
             bind(RequestID.class).toInstance(new RequestID());
 
             scope.bindTypes(binder(), Event.class,

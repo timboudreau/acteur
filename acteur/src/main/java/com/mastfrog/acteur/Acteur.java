@@ -25,6 +25,8 @@ package com.mastfrog.acteur;
 
 import com.mastfrog.acteur.util.HeaderValueType;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.net.MediaType;
+import com.mastfrog.acteur.util.Headers;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.guicy.scope.ReentrantScope;
 import com.mastfrog.util.Checks;
@@ -39,6 +41,7 @@ import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -446,6 +449,7 @@ public abstract class Acteur {
 
     static Acteur wrap(final Class<? extends Acteur> type, final Dependencies deps) {
         Checks.notNull("type", type);
+        final Charset charset = deps.getInstance(Charset.class);
         return new Acteur() {
             Acteur acteur;
 
@@ -470,7 +474,8 @@ public abstract class Acteur {
                 if (!Dependencies.isProductionMode(deps.getInstance(Settings.class))) {
                     ByteArrayOutputStream out = new ByteArrayOutputStream();
                     t.printStackTrace(new PrintStream(out));
-                    this.setMessage(new String(out.toByteArray(), "UTF-8"));
+                    add(Headers.CONTENT_TYPE, MediaType.PLAIN_TEXT_UTF_8.withCharset(charset));
+                    this.setMessage(new String(out.toByteArray(), charset));
                 }
                 this.setResponseCode(HttpResponseStatus.INTERNAL_SERVER_ERROR);
             }
@@ -484,7 +489,7 @@ public abstract class Acteur {
                     } catch (Exception e) {
                         try {
                             onError(e);
-                            deps.getInstance(Application.class).onError(e);
+                            deps.getInstance(Application.class).internalOnError(e);
                         } catch (UnsupportedEncodingException ex) {
                             Exceptions.chuck(ex);
                         }

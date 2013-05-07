@@ -48,10 +48,10 @@ import io.netty.handler.codec.http.DefaultFullHttpResponse;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpVersion;
-import io.netty.util.CharsetUtil;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -87,6 +87,10 @@ public class Application implements Iterable<Page> {
     private Exception stackTrace = new Exception();
     @Inject
     private Pages runner;
+    @Inject(optional = true)
+    private ErrorHandler errorHandler;
+    @Inject
+    private Charset charset;
 
     @Inject(optional = true)
     @Named("acteur.debug")
@@ -200,6 +204,7 @@ public class Application implements Iterable<Page> {
         }
         return response;
     }
+    
 
     /**
      * Create a 404 response
@@ -210,10 +215,10 @@ public class Application implements Iterable<Page> {
     protected HttpResponse createNotFoundResponse(Event event) {
         ByteBuf buf = Unpooled.copiedBuffer("<html><head>"
                 + "<title>Not Found</title></head><body><h1>Not Found</h1>"
-                + event.getPath() + " was not found\n<body></html>\n", CharsetUtil.UTF_8);
+                + event.getPath() + " was not found\n<body></html>\n", charset);
         DefaultFullHttpResponse resp = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1,
                 HttpResponseStatus.NOT_FOUND, buf);
-        Headers.write(Headers.CONTENT_TYPE, MediaType.HTML_UTF_8, resp);
+        Headers.write(Headers.CONTENT_TYPE, MediaType.HTML_UTF_8.withCharset(charset), resp);
         Headers.write(Headers.CONTENT_LENGTH, (long) buf.writerIndex(), resp);
         Headers.write(Headers.CONTENT_LANGUAGE, Locale.ENGLISH, resp);
         Headers.write(Headers.CACHE_CONTROL, new CacheControl(CacheControlTypes.no_cache), resp);
@@ -240,6 +245,16 @@ public class Application implements Iterable<Page> {
      *
      * @param err
      */
+    public final void internalOnError(Throwable err) {
+        try {
+            if (errorHandler != null) {
+                errorHandler.onError(err);
+            }
+        } finally {
+            onError(err);
+        }
+    }
+
     public void onError(Throwable err) {
         err.printStackTrace();
     }
@@ -265,7 +280,7 @@ public class Application implements Iterable<Page> {
                 try {
                     return runner.onEvent(id, event, channel);
                 } catch (Exception e) {
-                    onError(e);
+                    internalOnError(e);
                 }
                 return null;
             }
@@ -303,7 +318,7 @@ public class Application implements Iterable<Page> {
                     result.setApplication(Application.this);
                     return result;
                 } catch (Exception e) {
-                    Application.this.onError(e);
+                    Application.this.internalOnError(e);
                     return Exceptions.chuck(e);
                 }
             }

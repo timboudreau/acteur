@@ -415,7 +415,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
 
         @Override
         public Thread newThread(Runnable r) {
-            Thread t = new Thread(tg, r);
+            Thread t = new Thread(r);
             if ("event".equals(tg.getName())) {
                 t.setPriority(Thread.MAX_PRIORITY);
             } else {
@@ -429,7 +429,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
 
         @Override
         public void uncaughtException(Thread on, Throwable error) {
-            app.get().onError(error);
+            app.get().internalOnError(error);
         }
 
         public String toString() {

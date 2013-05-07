@@ -23,12 +23,7 @@
  */
 package com.mastfrog.acteur;
 
-import com.mastfrog.acteur.ActeurFactory;
-import com.mastfrog.acteur.Page;
-import com.mastfrog.acteur.Acteur;
-import com.mastfrog.acteur.Event;
 import com.mastfrog.acteur.util.Headers;
-import com.mastfrog.acteur.Application;
 import com.google.common.net.MediaType;
 import com.google.inject.Inject;
 import com.mastfrog.url.Path;
@@ -41,7 +36,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelFutureListener;
+import static io.netty.channel.ChannelFutureListener.CLOSE;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.util.CharsetUtil;
 import java.io.ByteArrayOutputStream;
@@ -139,7 +134,7 @@ public abstract class ClasspathResourcePage extends Page implements ContentLengt
         WriteBodyActeur(Event event, Page page) throws IOException {
             byte[] content = ((ClasspathResourcePage) page).getContent(event.getPath());
             setState(new RespondWith(HttpResponseStatus.OK));
-            setResponseBodyWriter(new BodyWriter(content, event.isKeepAlive()));
+            setResponseWriter(new BodyWriter(content, event.isKeepAlive()));
         }
     }
 
@@ -199,7 +194,7 @@ public abstract class ClasspathResourcePage extends Page implements ContentLengt
         }
     }
 
-    static class BodyWriter implements ChannelFutureListener {
+    static class BodyWriter extends ResponseWriter {
 
         private final byte[] bytes;
         private volatile int offset = 0;
@@ -211,22 +206,14 @@ public abstract class ClasspathResourcePage extends Page implements ContentLengt
             bytes = content;
             this.keepAlive = keepAlive;
         }
-
         @Override
-        public void operationComplete(ChannelFuture future) throws Exception {
-            Channel ch = future.channel();
+        public Status write(Event evt, Output out, int iteration) throws Exception {
             int old = offset;
             int remaining = Math.min(chunksize, bytes.length - offset);
             offset += remaining;
             ByteBuf buf = Unpooled.wrappedBuffer(bytes, old, remaining);
-            future = ch.write(buf);
-            if (offset < bytes.length) {
-                future.addListener(this);
-            } else {
-                if (!keepAlive) {
-                    future.addListener(CLOSE);
-                }
-            }
+            out.write(buf);
+            return offset < bytes.length ? Status.NOT_DONE : Status.DONE;
         }
     }
 
@@ -362,6 +349,9 @@ public abstract class ClasspathResourcePage extends Page implements ContentLengt
         String etag = m.get(path);
         if (etag == null) {
             InputStream in = getStream(path);
+            if (in == null) {
+                return null;
+            }
             HashingInputStream hin = HashingInputStream.sha1(in);
             try {
                 int byteCount = Streams.copy(hin, Streams.nullOutputStream());

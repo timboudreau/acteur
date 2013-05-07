@@ -36,6 +36,9 @@ import io.netty.handler.codec.http.HttpResponseStatus;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -53,10 +56,12 @@ import org.joda.time.DateTime;
 public class ActeurFactory {
 
     private final Dependencies deps;
+    private final Charset charset;
 
     @Inject
-    ActeurFactory(Dependencies deps) {
+    ActeurFactory(Dependencies deps, Charset charset) {
         this.deps = deps;
+        this.charset = charset;
     }
 
     /**
@@ -104,7 +109,7 @@ public class ActeurFactory {
                 boolean hasMethod = Arrays.asList(methods).contains(event.getMethod());
                 add(Headers.ALLOW, methods);
                 if (notSupp && !hasMethod) {
-                    add(Headers.CONTENT_TYPE, MediaType.PLAIN_TEXT_UTF_8);
+                    add(Headers.CONTENT_TYPE, MediaType.PLAIN_TEXT_UTF_8.withCharset(charset));
                     return new RespondWith(HttpResponseStatus.METHOD_NOT_ALLOWED, "405 Method "
                             + event.getMethod() + " not allowed.  Accepted methods are "
                             + Headers.ALLOW.toString(methods) + " " + typeName + "\n");
@@ -185,7 +190,43 @@ public class ActeurFactory {
                 into.put("Maximum Path Length", length);
             }
         };
+    }
+    
+    public Acteur redirect(String location) throws URISyntaxException {
+        return redirect(location, HttpResponseStatus.SEE_OTHER);
+    }
+    
+    public Acteur redirect(String location, HttpResponseStatus status) throws URISyntaxException {
+        Checks.notNull("location", location);
+        Checks.notNull("status", status);
+        switch(status.code()) {
+            case 300 :
+            case 301 :
+            case 302 :
+            case 303 :
+            case 305 :
+            case 307 :
+                break;
+            default :
+                throw new IllegalArgumentException(status + " is not a redirect");
+        }
+        return new Redirect(location, status);
+    }
+    
+    private static final class Redirect extends Acteur {
+        private final URI location;
+        private final HttpResponseStatus status;
 
+        private Redirect(String location, HttpResponseStatus status) throws URISyntaxException {
+            this.location = new URI(location);
+            this.status = status;
+        }
+        
+        public State getState() {
+            add(Headers.LOCATION, location);
+            return new RespondWith(status, "Redirecting to " + location);
+        }
+        
     }
 
     /**
@@ -289,7 +330,7 @@ public class ActeurFactory {
                 for (String nm : names) {
                     String val = event.getParameter(nm);
                     if (val == null) {
-                        add(Headers.CONTENT_TYPE, MediaType.PLAIN_TEXT_UTF_8);
+                        add(Headers.CONTENT_TYPE, MediaType.PLAIN_TEXT_UTF_8.withCharset(charset));
                         return new RespondWith(HttpResponseStatus.BAD_REQUEST, "Missing URL parameter '" + nm + "'\n");
                     }
                 }
@@ -322,7 +363,7 @@ public class ActeurFactory {
                         if (first == null) {
                             first = nm;
                         } else {
-                            add(Headers.CONTENT_TYPE, MediaType.PLAIN_TEXT_UTF_8);
+                            add(Headers.CONTENT_TYPE, MediaType.PLAIN_TEXT_UTF_8.withCharset(charset));
                             return new Acteur.RespondWith(HttpResponseStatus.BAD_REQUEST, 
                                     "Parameters may not contain both '" 
                                     + first + "' and '" + nm + "'\n");

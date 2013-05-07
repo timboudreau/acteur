@@ -198,13 +198,7 @@ final class ServerImpl implements Server {
 
     @Override
     public void shutdown(boolean immediately) throws InterruptedException {
-        if (immediately) {
-            if (events != null) {
-                events.shutdownNow();
-            }
-        } else {
-            shutdown(false, 10, TimeUnit.SECONDS, true);
-        }
+        shutdown(false, 10, TimeUnit.SECONDS, true);
         await();
     }
 

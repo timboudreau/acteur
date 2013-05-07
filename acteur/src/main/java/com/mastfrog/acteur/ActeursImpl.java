@@ -179,7 +179,9 @@ public class ActeursImpl implements Acteurs {
                             response.add(Headers.stringHeader("X-Acteur"), state.getActeur().getClass().getName());
                             response.add(Headers.stringHeader("X-Page"), state.getLockedPage().getClass().getName());
                         }
-                        receiver.receive(state.getActeur(), state, response);
+                        try (AutoCloseable cl = Page.set(state.getLockedPage())) {
+                            receiver.receive(state.getActeur(), state, response);
+                        }
                     } catch (Exception ex) {
                         receiver.uncaughtException(Thread.currentThread(), ex);
                     }
@@ -251,7 +253,7 @@ public class ActeursImpl implements Acteurs {
                 State state = Acteur.error(page, e).getState();
                 lastState.set(state);
                 response.merge(acteur.getResponse());
-                page.getApplication().onError(e);
+                page.getApplication().internalOnError(e);
                 throw e;
             } finally {
                 // Clear the current page ThreadLocal

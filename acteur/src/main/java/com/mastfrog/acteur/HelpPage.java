@@ -32,8 +32,8 @@ import com.mastfrog.settings.Settings;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
-import io.netty.util.CharsetUtil;
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.util.Collections;
 import java.util.Map;
 import java.util.logging.Level;
@@ -60,13 +60,15 @@ final class HelpPage extends Page {
         private final Application app;
         private final boolean html;
         private final ObjectMapper mapper;
+        private final Charset charset;
 
         @Inject
-        HelpActeur(Application app, Event evt, ObjectMapper mapper) {
+        HelpActeur(Application app, Event evt, ObjectMapper mapper, Charset charset) {
             this.app = app;
+            this.charset = charset;
             this.html = "true".equals(evt.getParameter("html"));
             if (html) {
-                add(Headers.CONTENT_TYPE, MediaType.HTML_UTF_8);
+                add(Headers.CONTENT_TYPE, MediaType.HTML_UTF_8.withCharset(charset));
             }
             setResponseBodyWriter(this);
             this.mapper = mapper;
@@ -124,7 +126,7 @@ final class HelpPage extends Page {
 
                 writeOut(null, help, sb);
                 sb.append("</body></html>\n");
-                future = future.channel().write(Unpooled.copiedBuffer(sb, CharsetUtil.UTF_8));
+                future = future.channel().write(Unpooled.copiedBuffer(sb, charset));
                 future.addListener(CLOSE);
             } else {
                 ObjectMapper om = app.getDependencies().getInstance(ObjectMapper.class);
