@@ -13,12 +13,34 @@
         <dependency>
             <groupId>com.mastfrog</groupId>
             <artifactId>acteur</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.mastfrog</groupId>
+            <artifactId>giulius-tests</artifactId>
+            <scope>test</scope>
+        </dependency>        
+        <dependency>
+            <groupId>com.mastfrog</groupId>
+            <artifactId>netty-http-client</artifactId>
+            <scope>test</scope>
+        </dependency>        
+        <dependency>
+            <groupId>com.mastfrog</groupId>
+            <artifactId>acteur</artifactId>
             <version>${project.version}</version>
+            <type>test-jar</type>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <artifactId>netty-buffer</artifactId>
+            <groupId>io.netty</groupId>
+            <type>jar</type>
+            <version>4.0.0.CR2-SNAPSHOT</version>
         </dependency>
     </dependencies>
 </project>

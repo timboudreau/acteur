@@ -1,4 +1,4 @@
-/* 
+/*
  * The MIT License
  *
  * Copyright 2013 Tim Boudreau.
@@ -114,7 +114,7 @@ public final class ClasspathResources implements StaticResources {
 
         public void decoratePage(Page page, Event evt) {
             ResponseHeaders h = page.getReponseHeaders();
-            page.getReponseHeaders().addVaryHeader(Headers.CONTENT_ENCODING);
+            page.getReponseHeaders().addVaryHeader(Headers.ACCEPT_ENCODING);
             page.getReponseHeaders().addCacheControl(CacheControlTypes.Public);
             page.getReponseHeaders().addCacheControl(CacheControlTypes.max_age, Duration.standardHours(2));
             page.getReponseHeaders().addCacheControl(CacheControlTypes.must_revalidate);

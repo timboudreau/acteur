@@ -28,6 +28,8 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.cache.Weigher;
 import com.google.common.net.MediaType;
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import com.mastfrog.acteur.Event;
 import com.mastfrog.acteur.util.Headers;
 import com.mastfrog.acteur.Page;
@@ -55,19 +57,26 @@ import org.joda.time.Duration;
  *
  * @author Tim Boudreau
  */
+@Singleton
 public class FileResources implements StaticResources {
+
+    public static final String SETTINGS_KEY_MAX_FILE_LENGTH = "max.file.length";
 
     private final File dir;
     private final MimeTypes types;
     private final LoadingCache<String, FileResource> cache;
 
+    @Inject
     FileResources(File dir, MimeTypes types, Settings settings) {
+        System.out.println("FILE RESOURCES OVER " + dir);
         this.dir = dir;
         this.types = types;
+        long maxFileLength = settings.getLong(SETTINGS_KEY_MAX_FILE_LENGTH, 1024 * 1024 * 12);
         long expiry = settings.getLong("file.resources.expire.minutes", 2);
         Loader loader = new Loader();
         cache = CacheBuilder.newBuilder()
                 .weigher(loader)
+                .maximumWeight(maxFileLength)
                 .softValues()
                 .expireAfterAccess(expiry, TimeUnit.MINUTES)
                 .concurrencyLevel(3)
@@ -108,14 +117,23 @@ public class FileResources implements StaticResources {
     @Override
     public String[] getPatterns() {
         List<String> result = new ArrayList<>();
+        scan(dir, "", result);
+        System.out.println("PATTERNS: " + result);
+        return result.toArray(new String[0]);
+    }
+
+    private void scan(File dir, String path, List<String> result) {
         for (File f : dir.listFiles()) {
             if (f.isFile() && f.canRead()) {
-                String nm = "^" + f.getName() + "$";
-                nm = nm.replace("\\.", "\\\\.");
-                result.add(nm);
+//                String nm = "^" + f.getName() + "$";
+//                nm = nm.replace("\\.", "\\\\.");
+//                result.add(nm);
+                result.add(path + (path.isEmpty() ? "" : "/") + f.getName());
+            } else if (f.isDirectory()) {
+                scan(f, path + (path.isEmpty() ? "" : "/") + f.getName(), result);
             }
         }
-        return result.toArray(new String[0]);
+
     }
 
     private class FileResource implements Resource, ContentLengthProvider {
@@ -137,11 +155,12 @@ public class FileResources implements StaticResources {
 
         @Override
         public void decoratePage(Page page, Event evt) {
-            page.getReponseHeaders().addVaryHeader(Headers.CONTENT_ENCODING);
+            page.getReponseHeaders().addVaryHeader(Headers.ACCEPT_ENCODING);
             page.getReponseHeaders().addCacheControl(CacheControlTypes.Public);
             page.getReponseHeaders().addCacheControl(CacheControlTypes.max_age, Duration.standardHours(2));
             page.getReponseHeaders().addCacheControl(CacheControlTypes.must_revalidate);
             page.getReponseHeaders().setLastModified(lastModified());
+            System.out.println("Decorate page LM " + lastModified() + " for " + this);
             page.getReponseHeaders().setEtag(etag);
             if (evt.getMethod() != Method.HEAD) {
                 page.getReponseHeaders().setContentLengthProvider(this);

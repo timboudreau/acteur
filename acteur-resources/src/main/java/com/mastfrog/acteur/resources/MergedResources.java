@@ -23,6 +23,7 @@
  */
 package com.mastfrog.acteur.resources;
 
+import com.google.inject.Inject;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -37,6 +38,7 @@ public class MergedResources implements StaticResources {
     private final StaticResources[] resources;
     private boolean warned;
 
+    @Inject
     public MergedResources(List<StaticResources> all) {
         resources = all.toArray(new StaticResources[0]);
     }

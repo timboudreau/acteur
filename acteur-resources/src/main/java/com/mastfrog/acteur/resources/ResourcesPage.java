@@ -33,6 +33,7 @@ import com.mastfrog.acteur.Page;
 import com.mastfrog.acteur.util.Method;
 import com.mastfrog.acteur.resources.StaticResources.Resource;
 import io.netty.handler.codec.http.HttpResponseStatus;
+import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import org.joda.time.DateTime;
 
@@ -43,27 +44,24 @@ import org.joda.time.DateTime;
 public class ResourcesPage extends Page {
 
     @Inject
-    public ResourcesPage(Event evt, ActeurFactory af, StaticResources r) {
+    public ResourcesPage(ActeurFactory af, StaticResources r) {
         add(af.matchMethods(Method.GET, Method.HEAD));
 //        add(af.matchPath(r.getPatterns()));
         add(ResourceNameMatcher.class);
         add(ResourceFinder.class);
         add(af.sendNotModifiedIfIfModifiedSinceHeaderMatches());
         add(af.sendNotModifiedIfETagHeaderMatches());
-        if (evt.getMethod() == Method.HEAD) {
-            add(af.respondWith(HttpResponseStatus.OK));
-        } else {
-            add(BytesWriter.class);
-        }
+        add(BytesWriter.class);
     }
 
     private static final class ResourceNameMatcher extends Acteur {
 
         @Inject
-        ResourceNameMatcher(Event evt, StaticResources res) {
-            String nm = evt.getPath().getLastElement().toString();
-            nm = URLDecoder.decode(nm);
+        ResourceNameMatcher(Event evt, StaticResources res) throws UnsupportedEncodingException {
+            String nm = evt.getPath().toString();
+            nm = URLDecoder.decode(nm, "UTF-8");
             for (String pat : res.getPatterns()) {
+                System.out.println("COMPARE " + nm + " and " + pat);
                 if (nm.equals(pat)) {
                     setState(new ConsumedState());
                     return;
@@ -99,8 +97,10 @@ public class ResourcesPage extends Page {
 
         @Inject
         BytesWriter(Event evt, Resource r) {
-            setResponseWriter(r.sender(evt));
             setState(new RespondWith(HttpResponseStatus.OK));
+            if (evt.getMethod() != Method.HEAD) {
+                setResponseWriter(r.sender(evt));
+            }
         }
     }
 }

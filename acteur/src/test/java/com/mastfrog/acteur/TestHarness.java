@@ -143,13 +143,9 @@ public class TestHarness implements ErrorHandler {
 
         @Override
         public void run() {
-            System.out.println("Shutting down client");
             client.shutdown();
-            System.out.println("client shutdown");
             try {
-                System.out.println("shutting down server");
                 server.shutdown(true);
-                System.out.println("server shut down");
             } catch (Exception ex) {
                 Exceptions.printStackTrace(ex);
             }
@@ -398,9 +394,17 @@ public class TestHarness implements ErrorHandler {
             }
         }
 
+        private boolean log;
+
+        public void log() {
+            log = true;
+        }
+
         @Override
         public void receive(State<?> state) {
-            System.out.println(url.getPathAndQuery() + " - " + state.name());
+            if (log) {
+                System.out.println(url.getPathAndQuery() + " - " + state.name());
+            }
             states.add(state.stateType());
             latches.get(state.stateType()).countDown();
             boolean updateState = true;
@@ -414,7 +418,9 @@ public class TestHarness implements ErrorHandler {
                     break;
                 case SendRequest:
                     State.SendRequest sr = (State.SendRequest) state;
-                    System.out.println("SENT REQUEST " + headersToString(sr.get().headers()));
+                    if (log) {
+                        System.out.println("SENT REQUEST " + headersToString(sr.get().headers()));
+                    }
                     break;
                 case Closed:
                     for (CountDownLatch latch : latches.values()) {
@@ -450,7 +456,9 @@ public class TestHarness implements ErrorHandler {
         }
 
         void await(CountDownLatch latch) throws InterruptedException {
-            System.out.println("WAIT ON " + latch);
+            if (log) {
+                System.out.println("WAIT ON " + latch);
+            }
             latch.await(timeout.getMillis(), TimeUnit.MILLISECONDS);
         }
 
@@ -695,7 +703,6 @@ public class TestHarness implements ErrorHandler {
             if (status == null) {
                 return;
             }
-            System.out.println("CURR STATUS " + this.status + " NEW " + status);
             HttpResponseStatus st = getStatus();
             if (st != null) {
                 if (status.code() > st.code()) {
@@ -752,7 +759,7 @@ public class TestHarness implements ErrorHandler {
             if (content == null) {
                 return;
             }
-            if (this.content.get() != null) {
+            if (this.content.get() != null && log) {
 //                throw new Error("Replace content? Old: " + bufToString(this.content.get()) 
 //                        + " NEW " + bufToString(content));
                 System.out.println("Replacing old content: " + bufToString(this.content.get()));
@@ -829,15 +836,6 @@ public class TestHarness implements ErrorHandler {
             } finally {
                 Thread.currentThread().setName(old);
             }
-        }
-
-        @Override
-        public void countDown() {
-            System.out.println("COUNT DOWN " + this);
-            if (name.equals("status")) {
-                Thread.dumpStack();
-            }
-            super.countDown(); //To change body of generated methods, choose Tools | Templates.
         }
 
         public String toString() {

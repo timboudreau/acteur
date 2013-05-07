@@ -50,7 +50,7 @@ public class MimeTypes {
         this.charset = defaultCharset;
         this.policy = policy;
         // XXX use Guava's MediaType
-        add("js", MediaType.JAVASCRIPT_UTF_8, true);
+        add("js", MediaType.JAVASCRIPT_UTF_8.withCharset(charset), true);
         add("gif", MediaType.GIF);
         add("png", MediaType.PNG);
         add("jpg", MediaType.JPEG);
@@ -58,15 +58,15 @@ public class MimeTypes {
         add("tif", MediaType.TIFF);
         add("tiff", MediaType.TIFF);
         add("ico", MediaType.ICO);
-        add("xml", MediaType.XML_UTF_8);
-        add("xhtml", MediaType.XHTML_UTF_8);
+        add("xml", MediaType.XML_UTF_8.withCharset(charset));
+        add("xhtml", MediaType.XHTML_UTF_8.withCharset(charset));
         add("jpeg", MediaType.JPEG);
-        add("json", MediaType.JSON_UTF_8, true);
-        add("txt", MediaType.PLAIN_TEXT_UTF_8, true);
-        add("template", MediaType.PLAIN_TEXT_UTF_8, true);
+        add("json", MediaType.JSON_UTF_8.withCharset(charset), true);
+        add("txt", MediaType.PLAIN_TEXT_UTF_8.withCharset(charset), true);
+        add("template", MediaType.PLAIN_TEXT_UTF_8.withCharset(charset), true);
         add("pdf", MediaType.PDF);
-        add("html", MediaType.HTML_UTF_8, true);
-        add("css", MediaType.CSS_UTF_8, true);
+        add("html", MediaType.HTML_UTF_8.withCharset(charset), true);
+        add("css", MediaType.CSS_UTF_8.withCharset(charset), true);
         add("swf", MediaType.SHOCKWAVE_FLASH);
         add("woff", MediaType.create("application", "x-font-woff"));
     }
