@@ -31,8 +31,6 @@ import com.mastfrog.acteur.Event;
 import com.mastfrog.acteur.util.Headers;
 import com.mastfrog.acteur.Page;
 import com.mastfrog.acteur.util.Method;
-import com.mastfrog.acteur.resources.ExpiresPolicy;
-import com.mastfrog.acteur.resources.StaticResources;
 import com.mastfrog.acteur.resources.StaticResources.Resource;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import java.net.URLDecoder;
@@ -101,7 +99,7 @@ public class ResourcesPage extends Page {
 
         @Inject
         BytesWriter(Event evt, Resource r) {
-            setResponseBodyWriter(r.sender(evt));
+            setResponseWriter(r.sender(evt));
             setState(new RespondWith(HttpResponseStatus.OK));
         }
     }

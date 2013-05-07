@@ -27,7 +27,7 @@ import com.google.common.net.MediaType;
 import com.google.inject.ImplementedBy;
 import com.mastfrog.acteur.Event;
 import com.mastfrog.acteur.Page;
-import io.netty.channel.ChannelFutureListener;
+import com.mastfrog.acteur.ResponseWriter;
 import org.joda.time.DateTime;
 
 /**
@@ -49,7 +49,7 @@ public interface StaticResources {
 
         void decoratePage(Page page, Event evt);
 
-        ChannelFutureListener sender(Event evt);
+        ResponseWriter sender(Event evt);
 
         String getEtag();
 

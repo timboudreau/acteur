@@ -104,7 +104,7 @@ public class MimeTypes {
             ext = fileName;
         }
         MediaType result = m.get(ext.toLowerCase());
-        System.out.println("Mime type for " + fileName + " is " + result);
+//        System.out.println("Mime type for " + fileName + " is " + result);
         return result;
     }
 }

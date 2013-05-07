@@ -32,13 +32,13 @@ import com.mastfrog.acteur.Event;
 import com.mastfrog.acteur.util.Headers;
 import com.mastfrog.acteur.Page;
 import com.mastfrog.acteur.ResponseHeaders.ContentLengthProvider;
+import com.mastfrog.acteur.ResponseWriter;
 import com.mastfrog.acteur.util.CacheControlTypes;
 import com.mastfrog.acteur.util.Method;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.util.Exceptions;
 import com.mastfrog.util.Streams;
 import com.mastfrog.util.streams.HashingOutputStream;
-import io.netty.channel.ChannelFutureListener;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -152,7 +152,7 @@ public class FileResources implements StaticResources {
             }
         }
 
-        public ChannelFutureListener sender(Event evt) {
+        public ResponseWriter sender(Event evt) {
             return new ClasspathResources.BytesSender(evt, bytes);
         }
 

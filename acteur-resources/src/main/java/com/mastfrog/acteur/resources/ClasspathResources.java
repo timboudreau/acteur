@@ -32,6 +32,7 @@ import com.mastfrog.acteur.util.Headers;
 import com.mastfrog.acteur.Page;
 import com.mastfrog.acteur.ResponseHeaders;
 import com.mastfrog.acteur.ResponseHeaders.ContentLengthProvider;
+import com.mastfrog.acteur.ResponseWriter;
 import com.mastfrog.acteur.util.CacheControlTypes;
 import com.mastfrog.acteur.util.Method;
 import com.mastfrog.util.Streams;
@@ -39,6 +40,7 @@ import com.mastfrog.util.streams.HashingOutputStream;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
+import static io.netty.channel.ChannelFutureListener.CLOSE;
 import java.io.ByteArrayOutputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -76,7 +78,7 @@ public final class ClasspathResources implements StaticResources {
 //            pat = pat.replace(".", "\\.");
             l.add(pat);
         }
-        System.out.println("PATTERNS: "+ l);
+//        System.out.println("PATTERNS: "+ l);
         patterns = l.toArray(new String[0]);
     }
 
@@ -127,7 +129,8 @@ public final class ClasspathResources implements StaticResources {
             }
         }
 
-        public ChannelFutureListener sender(Event evt) {
+        @Override
+        public ResponseWriter sender(Event evt) {
             return new BytesSender(evt, bytes);
         }
 
@@ -153,7 +156,7 @@ public final class ClasspathResources implements StaticResources {
         }
     }
 
-    static final class BytesSender implements ChannelFutureListener {
+    static final class BytesSender extends ResponseWriter {
 
         private final Event evt;
         private final byte[] bytes;
@@ -163,11 +166,10 @@ public final class ClasspathResources implements StaticResources {
             this.bytes = bytes;
         }
 
-        public void operationComplete(ChannelFuture future) throws Exception {
-            future = future.channel().write(Unpooled.wrappedBuffer(bytes, 0, bytes.length));
-            if (!evt.isKeepAlive()) {
-                future.addListener(CLOSE);
-            }
+        @Override
+        public Status write(Event evt, Output out) throws Exception {
+            out.write(bytes);
+            return Status.DONE;
         }
     }
 }
