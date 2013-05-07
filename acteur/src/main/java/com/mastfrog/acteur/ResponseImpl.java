@@ -366,7 +366,6 @@ final class ResponseImpl extends Response {
 
         @Override
         public Output write(ByteBuf buf) throws IOException {
-            System.out.println("Write a byte buf " + buf.readableBytes());
             assert future != null;
             if (chunked) {
                 future = future.channel().write(new DefaultHttpContent(buf));
@@ -379,19 +378,14 @@ final class ResponseImpl extends Response {
         @Override
         public void operationComplete(ChannelFuture future) throws Exception {
             this.future = future;
-            System.out.println("Call ResponseWriter " + writer);
             ResponseWriter.Status status = writer.write(evt, this, callCount++);
-            System.out.println("Status is " + status);
             if (status.isCallback()) {
                 this.future = this.future.addListener(this);
             } else if (status == Status.DONE) {
-                System.out.println("Close the channel");
                 if (chunked) {
-                    System.out.println("send last http content");
                     this.future = this.future.channel().write(LastHttpContent.EMPTY_LAST_CONTENT);
                 }
                 if (shouldClose) {
-                    System.out.println("add close listener");
                     this.future = this.future.addListener(CLOSE);
                 }
             }
@@ -437,7 +431,6 @@ final class ResponseImpl extends Response {
         String msg = getMessage();
         HttpResponse resp;
         if (msg != null) {
-            System.out.println("CREATE FULL RESPONSE FOR MESSAGE " + msg);
             ByteBuf buf = Unpooled.copiedBuffer(msg, charset);
             long size = buf.readableBytes();
             add(Headers.CONTENT_LENGTH, size);
@@ -455,12 +448,10 @@ final class ResponseImpl extends Response {
     }
 
     ChannelFuture sendMessage(Event evt, ChannelFuture future, HttpMessage resp) {
-        System.out.println("SEND MESSAGE ka " + evt.isKeepAlive() + " my message " + getMessage());
         if (listener != null) {
             future = future.addListener(listener);
             return future;
-        } else if (!evt.isKeepAlive() && getMessage() != null) {
-            System.out.println("Attach closer");
+        } else if (!evt.isKeepAlive()) {
             future = future.addListener(ChannelFutureListener.CLOSE);
         }
         return future;

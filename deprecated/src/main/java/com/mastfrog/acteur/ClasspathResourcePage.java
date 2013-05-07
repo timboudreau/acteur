@@ -156,7 +156,7 @@ public abstract class ClasspathResourcePage extends Page implements ContentLengt
                 }
                 setState(new ConsumedState());
             } else {
-                setState(new RespondWith(HttpResponseStatus.NOT_FOUND));
+                setState(new RespondWith(HttpResponseStatus.NOT_FOUND, "No such page " + event.getPath()));
             }
         }
     }

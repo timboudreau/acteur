@@ -6,14 +6,12 @@ import com.mastfrog.acteur.Acteur.RespondWith;
 import com.mastfrog.acteur.server.ServerModule;
 import com.mastfrog.acteur.util.Method;
 import io.netty.buffer.Unpooled;
-import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import static io.netty.handler.codec.http.HttpResponseStatus.OK;
 import io.netty.util.CharsetUtil;
 import java.io.IOException;
-import java.util.concurrent.CountDownLatch;
 import org.openide.util.Exceptions;
 
 /**
@@ -27,6 +25,7 @@ public class CompApp extends Application {
         add(Unchunked.class);
         add(Echo.class);
         add(DeferredOutput.class);
+        add(NoContentPage.class);
     }
 
     @Override
@@ -222,6 +221,22 @@ public class CompApp extends Application {
                         return Status.DONE;
                     }
                 }
+            }
+        }
+    }
+    
+    public static class NoContentPage extends Page {
+        @Inject
+        NoContentPage(ActeurFactory af) {
+            add(af.matchMethods(Method.GET));
+            add(af.matchPath("^nothing$"));
+            add(NoActeur.class);
+        }
+        
+        static class NoActeur extends Acteur {
+            @Inject
+            NoActeur() {
+                setState(new RespondWith(HttpResponseStatus.PAYMENT_REQUIRED));
             }
         }
     }

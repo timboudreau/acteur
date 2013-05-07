@@ -1,9 +1,9 @@
 package com.mastfrog.acteur;
 
-import com.google.common.net.MediaType;
 import static com.google.common.net.MediaType.PLAIN_TEXT_UTF_8;
 import com.mastfrog.giulius.tests.GuiceRunner;
 import com.mastfrog.giulius.tests.TestWith;
+import static com.mastfrog.netty.http.client.StateType.Closed;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import static io.netty.handler.codec.http.HttpResponseStatus.OK;
 import org.joda.time.Duration;
@@ -46,6 +46,13 @@ public class Comprehensive {
                 .throwIfError()
                 .assertContent("I guess it's okay now")
                 .assertStatus(OK);
+        
+        harness.get("nothing").setTimeout(Duration.standardSeconds(39)).go()
+                .throwIfError()
+                .await()
+                .assertStatus(HttpResponseStatus.PAYMENT_REQUIRED)
+                .assertStateSeen(Closed);
+                
     }
 
     private String iter(String msg, int count) {

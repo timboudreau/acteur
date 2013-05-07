@@ -381,7 +381,8 @@ public class TestHarness implements ErrorHandler {
             try {
                 Thread.sleep(timeout.getMillis());
                 if (!states.contains(StateType.Closed)) {
-                    System.out.println("Cancelling request for timeout " + timeout);
+                    System.out.println("Cancelling request for timeout " 
+                            + timeout + " " + url.getPathAndQuery());
                     if (future != null) {
                         future.cancel();
                     }
