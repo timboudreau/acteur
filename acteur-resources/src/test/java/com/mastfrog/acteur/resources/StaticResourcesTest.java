@@ -30,7 +30,7 @@ public class StaticResourcesTest {
 
     @Test
     public void test(TestHarness har, StaticResources resources) throws Throwable {
-        DateTime helloLastModified = har.get("hello.txt").go()
+        DateTime helloLastModified = har.get("static/hello.txt").go()
                 .assertStateSeen(Closed)
                 .assertHasContent()
                 .assertStatus(OK)
@@ -39,7 +39,7 @@ public class StaticResourcesTest {
                 .assertContent(HELLO_CONTENT)
                 .getHeader(Headers.LAST_MODIFIED);
 
-        DateTime aLastModified = har.get("another.txt").go()
+        DateTime aLastModified = har.get("static/another.txt").go()
                 .assertStateSeen(Closed)
                 .assertStatus(OK)
                 .assertHasContent()
@@ -51,12 +51,12 @@ public class StaticResourcesTest {
         assertNotNull(helloLastModified);
         assertNotNull(aLastModified);
 
-        har.get("hello.txt")
+        har.get("static/hello.txt")
                 .addHeader(Headers.IF_MODIFIED_SINCE, helloLastModified)
                 .go()
                 .assertStatus(NOT_MODIFIED);
 
-        har.get("another.txt")
+        har.get("static/another.txt")
                 .addHeader(Headers.IF_MODIFIED_SINCE, helloLastModified)
                 .go().assertStatus(NOT_MODIFIED);
 
@@ -64,7 +64,7 @@ public class StaticResourcesTest {
             // should be server start time since that's all we know
             assertEquals(helloLastModified, aLastModified);
         } else {
-            DateTime subLastModified = har.get("sub/subfile.txt").go()
+            DateTime subLastModified = har.get("static/sub/subfile.txt").go()
                     .assertStateSeen(Closed)
                     .assertHasContent()
                     .assertStatus(OK)
@@ -73,18 +73,18 @@ public class StaticResourcesTest {
                     .assertContent(ResourcesApp.stuff)
                     .getHeader(Headers.LAST_MODIFIED);
 
-            har.get("sub", "subfile.txt")
+            har.get("static/sub/subfile.txt")
                     .addHeader(Headers.IF_MODIFIED_SINCE, subLastModified)
                     .go().assertStatus(NOT_MODIFIED);
         }
 
-        String etag = har.get("hello.txt")
+        String etag = har.get("static/hello.txt")
                 .addHeader(Headers.IF_MODIFIED_SINCE, helloLastModified)
                 .go()
                 .assertStatus(NOT_MODIFIED)
                 .getHeader(Headers.ETAG);
 
-        String etag2 = har.get("hello.txt")
+        String etag2 = har.get("static/hello.txt")
                 .addHeader(Headers.IF_NONE_MATCH, etag)
                 .go()
                 .assertStatus(NOT_MODIFIED)

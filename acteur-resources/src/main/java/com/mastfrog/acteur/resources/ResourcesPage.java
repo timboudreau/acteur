@@ -32,23 +32,42 @@ import com.mastfrog.acteur.util.Headers;
 import com.mastfrog.acteur.Page;
 import com.mastfrog.acteur.util.Method;
 import com.mastfrog.acteur.resources.StaticResources.Resource;
+import com.mastfrog.guicy.annotations.Defaults;
+import com.mastfrog.settings.Settings;
+import com.mastfrog.url.Path;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import javax.inject.Named;
 import org.joda.time.DateTime;
 
 /**
  *
  * @author Tim Boudreau
  */
+@Defaults("static.base.url.path=")
 public class ResourcesPage extends Page {
 
+    /**
+     * Settings key for the url path under which static resources live.
+     * <b>Important</b>: This is a regex, and it needs to end in a capture group
+     * - for example,
+     * <code>static/(.*)</code>.
+     */
+    public static final String SETTINGS_KEY_STATIC_RESOURCES_BASE_URL_PATH = "static.base.url.path";
+
     @Inject
-    public ResourcesPage(ActeurFactory af, StaticResources r) {
+    public ResourcesPage(ActeurFactory af, StaticResources r, Settings settings) {
         add(af.matchMethods(Method.GET, Method.HEAD));
+        String base = settings.getString(SETTINGS_KEY_STATIC_RESOURCES_BASE_URL_PATH);
+        System.out.println("BAASI " + base);
+        if (base != null) {
+            add(af.matchPath(base));
+        }
 //        add(af.matchPath(r.getPatterns()));
         add(ResourceNameMatcher.class);
-        add(ResourceFinder.class);
         add(af.sendNotModifiedIfIfModifiedSinceHeaderMatches());
         add(af.sendNotModifiedIfETagHeaderMatches());
         add(BytesWriter.class);
@@ -57,39 +76,39 @@ public class ResourcesPage extends Page {
     private static final class ResourceNameMatcher extends Acteur {
 
         @Inject
-        ResourceNameMatcher(Event evt, StaticResources res) throws UnsupportedEncodingException {
-            String nm = evt.getPath().toString();
-            nm = URLDecoder.decode(nm, "UTF-8");
+        ResourceNameMatcher(Event evt, StaticResources res, @Named(SETTINGS_KEY_STATIC_RESOURCES_BASE_URL_PATH) String base, ExpiresPolicy policy, Page page) throws UnsupportedEncodingException {
+            String path = evt.getPath().toString();
+            if (base != null && !base.isEmpty()) {
+                Pattern p = Pattern.compile(base);
+                Matcher m = p.matcher(path);
+                if (m.find()) {
+                    path = m.group(1);
+                }
+            }
+            System.out.println("PATH NOW " + path);
+            path = URLDecoder.decode(path, "UTF-8");
             for (String pat : res.getPatterns()) {
-                System.out.println("COMPARE " + nm + " and " + pat);
-                if (nm.equals(pat)) {
-                    setState(new ConsumedState());
-                    return;
+                System.out.println("COMPARE " + path + " and " + pat);
+                if (path.equals(pat)) {
+                    Resource r = res.get(path);
+                    if (r == null) {
+                        setState(new RejectedState());
+                        return;
+                    } else {
+                        r.decoratePage(page, evt, path);
+                        MediaType mimeType = r.getContentType();
+                        if (mimeType != null) {
+                            DateTime dt = policy.get(mimeType, Path.parse(path));
+                            if (dt != null) {
+                                add(Headers.EXPIRES, dt);
+                            }
+                        }
+                        setState(new ConsumedLockedState(r));
+                        return;
+                    }
                 }
             }
             setState(new RejectedState());
-        }
-    }
-
-    private static class ResourceFinder extends Acteur {
-
-        @Inject
-        ResourceFinder(Event evt, Page page, StaticResources res, ExpiresPolicy policy) {
-            String path = evt.getPath().toString();
-            Resource r = res.get(path);
-            if (r == null) {
-                setState(new RejectedState());
-            } else {
-                r.decoratePage(page, evt);
-                MediaType mimeType = r.getContentType();
-                if (mimeType != null) {
-                    DateTime dt = policy.get(mimeType, evt.getPath());
-                    if (dt != null) {
-                        add(Headers.EXPIRES, dt);
-                    }
-                }
-                setState(new ConsumedLockedState(r));
-            }
         }
     }
 

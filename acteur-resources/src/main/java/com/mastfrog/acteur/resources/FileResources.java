@@ -154,7 +154,7 @@ public class FileResources implements StaticResources {
         }
 
         @Override
-        public void decoratePage(Page page, Event evt) {
+        public void decoratePage(Page page, Event evt, String path) {
             page.getReponseHeaders().addVaryHeader(Headers.ACCEPT_ENCODING);
             page.getReponseHeaders().addCacheControl(CacheControlTypes.Public);
             page.getReponseHeaders().addCacheControl(CacheControlTypes.max_age, Duration.standardHours(2));

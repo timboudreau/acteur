@@ -47,7 +47,7 @@ public interface StaticResources {
 
     public static interface Resource {
 
-        void decoratePage(Page page, Event evt);
+        void decoratePage(Page page, Event evt, String path);
 
         ResponseWriter sender(Event evt);
 

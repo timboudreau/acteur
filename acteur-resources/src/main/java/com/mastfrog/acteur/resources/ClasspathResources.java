@@ -112,7 +112,7 @@ public final class ClasspathResources implements StaticResources {
             bytes = bo.toByteArray();
         }
 
-        public void decoratePage(Page page, Event evt) {
+        public void decoratePage(Page page, Event evt, String path) {
             ResponseHeaders h = page.getReponseHeaders();
             page.getReponseHeaders().addVaryHeader(Headers.ACCEPT_ENCODING);
             page.getReponseHeaders().addCacheControl(CacheControlTypes.Public);
