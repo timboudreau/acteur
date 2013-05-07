@@ -8,6 +8,7 @@ import static com.mastfrog.netty.http.client.StateType.Closed;
 import static io.netty.handler.codec.http.HttpResponseStatus.NOT_MODIFIED;
 import static io.netty.handler.codec.http.HttpResponseStatus.OK;
 import org.joda.time.DateTime;
+import org.joda.time.Duration;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import org.junit.Test;
@@ -57,8 +58,16 @@ public class StaticResourcesTest {
                 .assertStatus(NOT_MODIFIED);
 
         har.get("static/another.txt")
-                .addHeader(Headers.IF_MODIFIED_SINCE, helloLastModified)
+                .addHeader(Headers.IF_MODIFIED_SINCE, aLastModified)
                 .go().assertStatus(NOT_MODIFIED);
+        
+        har.get("static/another.txt")
+                .addHeader(Headers.IF_MODIFIED_SINCE, helloLastModified.plus(Duration.standardDays(1)))
+                .go().assertStatus(NOT_MODIFIED);
+        
+        har.get("static/another.txt")
+                .addHeader(Headers.IF_MODIFIED_SINCE, helloLastModified.minus(Duration.standardDays(1)))
+                .go().assertStatus(OK);
 
         if (resources instanceof ClasspathResources) {
             // should be server start time since that's all we know
@@ -90,5 +99,10 @@ public class StaticResourcesTest {
                 .assertStatus(NOT_MODIFIED)
                 .getHeader(Headers.ETAG);
         assertEquals(etag, etag2);
+        
+        har.get("static/hello.txt")
+                .addHeader(Headers.IF_NONE_MATCH, "garbage")
+                .go()
+                .assertStatus(OK);        
     }
 }
