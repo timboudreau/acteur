@@ -32,7 +32,6 @@ import com.mastfrog.acteur.util.Headers;
 import com.mastfrog.acteur.Page;
 import com.mastfrog.acteur.util.Method;
 import com.mastfrog.acteur.resources.StaticResources.Resource;
-import com.mastfrog.guicy.annotations.Defaults;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.url.Path;
 import io.netty.handler.codec.http.HttpResponseStatus;
@@ -40,14 +39,12 @@ import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import javax.inject.Named;
 import org.joda.time.DateTime;
 
 /**
  *
  * @author Tim Boudreau
  */
-@Defaults("static.base.url.path=")
 public class ResourcesPage extends Page {
 
     /**
@@ -76,7 +73,8 @@ public class ResourcesPage extends Page {
     private static final class ResourceNameMatcher extends Acteur {
 
         @Inject
-        ResourceNameMatcher(Event evt, StaticResources res, @Named(SETTINGS_KEY_STATIC_RESOURCES_BASE_URL_PATH) String base, ExpiresPolicy policy, Page page) throws UnsupportedEncodingException {
+        ResourceNameMatcher(Event evt, StaticResources res, Settings settings, ExpiresPolicy policy, Page page) throws UnsupportedEncodingException {
+            String base = settings.getString(SETTINGS_KEY_STATIC_RESOURCES_BASE_URL_PATH);
             String path = evt.getPath().toString();
             if (base != null && !base.isEmpty()) {
                 Pattern p = Pattern.compile(base);
