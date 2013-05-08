@@ -32,6 +32,10 @@
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
+            <artifactId>netty-http-test-harness</artifactId>
+        </dependency>        
+        <dependency>
+            <groupId>${project.groupId}</groupId>
             <artifactId>netty-http-client</artifactId>
             <version>${project.version}</version>
             <scope>test</scope>

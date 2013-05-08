@@ -15,7 +15,7 @@ import com.mastfrog.acteur.util.Realm;
 import com.mastfrog.acteur.auth.file.Role;
 import com.mastfrog.acteur.auth.file.User;
 import com.mastfrog.acteur.server.ServerModule;
-import com.mastfrog.acteur.server.Server;
+import com.mastfrog.acteur.util.Server;
 import java.io.IOException;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.settings.MutableSettings;

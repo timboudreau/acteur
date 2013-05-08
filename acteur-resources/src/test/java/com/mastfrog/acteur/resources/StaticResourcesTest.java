@@ -1,10 +1,11 @@
 package com.mastfrog.acteur.resources;
 
-import com.mastfrog.acteur.TestHarness;
 import com.mastfrog.acteur.util.Headers;
 import com.mastfrog.giulius.tests.GuiceRunner;
 import com.mastfrog.giulius.tests.TestWith;
 import static com.mastfrog.netty.http.client.StateType.Closed;
+import com.mastfrog.netty.http.test.harness.TestHarness;
+import com.mastfrog.netty.http.test.harness.TestHarnessModule;
 import static io.netty.handler.codec.http.HttpResponseStatus.NOT_MODIFIED;
 import static io.netty.handler.codec.http.HttpResponseStatus.OK;
 import org.joda.time.DateTime;
@@ -19,7 +20,7 @@ import org.junit.runner.RunWith;
  * @author tim
  */
 @RunWith(GuiceRunner.class)
-@TestWith(value = {TestHarness.Module.class},
+@TestWith(value = {TestHarnessModule.class},
         iterate = {
             ResourcesApp.ClasspathResourcesModule.class,
             ResourcesApp.FileResourcesModule.class,
@@ -32,7 +33,6 @@ public class StaticResourcesTest {
     @Test
     public void test(TestHarness har, StaticResources resources) throws Throwable {
         DateTime helloLastModified = har.get("static/hello.txt").go()
-                .assertStateSeen(Closed)
                 .assertHasContent()
                 .assertStatus(OK)
                 .assertHasHeader(Headers.LAST_MODIFIED.name())
@@ -41,7 +41,6 @@ public class StaticResourcesTest {
                 .getHeader(Headers.LAST_MODIFIED);
 
         DateTime aLastModified = har.get("static/another.txt").go()
-                .assertStateSeen(Closed)
                 .assertStatus(OK)
                 .assertHasContent()
                 .assertHasHeader(Headers.LAST_MODIFIED.name())

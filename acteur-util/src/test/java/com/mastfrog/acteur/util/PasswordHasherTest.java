@@ -1,8 +1,9 @@
 package com.mastfrog.acteur.util;
 
+import com.google.inject.AbstractModule;
 import com.mastfrog.giulius.Dependencies;
-import com.mastfrog.settings.SettingsBuilder;
 import java.io.IOException;
+import java.nio.charset.Charset;
 import org.junit.Test;
 import static org.junit.Assert.*;
 
@@ -16,7 +17,13 @@ public class PasswordHasherTest {
     @Test
     public void testCheckPassword() throws IOException {
         assertTrue(true);
-        Dependencies deps = Dependencies.builder().addDefaultSettings().build();
+        Dependencies deps = Dependencies.builder().addDefaultSettings().add(new AbstractModule(){
+
+            @Override
+            protected void configure() {
+                bind(Charset.class).toInstance(Charset.forName("UTF-8"));
+            }
+        }).build();
         PasswordHasher h = deps.getInstance(PasswordHasher.class);
         
         String pw = "password";

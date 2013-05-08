@@ -23,6 +23,9 @@
  */
 package com.mastfrog.acteur.util;
 
+import javax.inject.Inject;
+import javax.inject.Named;
+
 /**
  *
  * @author Tim Boudreau
@@ -31,7 +34,8 @@ public class Realm implements Comparable<Realm> {
 
     private final String name;
 
-    protected Realm(String name) {
+    @Inject
+    protected Realm(@Named("realm") String name) {
         this.name = name;
     }
 

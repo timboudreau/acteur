@@ -33,8 +33,8 @@ import com.mastfrog.guicy.scope.ReentrantScope;
 import com.mastfrog.acteur.util.CacheControl;
 import com.mastfrog.acteur.util.CacheControlTypes;
 import com.mastfrog.acteur.server.ServerModule;
+import com.mastfrog.acteur.util.ErrorInterceptor;
 import com.mastfrog.acteur.util.RequestID;
-import com.mastfrog.acteur.server.Server;
 import com.mastfrog.util.ConfigurationError;
 import com.mastfrog.util.Checks;
 import com.mastfrog.util.Exceptions;
@@ -78,7 +78,7 @@ public class Application implements Iterable<Page> {
     @Inject
     private Dependencies deps;
     @Inject
-    @Named(Server.BACKGROUND_THREAD_POOL_NAME)
+    @Named(ServerModule.BACKGROUND_THREAD_POOL_NAME)
     private ExecutorService exe;
     @Inject
     private RequestLogger logger;
@@ -88,7 +88,7 @@ public class Application implements Iterable<Page> {
     @Inject
     private Pages runner;
     @Inject(optional = true)
-    private ErrorHandler errorHandler;
+    private ErrorInterceptor errorHandler;
     @Inject
     private Charset charset;
 

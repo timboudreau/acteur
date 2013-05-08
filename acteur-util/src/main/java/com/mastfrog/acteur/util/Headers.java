@@ -29,7 +29,6 @@ import com.mastfrog.util.Checks;
 import io.netty.handler.codec.http.ClientCookieEncoder;
 import io.netty.handler.codec.http.Cookie;
 import io.netty.handler.codec.http.CookieDecoder;
-import io.netty.handler.codec.http.DefaultCookie;
 import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpMessage;
 import io.netty.handler.codec.http.ServerCookieEncoder;
@@ -229,7 +228,8 @@ public final class Headers {
             try {
                 return new URI(value);
             } catch (URISyntaxException ex) {
-                Logger.getLogger(Headers.class.getName()).log(Level.SEVERE, "Bad URI in " + name() + " - " + value, ex);
+                Logger.getLogger(Headers.class.getName()).log(Level.SEVERE, 
+                        "Bad URI in " + name() + " - " + value, ex);
                 return null;
             }
         }
@@ -304,7 +304,8 @@ public final class Headers {
             try {
                 return new Duration(Long.parseLong(value));
             } catch (NumberFormatException nfe) {
-                Logger.getLogger(DurationHeader.class.getName()).log(Level.INFO, "Bad duration header '" + value + "'", nfe);
+                Logger.getLogger(DurationHeader.class.getName()).log(Level.INFO, 
+                        "Bad duration header '" + value + "'", nfe);
                 return null;
             }
         }

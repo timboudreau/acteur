@@ -26,8 +26,8 @@ package com.mastfrog.acteur;
 import com.mastfrog.acteur.util.Headers;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
+import com.mastfrog.acteur.server.ServerModule;
 import com.mastfrog.guicy.scope.ReentrantScope;
-import com.mastfrog.acteur.server.Server;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.treadmill.Treadmill;
 import com.mastfrog.util.Checks;
@@ -52,7 +52,7 @@ public class ActeursImpl implements Acteurs {
     private static boolean debug;
 
     @Inject
-    ActeursImpl(@Named(Server.BACKGROUND_THREAD_POOL_NAME) ExecutorService exe, ReentrantScope scope, Page page, Settings settings) {
+    ActeursImpl(@Named(ServerModule.BACKGROUND_THREAD_POOL_NAME) ExecutorService exe, ReentrantScope scope, Page page, Settings settings) {
         Checks.notNull("page", page);
         Checks.notNull("exe", exe);
         Checks.notNull("scope", scope);
@@ -135,6 +135,7 @@ public class ActeursImpl implements Acteurs {
         public Callable<Object[]> convert(Acteur acteur) {
             Checks.notNull("Null acteur in iterator from " + page, acteur);
             Page.set(page);
+            System.out.println("Run acteur " + acteur + " for " + page);
             try {
                 return new ActeurCallable(page, acteur, response, lastState, !acteurs.hasNext());
             } finally {

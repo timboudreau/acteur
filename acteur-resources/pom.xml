@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>com.mastfrog</groupId>
@@ -15,20 +15,18 @@
             <artifactId>acteur</artifactId>
         </dependency>
         <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>netty-http-test-harness</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>com.mastfrog</groupId>
             <artifactId>giulius-tests</artifactId>
             <scope>test</scope>
-        </dependency>        
+        </dependency>
         <dependency>
             <groupId>com.mastfrog</groupId>
             <artifactId>netty-http-client</artifactId>
-            <scope>test</scope>
-        </dependency>        
-        <dependency>
-            <groupId>com.mastfrog</groupId>
-            <artifactId>acteur</artifactId>
-            <version>${project.version}</version>
-            <type>test-jar</type>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -40,7 +38,7 @@
             <artifactId>netty-buffer</artifactId>
             <groupId>io.netty</groupId>
             <type>jar</type>
-            <version>4.0.0.CR2-SNAPSHOT</version>
+            <version>${netty.version}</version>
         </dependency>
     </dependencies>
 </project>

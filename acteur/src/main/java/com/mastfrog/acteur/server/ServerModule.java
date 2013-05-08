@@ -41,9 +41,9 @@ import com.mastfrog.acteur.Application;
 import com.mastfrog.acteur.Event;
 import com.mastfrog.acteur.ImplicitBindings;
 import com.mastfrog.acteur.Page;
-import static com.mastfrog.acteur.server.Server.BACKGROUND_THREAD_POOL_NAME;
 import com.mastfrog.acteur.util.BasicCredentials;
 import com.mastfrog.acteur.server.ServerModule.TF;
+import com.mastfrog.acteur.util.Server;
 import com.mastfrog.util.ConfigurationError;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBufAllocator;
@@ -68,6 +68,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.Condition;
 import org.joda.time.DateTime;
 import org.joda.time.Duration;
 
@@ -77,6 +78,33 @@ import org.joda.time.Duration;
  */
 @Defaults("realm=Users")
 public class ServerModule<A extends Application> extends AbstractModule {
+    
+    /**
+     * Name of the &#064;Named parameter that should be used in an annotation
+     * if you want Guice to inject the specific thread pool used for processing
+     * requests.
+     */
+    public static final String BACKGROUND_THREAD_POOL_NAME = "background";
+    /**
+     * Name of the &#064;Named parameter that should be used in an annotation
+     * if you want Guice to inject the specific thread pool used for processing
+     * requests.
+     */
+    public static final String WORKER_THREAD_POOL_NAME = "workers";
+    /**
+     * Name of the &#064;Named parameter that should be used in an annotation
+     * if you want Guice to inject the specific thread pool used for processing
+     * requests, but wrappered so that all runnables are run within the application's
+     * request scope and have whatever context they were submitted with.
+     */
+    public static final String SCOPED_WORKER_THREAD_POOL_NAME = "scopedWorkers";
+    /**
+     * Name of the &#064;Named parameter that should be used in an annotation
+     * if you want Guice to inject the specific thread pool used for processing
+     * requests, but wrappered so that all runnables are run within the application's
+     * request scope and have whatever context they were submitted with.
+     */
+    public static final String SCOPED_BACKGROUND_THREAD_POOL_NAME = "scopedBackground";
 
     /**
      * Property name for setting which byte buffer allocator Netty uses (heap,
@@ -131,6 +159,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
 
     @Override
     protected void configure() {
+        bind(Server.class).to(ServerImpl.class).asEagerSingleton();
         bind(ReentrantScope.class).toInstance(scope);
         bind(Application.class).to(appType).asEagerSingleton();
         bind(ChannelHandler.class).to(UpstreamHandlerImpl.class);
@@ -151,7 +180,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
 
         TF eventThreadFactory = new TF("event", appProvider);
         TF workerThreadFactory = new TF("worker", appProvider);
-        TF backgroundThreadFactory = new TF(Server.BACKGROUND_THREAD_POOL_NAME, appProvider);
+        TF backgroundThreadFactory = new TF(BACKGROUND_THREAD_POOL_NAME, appProvider);
 
         bind(ThreadGroup.class).annotatedWith(Names.named(BACKGROUND_THREAD_POOL_NAME)).toInstance(backgroundThreadFactory.tg);
         bind(ThreadGroup.class).annotatedWith(Names.named("worker")).toInstance(workerThreadFactory.tg);
@@ -163,11 +192,11 @@ public class ServerModule<A extends Application> extends AbstractModule {
 
         bind(ThreadCount.class).annotatedWith(Names.named("event")).toInstance(eventThreadCount);
         bind(ThreadCount.class).annotatedWith(Names.named("workers")).toInstance(eventThreadCount);
-        bind(ThreadCount.class).annotatedWith(Names.named(Server.BACKGROUND_THREAD_POOL_NAME)).toInstance(eventThreadCount);
+        bind(ThreadCount.class).annotatedWith(Names.named(BACKGROUND_THREAD_POOL_NAME)).toInstance(eventThreadCount);
 
         bind(ThreadFactory.class).annotatedWith(Names.named("workers")).toInstance(workerThreadFactory);
         bind(ThreadFactory.class).annotatedWith(Names.named("event")).toInstance(eventThreadFactory);
-        bind(ThreadFactory.class).annotatedWith(Names.named(Server.BACKGROUND_THREAD_POOL_NAME)).toInstance(backgroundThreadFactory);
+        bind(ThreadFactory.class).annotatedWith(Names.named(BACKGROUND_THREAD_POOL_NAME)).toInstance(backgroundThreadFactory);
 
         Provider<ExecutorService> workerProvider =
                 new ExecutorServiceProvider(workerThreadFactory, workerThreadCount);
@@ -175,17 +204,17 @@ public class ServerModule<A extends Application> extends AbstractModule {
                 new ExecutorServiceProvider(backgroundThreadFactory, backgroundThreadCount);
 
         bind(ExecutorService.class).annotatedWith(Names.named(
-                Server.WORKER_THREAD_POOL_NAME)).toProvider(workerProvider);
+                WORKER_THREAD_POOL_NAME)).toProvider(workerProvider);
 
         bind(ExecutorService.class).annotatedWith(Names.named(
-                Server.BACKGROUND_THREAD_POOL_NAME)).toProvider(backgroundProvider);
+                BACKGROUND_THREAD_POOL_NAME)).toProvider(backgroundProvider);
 
         bind(ExecutorService.class).annotatedWith(Names.named(
-                Server.SCOPED_WORKER_THREAD_POOL_NAME)).toProvider(
+                SCOPED_WORKER_THREAD_POOL_NAME)).toProvider(
                 new WrappedWorkerThreadPoolProvider(workerProvider, scope));
 
         bind(ExecutorService.class).annotatedWith(Names.named(
-                Server.SCOPED_BACKGROUND_THREAD_POOL_NAME)).toProvider(
+                SCOPED_BACKGROUND_THREAD_POOL_NAME)).toProvider(
                 new WrappedWorkerThreadPoolProvider(backgroundProvider, scope));
 
         bind(DateTime.class).toInstance(DateTime.now());
@@ -373,7 +402,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
 
         private ExecutorService create() {
             switch (tf.name()) {
-                case Server.BACKGROUND_THREAD_POOL_NAME:
+                case BACKGROUND_THREAD_POOL_NAME:
 //                    return LoggingExecutorService.wrap(tf.name(), Executors.newCachedThreadPool(tf));
                     return Executors.newCachedThreadPool(tf);
                 default:
@@ -461,11 +490,11 @@ public class ServerModule<A extends Application> extends AbstractModule {
     protected void onAfterStart(Server server, Dependencies deps) {
     }
 
-    public Server start() throws IOException, InterruptedException {
+    public Condition start() throws IOException, InterruptedException {
         return start(null);
     }
 
-    public Server start(Integer port) throws IOException, InterruptedException {
+    public Condition start(Integer port) throws IOException, InterruptedException {
         MutableSettings settings = SettingsBuilder.createDefault().buildMutableSettings();
         if (port != null) {
             settings.setInt("port", port);
@@ -481,9 +510,9 @@ public class ServerModule<A extends Application> extends AbstractModule {
         Server server = dependencies.getInstance(Server.class);
         onBeforeStart(server, dependencies);
 
-        server.start();
+        Condition result = server.start();
         onAfterStart(server, dependencies);
-        return server;
+        return result;
     }
 
     private static class CISC extends TypeLiteral<ChannelInitializer<SocketChannel>> {

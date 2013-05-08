@@ -26,7 +26,7 @@ package com.mastfrog.acteur.util;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.util.ConfigurationError;
 import com.mastfrog.util.Exceptions;
-import io.netty.util.CharsetUtil;
+import java.nio.charset.Charset;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
@@ -50,9 +50,11 @@ public final class PasswordHasher {
     static final String DEFAULT_SALT = "wlkefjasdfhadasdlkfjhwa,l.e,u.f,2.o3ads[]90as!!_$GHJM"
             + "<$^UJCMM<>OIUHGC^#YUJKTGYSUCINJd9f0awe0f9aefansjneaiw"
             + "aoeifa222222222222o(#(#(&@^!";
+    private final Charset charset;
 
     @Inject
-    PasswordHasher(Settings settings) throws NoSuchAlgorithmException {
+    PasswordHasher(Settings settings, Charset charset) throws NoSuchAlgorithmException {
+        this.charset = charset;
         String salt = settings.getString("salt", DEFAULT_SALT);
         String alg = settings.getString("passwordHashingAlgorithm", "SHA-512");
         if (settings.getBoolean("production.mode", false) && DEFAULT_SALT.equals(salt)) {
@@ -60,7 +62,7 @@ public final class PasswordHasher {
                     + "production mode.  Set property salt for namespace timetracker to "
                     + "be something else");
         }
-        saltBytes = salt.getBytes(CharsetUtil.UTF_8);
+        saltBytes = salt.getBytes(charset);
         this.algorithm = alg;
         // fail early
         hash("abcd");
@@ -86,7 +88,7 @@ public final class PasswordHasher {
 
     private byte[] hash(String unhashed) throws NoSuchAlgorithmException {
         MessageDigest dg = MessageDigest.getInstance(algorithm);
-        byte[] b = (unhashed + ":" + new String(saltBytes)).getBytes(CharsetUtil.UTF_8);
+        byte[] b = (unhashed + ":" + new String(saltBytes)).getBytes(charset);
         byte[] check = dg.digest(b);
         return check;
     }

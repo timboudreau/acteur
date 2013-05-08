@@ -4,7 +4,9 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 import com.mastfrog.acteur.Acteur.RespondWith;
 import com.mastfrog.acteur.server.ServerModule;
+import com.mastfrog.acteur.util.ErrorInterceptor;
 import com.mastfrog.acteur.util.Method;
+import com.mastfrog.netty.http.test.harness.TestHarness;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
@@ -50,7 +52,7 @@ public class CompApp extends Application {
         @Override
         protected void configure() {
             install(new ServerModule(CompApp.class));
-            bind(ErrorHandler.class).to(TestHarness.class);
+            bind(ErrorInterceptor.class).to(TestHarness.class);
         }
 
     }

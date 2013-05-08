@@ -23,8 +23,10 @@
  */
 package com.mastfrog.acteur.server;
 
+import static com.google.common.util.concurrent.Striped.lock;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
+import com.mastfrog.acteur.util.Server;
 import com.mastfrog.giulius.ShutdownHookRegistry;
 import com.mastfrog.settings.Settings;
 import io.netty.bootstrap.ServerBootstrap;
@@ -37,6 +39,7 @@ import java.io.IOException;
 import java.lang.ref.WeakReference;
 import java.net.InetSocketAddress;
 import java.util.Date;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
@@ -148,7 +151,17 @@ final class ServerImpl implements Server {
 
             localChannel = bootstrap.bind().sync().channel();
             System.err.println("Starting " + this);
+            
+            final CountDownLatch afterStart = new CountDownLatch(1);
+            events.submit(new Runnable() {
 
+                @Override
+                public void run() {
+                    afterStart.countDown();
+                }
+            });
+
+            afterStart.await();
             // Bind and start to accept incoming connections.
             return getCondition();
         } catch (InterruptedException ex) {
@@ -198,12 +211,11 @@ final class ServerImpl implements Server {
 
     @Override
     public void shutdown(boolean immediately) throws InterruptedException {
-        shutdown(false, 10, TimeUnit.SECONDS, true);
+        shutdown(false, 1, TimeUnit.SECONDS, true);
         await();
     }
 
-    @Override
-    public void await() throws InterruptedException {
+    void await() throws InterruptedException {
         if (events == null) {
             return;
         }
@@ -219,8 +231,7 @@ final class ServerImpl implements Server {
         return events == null ? true : events.isTerminated();
     }
 
-    @Override
-    public Condition getCondition() {
+    Condition getCondition() {
         return new ConditionImpl();
     }
 

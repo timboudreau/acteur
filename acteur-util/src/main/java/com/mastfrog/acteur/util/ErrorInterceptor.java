@@ -1,4 +1,4 @@
-package com.mastfrog.acteur;
+package com.mastfrog.acteur.util;
 
 /**
  * Injectable interceptor for exceptions thrown.  Used in tests which want
@@ -6,6 +6,6 @@ package com.mastfrog.acteur;
  *
  * @author Tim Boudreau
  */
-public interface ErrorHandler {
+public interface ErrorInterceptor {
     public void onError(Throwable err);
 }

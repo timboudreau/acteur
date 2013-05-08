@@ -21,8 +21,8 @@ import com.mastfrog.acteur.util.CacheControlTypes;
 import com.mastfrog.acteur.server.EventImpl;
 import com.mastfrog.acteur.util.Method;
 import com.mastfrog.acteur.server.PathFactory;
+import com.mastfrog.acteur.server.ServerModule;
 import com.mastfrog.acteur.util.RequestID;
-import com.mastfrog.acteur.server.Server;
 import com.mastfrog.util.Checks;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
@@ -61,7 +61,7 @@ public class AppTest {
             ReentrantScope scope = new ReentrantScope();
             bind(ReentrantScope.class).toInstance(scope);
             ExecutorService exe = Executors.newSingleThreadExecutor();
-            bind(ExecutorService.class).annotatedWith(Names.named(Server.BACKGROUND_THREAD_POOL_NAME)).toInstance(exe);
+            bind(ExecutorService.class).annotatedWith(Names.named(ServerModule.BACKGROUND_THREAD_POOL_NAME)).toInstance(exe);
             bind(RequestID.class).toInstance(new RequestID());
 
             scope.bindTypes(binder(), Event.class,

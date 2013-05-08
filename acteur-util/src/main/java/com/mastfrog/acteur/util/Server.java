@@ -21,7 +21,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.mastfrog.acteur.server;
+package com.mastfrog.acteur.util;
 
 import com.google.inject.ImplementedBy;
 import java.io.IOException;
@@ -33,42 +33,8 @@ import java.util.concurrent.locks.Condition;
  *
  * @author Tim Boudreau
  */
-@ImplementedBy(ServerImpl.class)
-public interface Server {
-    
-    
-    /**
-     * Name of the &#064;Named parameter that should be used in an annotation
-     * if you want Guice to inject the specific thread pool used for processing
-     * requests.
-     */
-    public static final String BACKGROUND_THREAD_POOL_NAME = "background";
-    /**
-     * Name of the &#064;Named parameter that should be used in an annotation
-     * if you want Guice to inject the specific thread pool used for processing
-     * requests.
-     */
-    public static final String WORKER_THREAD_POOL_NAME = "workers";
-    /**
-     * Name of the &#064;Named parameter that should be used in an annotation
-     * if you want Guice to inject the specific thread pool used for processing
-     * requests, but wrappered so that all runnables are run within the application's
-     * request scope and have whatever context they were submitted with.
-     */
-    public static final String SCOPED_WORKER_THREAD_POOL_NAME = "scopedWorkers";
-    /**
-     * Name of the &#064;Named parameter that should be used in an annotation
-     * if you want Guice to inject the specific thread pool used for processing
-     * requests, but wrappered so that all runnables are run within the application's
-     * request scope and have whatever context they were submitted with.
-     */
-    public static final String SCOPED_BACKGROUND_THREAD_POOL_NAME = "scopedBackground";
 
-    /**
-     * Wait for exit
-     * @throws InterruptedException
-     */
-    void await() throws InterruptedException;
+public interface Server {
     
     /**
      * Get the port this server is running on
@@ -104,10 +70,4 @@ public interface Server {
      */
     Condition start() throws IOException;
     Condition start(int port) throws IOException;
-
-    /**
-     * Get a condition object which can be used to await or initiate shuutdown
-     * @return A condition
-     */
-    Condition getCondition();
 }

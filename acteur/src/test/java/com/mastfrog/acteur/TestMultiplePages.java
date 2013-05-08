@@ -4,7 +4,6 @@ import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import com.mastfrog.acteur.server.ServerModule;
 import com.mastfrog.acteur.util.RequestID;
-import com.mastfrog.acteur.server.Server;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
@@ -92,7 +91,7 @@ public class TestMultiplePages {
         private final Event evt;
 
         @Inject
-        BlockingBodyWriter(RequestID id, @Named(Server.BACKGROUND_THREAD_POOL_NAME) ExecutorService svc, Event evt) {
+        BlockingBodyWriter(RequestID id, @Named(ServerModule.BACKGROUND_THREAD_POOL_NAME) ExecutorService svc, Event evt) {
             this.id = id;
             this.svc = svc;
             this.evt = evt;
