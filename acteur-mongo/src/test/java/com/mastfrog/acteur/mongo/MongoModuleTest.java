@@ -3,143 +3,54 @@ package com.mastfrog.acteur.mongo;
 import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
+import com.mastfrog.acteur.mongo.MongoModuleTest.MM;
 import com.mastfrog.giulius.Dependencies;
-import com.mastfrog.guicy.annotations.Namespace;
-import com.mastfrog.settings.Settings;
-import com.mastfrog.settings.SettingsBuilder;
+import com.mastfrog.giulius.tests.GuiceRunner;
+import com.mastfrog.giulius.tests.TestWith;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DB;
 import com.mongodb.DBCollection;
 import com.mongodb.MongoClient;
-import java.io.File;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
-import org.junit.After;
-import org.junit.AfterClass;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertTrue;
-import org.junit.BeforeClass;
 import org.junit.Test;
-import org.openide.util.Exceptions;
+import org.junit.runner.RunWith;
 
 /**
  *
  * @author tim
  */
+@RunWith(GuiceRunner.class)
+@TestWith({MongoHarness.Module.class, MM.class})
 public class MongoModuleTest {
-
-    private static final long port = 29005;
-
-    private static File createMongoDir() {
-        File tmp = new File(System.getProperty("java.io.tmpdir"));
-        File mongoDir = new File(tmp, "mongo-" + System.currentTimeMillis());
-        if (!mongoDir.mkdirs()) {
-            throw new AssertionError("Could not create " + mongoDir);
-        }
-        return mongoDir;
-    }
-
-    private static Process startMongoDB() throws IOException, InterruptedException {
-        if (mongoDir == null) {
-            mongoDir = createMongoDir();
-        }
-        ProcessBuilder pb = new ProcessBuilder().command("mongod", "--dbpath",
-                mongoDir.getAbsolutePath(), "--nojournal", "--smallfiles", "-nssize", "1",
-                "--noprealloc", "--slowms", "5", "--port", "" + port);
-
-        pb.redirectError(ProcessBuilder.Redirect.INHERIT);
-        pb.redirectOutput(ProcessBuilder.Redirect.INHERIT);
-
-        Process result = pb.start();
-        Thread.sleep(6000);
-        try {
-            int code = result.exitValue();
-            System.out.println("MongoDB process exited with " + code);
-            return null;
-        } catch (IllegalThreadStateException ex) {
-            System.out.println("Started MongoDB");
-            return result;
-        }
-    }
-
-    private static Process mongo;
-    private static File mongoDir;
-    private MongoClient client;
-
-    @BeforeClass
-    public static void setUpClass() throws IOException, InterruptedException {
-        mongo = startMongoDB();
-    }
-
-    private static void cleanup(File dir) {
-        for (File f : dir.listFiles()) {
-            if (f.isDirectory()) {
-                cleanup(f);
-                f.delete();
-            }
-        }
-        for (File f : dir.listFiles()) {
-            if (f.isFile()) {
-                f.delete();
-            }
-        }
-        dir.delete();
-    }
-
-    @AfterClass
-    public static void tearDownClass() {
-        if (mongo != null) {
-            mongo.destroy();
-            try {
-                mongo.waitFor();
-            } catch (InterruptedException ex) {
-                Exceptions.printStackTrace(ex);
-            } finally {
-                cleanup(mongoDir);
-            }
-        }
-        System.out.println("REALLY EXIT");
-    }
-
-    @After
-    public void tearDown() {
-        if (client != null) {
-            client.close();
+    static class MM extends AbstractModule {
+        @Override
+        protected void configure() {
+            MongoModule mod = new MongoModule("testit");
+            mod.bindCollection("users", "ttusers");
+            mod.bindCollection("capped", "cappedStuff");
+            install(mod);
+            bind(Initializer.class).asEagerSingleton();
         }
     }
 
     @Test
-    public void testIt() throws IOException, InterruptedException {
-        if (true) return;
-        if (mongo == null) {
-            return;
-        }
-        MongoModule mod = new MongoModule("testit");
-        mod.bindCollection("users", "ttusers");
-        mod.bindCollection("capped", "cappedStuff");
-        M m = new M();
-        Settings s = new SettingsBuilder().add(MongoModuleTest.class.getResourceAsStream("MongoModuleTest.properties")).build();
-        Dependencies deps = Dependencies.builder().add(s, Namespace.DEFAULT).add(mod).add(m).build();
-        client = deps.getInstance(MongoClient.class);
-        DB db = deps.getInstance(DB.class);
-
+    public void testIt(MongoHarness mongo, MongoClient client, DB db, Fixture f, Dependencies deps) throws IOException, InterruptedException {
         assertNotNull(db);
         assertEquals("testit", db.getName());
-
-        Fixture f = deps.getInstance(Fixture.class);
-        assertNotNull(f);
-
         assertNotNull(f.users);
         assertNotNull(f.capped);
         assertEquals("ttusers", f.users.getName());
         assertEquals("cappedStuff", f.capped.getName());
         assertTrue(f.capped.isCapped());
 
-        mongo.destroy();
+        mongo.stop();
 
         Ge ge = new Ge(deps);
         Thread t = new Thread(ge);
@@ -148,7 +59,7 @@ public class MongoModuleTest {
         ge.await();
         Thread.yield();
 
-        mongo = startMongoDB();
+        mongo.start();
 
         DB db3 = deps.getInstance(DB.class);
 
@@ -195,16 +106,6 @@ public class MongoModuleTest {
             this.capped = capped;
         }
     }
-
-    static class M extends AbstractModule {
-
-        @Override
-        protected void configure() {
-            bind(Initializer.class).asEagerSingleton();
-        }
-
-    }
-
     static class Initializer extends MongoInitializer {
 
         volatile boolean created;
