@@ -221,7 +221,8 @@ public class ServerModule<A extends Application> extends AbstractModule {
         bind(Duration.class).toProvider(UptimeProvider.class);
         bind(new CKTL()).toProvider(CookiesProvider.class);
 
-        bind(String.class).annotatedWith(Names.named("application")).toProvider(ApplicationNameProvider.class);
+//        bind(String.class).annotatedWith(Names.named("application")).toProvider(ApplicationNameProvider.class);
+        bind(String.class).annotatedWith(Names.named("application")).toInstance(this.appType.getSimpleName());
 
         bind(ServerImpl.class).asEagerSingleton();
         for (Module m : otherModules) {

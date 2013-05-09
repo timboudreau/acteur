@@ -9,6 +9,7 @@ import com.mastfrog.acteur.Application;
 import com.mastfrog.acteur.ImplicitBindings;
 import com.mastfrog.acteur.resources.StaticResources.Resource;
 import com.mastfrog.acteur.server.ServerModule;
+import com.mastfrog.netty.http.client.HttpClient;
 import com.mastfrog.util.Exceptions;
 import com.mastfrog.util.GUIDFactory;
 import com.mastfrog.util.Streams;
@@ -71,6 +72,7 @@ public class ResourcesApp extends Application {
             install(new ServerModule(ResourcesApp.class));
             bind(File.class).toInstance(tmpdir);
             bind(StaticResources.class).to(FileResources.class);
+            bind(HttpClient.class).toInstance(HttpClient.builder().build());
         }
     }
 
@@ -82,6 +84,7 @@ public class ResourcesApp extends Application {
             bind(StaticResources.class).to(ClasspathResources.class);
             bind(ClasspathResourceInfo.class).toInstance(new ClasspathResourceInfo(ResourcesApp.class,
                     "hello.txt", "another.txt"));
+            bind(HttpClient.class).toInstance(HttpClient.builder().build());
         }
     }
 
@@ -95,6 +98,7 @@ public class ResourcesApp extends Application {
             bind(ClasspathResourceInfo.class).toInstance(new ClasspathResourceInfo(ResourcesApp.class,
                     "hello.txt", "another.txt"));
             bind(new TL()).toProvider(P.class);
+            bind(HttpClient.class).toInstance(HttpClient.builder().build());
         }
 
         static class TL extends TypeLiteral<List<StaticResources>> {
