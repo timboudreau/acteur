@@ -98,7 +98,7 @@ public final class MongoModule extends AbstractModule {
         bind(String.class).annotatedWith(Names.named(DATABASE_NAME)).toInstance(databaseName);
         // We want to bail during startup if we can't contact the
         // database, so use eager singleton to ensure we'll be
-        bind(MongoClient.class).toProvider(MongoClientProvider.class).asEagerSingleton();
+        bind(MongoClient.class).toProvider(MongoClientProvider.class);
         bind(DB.class).toProvider(DatabaseProvider.class);
 
         for (Class<? extends MongoInitializer> c : initializers) {
