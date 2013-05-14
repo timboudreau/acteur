@@ -7,6 +7,7 @@
         <artifactId>acteur-parent</artifactId>
         <groupId>com.mastfrog</groupId>
         <version>1.3.6-SNAPSHOT</version>
+        <relativePath/>
     </parent>
 
     <artifactId>acteur-mongo</artifactId>
@@ -31,7 +32,6 @@
         <dependency>
             <groupId>org.mongodb</groupId>
             <artifactId>mongo-java-driver</artifactId>
-            <version>2.10.1</version>
             <type>jar</type>
         </dependency>
         <dependency>

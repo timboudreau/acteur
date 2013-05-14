@@ -4,6 +4,7 @@ import com.google.inject.Inject;
 import com.google.inject.Key;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
+import com.google.inject.name.Named;
 import com.google.inject.name.Names;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.giulius.ShutdownHookRegistry;
@@ -25,6 +26,12 @@ final class MongoClientProvider implements Provider<MongoClient>, Runnable {
     private final ShutdownHookRegistry hooks;
     private volatile boolean added;
     private final MongoInitializer.Registry registry;
+    @Inject(optional = true)
+    @Named(MongoModule.MONGO_HOST)
+    private String host;
+    @Inject(optional = true)
+    @Named(MongoModule.MONGO_PORT)
+    private int port;
 
     @Inject
     public MongoClientProvider(Dependencies deps, Settings settings, ShutdownHookRegistry hooks, MongoInitializer.Registry registry) {
@@ -35,19 +42,11 @@ final class MongoClientProvider implements Provider<MongoClient>, Runnable {
     }
 
     private String mongoHost() {
-        try {
-            return deps.getInstance(Key.get(String.class, Names.named(MongoModule.MONGO_HOST)));
-        } catch (Exception e) {
-            return "localhost";
-        }
+        return host == null ? "localhost" : host;
     }
 
     private Integer mongoPort() {
-        try {
-            return deps.getInstance(Key.get(Integer.class, Names.named(MongoModule.MONGO_PORT)));
-        } catch (Exception e) {
-            return 27017;
-        }
+        return port == 0 ? 27017 : port;
     }
 
     @Override
@@ -56,10 +55,8 @@ final class MongoClientProvider implements Provider<MongoClient>, Runnable {
             synchronized (this) {
                 if (client == null) {
                     try {
-                        String host = settings.getString(MongoModule.MONGO_HOST, mongoHost());
-                        int port = settings.getInt(MongoModule.MONGO_PORT, mongoPort());
-                        registry.onBeforeCreateMongoClient(host, port);
-                        client = new MongoClient(host, port);
+                        registry.onBeforeCreateMongoClient(mongoHost(), mongoPort());
+                        client = new MongoClient(mongoHost(), mongoPort());
                         registry.onMongoClientCreated(client);
                         if (!added) {
                             hooks.add(this);

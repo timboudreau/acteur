@@ -6,6 +6,7 @@
         <groupId>com.mastfrog</groupId>
         <artifactId>acteur-parent</artifactId>
         <version>1.3.6-SNAPSHOT</version>
+        <relativePath/>
     </parent>
     <artifactId>acteur-resources</artifactId>
     <name>Acteur Resources</name>

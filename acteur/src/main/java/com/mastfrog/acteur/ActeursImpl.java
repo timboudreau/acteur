@@ -135,7 +135,7 @@ public class ActeursImpl implements Acteurs {
         public Callable<Object[]> convert(Acteur acteur) {
             Checks.notNull("Null acteur in iterator from " + page, acteur);
             Page.set(page);
-            System.out.println("Run acteur " + acteur + " for " + page);
+//            System.out.println("Run acteur " + acteur + " for " + page);
             try {
                 return new ActeurCallable(page, acteur, response, lastState, !acteurs.hasNext());
             } finally {
