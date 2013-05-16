@@ -185,7 +185,7 @@ public abstract class Acteur {
             ObjectMapper mapper = page.getApplication().getDependencies().getInstance(ObjectMapper.class);
             try {
                 String m = msg instanceof String? msg.toString() : msg != null ?
-                        mapper.writeValueAsString(msg) : null;
+                        mapper.writeValueAsString(msg) + '\n' : null;
                 setResponseCode(status);
                 if (m != null) {
                     setMessage(m);

@@ -3,14 +3,11 @@ package com.mastfrog.acteur.mongo;
 import com.google.inject.ImplementedBy;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
+import com.google.inject.util.Providers;
 import com.mastfrog.acteur.Event;
 import com.mastfrog.acteur.ResponseWriter;
 import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
-import io.netty.buffer.Unpooled;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelFutureListener;
-import io.netty.util.CharsetUtil;
 import java.util.Map;
 import org.bson.types.ObjectId;
 
@@ -27,6 +24,10 @@ public class CursorWriter extends ResponseWriter {
     @Inject
     public CursorWriter(DBCursor cursor, Event evt, Provider<MapFilter> filter) {
         this(cursor, !evt.isKeepAlive(), filter);
+    }
+
+    public CursorWriter(DBCursor cursor, Event evt) {
+        this(cursor, evt, Providers.of(NO_FILTER));
     }
 
     public CursorWriter(DBCursor cursor, boolean closeConnection, Provider<MapFilter> filter) {
@@ -55,7 +56,6 @@ public class CursorWriter extends ResponseWriter {
                     ObjectId oid = (ObjectId) m.get("_id");
                     m.put("_id", oid.toString());
                 }
-                System.out.println("Write object " + iter);
                 if (filter != null) {
                     out.writeObject(filter.filter(m));
                 } else {

@@ -73,7 +73,6 @@ final class MongoClientProvider implements Provider<MongoClient>, Runnable {
 
     @Override
     public void run() {
-        System.out.println("CLOSING CLIENT ON " + Thread.currentThread());
         client.close();
     }
 }
