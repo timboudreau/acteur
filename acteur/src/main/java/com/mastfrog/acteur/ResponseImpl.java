@@ -24,9 +24,12 @@
 package com.mastfrog.acteur;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.inject.Key;
+import com.google.inject.name.Names;
 import com.mastfrog.acteur.ResponseWriter.AbstractOutput;
 import com.mastfrog.acteur.ResponseWriter.Output;
 import com.mastfrog.acteur.ResponseWriter.Status;
+import com.mastfrog.acteur.server.ServerModule;
 import com.mastfrog.acteur.util.HeaderValueType;
 import com.mastfrog.acteur.util.Headers;
 import com.mastfrog.acteur.util.Method;
@@ -39,6 +42,7 @@ import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
+import static io.netty.channel.ChannelFutureListener.CLOSE;
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
 import io.netty.handler.codec.http.DefaultHttpContent;
 import io.netty.handler.codec.http.DefaultHttpResponse;
@@ -48,7 +52,6 @@ import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpVersion;
 import io.netty.handler.codec.http.LastHttpContent;
-import io.netty.util.CharsetUtil;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
@@ -61,6 +64,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -290,15 +294,19 @@ final class ResponseImpl extends Response {
         Charset charset = deps.getInstance(Charset.class);
         ByteBufAllocator allocator = deps.getInstance(ByteBufAllocator.class);
         ObjectMapper mapper = deps.getInstance(ObjectMapper.class);
-        setWriter(w, charset, allocator, mapper, evt);
+        Key<ExecutorService> key = Key.get(ExecutorService.class, Names.named(ServerModule.BACKGROUND_THREAD_POOL_NAME));
+        ExecutorService svc = deps.getInstance(key);
+        setWriter(w, charset, allocator, mapper, evt, svc);
     }
 
     <T extends ResponseWriter> void setWriter(Class<T> w, Dependencies deps, Event evt) {
         setChunked(true);
         Charset charset = deps.getInstance(Charset.class);
         ByteBufAllocator allocator = deps.getInstance(ByteBufAllocator.class);
+        Key<ExecutorService> key = Key.get(ExecutorService.class, Names.named(ServerModule.BACKGROUND_THREAD_POOL_NAME));
+        ExecutorService svc = deps.getInstance(key);
         ObjectMapper mapper = deps.getInstance(ObjectMapper.class);
-        setWriter(new DynResponseWriter(w, deps), charset, allocator, mapper, evt);
+        setWriter(new DynResponseWriter(w, deps), charset, allocator, mapper, evt, svc);
     }
 
     static class DynResponseWriter extends ResponseWriter {
@@ -335,9 +343,9 @@ final class ResponseImpl extends Response {
         }
     }
 
-    void setWriter(ResponseWriter w, Charset charset, ByteBufAllocator allocator, ObjectMapper mapper, Event evt) {
+    void setWriter(ResponseWriter w, Charset charset, ByteBufAllocator allocator, ObjectMapper mapper, Event evt, ExecutorService svc) {
         setBodyWriter(new ResponseWriterListener(evt, w, charset, allocator,
-                mapper, chunked, !evt.isKeepAlive()));
+                mapper, chunked, !evt.isKeepAlive(), svc));
     }
 
     private static final class ResponseWriterListener extends AbstractOutput implements ChannelFutureListener {
@@ -348,13 +356,15 @@ final class ResponseImpl extends Response {
         private final ResponseWriter writer;
         private final boolean shouldClose;
         private final Event evt;
+        private final ExecutorService svc;
 
-        public ResponseWriterListener(Event evt, ResponseWriter writer, Charset charset, ByteBufAllocator allocator, ObjectMapper mapper, boolean chunked, boolean shouldClose) {
+        public ResponseWriterListener(Event evt, ResponseWriter writer, Charset charset, ByteBufAllocator allocator, ObjectMapper mapper, boolean chunked, boolean shouldClose, ExecutorService svc) {
             super(charset, allocator, mapper);
             this.chunked = chunked;
             this.writer = writer;
             this.shouldClose = shouldClose;
             this.evt = evt;
+            this.svc = svc;
         }
 
         public Channel channel() {
@@ -375,19 +385,37 @@ final class ResponseImpl extends Response {
             return this;
         }
 
+        volatile boolean inOperationComplete;
+
         @Override
-        public void operationComplete(ChannelFuture future) throws Exception {
-            this.future = future;
-            ResponseWriter.Status status = writer.write(evt, this, callCount++);
-            if (status.isCallback()) {
-                this.future = this.future.addListener(this);
-            } else if (status == Status.DONE) {
-                if (chunked) {
-                    this.future = this.future.channel().write(LastHttpContent.EMPTY_LAST_CONTENT);
+        public void operationComplete(final ChannelFuture future) throws Exception {
+            Callable<Void> c = new Callable<Void>() {
+                @Override
+                public Void call() throws Exception {
+                    inOperationComplete = true;
+                    try {
+                        ResponseWriterListener.this.future = future;
+                        ResponseWriter.Status status = writer.write(evt, ResponseWriterListener.this, callCount++);
+                        if (status.isCallback()) {
+                            ResponseWriterListener.this.future = ResponseWriterListener.this.future.addListener(ResponseWriterListener.this);
+                        } else if (status == Status.DONE) {
+                            if (chunked) {
+                                ResponseWriterListener.this.future = ResponseWriterListener.this.future.channel().write(LastHttpContent.EMPTY_LAST_CONTENT);
+                            }
+                            if (shouldClose) {
+                                ResponseWriterListener.this.future = ResponseWriterListener.this.future.addListener(CLOSE);
+                            }
+                        }
+                    } finally {
+                        inOperationComplete = false;
+                    }
+                    return null;
                 }
-                if (shouldClose) {
-                    this.future = this.future.addListener(CLOSE);
-                }
+            };
+            if (!inOperationComplete) {
+                c.call();
+            } else {
+                svc.submit(c);
             }
         }
 

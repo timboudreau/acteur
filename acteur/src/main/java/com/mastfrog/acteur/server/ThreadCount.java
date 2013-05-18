@@ -47,6 +47,7 @@ final class ThreadCount {
 
     public int get() {
         if (overrideValue > 0) {
+            System.out.println("use override value for " + propertyName);
             return overrideValue;
         }
         return set.get().getInt(propertyName, defaultValue);

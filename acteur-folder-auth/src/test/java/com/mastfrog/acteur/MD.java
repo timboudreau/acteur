@@ -396,6 +396,10 @@ class MD extends AbstractModule implements Event {
             public ChannelProgressivePromise newProgressivePromise() {
                 throw new UnsupportedOperationException();
             }
+
+            public ChannelPromise voidPromise() {
+                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+            }
         };
     }
 

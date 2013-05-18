@@ -84,10 +84,10 @@ public final class ParametersElement implements URLComponent, Comparable<Paramet
     public boolean isValid() {
         boolean result = key != null;
         if (result) {
-            result &= URLBuilder.ISO_LATIN_ENCODER.canEncode(key);
+            result &= URLBuilder.isoEncoder().canEncode(key);
         }
         if (value != null) {
-            result &= URLBuilder.ISO_LATIN_ENCODER.canEncode(value);
+            result &= URLBuilder.isoEncoder().canEncode(value);
         }
         return result;
     }

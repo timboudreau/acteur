@@ -133,7 +133,7 @@ public class ActeursImpl implements Acteurs {
 
         @Override
         public Callable<Object[]> convert(Acteur acteur) {
-            Checks.notNull("Null acteur in iterator from " + page, acteur);
+            Checks.notNull("Null acteur", acteur);
             Page.set(page);
 //            System.out.println("Run acteur " + acteur + " for " + page);
             try {

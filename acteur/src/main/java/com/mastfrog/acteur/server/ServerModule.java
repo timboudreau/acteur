@@ -191,8 +191,8 @@ public class ServerModule<A extends Application> extends AbstractModule {
         ThreadCount backgroundThreadCount = new ThreadCount(set, 128, backgroundThreads, "backgroundThreads");
 
         bind(ThreadCount.class).annotatedWith(Names.named("event")).toInstance(eventThreadCount);
-        bind(ThreadCount.class).annotatedWith(Names.named("workers")).toInstance(eventThreadCount);
-        bind(ThreadCount.class).annotatedWith(Names.named(BACKGROUND_THREAD_POOL_NAME)).toInstance(eventThreadCount);
+        bind(ThreadCount.class).annotatedWith(Names.named("workers")).toInstance(workerThreadCount);
+        bind(ThreadCount.class).annotatedWith(Names.named(BACKGROUND_THREAD_POOL_NAME)).toInstance(backgroundThreadCount);
 
         bind(ThreadFactory.class).annotatedWith(Names.named("workers")).toInstance(workerThreadFactory);
         bind(ThreadFactory.class).annotatedWith(Names.named("event")).toInstance(eventThreadFactory);

@@ -26,6 +26,7 @@ package com.mastfrog.acteur;
 import com.mastfrog.acteur.util.HeaderValueType;
 import com.mastfrog.acteur.util.Headers;
 import com.google.common.net.MediaType;
+import com.google.inject.ImplementedBy;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.guicy.scope.ReentrantScope;
 import com.mastfrog.acteur.util.CacheControl;
@@ -137,7 +138,9 @@ public abstract class Page implements Iterable<Acteur> {
 
     protected final void add(Class<? extends Acteur> action) {
         if ((action.getModifiers() & Modifier.ABSTRACT) != 0) {
-            throw new IllegalArgumentException(action + " is abstract");
+            if (action.getAnnotation(ImplementedBy.class) == null) {
+                throw new IllegalArgumentException(action + " is abstract");
+            }
         }
         if (action.isLocalClass()) {
             throw new IllegalArgumentException(action + " is not a top-level class");

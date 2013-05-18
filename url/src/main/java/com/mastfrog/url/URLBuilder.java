@@ -58,8 +58,11 @@ public final class URLBuilder extends AbstractBuilder<PathElement, URL> {
     private List<Label> labels;
 
     static final Charset ISO_LATIN = Charset.forName("ISO-8859-1");
-    static final CharsetEncoder ISO_LATIN_ENCODER = ISO_LATIN.newEncoder();
     private ParametersDelimiter delimiter;
+    
+    static CharsetEncoder isoEncoder() {
+        return ISO_LATIN.newEncoder();
+    }
 
     public URLBuilder(Protocol protocol) {
         this.protocol = protocol;
@@ -315,7 +318,7 @@ public final class URLBuilder extends AbstractBuilder<PathElement, URL> {
                 sb.append (c);
                 continue;
             }
-            if (!ISO_LATIN_ENCODER.canEncode(c)) {
+            if (!isoEncoder().canEncode(c)) {
                 sb.append (UNENCODABLE_CHARACTER);
                 continue;
             }
@@ -328,11 +331,11 @@ public final class URLBuilder extends AbstractBuilder<PathElement, URL> {
     }
 
     static boolean isEncodableInLatin1(char c) {
-        return ISO_LATIN_ENCODER.canEncode(c);
+        return isoEncoder().canEncode(c);
     }
 
     static boolean isEncodableInLatin1(CharSequence seq) {
-        return ISO_LATIN_ENCODER.canEncode(seq);
+        return isoEncoder().canEncode(seq);
     }
     
     static boolean isLetter(char c) {

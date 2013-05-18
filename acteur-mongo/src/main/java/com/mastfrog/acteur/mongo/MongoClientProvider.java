@@ -1,16 +1,17 @@
 package com.mastfrog.acteur.mongo;
 
 import com.google.inject.Inject;
-import com.google.inject.Key;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import com.google.inject.name.Named;
-import com.google.inject.name.Names;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.giulius.ShutdownHookRegistry;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.util.Exceptions;
 import com.mongodb.MongoClient;
+import com.mongodb.MongoClientOptions;
+import com.mongodb.ReadPreference;
+import com.mongodb.ServerAddress;
 import java.net.UnknownHostException;
 
 /**
@@ -55,8 +56,16 @@ final class MongoClientProvider implements Provider<MongoClient>, Runnable {
             synchronized (this) {
                 if (client == null) {
                     try {
-                        registry.onBeforeCreateMongoClient(mongoHost(), mongoPort());
-                        client = new MongoClient(mongoHost(), mongoPort());
+                        String host = mongoHost();
+                        int port = mongoPort();
+                        registry.onBeforeCreateMongoClient(host, port);
+                        MongoClientOptions opts = MongoClientOptions.builder()
+                                .autoConnectRetry(true).connectionsPerHost(1500)
+                                .cursorFinalizerEnabled(true)
+                                .readPreference(ReadPreference.nearest())
+                                .maxWaitTime(20000).build();
+                        ServerAddress addr = new ServerAddress(host, port);
+                        client = new MongoClient(addr, opts);
                         registry.onMongoClientCreated(client);
                         if (!added) {
                             hooks.add(this);

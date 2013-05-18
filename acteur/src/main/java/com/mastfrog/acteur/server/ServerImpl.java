@@ -23,7 +23,6 @@
  */
 package com.mastfrog.acteur.server;
 
-import static com.google.common.util.concurrent.Striped.lock;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import com.mastfrog.acteur.util.Server;
@@ -122,7 +121,9 @@ final class ServerImpl implements Server {
 
     @Override
     public String toString() {
-        return applicationName + " on port " + port;
+        return applicationName + " on port " + port + " with " + 
+                eventThreadCount.get() + " event threads and " + 
+                workerThreadCount.get() + " worker threads.";
     }
     private Channel localChannel;
 
@@ -140,7 +141,6 @@ final class ServerImpl implements Server {
             throw new IllegalStateException("Already started");
         }
         try {
-
             events = new NioEventLoopGroup(eventThreadCount.get(), eventThreadFactory);
             workers = new NioEventLoopGroup(workerThreadCount.get(), workerThreadFactory);
 
