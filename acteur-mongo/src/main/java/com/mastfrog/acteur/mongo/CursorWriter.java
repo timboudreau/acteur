@@ -22,7 +22,7 @@ public class CursorWriter extends ResponseWriter {
     private final MapFilter filter;
 
     @Inject
-    public CursorWriter(DBCursor cursor, Event evt, Provider<MapFilter> filter) {
+    public CursorWriter(DBCursor cursor, Event evt, Provider<? extends MapFilter> filter) {
         this(cursor, !evt.isKeepAlive(), filter);
     }
 
@@ -30,7 +30,7 @@ public class CursorWriter extends ResponseWriter {
         this(cursor, evt, Providers.of(NO_FILTER));
     }
 
-    public CursorWriter(DBCursor cursor, boolean closeConnection, Provider<MapFilter> filter) {
+    public CursorWriter(DBCursor cursor, boolean closeConnection, Provider<? extends MapFilter> filter) {
         this.cursor = cursor;
         this.closeConnection = closeConnection;
         MapFilter mf;
