@@ -68,7 +68,6 @@ public class FileResources implements StaticResources {
 
     @Inject
     FileResources(File dir, MimeTypes types, Settings settings) {
-        System.out.println("FILE RESOURCES OVER " + dir);
         this.dir = dir;
         this.types = types;
         long maxFileLength = settings.getLong(SETTINGS_KEY_MAX_FILE_LENGTH, 1024 * 1024 * 12);
@@ -118,7 +117,6 @@ public class FileResources implements StaticResources {
     public String[] getPatterns() {
         List<String> result = new ArrayList<>();
         scan(dir, "", result);
-        System.out.println("PATTERNS: " + result);
         return result.toArray(new String[0]);
     }
 
@@ -160,7 +158,6 @@ public class FileResources implements StaticResources {
             page.getReponseHeaders().addCacheControl(CacheControlTypes.max_age, Duration.standardHours(2));
             page.getReponseHeaders().addCacheControl(CacheControlTypes.must_revalidate);
             page.getReponseHeaders().setLastModified(lastModified());
-            System.out.println("Decorate page LM " + lastModified() + " for " + this);
             page.getReponseHeaders().setEtag(etag);
             if (evt.getMethod() != Method.HEAD) {
                 page.getReponseHeaders().setContentLengthProvider(this);

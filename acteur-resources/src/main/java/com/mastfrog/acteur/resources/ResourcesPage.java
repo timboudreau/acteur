@@ -59,7 +59,6 @@ public class ResourcesPage extends Page {
     public ResourcesPage(ActeurFactory af, StaticResources r, Settings settings) {
         add(af.matchMethods(Method.GET, Method.HEAD));
         String base = settings.getString(SETTINGS_KEY_STATIC_RESOURCES_BASE_URL_PATH);
-        System.out.println("BAASI " + base);
         if (base != null) {
             add(af.matchPath(base));
         }
@@ -83,10 +82,8 @@ public class ResourcesPage extends Page {
                     path = m.group(1);
                 }
             }
-            System.out.println("PATH NOW " + path);
             path = URLDecoder.decode(path, "UTF-8");
             for (String pat : res.getPatterns()) {
-                System.out.println("COMPARE " + path + " and " + pat);
                 if (path.equals(pat)) {
                     Resource r = res.get(path);
                     if (r == null) {
