@@ -135,6 +135,10 @@ public class ServerModule<A extends Application> extends AbstractModule {
      * The default allocator to use if none is specified
      */
     public static final String DEFAULT_ALLOCATOR = POOLED_ALLOCATOR;
+    public static final String WORKER_THREAD_COUNT = "workerThreads";
+    public static final String EVENT_THREAD_COUNT = "eventThreads";
+    public static final String BACKGROUND_THREAD_COUNT = "backgroundThreads";
+    public static final String PORT = "port";
     private final Class<A> appType;
     private final ReentrantScope scope = new ReentrantScope();
     private final int eventThreads;
@@ -186,9 +190,9 @@ public class ServerModule<A extends Application> extends AbstractModule {
         bind(ThreadGroup.class).annotatedWith(Names.named("worker")).toInstance(workerThreadFactory.tg);
         bind(ThreadGroup.class).annotatedWith(Names.named("event")).toInstance(eventThreadFactory.tg);
 
-        ThreadCount workerThreadCount = new ThreadCount(set, 8, workerThreads, "workerThreads");
-        ThreadCount eventThreadCount = new ThreadCount(set, 8, eventThreads, "eventThreads");
-        ThreadCount backgroundThreadCount = new ThreadCount(set, 128, backgroundThreads, "backgroundThreads");
+        ThreadCount workerThreadCount = new ThreadCount(set, 8, workerThreads, WORKER_THREAD_COUNT);
+        ThreadCount eventThreadCount = new ThreadCount(set, 8, eventThreads, EVENT_THREAD_COUNT);
+        ThreadCount backgroundThreadCount = new ThreadCount(set, 128, backgroundThreads, BACKGROUND_THREAD_COUNT);
 
         bind(ThreadCount.class).annotatedWith(Names.named("event")).toInstance(eventThreadCount);
         bind(ThreadCount.class).annotatedWith(Names.named("workers")).toInstance(workerThreadCount);

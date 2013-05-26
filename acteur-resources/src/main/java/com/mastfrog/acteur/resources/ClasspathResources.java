@@ -28,19 +28,15 @@ import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import com.mastfrog.acteur.Event;
-import com.mastfrog.acteur.util.Headers;
 import com.mastfrog.acteur.Page;
 import com.mastfrog.acteur.ResponseHeaders;
 import com.mastfrog.acteur.ResponseHeaders.ContentLengthProvider;
 import com.mastfrog.acteur.ResponseWriter;
 import com.mastfrog.acteur.util.CacheControlTypes;
 import com.mastfrog.acteur.util.Method;
+import com.mastfrog.giulius.DeploymentMode;
 import com.mastfrog.util.Streams;
 import com.mastfrog.util.streams.HashingOutputStream;
-import io.netty.buffer.Unpooled;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelFutureListener;
-import static io.netty.channel.ChannelFutureListener.CLOSE;
 import java.io.ByteArrayOutputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -60,15 +56,17 @@ import org.joda.time.Duration;
 @Singleton
 public final class ClasspathResources implements StaticResources {
 
-    private final Provider<MimeTypes> types;
+    private final MimeTypes types;
     private final Class<?> relativeTo;
     private final Map<String, Resource> names = new HashMap<>();
     private static final DateTime startTime = DateTime.now();
     private final String[] patterns;
+    private final DeploymentMode mode;
 
     @Inject
-    public ClasspathResources(Provider<MimeTypes> types, ClasspathResourceInfo info) throws IOException {
+    public ClasspathResources(MimeTypes types, ClasspathResourceInfo info, DeploymentMode deps) throws IOException {
         this.types = types;
+        this.mode = deps;
         this.relativeTo = info.relativeTo();
         List<String> l = new ArrayList<>();
         for (String nm : info.names()) {
@@ -80,6 +78,10 @@ public final class ClasspathResources implements StaticResources {
         }
 //        System.out.println("PATTERNS: "+ l);
         patterns = l.toArray(new String[0]);
+    }
+    
+    boolean productionMode() {
+        return mode.isProduction();
     }
 
     public Resource get(String path) {
@@ -114,10 +116,16 @@ public final class ClasspathResources implements StaticResources {
 
         public void decoratePage(Page page, Event evt, String path) {
             ResponseHeaders h = page.getReponseHeaders();
-            page.getReponseHeaders().addVaryHeader(Headers.ACCEPT_ENCODING);
-            page.getReponseHeaders().addCacheControl(CacheControlTypes.Public);
-            page.getReponseHeaders().addCacheControl(CacheControlTypes.max_age, Duration.standardHours(2));
-            page.getReponseHeaders().addCacheControl(CacheControlTypes.must_revalidate);
+//            page.getReponseHeaders().addVaryHeader(Headers.ACCEPT_ENCODING);
+            if (productionMode()) {
+                page.getReponseHeaders().addCacheControl(CacheControlTypes.Public);
+                page.getReponseHeaders().addCacheControl(CacheControlTypes.max_age, Duration.standardHours(2));
+                page.getReponseHeaders().addCacheControl(CacheControlTypes.must_revalidate);
+            } else {
+                page.getReponseHeaders().addCacheControl(CacheControlTypes.Private);
+                page.getReponseHeaders().addCacheControl(CacheControlTypes.no_cache);
+                page.getReponseHeaders().addCacheControl(CacheControlTypes.no_store);
+            }
             if (evt.getMethod() != Method.HEAD) {
                 page.getReponseHeaders().setContentLengthProvider(this);
             }
@@ -131,7 +139,7 @@ public final class ClasspathResources implements StaticResources {
 
         @Override
         public ResponseWriter sender(Event evt) {
-            return new BytesSender(evt, bytes);
+            return new BytesSender(bytes);
         }
 
         public String getEtag() {
@@ -143,7 +151,7 @@ public final class ClasspathResources implements StaticResources {
         }
 
         public MediaType getContentType() {
-            MediaType mt = types.get().get(name);
+            MediaType mt = types.get(name);
             return mt;
         }
 
@@ -158,11 +166,9 @@ public final class ClasspathResources implements StaticResources {
 
     static final class BytesSender extends ResponseWriter {
 
-        private final Event evt;
         private final byte[] bytes;
 
-        public BytesSender(Event evt, byte[] bytes) {
-            this.evt = evt;
+        public BytesSender(byte[] bytes) {
             this.bytes = bytes;
         }
 

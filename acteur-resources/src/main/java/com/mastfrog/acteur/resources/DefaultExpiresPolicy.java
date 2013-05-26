@@ -25,6 +25,7 @@ package com.mastfrog.acteur.resources;
 
 import com.google.common.net.MediaType;
 import com.google.inject.Inject;
+import com.mastfrog.giulius.DeploymentMode;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.url.Path;
 import org.joda.time.DateTime;
@@ -35,13 +36,20 @@ import org.joda.time.Duration;
  * @author Tim Boudreau
  */
 class DefaultExpiresPolicy implements ExpiresPolicy {
+
     private final Settings settings;
+    private final boolean production;
+
     @Inject
-    DefaultExpiresPolicy(Settings settings) {
+    DefaultExpiresPolicy(Settings settings, DeploymentMode mode) {
         this.settings = settings;
+        this.production = mode.isProduction();
     }
 
     public DateTime get(MediaType mimeType, Path path) {
+        if (!production) {
+            return new DateTime(0);
+        }
         Long expires = settings.getLong("expires." + mimeType.type() + '/' + mimeType.subtype());
         if (expires != null) {
             return DateTime.now().plus(Duration.millis(expires));
@@ -51,5 +59,4 @@ class DefaultExpiresPolicy implements ExpiresPolicy {
         }
         return null;
     }
-
 }

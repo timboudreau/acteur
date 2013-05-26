@@ -76,7 +76,7 @@ final class ServerImpl implements Server {
             ServerBootstrap bootstrap,
             ShutdownHookRegistry registry,
             Settings settings) {
-        this.port = settings.getInt("port", 8123);
+        this.port = settings.getInt(ServerModule.PORT, 8123);
         this.pipelineFactory = pipelineFactory;
         this.eventThreadFactory = eventThreadFactory;
         this.eventThreadCount = eventThreadCount;

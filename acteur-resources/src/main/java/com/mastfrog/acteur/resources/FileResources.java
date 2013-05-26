@@ -169,7 +169,7 @@ public class FileResources implements StaticResources {
         }
 
         public ResponseWriter sender(Event evt) {
-            return new ClasspathResources.BytesSender(evt, bytes);
+            return new ClasspathResources.BytesSender(bytes);
         }
 
         public String getEtag() {
