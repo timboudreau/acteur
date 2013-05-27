@@ -33,6 +33,7 @@ import com.mastfrog.acteur.ResponseHeaders;
 import com.mastfrog.acteur.ResponseHeaders.ContentLengthProvider;
 import com.mastfrog.acteur.ResponseWriter;
 import com.mastfrog.acteur.util.CacheControlTypes;
+import com.mastfrog.acteur.util.Headers;
 import com.mastfrog.acteur.util.Method;
 import com.mastfrog.giulius.DeploymentMode;
 import com.mastfrog.util.Streams;
@@ -79,7 +80,7 @@ public final class ClasspathResources implements StaticResources {
 //        System.out.println("PATTERNS: "+ l);
         patterns = l.toArray(new String[0]);
     }
-    
+
     boolean productionMode() {
         return mode.isProduction();
     }
@@ -116,7 +117,10 @@ public final class ClasspathResources implements StaticResources {
 
         public void decoratePage(Page page, Event evt, String path) {
             ResponseHeaders h = page.getReponseHeaders();
-//            page.getReponseHeaders().addVaryHeader(Headers.ACCEPT_ENCODING);
+            String ua = evt.getHeader("User-Agent");
+            if (ua != null && !ua.contains("MSIE")) {
+                page.getReponseHeaders().addVaryHeader(Headers.ACCEPT_ENCODING);
+            }
             if (productionMode()) {
                 page.getReponseHeaders().addCacheControl(CacheControlTypes.Public);
                 page.getReponseHeaders().addCacheControl(CacheControlTypes.max_age, Duration.standardHours(2));

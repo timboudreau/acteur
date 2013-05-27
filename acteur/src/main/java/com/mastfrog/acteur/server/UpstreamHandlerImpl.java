@@ -45,8 +45,8 @@ import static io.netty.handler.codec.http.HttpVersion.*;
  *
  * @author Tim Boudreau
  */
-@ChannelHandler.Sharable
-@Singleton
+//@ChannelHandler.Sharable
+//@Singleton
 final class UpstreamHandlerImpl extends ChannelInboundMessageHandlerAdapter<Object>{
 
     private final Application application;
