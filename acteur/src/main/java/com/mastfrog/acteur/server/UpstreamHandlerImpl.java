@@ -75,9 +75,9 @@ final class UpstreamHandlerImpl extends ChannelInboundMessageHandlerAdapter<Obje
     @Override
     public void messageReceived(ChannelHandlerContext ctx, Object msg) throws Exception {
         // HttpContent$2 - ?
-        if (msg instanceof FullHttpRequest) {
-            ((FullHttpRequest) msg).retain();
-        }
+//        if (msg instanceof FullHttpRequest) {
+//            ((FullHttpRequest) msg).retain();
+//        }
         if (msg instanceof HttpRequest) {
             final HttpRequest request = (HttpRequest) msg;
             

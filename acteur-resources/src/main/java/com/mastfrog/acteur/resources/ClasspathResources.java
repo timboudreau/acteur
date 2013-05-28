@@ -130,11 +130,12 @@ public final class ClasspathResources implements StaticResources {
                 page.getReponseHeaders().addCacheControl(CacheControlTypes.no_cache);
                 page.getReponseHeaders().addCacheControl(CacheControlTypes.no_store);
             }
-            if (evt.getMethod() != Method.HEAD) {
-                page.getReponseHeaders().setContentLengthProvider(this);
-            }
+//            if (evt.getMethod() != Method.HEAD) {
+//                page.getReponseHeaders().setContentLengthProvider(this);
+//            }
             h.setLastModified(startTime);
             h.setEtag(hash);
+//            page.getReponseHeaders().setContentLength(getLength());
             MediaType type = getContentType();
             if (type != null) {
                 h.setContentType(type);

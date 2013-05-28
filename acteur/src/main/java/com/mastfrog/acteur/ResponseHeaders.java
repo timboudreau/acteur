@@ -209,14 +209,7 @@ public class ResponseHeaders {
     }
 
     protected Duration getAge() {
-        if (age != null) {
-            return age;
-        }
-        DateTime lm = getLastModified();
-        if (lm != null) {
-            return new Duration(lm, new DateTime());
-        }
-        return null;
+        return age;
     }
 
     protected URI getContentLocation() {

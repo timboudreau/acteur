@@ -48,7 +48,7 @@ class DefaultExpiresPolicy implements ExpiresPolicy {
 
     public DateTime get(MediaType mimeType, Path path) {
         if (!production) {
-            return new DateTime(0);
+            return null;
         }
         Long expires = settings.getLong("expires." + mimeType.type() + '/' + mimeType.subtype());
         if (expires != null) {
