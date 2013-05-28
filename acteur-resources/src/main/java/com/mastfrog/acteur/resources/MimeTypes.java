@@ -56,6 +56,7 @@ public class MimeTypes {
         add("jpg", MediaType.JPEG);
         add("bmp", MediaType.BMP);
         add("tif", MediaType.TIFF);
+        add("svg", MediaType.SVG_UTF_8);
         add("tiff", MediaType.TIFF);
         add("ico", MediaType.ICO);
         add("xml", MediaType.XML_UTF_8.withCharset(charset));

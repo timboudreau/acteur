@@ -57,7 +57,7 @@ public final class PasswordHasher {
         this.charset = charset;
         String salt = settings.getString("salt", DEFAULT_SALT);
         String alg = settings.getString("passwordHashingAlgorithm", "SHA-512");
-        if (settings.getBoolean("production.mode", false) && DEFAULT_SALT.equals(salt)) {
+        if (settings.getBoolean("productionMode", false) && DEFAULT_SALT.equals(salt)) {
             throw new ConfigurationError("Default password salt should not be used in "
                     + "production mode.  Set property salt for namespace timetracker to "
                     + "be something else");
