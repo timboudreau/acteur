@@ -46,7 +46,7 @@ public final class PasswordHasher {
 
     private final byte[] saltBytes;
     private final String algorithm;
-    // A plokta default:
+    // A plokta def salt:
     static final String DEFAULT_SALT = "wlkefjasdfhadasdlkfjhwa,l.e,u.f,2.o3ads[]90as!!_$GHJM"
             + "<$^UJCMM<>OIUHGC^#YUJKTGYSUCINJd9f0awe0f9aefansjneaiw"
             + "aoeifa222222222222o(#(#(&@^!";

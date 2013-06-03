@@ -32,6 +32,7 @@ import com.mastfrog.guicy.scope.ReentrantScope;
 import com.mastfrog.acteur.util.CacheControl;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.util.Exceptions;
+import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import java.lang.reflect.Modifier;
@@ -248,6 +249,16 @@ public abstract class Page implements Iterable<Acteur> {
         DateTime lastModified = getReponseHeaders().getLastModified();
         if (lastModified != null) {
             Headers.write(Headers.LAST_MODIFIED, lastModified, response);
+        }
+        String encoding = getReponseHeaders().getTransferEncoding();
+        if (encoding != null) {
+            HeaderValueType<String> hd = Headers.stringHeader(HttpHeaders.Names.TRANSFER_ENCODING);
+            Headers.write(hd, encoding, response);
+        }
+        String contentEncoding = getReponseHeaders().getContentEncoding();
+        if (contentEncoding != null) {
+            HeaderValueType<String> hd = Headers.stringHeader(HttpHeaders.Names.CONTENT_ENCODING);
+            Headers.write(hd, contentEncoding, response);
         }
         String etag = properties.getETag();
         if (etag != null) {

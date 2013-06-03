@@ -68,17 +68,17 @@ public final class EventImpl implements Event {
     private final SocketAddress address;
     private boolean neverKeepAlive = false;
     private final Channel channel;
-    private final Provider<ObjectMapper> mapper;
+    private final ObjectMapper mapper;
 
     public EventImpl(HttpRequest req, PathFactory paths) {
         this.req = req;
         this.paths = paths;
         address = new InetSocketAddress("timboudreau.com", 8985); //XXX for tests
         this.channel = null;
-        mapper = Providers.of(new ObjectMapper());
+        mapper = new ObjectMapper();
     }
 
-    public EventImpl(HttpRequest req, SocketAddress addr, Channel channel, PathFactory paths, Provider<ObjectMapper> mapper) {
+    public EventImpl(HttpRequest req, SocketAddress addr, Channel channel, PathFactory paths, ObjectMapper mapper) {
         this.req = req;
         this.paths = paths;
         address = addr;
@@ -102,7 +102,6 @@ public final class EventImpl implements Event {
 
     @Override
     public ByteBuf getContent() {
-        System.out.println("REQ IS " + Types.list(req.getClass()));
         return req instanceof FullHttpRequest ? ((FullHttpRequest) req).content()
                 : Unpooled.EMPTY_BUFFER;
     }

@@ -143,7 +143,7 @@ final class ServerImpl implements Server {
         try {
             events = new NioEventLoopGroup(eventThreadCount.get(), eventThreadFactory);
             workers = new NioEventLoopGroup(workerThreadCount.get(), workerThreadFactory);
-
+            
             bootstrap.group(events, workers)
                     .channel(NioServerSocketChannel.class)
                     .childHandler(pipelineFactory)

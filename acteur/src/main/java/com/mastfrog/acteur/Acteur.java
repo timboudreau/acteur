@@ -40,41 +40,44 @@ import com.mastfrog.util.Invokable;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.handler.codec.http.HttpResponseStatus;
+import static io.netty.handler.codec.http.HttpResponseStatus.BAD_REQUEST;
+import static io.netty.handler.codec.http.HttpResponseStatus.NOT_FOUND;
+import static io.netty.handler.codec.http.HttpResponseStatus.NO_CONTENT;
+import static io.netty.handler.codec.http.HttpResponseStatus.OK;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * A single piece of logic which can 
+ * A single piece of logic which can
  * <ul>
  * <li>Reject an HTTP request</li>
- * <li>Validate an HTTP request and allow the next Acteur in the chain to process it</li>
+ * <li>Validate an HTTP request and allow the next Acteur in the chain to
+ * process it</li>
  * <li>Initiate an HTTP response</li>
  * </ul>
- * Acteurs are aggregated into a list in a {@link Page}.  All of an Acteur's
- * work happens either in its constructor, prior to a call to setState(),
- * or in its overridden getState() method.  The state determines whether
- * processing of the current list of Acteurs will continue, or if not,
- * what happens to it.
+ * Acteurs are aggregated into a list in a {@link Page}. All of an Acteur's work
+ * happens either in its constructor, prior to a call to setState(), or in its
+ * overridden getState() method. The state determines whether processing of the
+ * current list of Acteurs will continue, or if not, what happens to it.
  * <p/>
- * Acteurs are constructed by Guice - in fact, what a Page has is usually just a list of
- * classes.  Objects they need, such as the current request {@link Event} can
- * simply be constructor parameters if the constructor is annotated with
+ * Acteurs are constructed by Guice - in fact, what a Page has is usually just a
+ * list of classes. Objects they need, such as the current request {@link Event}
+ * can simply be constructor parameters if the constructor is annotated with
  * Guice's &#064;Inject.
  * <p/>
- * An Acteur may construct some objects which will then be included in the
- * set of objects the next Acteur in the chain can request for injection in
- * its constructor parameters.
+ * An Acteur may construct some objects which will then be included in the set
+ * of objects the next Acteur in the chain can request for injection in its
+ * constructor parameters.
  * <p/>
- * A number of inner classes are provided which can be used as standard
- * states.
+ * A number of inner classes are provided which can be used as standard states.
  * <p/>
- * Acteurs may be - in fact, are likely to be - called asynchronously.  For
- * a given page, they will always be called in the sequence that page lists
- * them in, but there is no guarantee that any two adjacent Acteurs will be
- * called on the same thread.  Any shared state should take the form of
- * objects put into the context when a the output State is created.
+ * Acteurs may be - in fact, are likely to be - called asynchronously. For a
+ * given page, they will always be called in the sequence that page lists them
+ * in, but there is no guarantee that any two adjacent Acteurs will be called on
+ * the same thread. Any shared state should take the form of objects put into
+ * the context when a the output State is created.
  *
  * @author Tim Boudreau
  */
@@ -85,7 +88,7 @@ public abstract class Acteur {
 
     /**
      * Create an acteur.
-     * 
+     *
      * @param async If true, the framework should prefer to run the <i>next</i>
      * action asynchronously
      */
@@ -105,7 +108,7 @@ public abstract class Acteur {
 
     ResponseImpl getResponse() {
         if (response == null) {
-            synchronized(this) {
+            synchronized (this) {
                 if (response == null) {
                     response = new ResponseImpl();
                 }
@@ -134,37 +137,66 @@ public abstract class Acteur {
     public void setChunked(boolean chunked) {
         getResponse().setChunked(chunked);
     }
-    
+
     protected Response response() {
         return getResponse();
     }
-    
+
     static Acteur error(Page page, Throwable t) {
         return new ErrorActeur(page, t);
     }
-    
+
     public void describeYourself(Map<String, Object> into) {
-        
     }
-    
+
+    protected void noContent() {
+        setState(new RespondWith(NO_CONTENT));
+    }
+
+    protected void badRequest() {
+        setState(new RespondWith(BAD_REQUEST));
+    }
+
+    protected void badRequest(Object msg) {
+        setState(new RespondWith(BAD_REQUEST, msg));
+    }
+
+    protected void notFound() {
+        setState(new RespondWith(NOT_FOUND));
+    }
+
+    protected void notFound(Object msg) {
+        setState(new RespondWith(NOT_FOUND, msg));
+    }
+
+    protected void ok(Object msg) {
+        setState(new RespondWith(OK, msg));
+    }
+
+    protected void ok() {
+        setState(new RespondWith(OK));
+    }
+
     private static final class ErrorActeur extends Acteur {
+
         ErrorActeur(Page page, Throwable t) {
             StringBuilder sb = new StringBuilder("Page " + page + " (" + page.getClass().getName() + " threw " + t.getMessage() + '\n');
             try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
                 t.printStackTrace(new PrintStream(out));
                 sb.append(new String(out.toByteArray()));
-            } catch (IOException ioe) {}
-                setState(new RespondWith(HttpResponseStatus.INTERNAL_SERVER_ERROR,
+            } catch (IOException ioe) {
+            }
+            setState(new RespondWith(HttpResponseStatus.INTERNAL_SERVER_ERROR,
                     sb.toString()));
         }
     }
-    
+
     public class RespondWith extends State {
 
         private final Page page;
 
         public RespondWith(int status) {
-            this (HttpResponseStatus.valueOf(status));
+            this(HttpResponseStatus.valueOf(status));
         }
 
         public RespondWith(HttpResponseStatus status) {
@@ -172,20 +204,21 @@ public abstract class Acteur {
         }
 
         public RespondWith(int status, Object msg) {
-            this (HttpResponseStatus.valueOf(status), msg);
+            this(HttpResponseStatus.valueOf(status), msg);
         }
 
         /**
          * Response which uses JSON
+         *
          * @param status
-         * @param msg 
+         * @param msg
          */
         public RespondWith(HttpResponseStatus status, Object msg) {
             page = Page.get();
             ObjectMapper mapper = page.getApplication().getDependencies().getInstance(ObjectMapper.class);
             try {
-                String m = msg instanceof String? msg.toString() : msg != null ?
-                        mapper.writeValueAsString(msg) + '\n' : null;
+                String m = msg instanceof String ? msg.toString() : msg != null
+                        ? mapper.writeValueAsString(msg) + '\n' : null;
                 setResponseCode(status);
                 if (m != null) {
                     setMessage(m);
@@ -360,18 +393,19 @@ public abstract class Acteur {
         Event evt = deps.getInstance(Event.class);
         getResponse().setWriter(writer, deps, evt);
     }
-    
+
     @Deprecated
-    protected final <T extends ChannelFutureListener>void setResponseBodyWriter(final Class<T> type) {
+    protected final <T extends ChannelFutureListener> void setResponseBodyWriter(final Class<T> type) {
         final Page page = Page.get();
         final Dependencies deps = page.getApplication().getDependencies();
         ReentrantScope scope = page.getApplication().getRequestScope();
         final AtomicReference<ChannelFuture> fut = new AtomicReference<>();
-        
+
         // An object which can instantiate and run the listener
-        
         class I extends Invokable<ChannelFuture, Void, Exception> {
+
             private ChannelFutureListener delegate;
+
             @Override
             public Void run(ChannelFuture argument) throws Exception {
                 if (delegate == null) {
@@ -380,7 +414,7 @@ public abstract class Acteur {
                 delegate.operationComplete(argument);
                 return null;
             }
-            
+
             @Override
             public String toString() {
                 return "Delegate for " + type;
@@ -390,12 +424,13 @@ public abstract class Acteur {
         // A runnable-like object which takes an argument, and which can
         // be wrapped by the scope in order to reconstitute the scope contents
         // as they are now before constructing the actual listener
-        final Invokable<ChannelFuture, Void, Exception> listenerInvoker = 
-                scope.wrap(new I(), fut);
+        final Invokable<ChannelFuture, Void, Exception> listenerInvoker
+                = scope.wrap(new I(), fut);
 
         // Wrap this in a dummy listener which will create the real one on
         // demand
         class C implements ChannelFutureListener {
+
             @Override
             public void operationComplete(ChannelFuture future) throws Exception {
                 try (AutoCloseable cl = Page.set(page)) {
@@ -413,7 +448,7 @@ public abstract class Acteur {
         ChannelFutureListener l = new C();
         setResponseBodyWriter(l);
     }
-    
+
     @Deprecated
     public final void setResponseBodyWriter(final ChannelFutureListener listener) {
         final Page p = Page.get();
@@ -469,7 +504,7 @@ public abstract class Acteur {
                 }
                 return super.getResponse();
             }
-            
+
             protected void onError(Throwable t) throws UnsupportedEncodingException {
                 if (!Dependencies.isProductionMode(deps.getInstance(Settings.class))) {
                     ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -481,7 +516,7 @@ public abstract class Acteur {
             }
 
             private State cachedState;
-            
+
             Acteur delegate() {
                 if (acteur == null) {
                     try {

@@ -55,6 +55,7 @@ public class ResponseHeaders {
     private ContentLengthProvider contentLengthProvider;
     private ETagProvider etagProvider;
     private DateTime expires;
+    private String transferEncoding;
 
     public void setExpires(DateTime expires) {
         this.expires = expires;
@@ -118,6 +119,23 @@ public class ResponseHeaders {
 
     protected Long getContentLength() {
         return this.contentLengthProvider == null ? null : contentLengthProvider.getContentLength();
+    }
+    
+    private String contentEncoding;
+    public String getContentEncoding() {
+        return contentEncoding;
+    }
+    
+    public void setContentEncoding(String contentEncoding) {
+        this.contentEncoding = contentEncoding;
+    }
+
+    public void setTransferEncoding(String gzip) {
+        this.transferEncoding = gzip;
+    }
+    
+    public String getTransferEncoding() {
+        return this.transferEncoding;
     }
 
     private static class TrivialContentLengthProvider implements ContentLengthProvider {

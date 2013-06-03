@@ -29,6 +29,7 @@ import com.mastfrog.settings.Settings;
 import com.mastfrog.util.Exceptions;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import java.nio.charset.Charset;
@@ -118,7 +119,7 @@ final class PagesImpl implements Pages {
         }
 
         @Override
-        public void receive(Acteur acteur, State state, ResponseImpl response) {
+        public void receive(final Acteur acteur, final State state, final ResponseImpl response) {
             if (response.isModified() && response.status != null) {
                 // Actually send the response
                 try {
@@ -127,7 +128,7 @@ final class PagesImpl implements Pages {
                         latch.countDown();
                         return;
                     }
-                    
+
                     Charset charset = application.getDependencies().getInstance(Charset.class);
                     // Create a netty response
                     HttpResponse httpResponse = response.toResponse(event, charset);
@@ -141,7 +142,7 @@ final class PagesImpl implements Pages {
                         latch.countDown();
                         return;
                     }
-
+                    final HttpResponse resp = httpResponse;
                     try {
                         // Give the application a last chance to do something
                         application.onBeforeRespond(id, event, response.getResponseCode());
@@ -149,10 +150,24 @@ final class PagesImpl implements Pages {
                         // Send the headers
                         ChannelFuture fut = channel.write(httpResponse);
 
-                        // Send the response
-                        fut = response.sendMessage(event, fut, httpResponse);
-
-                        application.onAfterRespond(id, event, acteur, state.getLockedPage(), state, HttpResponseStatus.OK, httpResponse);
+                        final Page pg = state.getLockedPage();
+                        fut = response.sendMessage(event, fut, resp);
+                        application.onAfterRespond(id, event, acteur, pg, state, HttpResponseStatus.OK, resp);
+//                        // Ensure we don't write to the channel before the
+//                        // headers are sent
+//                        fut.addListener(new ChannelFutureListener() {
+//                            volatile boolean first = true;
+//                            @Override
+//                            public void operationComplete(ChannelFuture fut) throws Exception {
+//                                if (first) {
+//                                    fut = fut.channel().flush();
+//                                    first = false;
+//                                    fut.addListener(this);
+//                                    // Send the response
+//                                } else {
+//                                }
+//                            }
+//                        });
                     } finally {
                         latch.countDown();
                     }

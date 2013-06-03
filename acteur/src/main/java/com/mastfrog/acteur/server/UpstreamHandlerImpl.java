@@ -28,11 +28,10 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpRequest;
 import com.google.inject.Inject;
-import com.google.inject.Provider;
-import com.google.inject.Singleton;
 import com.google.inject.name.Named;
 import com.mastfrog.acteur.Application;
-import io.netty.channel.ChannelHandler;
+import static com.mastfrog.acteur.server.ServerModule.DECODE_REAL_IP;
+import com.mastfrog.settings.Settings;
 import io.netty.channel.ChannelInboundMessageHandlerAdapter;
 import io.netty.handler.codec.http.DefaultHttpResponse;
 import io.netty.handler.codec.http.FullHttpRequest;
@@ -40,6 +39,8 @@ import io.netty.handler.codec.http.HttpResponse;
 
 import static io.netty.handler.codec.http.HttpResponseStatus.*;
 import static io.netty.handler.codec.http.HttpVersion.*;
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 
 /**
  *
@@ -57,14 +58,15 @@ final class UpstreamHandlerImpl extends ChannelInboundMessageHandlerAdapter<Obje
     private @Inject(optional = true)
     @Named("aggregateChunks")
     boolean aggregateChunks = PipelineFactoryImpl.DEFAULT_AGGREGATE_CHUNKS;
-    private final Provider<ObjectMapper> mapper;
-
+    private final ObjectMapper mapper;
+    private final boolean decodeRealIP;
 
     @Inject
-    UpstreamHandlerImpl(Application application, PathFactory paths, Provider<ObjectMapper> mapper) {
+    UpstreamHandlerImpl(Application application, PathFactory paths, ObjectMapper mapper, Settings settings) {
         this.application = application;
         this.paths = paths;
         this.mapper = mapper;
+        decodeRealIP = settings.getBoolean(DECODE_REAL_IP, true);
     }
 
     @Override
@@ -75,17 +77,26 @@ final class UpstreamHandlerImpl extends ChannelInboundMessageHandlerAdapter<Obje
     @Override
     public void messageReceived(ChannelHandlerContext ctx, Object msg) throws Exception {
         // HttpContent$2 - ?
-//        if (msg instanceof FullHttpRequest) {
-//            ((FullHttpRequest) msg).retain();
-//        }
+        if (msg instanceof FullHttpRequest) {
+            ((FullHttpRequest) msg).retain();
+        }
         if (msg instanceof HttpRequest) {
             final HttpRequest request = (HttpRequest) msg;
             
             if (!aggregateChunks && HttpHeaders.is100ContinueExpected(request)) {
                 send100Continue(ctx);
             }
-            
-            EventImpl evt = new EventImpl(request, ctx.channel().remoteAddress(), ctx.channel(), paths, mapper);
+            SocketAddress addr = ctx.channel().remoteAddress();
+            if (decodeRealIP) {
+                String hdr = request.headers().get("X-Real-IP");
+                if (hdr == null) {
+                    hdr = request.headers().get("X-Forwarded-For");
+                }
+                if (hdr != null) {
+                    addr = new InetSocketAddress(hdr, addr instanceof InetSocketAddress ? ((InetSocketAddress) addr).getPort() : 80);
+                }
+            }
+            EventImpl evt = new EventImpl(request, addr, ctx.channel(), paths, mapper);
             evt.setNeverKeepAlive(neverKeepAlive);
             application.onEvent(evt, ctx.channel());
         } else {

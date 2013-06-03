@@ -135,10 +135,29 @@ public class ServerModule<A extends Application> extends AbstractModule {
      * The default allocator to use if none is specified
      */
     public static final String DEFAULT_ALLOCATOR = POOLED_ALLOCATOR;
+    /**
+     * Settings key for the nnumber of worker threads to use.  
+     */
     public static final String WORKER_THREAD_COUNT = "workerThreads";
+    /**
+     * Number of event threads
+     */
     public static final String EVENT_THREAD_COUNT = "eventThreads";
+    /**
+     * Number of background thread pool threads.  The background thread pool
+     * is used by a few things which chunk responses.
+     */
     public static final String BACKGROUND_THREAD_COUNT = "backgroundThreads";
+    /** The port to run on */
     public static final String PORT = "port";
+    
+    /**
+     * If true, the return value of Event.getRemoteAddress() will prefer the
+     * headers X-Forwarded-For or X-Real-IP if present, so that running an
+     * acteur application behind a reverse proxy does not mask the actual IP
+     * address.
+     */
+    public static final String DECODE_REAL_IP = "decodeRealIP";
     private final Class<A> appType;
     private final ReentrantScope scope = new ReentrantScope();
     private final int eventThreads;

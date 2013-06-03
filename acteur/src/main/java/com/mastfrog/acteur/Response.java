@@ -18,8 +18,10 @@ public abstract class Response {
     public abstract void setResponseCode(HttpResponseStatus status);
 
     public abstract void setBodyWriter(ChannelFutureListener listener);
+
+    public abstract void setBodyWriter(ResponseWriter writer);
     
     protected abstract <T> T get(HeaderValueType<T> header);
     
-    abstract void setChunked(boolean chunked);
+    public abstract void setChunked(boolean chunked);
 }

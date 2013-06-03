@@ -25,6 +25,7 @@ package com.mastfrog.acteur.resources;
 
 import com.mastfrog.settings.Settings;
 import com.mastfrog.util.ConfigurationError;
+import io.netty.buffer.ByteBufAllocator;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -36,11 +37,11 @@ import java.util.List;
  */
 class DefaultStaticResources extends MergedResources {
 
-    DefaultStaticResources(Settings s, MimeTypes types) {
-        super(find(s, types));
+    DefaultStaticResources(Settings s, MimeTypes types, ByteBufAllocator allocator) {
+        super(find(s, types, allocator));
     }
 
-    private static List<StaticResources> find(Settings settings, MimeTypes types) {
+    private static List<StaticResources> find(Settings settings, MimeTypes types, ByteBufAllocator allocator) {
         List<StaticResources> result = new ArrayList<>();
 
         for (String name : splitAndTrim(settings.getString(RESOURCE_FOLDERS_KEY))) {
@@ -53,7 +54,7 @@ class DefaultStaticResources extends MergedResources {
                 throw new ConfigurationError("Not a folder for "
                         + RESOURCE_FOLDERS_KEY + " - " + f);
             }
-            result.add(new FileResources(f, types, settings));
+            result.add(new FileResources(f, types, settings, allocator));
         }
         for (String className : splitAndTrim(settings.getString(RESOURCE_CLASSES_KEY))) {
             try {

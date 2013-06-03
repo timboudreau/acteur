@@ -23,11 +23,6 @@
  */
 package com.mastfrog.acteur.server;
 
-import io.netty.channel.ChannelHandler;
-import io.netty.channel.ChannelPipeline;
-import io.netty.handler.codec.http.HttpObjectAggregator;
-import io.netty.handler.codec.http.HttpRequestDecoder;
-import io.netty.handler.codec.http.HttpResponseEncoder;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.name.Named;
@@ -35,11 +30,17 @@ import com.mastfrog.acteur.Application;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.MessageBuf;
 import io.netty.buffer.Unpooled;
+import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInitializer;
+import io.netty.channel.ChannelPipeline;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.codec.MessageToByteEncoder;
 import io.netty.handler.codec.http.HttpContentCompressor;
+import io.netty.handler.codec.http.HttpObjectAggregator;
+import io.netty.handler.codec.http.HttpRequestDecoder;
+import io.netty.handler.codec.http.HttpResponse;
+import io.netty.handler.codec.http.HttpResponseEncoder;
 
 //@Singleton
 //@Sharable
@@ -87,7 +88,7 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
 
         // Remove the following line if you don't want automatic content compression.
         if (httpCompression) {
-            pipeline.addLast("deflater", new HttpContentCompressor());
+            pipeline.addLast("deflater", new SelectiveCompressor());
         }
         pipeline.addLast("handler", handler.get());
     }
@@ -102,6 +103,15 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
         @Override
         public MessageBuf<ByteBuf> newOutboundBuffer(ChannelHandlerContext ctx) throws Exception {
             return Unpooled.messageBuffer();
+        }
+    }
+    
+    private static class SelectiveCompressor extends HttpContentCompressor {
+        protected Result beginEncode(HttpResponse headers, String acceptEncoding) throws Exception {
+            if (headers.headers().contains("X-Internal-Compress")) {
+                return null;
+            }
+            return super.beginEncode(headers, acceptEncoding);
         }
     }
 }

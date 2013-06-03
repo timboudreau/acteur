@@ -31,16 +31,20 @@ import com.google.common.net.MediaType;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.mastfrog.acteur.Event;
-import com.mastfrog.acteur.util.Headers;
 import com.mastfrog.acteur.Page;
+import com.mastfrog.acteur.Response;
 import com.mastfrog.acteur.ResponseHeaders.ContentLengthProvider;
 import com.mastfrog.acteur.ResponseWriter;
 import com.mastfrog.acteur.util.CacheControlTypes;
+import com.mastfrog.acteur.util.Headers;
 import com.mastfrog.acteur.util.Method;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.util.Exceptions;
 import com.mastfrog.util.Streams;
 import com.mastfrog.util.streams.HashingOutputStream;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
+import io.netty.buffer.ByteBufOutputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -65,11 +69,13 @@ public class FileResources implements StaticResources {
     private final File dir;
     private final MimeTypes types;
     private final LoadingCache<String, FileResource> cache;
+    private final ByteBufAllocator allocator;
 
     @Inject
-    FileResources(File dir, MimeTypes types, Settings settings) {
+    FileResources(File dir, MimeTypes types, Settings settings, ByteBufAllocator allocator) {
         this.dir = dir;
         this.types = types;
+        this.allocator = allocator;
         long maxFileLength = settings.getLong(SETTINGS_KEY_MAX_FILE_LENGTH, 1024 * 1024 * 12);
         long expiry = settings.getLong("file.resources.expire.minutes", 2);
         Loader loader = new Loader();
@@ -87,7 +93,7 @@ public class FileResources implements StaticResources {
 
         @Override
         public int weigh(String key, FileResource value) {
-            return value.bytes.length;
+            return value.bytes.readableBytes();
         }
 
         @Override
@@ -137,22 +143,22 @@ public class FileResources implements StaticResources {
     private class FileResource implements Resource, ContentLengthProvider {
 
         private final File file;
-        private final byte[] bytes;
+        private final ByteBuf bytes;
         private final String etag;
 
         private FileResource(File file) throws FileNotFoundException, IOException {
             this.file = file;
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            bytes = allocator.directBuffer();
+            ByteBufOutputStream baos = new ByteBufOutputStream(bytes);
             HashingOutputStream o = new HashingOutputStream("SHA-1", baos);
             try (FileInputStream fi = new FileInputStream(file)) {
                 Streams.copy(fi, o);
             }
             etag = o.getHashAsString();
-            bytes = baos.toByteArray();
         }
 
         @Override
-        public void decoratePage(Page page, Event evt, String path) {
+        public void decoratePage(Page page, Event evt, String path, Response response) {
             page.getReponseHeaders().addVaryHeader(Headers.ACCEPT_ENCODING);
             page.getReponseHeaders().addCacheControl(CacheControlTypes.Public);
             page.getReponseHeaders().addCacheControl(CacheControlTypes.max_age, Duration.standardHours(2));
@@ -190,6 +196,11 @@ public class FileResources implements StaticResources {
 
         public Long getContentLength() {
             return getLength();
+        }
+
+        @Override
+        public void attachBytes(Event evt, Response response) {
+            response.setBodyWriter(sender(evt));
         }
     }
 }

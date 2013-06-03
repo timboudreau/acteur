@@ -30,6 +30,7 @@ import com.mastfrog.acteur.ActeurFactory;
 import com.mastfrog.acteur.Event;
 import com.mastfrog.acteur.util.Headers;
 import com.mastfrog.acteur.Page;
+import com.mastfrog.acteur.Response;
 import com.mastfrog.acteur.util.Method;
 import com.mastfrog.acteur.resources.StaticResources.Resource;
 import com.mastfrog.settings.Settings;
@@ -90,7 +91,7 @@ public class ResourcesPage extends Page {
                         setState(new RejectedState());
                         return;
                     } else {
-                        r.decoratePage(page, evt, path);
+                        r.decoratePage(page, evt, path, response());
                         MediaType mimeType = r.getContentType();
                         if (mimeType != null) {
                             DateTime dt = policy.get(mimeType, Path.parse(path));
@@ -113,7 +114,8 @@ public class ResourcesPage extends Page {
         BytesWriter(Event evt, Resource r) {
             setState(new RespondWith(HttpResponseStatus.OK));
             if (evt.getMethod() != Method.HEAD) {
-                setResponseWriter(r.sender(evt));
+                Response rr = response();
+                r.attachBytes(evt, rr);
             }
         }
     }

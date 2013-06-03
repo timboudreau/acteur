@@ -1,4 +1,4 @@
-/* 
+/*
  * The MIT License
  *
  * Copyright 2013 Tim Boudreau.
@@ -132,6 +132,21 @@ final class ResponseImpl extends Response {
         return status == null ? HttpResponseStatus.OK : status;
     }
 
+    @Override
+    public void setBodyWriter(ResponseWriter writer) {
+        Page p = Page.get();
+        Application app = p.getApplication();
+        Dependencies deps = app.getDependencies();
+        Event evt = deps.getInstance(Event.class);
+        Charset charset = deps.getInstance(Charset.class);
+        ByteBufAllocator allocator = deps.getInstance(ByteBufAllocator.class);
+        ObjectMapper mapper = deps.getInstance(ObjectMapper.class);
+        Key<ExecutorService> key = Key.get(ExecutorService.class,
+                Names.named(ServerModule.BACKGROUND_THREAD_POOL_NAME));
+        ExecutorService svc = deps.getInstance(key);
+        setWriter(writer, charset, allocator, mapper, evt, svc);
+    }
+
     static class HackHttpHeaders extends HttpHeaders {
 
         private final HttpHeaders orig;
@@ -189,12 +204,24 @@ final class ResponseImpl extends Response {
             if (Names.TRANSFER_ENCODING.equals(name)) {
                 return this;
             }
+            if (Names.CONTENT_LENGTH.equals(name)) {
+//                System.out.println("ATTEMPT TO SET LENGTH TO " + values);
+                return this;
+            }
             return orig.add(name, values);
         }
 
         @Override
         public HttpHeaders set(String name, Object value) {
             if (Names.TRANSFER_ENCODING.equals(name)) {
+                return this;
+            }
+            if (Names.CONTENT_LENGTH.equals(name)) {
+//                System.out.println("ATTEMPT TO SET LENGTH TO " + value);
+                return this;
+            }
+            if (Names.CONTENT_ENCODING.equals(name)) {
+//                System.out.println("ATTEMPT TO SET CONTENT ENCODING TO " + value);
                 return this;
             }
             return orig.set(name, value);
@@ -205,12 +232,28 @@ final class ResponseImpl extends Response {
             if (Names.TRANSFER_ENCODING.equals(name)) {
                 return this;
             }
+            if (Names.CONTENT_LENGTH.equals(name)) {
+//                System.out.println("ATTEMPT TO SET LENGTH");
+                return this;
+            }
+            if (Names.CONTENT_ENCODING.equals(name)) {
+//                System.out.println("ATTEMPT TO SET TO ");
+                return this;
+            }
             return orig.set(name, values);
         }
 
         @Override
         public HttpHeaders remove(String name) {
             if (Names.TRANSFER_ENCODING.equals(name)) {
+                return this;
+            }
+            if (Names.CONTENT_LENGTH.equals(name)) {
+//                System.out.println("ATTEMPT TO REMOVE LENGTH");
+                return this;
+            }
+            if (Names.CONTENT_ENCODING.equals(name)) {
+//                System.out.println("ATTEMPT TO REMOVE TO ");
                 return this;
             }
             return orig.remove(name);
@@ -229,7 +272,7 @@ final class ResponseImpl extends Response {
 
     private static class HackHttpResponse extends DefaultHttpResponse {
 
-        private final HackHttpHeaders hdrs;
+        private final HttpHeaders hdrs;
         // Workaround for https://github.com/netty/netty/issues/1326
 
         HackHttpResponse(HttpResponseStatus status, boolean chunked) {
@@ -258,7 +301,7 @@ final class ResponseImpl extends Response {
         }
         Entry<?> e = new Entry<>(decorator, value);
         // For now, special handling for Allow:
-        // Longer term, should HeaderValueType.isArray() and a way to 
+        // Longer term, should HeaderValueType.isArray() and a way to
         // coalesce
         if (!old.isEmpty() && decorator == Headers.ALLOW) {
             old.add(e);
@@ -284,7 +327,7 @@ final class ResponseImpl extends Response {
         return null;
     }
 
-    void setChunked(boolean chunked) {
+    public void setChunked(boolean chunked) {
         this.chunked = chunked;
         modify();
     }
