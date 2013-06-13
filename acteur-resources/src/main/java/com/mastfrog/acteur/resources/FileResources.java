@@ -45,7 +45,10 @@ import com.mastfrog.util.streams.HashingOutputStream;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.ByteBufOutputStream;
-import java.io.ByteArrayOutputStream;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
+import io.netty.handler.codec.http.DefaultHttpContent;
+import io.netty.handler.codec.http.LastHttpContent;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -84,7 +87,7 @@ public class FileResources implements StaticResources {
                 .maximumWeight(maxFileLength)
                 .softValues()
                 .expireAfterAccess(expiry, TimeUnit.MINUTES)
-                .concurrencyLevel(3)
+                .concurrencyLevel(5)
                 .initialCapacity(20)
                 .build(loader);
     }
@@ -165,6 +168,7 @@ public class FileResources implements StaticResources {
             page.getReponseHeaders().addCacheControl(CacheControlTypes.must_revalidate);
             page.getReponseHeaders().setLastModified(lastModified());
             page.getReponseHeaders().setEtag(etag);
+            response.setChunked(true);
             if (evt.getMethod() != Method.HEAD) {
                 page.getReponseHeaders().setContentLengthProvider(this);
             }
@@ -200,7 +204,14 @@ public class FileResources implements StaticResources {
 
         @Override
         public void attachBytes(Event evt, Response response) {
-            response.setBodyWriter(sender(evt));
+            response.setBodyWriter(new ChannelFutureListener() {
+                @Override
+                public void operationComplete(ChannelFuture future) throws Exception {
+                    future = future.channel().write(new DefaultHttpContent(bytes));
+                    future = future.channel().write(LastHttpContent.EMPTY_LAST_CONTENT);
+                    future.addListener(CLOSE);
+                }
+            });
         }
     }
 }

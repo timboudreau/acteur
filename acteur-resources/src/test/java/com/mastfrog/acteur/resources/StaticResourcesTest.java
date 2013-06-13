@@ -32,7 +32,9 @@ public class StaticResourcesTest {
 
     @Test
     public void test(TestHarness har, StaticResources resources) throws Throwable {
-        DateTime helloLastModified = har.get("static/hello.txt").go()
+        DateTime helloLastModified;
+        DateTime aLastModified;
+        helloLastModified = har.get("static/hello.txt").go()
                 .assertHasContent()
                 .assertStatus(OK)
                 .assertHasHeader(Headers.LAST_MODIFIED.name())
@@ -40,13 +42,16 @@ public class StaticResourcesTest {
                 .assertContent(HELLO_CONTENT)
                 .getHeader(Headers.LAST_MODIFIED);
 
-        DateTime aLastModified = har.get("static/another.txt").go()
+        aLastModified = har.get("static/another.txt").go()
+                .await()
                 .assertStatus(OK)
                 .assertHasContent()
                 .assertHasHeader(Headers.LAST_MODIFIED.name())
                 .assertHasHeader(Headers.ETAG.name())
                 .assertContent("This is another file.  It has some data in it.\n")
                 .getHeader(Headers.LAST_MODIFIED);
+
+        har.get("foo/bar").go().assertCode(404);
 
         assertNotNull(helloLastModified);
         assertNotNull(aLastModified);
@@ -59,16 +64,15 @@ public class StaticResourcesTest {
         har.get("static/another.txt")
                 .addHeader(Headers.IF_MODIFIED_SINCE, aLastModified)
                 .go().assertStatus(NOT_MODIFIED);
-        
-        har.get("static/another.txt")
-                .addHeader(Headers.IF_MODIFIED_SINCE, helloLastModified.plus(Duration.standardDays(1)))
-                .go().assertStatus(NOT_MODIFIED);
 
-        if (true) return;
-        
+        har.get("static/another.txt")
+                .log()
+                .addHeader(Headers.IF_MODIFIED_SINCE, helloLastModified.plus(Duration.standardDays(1)))
+                .go().await().assertStatus(NOT_MODIFIED);
+
         har.get("static/another.txt")
                 .addHeader(Headers.IF_MODIFIED_SINCE, helloLastModified.minus(Duration.standardDays(1)))
-                .go().assertStateSeen(Closed).assertStatus(OK);
+                .go().await().assertStatus(OK);
 
         if (resources instanceof ClasspathResources) {
             // should be server start time since that's all we know
@@ -100,10 +104,10 @@ public class StaticResourcesTest {
                 .assertStatus(NOT_MODIFIED)
                 .getHeader(Headers.ETAG);
         assertEquals(etag, etag2);
-        
+
         har.get("static/hello.txt")
                 .addHeader(Headers.IF_NONE_MATCH, "garbage")
                 .go()
-                .assertStatus(OK);        
+                .assertStatus(OK);
     }
 }
