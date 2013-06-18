@@ -9,7 +9,6 @@ import com.mastfrog.url.Path;
 import com.mastfrog.util.Exceptions;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
-import io.netty.buffer.MessageBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelConfig;
@@ -20,6 +19,7 @@ import io.netty.channel.ChannelProgressivePromise;
 import io.netty.channel.ChannelPromise;
 import io.netty.channel.EventLoop;
 import io.netty.channel.FileRegion;
+import io.netty.channel.MessageList;
 import io.netty.handler.codec.http.DefaultHttpMessage;
 import io.netty.handler.codec.http.HttpMessage;
 import io.netty.handler.codec.http.HttpVersion;
@@ -113,14 +113,8 @@ class MD extends AbstractModule implements Event {
             }
             private ByteBuf out = Unpooled.buffer();
 
-            @Override
             public ByteBuf outboundByteBuffer() {
                 return out;
-            }
-
-            @Override
-            public <T> MessageBuf<T> outboundMessageBuffer() {
-                return null;
             }
 
             @Override
@@ -155,37 +149,6 @@ class MD extends AbstractModule implements Event {
                     @Override
                     public Throwable cause() {
                         return null;
-                    }
-
-                    @Override
-                    public ChannelFuture addListener(GenericFutureListener<? extends Future<Void>> listener) {
-                        try {
-                            GenericFutureListener f = listener;
-                            f.operationComplete(this);
-                        } catch (Exception ex) {
-                            return Exceptions.chuck(ex);
-                        }
-                        return this;
-                    }
-
-                    public ChannelFuture addListeners(GenericFutureListener<? extends Future<Void>>... listeners) {
-                        for (GenericFutureListener<? extends Future<Void>> l : listeners) {
-                            try {
-                                GenericFutureListener f = l;
-                                f.operationComplete(this);
-                            } catch (Exception ex) {
-                                return Exceptions.chuck(ex);
-                            }
-                        }
-                        return this;
-                    }
-
-                    public ChannelFuture removeListener(GenericFutureListener<? extends Future<Void>> listener) {
-                        return this;
-                    }
-
-                    public ChannelFuture removeListeners(GenericFutureListener<? extends Future<Void>>... listeners) {
-                        return this;
                     }
 
                     @Override
@@ -252,6 +215,45 @@ class MD extends AbstractModule implements Event {
                     public Void get(long l, TimeUnit tu) throws InterruptedException, ExecutionException, TimeoutException {
                         return null;
                     }
+
+                    @Override
+                    public ChannelFuture addListener(GenericFutureListener<? extends Future<? super Void>> listener) {
+                        try {
+                            GenericFutureListener f = listener;
+                            f.operationComplete(this);
+                        } catch (Exception ex) {
+                            return Exceptions.chuck(ex);
+                        }
+                        return this;
+                    }
+
+                    @Override
+                    public ChannelFuture addListeners(GenericFutureListener<? extends Future<? super Void>>... listeners) {
+                        for (GenericFutureListener<? extends Future<? super Void>> l : listeners) {
+                            try {
+                                GenericFutureListener f = l;
+                                f.operationComplete(this);
+                            } catch (Exception ex) {
+                                return Exceptions.chuck(ex);
+                            }
+                        }
+                        return this;
+                    }
+
+                    @Override
+                    public ChannelFuture removeListener(GenericFutureListener<? extends Future<? super Void>> listener) {
+                        return this;
+                    }
+
+                    @Override
+                    public ChannelFuture removeListeners(GenericFutureListener<? extends Future<? super Void>>... listeners) {
+                        return this;
+                    }
+
+                    @Override
+                    public boolean isCancellable() {
+                        return false;
+                    }
                 };
             }
 
@@ -295,7 +297,6 @@ class MD extends AbstractModule implements Event {
                 return closeFuture();
             }
 
-            @Override
             public ChannelFuture flush() {
                 return closeFuture();
             }
@@ -305,7 +306,6 @@ class MD extends AbstractModule implements Event {
                 return closeFuture();
             }
 
-            @Override
             public ChannelFuture sendFile(FileRegion region) {
                 return closeFuture();
             }
@@ -344,7 +344,6 @@ class MD extends AbstractModule implements Event {
             public void read() {
             }
 
-            @Override
             public ChannelFuture flush(ChannelPromise promise) {
                 return closeFuture();
             }
@@ -354,7 +353,6 @@ class MD extends AbstractModule implements Event {
                 return closeFuture();
             }
 
-            @Override
             public ChannelFuture sendFile(FileRegion region, ChannelPromise promise) {
                 return closeFuture();
             }
@@ -398,6 +396,16 @@ class MD extends AbstractModule implements Event {
             }
 
             public ChannelPromise voidPromise() {
+                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+            }
+
+            @Override
+            public ChannelFuture write(MessageList<?> msgs) {
+                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+            }
+
+            @Override
+            public ChannelFuture write(MessageList<?> msgs, ChannelPromise promise) {
                 throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
             }
         };

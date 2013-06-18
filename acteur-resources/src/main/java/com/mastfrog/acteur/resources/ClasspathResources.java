@@ -47,13 +47,10 @@ import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.MessageList;
 import io.netty.handler.codec.compression.JZlibDecoder;
-import io.netty.handler.codec.compression.JdkZlibEncoder;
-import io.netty.handler.codec.compression.ZlibCodecFactory;
-import io.netty.handler.codec.compression.ZlibDecoder;
 import io.netty.handler.codec.compression.ZlibWrapper;
 import io.netty.handler.codec.http.DefaultHttpContent;
-import io.netty.handler.codec.http.HttpContent;
 import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.LastHttpContent;
 import java.io.FileNotFoundException;
@@ -136,9 +133,9 @@ public final class ClasspathResources implements StaticResources {
         }
 
         @Override
-        public void decode(ChannelHandlerContext ctx, ByteBuf in, ByteBuf out) throws Exception {
+        protected void decode(ChannelHandlerContext ctx, ByteBuf in, MessageList<Object> out) throws Exception {
             while (in.readableBytes() > 0) {
-                super.decode(ctx, in, out); //To change body of generated methods, choose Tools | Templates.
+                super.decode(ctx, in, out); 
             }
         }
     }
@@ -188,7 +185,7 @@ public final class ClasspathResources implements StaticResources {
             Y y = new Y();
             ByteBuf test = allocator.buffer(bytes.readableBytes());
             try {
-                y.decode(null, compressed, test);
+                y.decode(null, compressed, MessageList.<Object>newInstance(test));
                 compressed.resetReaderIndex();
                 byte[] a = new byte[bytes.readableBytes()];
                 bytes.readBytes(a);

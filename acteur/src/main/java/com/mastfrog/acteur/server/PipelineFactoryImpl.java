@@ -28,7 +28,6 @@ import com.google.inject.Provider;
 import com.google.inject.name.Named;
 import com.mastfrog.acteur.Application;
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.MessageBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
@@ -98,11 +97,6 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
         @Override
         protected void encode(ChannelHandlerContext ctx, ByteBuf msg, ByteBuf out) throws Exception {
             out.writeBytes(msg);
-        }
-
-        @Override
-        public MessageBuf<ByteBuf> newOutboundBuffer(ChannelHandlerContext ctx) throws Exception {
-            return Unpooled.messageBuffer();
         }
     }
     
