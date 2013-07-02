@@ -178,7 +178,6 @@ public final class ClasspathResources implements StaticResources {
             }
             bytes.resetReaderIndex();
             length = bytes.readableBytes();
-
         }
 
         private boolean check() throws Exception {
