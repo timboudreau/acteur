@@ -87,10 +87,15 @@ final class UpstreamHandlerImpl extends ChannelInboundHandlerAdapter {
             this.ctx = ctx;
         }
 
-        @Override
         public int process(MessageList<Object> messages, int index, Object value) throws Exception {
             xmessageReceived(ctx, value);
             return 1;
+        }
+
+        @Override
+        public boolean process(Object value) throws Exception {
+            xmessageReceived(ctx, value);
+            return true;
         }
     }
     
