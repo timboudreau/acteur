@@ -421,9 +421,9 @@ final class ResponseImpl extends Response {
         public Output write(ByteBuf buf) throws IOException {
             assert future != null;
             if (chunked) {
-                future = future.channel().write(new DefaultHttpContent(buf));
+                future = future.channel().writeAndFlush(new DefaultHttpContent(buf));
             } else {
-                future = future.channel().write(buf);
+                future = future.channel().writeAndFlush(buf);
             }
             return this;
         }
@@ -443,7 +443,7 @@ final class ResponseImpl extends Response {
                             ResponseWriterListener.this.future = ResponseWriterListener.this.future.addListener(ResponseWriterListener.this);
                         } else if (status == Status.DONE) {
                             if (chunked) {
-                                ResponseWriterListener.this.future = ResponseWriterListener.this.future.channel().write(LastHttpContent.EMPTY_LAST_CONTENT);
+                                ResponseWriterListener.this.future = ResponseWriterListener.this.future.channel().writeAndFlush(LastHttpContent.EMPTY_LAST_CONTENT);
                             }
                             if (shouldClose) {
                                 ResponseWriterListener.this.future = ResponseWriterListener.this.future.addListener(CLOSE);

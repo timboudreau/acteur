@@ -47,7 +47,6 @@ import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.MessageList;
 import io.netty.handler.codec.compression.JZlibDecoder;
 import io.netty.handler.codec.compression.ZlibWrapper;
 import io.netty.handler.codec.http.DefaultHttpContent;
@@ -59,6 +58,7 @@ import java.io.InputStream;
 import java.net.URLDecoder;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -133,7 +133,7 @@ public final class ClasspathResources implements StaticResources {
         }
 
         @Override
-        protected void decode(ChannelHandlerContext ctx, ByteBuf in, MessageList<Object> out) throws Exception {
+        protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) throws Exception {
             while (in.readableBytes() > 0) {
                 super.decode(ctx, in, out); 
             }
@@ -184,7 +184,7 @@ public final class ClasspathResources implements StaticResources {
             Y y = new Y();
             ByteBuf test = allocator.buffer(bytes.readableBytes());
             try {
-                y.decode(null, compressed, MessageList.<Object>newInstance(test));
+                y.decode(null, compressed, Collections.<Object>singletonList(test));
                 compressed.resetReaderIndex();
                 byte[] a = new byte[bytes.readableBytes()];
                 bytes.readBytes(a);
@@ -321,9 +321,9 @@ public final class ClasspathResources implements StaticResources {
         @Override
         public void operationComplete(ChannelFuture future) throws Exception {
             if (!chunked) {
-                future = future.channel().write(bytes);
+                future = future.channel().writeAndFlush(bytes);
             } else {
-                future = future.channel().write(new DefaultHttpContent(bytes)).channel().write(LastHttpContent.EMPTY_LAST_CONTENT);
+                future = future.channel().write(new DefaultHttpContent(bytes)).writeAndFlush(LastHttpContent.EMPTY_LAST_CONTENT);
             }
             if (close) {
                 future.addListener(CLOSE);

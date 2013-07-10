@@ -33,8 +33,6 @@ import com.mastfrog.acteur.Application;
 import static com.mastfrog.acteur.server.ServerModule.DECODE_REAL_IP;
 import com.mastfrog.settings.Settings;
 import io.netty.channel.ChannelInboundHandlerAdapter;
-import io.netty.channel.MessageList;
-import io.netty.channel.MessageListProcessor;
 import io.netty.handler.codec.http.DefaultHttpResponse;
 import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpResponse;
@@ -43,6 +41,7 @@ import static io.netty.handler.codec.http.HttpResponseStatus.*;
 import static io.netty.handler.codec.http.HttpVersion.*;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import java.util.List;
 
 /**
  *
@@ -76,30 +75,7 @@ final class UpstreamHandlerImpl extends ChannelInboundHandlerAdapter {
         application.internalOnError(cause);
     }
 
-    @Override
-    public void messageReceived(ChannelHandlerContext ctx, MessageList<Object> msgs) throws Exception {
-        msgs.forEach(new Proc(ctx));
-    }
-    
-    private class Proc implements MessageListProcessor<Object> {
-        private ChannelHandlerContext ctx;
-        Proc(ChannelHandlerContext ctx) {
-            this.ctx = ctx;
-        }
-
-        public int process(MessageList<Object> messages, int index, Object value) throws Exception {
-            xmessageReceived(ctx, value);
-            return 1;
-        }
-
-        @Override
-        public boolean process(Object value) throws Exception {
-            xmessageReceived(ctx, value);
-            return true;
-        }
-    }
-    
-    void xmessageReceived(ChannelHandlerContext ctx, Object msg) throws Exception {
+    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
         // HttpContent$2 - ?
         if (msg instanceof FullHttpRequest) {
             ((FullHttpRequest) msg).retain();

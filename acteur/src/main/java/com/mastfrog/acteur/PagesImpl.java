@@ -148,7 +148,7 @@ final class PagesImpl implements Pages {
                         application.onBeforeRespond(id, event, response.getResponseCode());
 
                         // Send the headers
-                        ChannelFuture fut = channel.write(httpResponse);
+                        ChannelFuture fut = channel.writeAndFlush(httpResponse);
 
                         final Page pg = state.getLockedPage();
                         fut = response.sendMessage(event, fut, resp);

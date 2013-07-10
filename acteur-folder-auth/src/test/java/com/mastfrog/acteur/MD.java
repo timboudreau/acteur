@@ -19,7 +19,6 @@ import io.netty.channel.ChannelProgressivePromise;
 import io.netty.channel.ChannelPromise;
 import io.netty.channel.EventLoop;
 import io.netty.channel.FileRegion;
-import io.netty.channel.MessageList;
 import io.netty.handler.codec.http.DefaultHttpMessage;
 import io.netty.handler.codec.http.HttpMessage;
 import io.netty.handler.codec.http.HttpVersion;
@@ -72,7 +71,6 @@ class MD extends AbstractModule implements Event {
     @Override
     public Channel getChannel() {
         return new Channel() {
-            @Override
             public Integer id() {
                 return 1;
             }
@@ -302,8 +300,8 @@ class MD extends AbstractModule implements Event {
             }
 
             @Override
-            public ChannelFuture write(Object message) {
-                return closeFuture();
+            public Channel write(Object message) {
+                return this;
             }
 
             public ChannelFuture sendFile(FileRegion region) {
@@ -340,17 +338,16 @@ class MD extends AbstractModule implements Event {
                 return closeFuture();
             }
 
-            @Override
-            public void read() {
+            public Channel read() {
+                return this;
             }
 
             public ChannelFuture flush(ChannelPromise promise) {
                 return closeFuture();
             }
 
-            @Override
-            public ChannelFuture write(Object message, ChannelPromise promise) {
-                return closeFuture();
+            public Channel write(Object message, ChannelPromise promise) {
+                return this;
             }
 
             public ChannelFuture sendFile(FileRegion region, ChannelPromise promise) {
@@ -400,13 +397,13 @@ class MD extends AbstractModule implements Event {
             }
 
             @Override
-            public ChannelFuture write(MessageList<?> msgs) {
-                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+            public ChannelFuture writeAndFlush(Object msg, ChannelPromise promise) {
+                return closeFuture();
             }
 
             @Override
-            public ChannelFuture write(MessageList<?> msgs, ChannelPromise promise) {
-                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+            public ChannelFuture writeAndFlush(Object msg) {
+                return closeFuture();
             }
         };
     }
