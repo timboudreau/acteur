@@ -99,7 +99,7 @@ public class TestMultiplePages {
 
         @Override
         public void operationComplete(ChannelFuture future) throws Exception {
-            future = future.channel().writeAndFlush(Unpooled.copiedBuffer(id
+            future = future.channel().write(Unpooled.copiedBuffer(id
                     + " Okay, here goes nothing", CharsetUtil.UTF_8));
             System.out.println("Initial response on " + Thread.currentThread());
             future.addListener(CLOSE);

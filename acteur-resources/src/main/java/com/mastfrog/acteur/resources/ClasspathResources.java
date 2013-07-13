@@ -321,9 +321,9 @@ public final class ClasspathResources implements StaticResources {
         @Override
         public void operationComplete(ChannelFuture future) throws Exception {
             if (!chunked) {
-                future = future.channel().writeAndFlush(bytes);
+                future = future.channel().write(bytes);
             } else {
-                future = future.channel().write(new DefaultHttpContent(bytes)).writeAndFlush(LastHttpContent.EMPTY_LAST_CONTENT);
+                future = future.channel().write(new DefaultHttpContent(bytes)).channel().write(LastHttpContent.EMPTY_LAST_CONTENT);
             }
             if (close) {
                 future.addListener(CLOSE);

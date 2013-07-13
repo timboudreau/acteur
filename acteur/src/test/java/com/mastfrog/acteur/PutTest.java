@@ -169,7 +169,7 @@ public class PutTest {
                 System.out.println("READ CONTENT");
                 ByteBuf buf = req.content();
                 System.out.println("SIZE " + buf.capacity());
-                future = ch.writeAndFlush(buf);
+                future = ch.write(buf);
                 future.addListener(CLOSE);
             } else {
                 throw new AssertionError("Not a FullHttpRequest: " + evt.getRequest() + " " + Types.list(evt.getRequest().getClass()));

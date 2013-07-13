@@ -29,6 +29,7 @@ import com.google.common.cache.LoadingCache;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.google.inject.name.Named;
+import com.mastfrog.settings.Settings;
 import com.mastfrog.url.*;
 import com.mastfrog.util.Exceptions;
 import java.util.concurrent.TimeUnit;
@@ -44,11 +45,7 @@ import java.util.regex.Pattern;
 @Singleton
 class DefaultPathFactory implements PathFactory {
 
-    private @Inject(optional = true)
-    @Named("port")
     int port = 80;
-    private @Inject(optional = true)
-    @Named("securePort")
     int securePort = 443;
     private @Inject(optional = true)
     @Named(HOSTNAME_SETTINGS_KEY)
@@ -57,6 +54,20 @@ class DefaultPathFactory implements PathFactory {
     @Named(BASE_PATH_SETTINGS_KEY)
     String path = "";
     private volatile Path pth;
+    
+    @Inject
+    DefaultPathFactory(Settings settings) {
+        int port = settings.getInt(EXTERNAL_PORT, -1);
+        if (port == -1) {
+            port = settings.getInt(ServerModule.PORT, 80);
+        }
+        this.port = port;
+        int securePort = settings.getInt(EXTERNAL_SECURE_PORT, -1);
+        if (securePort == -1) {
+            securePort = settings.getInt("securePort", 443);
+        }
+        this.securePort = securePort;
+    }
 
     private Path basePath() {
         if (pth == null) {

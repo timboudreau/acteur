@@ -100,7 +100,7 @@ public class OutputChain implements ChannelFutureListener {
         if (!chunked) {
             reallyFinish(cf);
         } else {
-            cf = cf.channel().writeAndFlush(LastHttpContent.EMPTY_LAST_CONTENT);
+            cf = cf.channel().write(LastHttpContent.EMPTY_LAST_CONTENT);
             reallyFinish(cf);
         }
     }
@@ -132,7 +132,7 @@ public class OutputChain implements ChannelFutureListener {
             if (chunked) {
                 toWrite = new DefaultHttpContent((ByteBuf) toWrite);
             }
-            return channel.writeAndFlush(toWrite);
+            return channel.write(toWrite);
         }
     }
 }

@@ -207,7 +207,7 @@ public class FileResources implements StaticResources {
             response.setBodyWriter(new ChannelFutureListener() {
                 @Override
                 public void operationComplete(ChannelFuture future) throws Exception {
-                    future = future.channel().write(new DefaultHttpContent(bytes)).writeAndFlush(LastHttpContent.EMPTY_LAST_CONTENT);
+                    future = future.channel().write(new DefaultHttpContent(bytes)).channel().write(LastHttpContent.EMPTY_LAST_CONTENT);
                     future.addListener(CLOSE);
                 }
             });

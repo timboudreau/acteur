@@ -169,7 +169,7 @@ public class CompApp extends Application {
             @Override
             public void operationComplete(ChannelFuture future) throws Exception {
                 System.out.println("Iteration " + iteration + "\n");
-                future = future.channel().writeAndFlush(Unpooled.copiedBuffer(msg + iteration + "\n", CharsetUtil.UTF_8));
+                future = future.channel().write(Unpooled.copiedBuffer(msg + iteration + "\n", CharsetUtil.UTF_8));
                 if (iteration++ < max) {
                     future.addListener(this);
                 } else {

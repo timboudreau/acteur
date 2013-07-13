@@ -507,7 +507,6 @@ final class ResponseImpl extends Response {
             add(Headers.CONTENT_LENGTH, size);
             DefaultFullHttpResponse r = new DefaultFullHttpResponse(
                     HttpVersion.HTTP_1_1, getResponseCode(), buf);
-
             resp = r;
         } else {
             resp = new HackHttpResponse(getResponseCode(), chunked);

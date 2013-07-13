@@ -295,13 +295,12 @@ class MD extends AbstractModule implements Event {
                 return closeFuture();
             }
 
-            public ChannelFuture flush() {
-                return closeFuture();
+            public Channel flush() {
+                return this;
             }
 
-            @Override
-            public Channel write(Object message) {
-                return this;
+            public ChannelFuture write(Object message) {
+                return closeFuture();
             }
 
             public ChannelFuture sendFile(FileRegion region) {
@@ -346,8 +345,8 @@ class MD extends AbstractModule implements Event {
                 return closeFuture();
             }
 
-            public Channel write(Object message, ChannelPromise promise) {
-                return this;
+            public ChannelFuture write(Object message, ChannelPromise promise) {
+                return closeFuture();
             }
 
             public ChannelFuture sendFile(FileRegion region, ChannelPromise promise) {

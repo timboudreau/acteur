@@ -334,7 +334,7 @@ public class Application implements Iterable<Page> {
         HttpResponse response = createNotFoundResponse(event);
         onBeforeRespond(id, event, response.getStatus());
         ChannelFutureListener closer = !event.isKeepAlive() ? ChannelFutureListener.CLOSE : null;
-        ChannelFuture fut = channel.writeAndFlush(response);
+        ChannelFuture fut = channel.write(response);
         if (closer != null) {
             fut.addListener(closer);
         }

@@ -23,7 +23,6 @@
  */
 package com.mastfrog.acteur.util;
 
-import com.google.inject.ImplementedBy;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;

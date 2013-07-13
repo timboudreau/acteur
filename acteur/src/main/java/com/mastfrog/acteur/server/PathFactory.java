@@ -1,4 +1,4 @@
-/* 
+/*
  * The MIT License
  *
  * Copyright 2013 Tim Boudreau.
@@ -28,10 +28,10 @@ import com.mastfrog.url.Path;
 import com.mastfrog.url.URL;
 
 /**
- * Provider of paths for a web application, which can normalize paths and
- * strip out the base path for the web application, if any.  The default
- * implementation looks for the two string constants defined on this class
- * as <code>&#064;Named</code> Guice strings.
+ * Provider of paths for a web application, which can normalize paths and strip
+ * out the base path for the web application, if any. The default implementation
+ * looks for the two string constants defined on this class as
+ * <code>&#064;Named</code> Guice strings.
  *
  * @author Tim Boudreau
  */
@@ -45,9 +45,14 @@ public interface PathFactory {
      * The string "hostname" as a settings key / &#064;Named string
      */
     public static final String HOSTNAME_SETTINGS_KEY = "hostname";
+
+    public static final String EXTERNAL_PORT = "external.port";
+
+    public static final String EXTERNAL_SECURE_PORT = "external.secure.port";
     /**
-     * Convert a URI from a request to a path, stripping out the basepath
-     * if any.
+     * Convert a URI from a request to a path, stripping out the basepath if
+     * any.
+     *
      * @param uri A URI
      * @return A path
      */
