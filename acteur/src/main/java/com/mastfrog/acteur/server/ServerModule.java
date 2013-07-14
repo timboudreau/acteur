@@ -110,7 +110,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
      * Property name for setting which byte buffer allocator Netty uses (heap,
      * direct, pooled).
      */
-    public static final String BYTEBUF_ALLOCATOR_SETTINGS_KEY = "propeller.bytebuf.allocator";
+    public static final String BYTEBUF_ALLOCATOR_SETTINGS_KEY = "acteur.bytebuf.allocator";
     /**
      * Property value for telling the server to use the direct byte buffer
      * allocator (non-heap).
@@ -138,16 +138,16 @@ public class ServerModule<A extends Application> extends AbstractModule {
     /**
      * Settings key for the nnumber of worker threads to use.  
      */
-    public static final String WORKER_THREAD_COUNT = "workerThreads";
+    public static final String WORKER_THREADS = "workerThreads";
     /**
      * Number of event threads
      */
-    public static final String EVENT_THREAD_COUNT = "eventThreads";
+    public static final String EVENT_THREADS = "eventThreads";
     /**
      * Number of background thread pool threads.  The background thread pool
      * is used by a few things which chunk responses.
      */
-    public static final String BACKGROUND_THREAD_COUNT = "backgroundThreads";
+    public static final String BACKGROUND_THREADS = "backgroundThreads";
     /** The port to run on */
     public static final String PORT = "port";
     
@@ -201,24 +201,24 @@ public class ServerModule<A extends Application> extends AbstractModule {
         Provider<Application> appProvider = binder().getProvider(Application.class);
         Provider<Settings> set = binder().getProvider(Settings.class);
 
-        TF eventThreadFactory = new TF("event", appProvider);
-        TF workerThreadFactory = new TF("worker", appProvider);
+        TF eventThreadFactory = new TF(EVENT_THREADS, appProvider);
+        TF workerThreadFactory = new TF(WORKER_THREADS, appProvider);
         TF backgroundThreadFactory = new TF(BACKGROUND_THREAD_POOL_NAME, appProvider);
 
         bind(ThreadGroup.class).annotatedWith(Names.named(BACKGROUND_THREAD_POOL_NAME)).toInstance(backgroundThreadFactory.tg);
-        bind(ThreadGroup.class).annotatedWith(Names.named("worker")).toInstance(workerThreadFactory.tg);
-        bind(ThreadGroup.class).annotatedWith(Names.named("event")).toInstance(eventThreadFactory.tg);
+        bind(ThreadGroup.class).annotatedWith(Names.named(WORKER_THREADS)).toInstance(workerThreadFactory.tg);
+        bind(ThreadGroup.class).annotatedWith(Names.named(EVENT_THREADS)).toInstance(eventThreadFactory.tg);
 
-        ThreadCount workerThreadCount = new ThreadCount(set, 8, workerThreads, WORKER_THREAD_COUNT);
-        ThreadCount eventThreadCount = new ThreadCount(set, 8, eventThreads, EVENT_THREAD_COUNT);
-        ThreadCount backgroundThreadCount = new ThreadCount(set, 128, backgroundThreads, BACKGROUND_THREAD_COUNT);
+        ThreadCount workerThreadCount = new ThreadCount(set, 8, workerThreads, WORKER_THREADS);
+        ThreadCount eventThreadCount = new ThreadCount(set, 8, eventThreads, EVENT_THREADS);
+        ThreadCount backgroundThreadCount = new ThreadCount(set, 128, backgroundThreads, BACKGROUND_THREADS);
 
-        bind(ThreadCount.class).annotatedWith(Names.named("event")).toInstance(eventThreadCount);
-        bind(ThreadCount.class).annotatedWith(Names.named("workers")).toInstance(workerThreadCount);
+        bind(ThreadCount.class).annotatedWith(Names.named(EVENT_THREADS)).toInstance(eventThreadCount);
+        bind(ThreadCount.class).annotatedWith(Names.named(WORKER_THREADS)).toInstance(workerThreadCount);
         bind(ThreadCount.class).annotatedWith(Names.named(BACKGROUND_THREAD_POOL_NAME)).toInstance(backgroundThreadCount);
 
-        bind(ThreadFactory.class).annotatedWith(Names.named("workers")).toInstance(workerThreadFactory);
-        bind(ThreadFactory.class).annotatedWith(Names.named("event")).toInstance(eventThreadFactory);
+        bind(ThreadFactory.class).annotatedWith(Names.named(WORKER_THREADS)).toInstance(workerThreadFactory);
+        bind(ThreadFactory.class).annotatedWith(Names.named(EVENT_THREADS)).toInstance(eventThreadFactory);
         bind(ThreadFactory.class).annotatedWith(Names.named(BACKGROUND_THREAD_POOL_NAME)).toInstance(backgroundThreadFactory);
 
         Provider<ExecutorService> workerProvider =

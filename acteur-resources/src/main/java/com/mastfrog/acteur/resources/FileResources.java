@@ -161,7 +161,7 @@ public class FileResources implements StaticResources {
         }
 
         @Override
-        public void decoratePage(Page page, Event evt, String path, Response response) {
+        public void decoratePage(Page page, Event evt, String path, Response response, boolean chunked) {
             page.getReponseHeaders().addVaryHeader(Headers.ACCEPT_ENCODING);
             page.getReponseHeaders().addCacheControl(CacheControlTypes.Public);
             page.getReponseHeaders().addCacheControl(CacheControlTypes.max_age, Duration.standardHours(2));
@@ -169,7 +169,7 @@ public class FileResources implements StaticResources {
             page.getReponseHeaders().setLastModified(lastModified());
             page.getReponseHeaders().setEtag(etag);
             response.setChunked(true);
-            if (evt.getMethod() != Method.HEAD) {
+            if (evt.getMethod() != Method.HEAD && !chunked) {
                 page.getReponseHeaders().setContentLengthProvider(this);
             }
             MediaType contentType = types.get(file.getName());
@@ -203,12 +203,19 @@ public class FileResources implements StaticResources {
         }
 
         @Override
-        public void attachBytes(Event evt, Response response) {
+        public void attachBytes(final Event evt, Response response, final boolean chunked) {
             response.setBodyWriter(new ChannelFutureListener() {
                 @Override
                 public void operationComplete(ChannelFuture future) throws Exception {
-                    future = future.channel().write(new DefaultHttpContent(bytes)).channel().write(LastHttpContent.EMPTY_LAST_CONTENT);
-                    future.addListener(CLOSE);
+                    if (chunked) {
+                        future = future.channel().write(new DefaultHttpContent(bytes)).channel().writeAndFlush(LastHttpContent.EMPTY_LAST_CONTENT);
+                        if (!evt.isKeepAlive()) {
+                            future.addListener(CLOSE);
+                        }
+                    } else {
+                        future = future.channel().writeAndFlush(bytes);
+                        future.addListener(CLOSE);
+                    }
                 }
             });
         }

@@ -202,7 +202,7 @@ public final class ClasspathResources implements StaticResources {
         }
 
         @Override
-        public void decoratePage(Page page, Event evt, String path, Response response) {
+        public void decoratePage(Page page, Event evt, String path, Response response, boolean chunked) {
             ResponseHeaders h = page.getReponseHeaders();
             String ua = evt.getHeader("User-Agent");
             if (ua != null && !ua.contains("MSIE")) {
@@ -234,27 +234,34 @@ public final class ClasspathResources implements StaticResources {
                 // Flag it so the standard compressor ignores us
                 response.add(Headers.stringHeader("X-Internal-Compress"), "true");
             }
-//            response.add(Headers.stringHeader("Transfer-Encoding"), "chunked");
+            if (chunked) {
+                response.add(Headers.stringHeader("Transfer-Encoding"), "chunked");
+            }
             if (isGzip(evt)) {
                 page.getReponseHeaders().setContentEncoding("gzip");
-//                response.add(Headers.CONTENT_LENGTH, (long) compressed.readableBytes());
+                if (!chunked) {
+                    response.add(Headers.CONTENT_LENGTH, (long) compressed.readableBytes());
+                }
             } else {
-//                response.add(Headers.CONTENT_LENGTH, (long) bytes.readableBytes());
+                if (!chunked) {
+                    response.add(Headers.CONTENT_LENGTH, (long) bytes.readableBytes());
+                }
             }
-            response.setChunked(true);
-//            response.setChunked(false);
+//            response.setChunked(true);
+            response.setChunked(chunked);
         }
 
-        public void attachBytes(Event evt, Response response) {
+        @Override
+        public void attachBytes(Event evt, Response response, boolean chunked) {
             if (isGzip(evt)) {
-                CompressedBytesSender sender = new CompressedBytesSender(compressed, !evt.isKeepAlive(), true);
+                CompressedBytesSender sender = new CompressedBytesSender(compressed, !evt.isKeepAlive(), chunked);
                 response.setBodyWriter(sender);
 //                BytesSender sender = new BytesSender(compressed);
 //                response.setBodyWriter(sender);
             } else {
 //                BytesSender sender = new BytesSender(bytes);
 //                response.setBodyWriter(sender);
-                CompressedBytesSender c = new CompressedBytesSender(bytes, !evt.isKeepAlive(), true);
+                CompressedBytesSender c = new CompressedBytesSender(bytes, !evt.isKeepAlive(), chunked);
                 response.setBodyWriter(c);
             }
         }
@@ -321,9 +328,9 @@ public final class ClasspathResources implements StaticResources {
         @Override
         public void operationComplete(ChannelFuture future) throws Exception {
             if (!chunked) {
-                future = future.channel().write(bytes);
+                future = future.channel().writeAndFlush(bytes);
             } else {
-                future = future.channel().write(new DefaultHttpContent(bytes)).channel().write(LastHttpContent.EMPTY_LAST_CONTENT);
+                future = future.channel().write(new DefaultHttpContent(bytes)).channel().writeAndFlush(LastHttpContent.EMPTY_LAST_CONTENT);
             }
             if (close) {
                 future.addListener(CLOSE);

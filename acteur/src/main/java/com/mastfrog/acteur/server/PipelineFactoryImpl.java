@@ -28,7 +28,6 @@ import com.google.inject.Provider;
 import com.google.inject.name.Named;
 import com.mastfrog.acteur.Application;
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInitializer;
@@ -55,7 +54,7 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
     @Named("maxContentLength")
     int maxContentLength = 1048576;
     @Named("httpCompression")
-    boolean httpCompression = true;
+    boolean httpCompression = false;
     private final Provider<Application> app;
 
     @Inject

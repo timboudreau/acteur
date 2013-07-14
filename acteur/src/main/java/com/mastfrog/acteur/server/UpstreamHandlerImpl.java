@@ -41,7 +41,6 @@ import static io.netty.handler.codec.http.HttpResponseStatus.*;
 import static io.netty.handler.codec.http.HttpVersion.*;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
-import java.util.List;
 
 /**
  *

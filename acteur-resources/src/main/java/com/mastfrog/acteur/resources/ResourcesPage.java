@@ -70,6 +70,7 @@ public class ResourcesPage extends Page {
         add(BytesWriter.class);
     }
 
+    static boolean chunked = true;
     private static final class ResourceNameMatcher extends Acteur {
 
         @Inject
@@ -91,7 +92,7 @@ public class ResourcesPage extends Page {
                         setState(new RejectedState());
                         return;
                     } else {
-                        r.decoratePage(page, evt, path, response());
+                        r.decoratePage(page, evt, path, response(), chunked);
                         MediaType mimeType = r.getContentType();
                         if (mimeType != null) {
                             DateTime dt = policy.get(mimeType, Path.parse(path));
@@ -113,9 +114,10 @@ public class ResourcesPage extends Page {
         @Inject
         BytesWriter(Event evt, Resource r) {
             setState(new RespondWith(HttpResponseStatus.OK));
+            setChunked(false);
             if (evt.getMethod() != Method.HEAD) {
                 Response rr = response();
-                r.attachBytes(evt, rr);
+                r.attachBytes(evt, rr, chunked);
             }
         }
     }

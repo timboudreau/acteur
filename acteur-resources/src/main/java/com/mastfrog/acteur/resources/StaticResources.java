@@ -47,7 +47,7 @@ public interface StaticResources {
 
     public static interface Resource {
 
-        void decoratePage(Page page, Event evt, String path, Response response);
+        void decoratePage(Page page, Event evt, String path, Response response, boolean chunked);
 
         String getEtag();
 
@@ -57,6 +57,6 @@ public interface StaticResources {
 
         long getLength();
         
-        void attachBytes(Event evt, Response response);
+        void attachBytes(Event evt, Response response, boolean chunked);
     }
 }

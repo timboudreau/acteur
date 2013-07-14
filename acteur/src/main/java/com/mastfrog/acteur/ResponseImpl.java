@@ -333,7 +333,7 @@ final class ResponseImpl extends Response {
     }
 
     <T extends ResponseWriter> void setWriter(T w, Dependencies deps, Event evt) {
-        setChunked(true);
+//        setChunked(true);
         Charset charset = deps.getInstance(Charset.class);
         ByteBufAllocator allocator = deps.getInstance(ByteBufAllocator.class);
         ObjectMapper mapper = deps.getInstance(ObjectMapper.class);
@@ -343,7 +343,7 @@ final class ResponseImpl extends Response {
     }
 
     <T extends ResponseWriter> void setWriter(Class<T> w, Dependencies deps, Event evt) {
-        setChunked(true);
+//        setChunked(true);
         Charset charset = deps.getInstance(Charset.class);
         ByteBufAllocator allocator = deps.getInstance(ByteBufAllocator.class);
         Key<ExecutorService> key = Key.get(ExecutorService.class, Names.named(ServerModule.BACKGROUND_THREAD_POOL_NAME));

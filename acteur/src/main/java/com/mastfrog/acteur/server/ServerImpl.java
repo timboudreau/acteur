@@ -25,6 +25,8 @@ package com.mastfrog.acteur.server;
 
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
+import static com.mastfrog.acteur.server.ServerModule.EVENT_THREADS;
+import static com.mastfrog.acteur.server.ServerModule.WORKER_THREADS;
 import com.mastfrog.acteur.util.Server;
 import com.mastfrog.giulius.ShutdownHookRegistry;
 import com.mastfrog.settings.Settings;
@@ -66,12 +68,12 @@ final class ServerImpl implements Server {
     @Inject
     ServerImpl(
             ChannelInitializer<SocketChannel> pipelineFactory,
-            @Named("event") ThreadFactory eventThreadFactory,
-            @Named("event") ThreadCount eventThreadCount,
-            @Named("event") ThreadGroup eventThreadGroup,
-            @Named("workers") ThreadFactory workerThreadFactory,
-            @Named("workers") ThreadCount workerThreadCount,
-            @Named("worker") ThreadGroup workerThreadGroup,
+            @Named(EVENT_THREADS) ThreadFactory eventThreadFactory,
+            @Named(EVENT_THREADS) ThreadCount eventThreadCount,
+            @Named(EVENT_THREADS) ThreadGroup eventThreadGroup,
+            @Named(WORKER_THREADS) ThreadFactory workerThreadFactory,
+            @Named(WORKER_THREADS) ThreadCount workerThreadCount,
+            @Named(WORKER_THREADS) ThreadGroup workerThreadGroup,
             @Named("application") String applicationName,
             ServerBootstrap bootstrap,
             ShutdownHookRegistry registry,
