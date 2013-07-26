@@ -24,7 +24,7 @@ Guava or MIME types and a few other things).
 Most importantly, it uses Google's Guice dependency injection framework to 
 decouple those reusable chunks of logic.
 
-An Acteur application is, a subclass of `Application`.  In a pattern
+An Acteur application is a subclass of `Application`.  In a pattern
 we will see again, most of the code and work of an `Application` happens in its
 constructor, and most of it consists of adding `Page` subtypes (`Class` objects)
 to the application.
