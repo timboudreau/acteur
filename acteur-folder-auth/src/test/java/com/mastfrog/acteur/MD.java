@@ -290,11 +290,6 @@ class MD extends AbstractModule implements Event {
                 return closeFuture();
             }
 
-            @Override
-            public ChannelFuture deregister() {
-                return closeFuture();
-            }
-
             public Channel flush() {
                 return this;
             }
@@ -331,12 +326,6 @@ class MD extends AbstractModule implements Event {
             public ChannelFuture close(ChannelPromise promise) {
                 return closeFuture();
             }
-
-            @Override
-            public ChannelFuture deregister(ChannelPromise promise) {
-                return closeFuture();
-            }
-
             public Channel read() {
                 return this;
             }
