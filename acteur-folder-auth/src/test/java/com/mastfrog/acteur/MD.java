@@ -411,6 +411,10 @@ class MD extends AbstractModule implements Event {
     public SocketAddress getRemoteAddress() {
         return new InetSocketAddress(2);
     }
+    
+    public void deregister(ChannelPromise p) {
+        
+    }
 
     @Override
     public String getHeader(String nm) {
