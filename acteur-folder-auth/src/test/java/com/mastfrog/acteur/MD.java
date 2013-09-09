@@ -100,8 +100,9 @@ class MD extends AbstractModule implements Event {
                 return true;
             }
             
-            public void deregister(ChannelPromise p) {
+            public ChannelFuture deregister(ChannelPromise p) {
                 // dealing with netty version skew
+                return null;
             }
 
             @Override
