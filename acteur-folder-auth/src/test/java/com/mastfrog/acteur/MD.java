@@ -99,6 +99,10 @@ class MD extends AbstractModule implements Event {
             public boolean isRegistered() {
                 return true;
             }
+            
+            public void deregister(ChannelPromise p) {
+                // dealing with netty version skew
+            }
 
             @Override
             public boolean isActive() {
