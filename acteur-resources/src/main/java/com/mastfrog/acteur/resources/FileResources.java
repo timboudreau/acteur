@@ -67,6 +67,7 @@ import org.joda.time.Duration;
 @Singleton
 public class FileResources implements StaticResources {
 
+    public static final String SETTINGS_KEY_FILE_RESOURCES_EXPIRE_MINUTES = "file.resources.expire.minutes";
     public static final String SETTINGS_KEY_MAX_FILE_LENGTH = "max.file.length";
 
     private final File dir;
@@ -80,7 +81,7 @@ public class FileResources implements StaticResources {
         this.types = types;
         this.allocator = allocator;
         long maxFileLength = settings.getLong(SETTINGS_KEY_MAX_FILE_LENGTH, 1024 * 1024 * 12);
-        long expiry = settings.getLong("file.resources.expire.minutes", 2);
+        long expiry = settings.getLong(SETTINGS_KEY_FILE_RESOURCES_EXPIRE_MINUTES, 2);
         Loader loader = new Loader();
         cache = CacheBuilder.newBuilder()
                 .weigher(loader)
