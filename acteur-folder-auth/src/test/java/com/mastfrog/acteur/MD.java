@@ -2,7 +2,6 @@ package com.mastfrog.acteur;
 
 import com.google.common.base.Optional;
 import com.google.inject.AbstractModule;
-import com.mastfrog.acteur.Event;
 import com.mastfrog.acteur.util.HeaderValueType;
 import com.mastfrog.acteur.util.Method;
 import com.mastfrog.url.Path;
@@ -43,12 +42,10 @@ import java.util.concurrent.TimeoutException;
  */
 class MD extends AbstractModule implements Event {
 
-    @Override
     protected void configure() {
         bind(MD.class).toInstance(this);
     }
 
-    @Override
     public Optional<Integer> getIntParameter(String name) {
         String val = getParameter(name);
         if (val != null) {
@@ -58,7 +55,6 @@ class MD extends AbstractModule implements Event {
         return Optional.absent();
     }
 
-    @Override
     public Optional<Long> getLongParameter(String name) {
         String val = getParameter(name);
         if (val != null) {
@@ -68,49 +64,41 @@ class MD extends AbstractModule implements Event {
         return Optional.absent();
     }
 
-    @Override
     public Channel getChannel() {
         return new Channel() {
             public Integer id() {
                 return 1;
             }
 
-            @Override
             public EventLoop eventLoop() {
                 return null;
             }
 
-            @Override
             public Channel parent() {
                 return this;
             }
 
-            @Override
             public ChannelConfig config() {
                 return null;
             }
 
-            @Override
             public boolean isOpen() {
                 return true;
             }
 
-            @Override
             public boolean isRegistered() {
                 return true;
             }
-            
+
             public ChannelFuture deregister(ChannelPromise p) {
                 // dealing with netty version skew
                 return null;
             }
 
-            @Override
             public boolean isActive() {
                 return true;
             }
 
-            @Override
             public ChannelMetadata metadata() {
                 return null;
             }
@@ -120,106 +108,85 @@ class MD extends AbstractModule implements Event {
                 return out;
             }
 
-            @Override
             public SocketAddress localAddress() {
                 return new InetSocketAddress(1);
             }
 
-            @Override
             public SocketAddress remoteAddress() {
                 return new InetSocketAddress(2);
             }
 
-            @Override
             public ChannelFuture closeFuture() {
                 final Channel t = this;
                 return new ChannelFuture() {
-                    @Override
                     public Channel channel() {
                         return t;
                     }
 
-                    @Override
                     public boolean isDone() {
                         return true;
                     }
 
-                    @Override
                     public boolean isSuccess() {
                         return true;
                     }
 
-                    @Override
                     public Throwable cause() {
                         return null;
                     }
 
-                    @Override
                     public ChannelFuture sync() throws InterruptedException {
                         return this;
                     }
 
-                    @Override
                     public ChannelFuture syncUninterruptibly() {
                         return this;
                     }
 
-                    @Override
                     public ChannelFuture await() throws InterruptedException {
                         return this;
                     }
 
-                    @Override
                     public ChannelFuture awaitUninterruptibly() {
                         return this;
                     }
 
-                    @Override
                     public boolean await(long timeout, TimeUnit unit) throws InterruptedException {
                         return true;
                     }
 
-                    @Override
                     public boolean await(long timeoutMillis) throws InterruptedException {
                         return true;
                     }
 
-                    @Override
                     public boolean awaitUninterruptibly(long timeout, TimeUnit unit) {
                         return true;
                     }
 
-                    @Override
                     public boolean awaitUninterruptibly(long timeoutMillis) {
                         return true;
                     }
 
-                    @Override
                     public Void getNow() {
                         return null;
                     }
 
-                    @Override
                     public boolean cancel(boolean mayInterruptIfRunning) {
                         return true;
                     }
 
-                    @Override
                     public boolean isCancelled() {
                         return false;
                     }
 
-                    @Override
                     public Void get() throws InterruptedException, ExecutionException {
                         return null;
                     }
 
-                    @Override
                     public Void get(long l, TimeUnit tu) throws InterruptedException, ExecutionException, TimeoutException {
                         return null;
                     }
 
-                    @Override
                     public ChannelFuture addListener(GenericFutureListener<? extends Future<? super Void>> listener) {
                         try {
                             GenericFutureListener f = listener;
@@ -230,7 +197,6 @@ class MD extends AbstractModule implements Event {
                         return this;
                     }
 
-                    @Override
                     public ChannelFuture addListeners(GenericFutureListener<? extends Future<? super Void>>... listeners) {
                         for (GenericFutureListener<? extends Future<? super Void>> l : listeners) {
                             try {
@@ -243,54 +209,44 @@ class MD extends AbstractModule implements Event {
                         return this;
                     }
 
-                    @Override
                     public ChannelFuture removeListener(GenericFutureListener<? extends Future<? super Void>> listener) {
                         return this;
                     }
 
-                    @Override
                     public ChannelFuture removeListeners(GenericFutureListener<? extends Future<? super Void>>... listeners) {
                         return this;
                     }
 
-                    @Override
                     public boolean isCancellable() {
                         return false;
                     }
                 };
             }
 
-            @Override
             public Channel.Unsafe unsafe() {
                 return null;
             }
 
-            @Override
             public <T> Attribute<T> attr(AttributeKey<T> key) {
                 return null;
             }
 
-            @Override
             public ChannelFuture bind(SocketAddress localAddress) {
                 return closeFuture();
             }
 
-            @Override
             public ChannelFuture connect(SocketAddress remoteAddress) {
                 return closeFuture();
             }
 
-            @Override
             public ChannelFuture connect(SocketAddress remoteAddress, SocketAddress localAddress) {
                 return closeFuture();
             }
 
-            @Override
             public ChannelFuture disconnect() {
                 return closeFuture();
             }
 
-            @Override
             public ChannelFuture close() {
                 return closeFuture();
             }
@@ -307,30 +263,26 @@ class MD extends AbstractModule implements Event {
                 return closeFuture();
             }
 
-            @Override
             public ChannelFuture bind(SocketAddress localAddress, ChannelPromise promise) {
                 return closeFuture();
             }
 
-            @Override
             public ChannelFuture connect(SocketAddress remoteAddress, ChannelPromise promise) {
                 return closeFuture();
             }
 
-            @Override
             public ChannelFuture connect(SocketAddress remoteAddress, SocketAddress localAddress, ChannelPromise promise) {
                 return closeFuture();
             }
 
-            @Override
             public ChannelFuture disconnect(ChannelPromise promise) {
                 return closeFuture();
             }
 
-            @Override
             public ChannelFuture close(ChannelPromise promise) {
                 return closeFuture();
             }
+
             public Channel read() {
                 return this;
             }
@@ -347,32 +299,26 @@ class MD extends AbstractModule implements Event {
                 return closeFuture();
             }
 
-            @Override
             public ChannelPipeline pipeline() {
                 return null;
             }
 
-            @Override
             public ByteBufAllocator alloc() {
                 return null;
             }
 
-            @Override
             public ChannelPromise newPromise() {
                 return null;
             }
 
-            @Override
             public ChannelFuture newSucceededFuture() {
                 return closeFuture();
             }
 
-            @Override
             public ChannelFuture newFailedFuture(Throwable cause) {
                 return closeFuture();
             }
 
-            @Override
             public int compareTo(Channel t) {
                 return 0;
             }
@@ -389,89 +335,73 @@ class MD extends AbstractModule implements Event {
                 throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
             }
 
-            @Override
             public ChannelFuture writeAndFlush(Object msg, ChannelPromise promise) {
                 return closeFuture();
             }
 
-            @Override
             public ChannelFuture writeAndFlush(Object msg) {
                 return closeFuture();
             }
 
-            @Override
             public ChannelFuture deregister() {
                 return closeFuture();
             }
         };
     }
 
-    @Override
     public HttpMessage getRequest() {
         return new DefaultHttpMessage(HttpVersion.HTTP_1_0) {
         };
     }
 
-    @Override
     public Method getMethod() {
         return Method.GET;
     }
 
-    @Override
     public SocketAddress getRemoteAddress() {
         return new InetSocketAddress(2);
     }
-    
+
     public void deregister(ChannelPromise p) {
-        
+
     }
 
-    @Override
     public String getHeader(String nm) {
         return null;
     }
 
-    @Override
     public String getParameter(String param) {
         return null;
     }
 
-    @Override
     public Path getPath() {
         return Path.parse("testTag");
     }
 
-    @Override
     public <T> T getHeader(HeaderValueType<T> value) {
         return null;
     }
 
-    @Override
     public Map<String, String> getParametersAsMap() {
         return Collections.emptyMap();
     }
 
-    @Override
     public <T> T getParametersAs(Class<T> type) {
         return null;
     }
 
-    @Override
     public <T> T getContentAsJSON(Class<T> type) throws IOException {
         return null;
     }
 
-    @Override
     public ByteBuf getContent() throws IOException {
         return Unpooled.buffer();
     }
 
-    @Override
     public boolean isKeepAlive() {
         return false;
     }
 
-    @Override
     public OutputStream getContentAsStream() throws IOException {
         return new ByteArrayOutputStream(0);
     }
