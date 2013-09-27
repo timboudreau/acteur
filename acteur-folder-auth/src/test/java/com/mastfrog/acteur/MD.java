@@ -398,6 +398,11 @@ class MD extends AbstractModule implements Event {
             public ChannelFuture writeAndFlush(Object msg) {
                 return closeFuture();
             }
+
+            @Override
+            public ChannelFuture deregister() {
+                return closeFuture();
+            }
         };
     }
 
