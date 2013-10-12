@@ -36,6 +36,7 @@ public enum Protocols implements Protocol {
     HTTPS,
     FTP,
     FILE,
+    WS
     ;
 
     @Override

@@ -25,6 +25,7 @@ package com.mastfrog.acteur.server;
 
 import com.google.inject.ImplementedBy;
 import com.mastfrog.url.Path;
+import com.mastfrog.url.Protocol;
 import com.mastfrog.url.URL;
 
 /**
@@ -65,6 +66,17 @@ public interface PathFactory {
      * @return A url
      */
     public URL constructURL(Path path, boolean secure);
+    /**
+     * Construct a URL suitable for external use, inserting the basepath and
+     * host name if necessary.
+     * @param protocol The protocol for the new url
+     * @param path The path relative to the web application
+     * @return A url
+     */    
+    public URL constructURL(Protocol protocol, Path path);
+    public URL constructURL(Protocol protocol, Path path, boolean secure);
+    public URL constructURL(Protocol protocol, Path path, int port);
+
     /**
      * Prepend the base path if necessary
      * @param path A path

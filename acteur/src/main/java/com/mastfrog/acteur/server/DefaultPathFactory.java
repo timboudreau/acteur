@@ -1,4 +1,4 @@
-/* 
+/*
  * The MIT License
  *
  * Copyright 2013 Tim Boudreau.
@@ -31,6 +31,7 @@ import com.google.inject.Singleton;
 import com.google.inject.name.Named;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.url.*;
+import com.mastfrog.util.Checks;
 import com.mastfrog.util.Exceptions;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
@@ -40,7 +41,7 @@ import java.util.regex.Pattern;
  *
  * @author Tim Boudreau
  */
-//@SettingValues({DefaultPathFactory.HOSTNAME_SETTINGS_KEY + "=localhost", 
+//@SettingValues({DefaultPathFactory.HOSTNAME_SETTINGS_KEY + "=localhost",
 //DefaultPathFactory.BASE_PATH_SETTINGS_KEY + "="})
 @Singleton
 class DefaultPathFactory implements PathFactory {
@@ -54,7 +55,7 @@ class DefaultPathFactory implements PathFactory {
     @Named(BASE_PATH_SETTINGS_KEY)
     String path = "";
     private volatile Path pth;
-    
+
     @Inject
     DefaultPathFactory(Settings settings) {
         int port = settings.getInt(EXTERNAL_PORT, -1);
@@ -127,6 +128,27 @@ class DefaultPathFactory implements PathFactory {
         } catch (Exception e) {
             return Exceptions.chuck(e);
         }
+    }
+
+    @Override
+    public URL constructURL(Protocol protocol, Path path) {
+        return constructURL(protocol, path, false);
+    }
+
+    public URL constructURL(Protocol protocol, Path path, boolean secure) {
+        return constructURL(protocol, path, secure ? securePort : port);
+    }
+
+    public URL constructURL(Protocol protocol, Path path, int port) {
+        Checks.nonNegative("port", port);
+        if (basePath().size() > 0) {
+            path = Path.merge(basePath(), path);
+        }
+        URLBuilder b = URL.builder(protocol).setPath(path).setHost(hostname);
+        if (port > 0) {
+            b.setPort(port);
+        }
+        return b.create();
     }
 
     @Override
