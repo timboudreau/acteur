@@ -65,7 +65,7 @@ final class HelpPage extends Page {
         private final Charset charset;
 
         @Inject
-        HelpActeur(Application app, Event evt, ObjectMapper mapper, Charset charset) {
+        HelpActeur(Application app, HttpEvent evt, ObjectMapper mapper, Charset charset) {
             this.app = app;
             this.charset = charset;
             this.html = "true".equals(evt.getParameter("html"));
@@ -98,7 +98,7 @@ final class HelpPage extends Page {
             }
 
             @Override
-            public Status write(Event evt, Output out, int iteration) throws Exception {
+            public Status write(Event<?> evt, Output out, int iteration) throws Exception {
                 Map<String, Object> help = app.describeYourself();
                 if (html) {
                     StringBuilder sb = new StringBuilder("<html><head><title>")

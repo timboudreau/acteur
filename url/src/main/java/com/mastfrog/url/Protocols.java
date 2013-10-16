@@ -36,7 +36,8 @@ public enum Protocols implements Protocol {
     HTTPS,
     FTP,
     FILE,
-    WS
+    WS,
+    WSS
     ;
 
     @Override
@@ -46,7 +47,20 @@ public enum Protocols implements Protocol {
 
     @Override
     public Port getDefaultPort() {
-        return this == HTTP ? new Port(80) : this == FTP ? new Port(21) : this == HTTPS ? new Port(443) : null;
+        switch(this) {
+            case HTTP :
+                return new Port(80);
+            case HTTPS :
+                return new Port(443);
+            case WS : 
+                return new Port(80);
+            case WSS :
+                return new Port(443);
+            case FTP :
+                return new Port(21);
+            default :
+                return null;
+        }
     }
 
     @Override

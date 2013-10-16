@@ -30,7 +30,7 @@ import com.google.common.cache.Weigher;
 import com.google.common.net.MediaType;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
-import com.mastfrog.acteur.Event;
+import com.mastfrog.acteur.HttpEvent;
 import com.mastfrog.acteur.Page;
 import com.mastfrog.acteur.Response;
 import com.mastfrog.acteur.ResponseHeaders.ContentLengthProvider;
@@ -162,7 +162,7 @@ public class FileResources implements StaticResources {
         }
 
         @Override
-        public void decoratePage(Page page, Event evt, String path, Response response, boolean chunked) {
+        public void decoratePage(Page page, HttpEvent evt, String path, Response response, boolean chunked) {
             page.getReponseHeaders().addVaryHeader(Headers.ACCEPT_ENCODING);
             page.getReponseHeaders().addCacheControl(CacheControlTypes.Public);
             page.getReponseHeaders().addCacheControl(CacheControlTypes.max_age, Duration.standardHours(2));
@@ -179,7 +179,7 @@ public class FileResources implements StaticResources {
             }
         }
 
-        public ResponseWriter sender(Event evt) {
+        public ResponseWriter sender(HttpEvent evt) {
             return new ClasspathResources.BytesSender(bytes);
         }
 
@@ -204,7 +204,7 @@ public class FileResources implements StaticResources {
         }
 
         @Override
-        public void attachBytes(final Event evt, Response response, final boolean chunked) {
+        public void attachBytes(final HttpEvent evt, Response response, final boolean chunked) {
             response.setBodyWriter(new ChannelFutureListener() {
                 @Override
                 public void operationComplete(ChannelFuture future) throws Exception {

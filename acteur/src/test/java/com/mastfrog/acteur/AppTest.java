@@ -48,12 +48,6 @@ public class AppTest {
 
     static class M extends AbstractModule {
 
-        private final Settings settings;
-
-        M(Settings settings) {
-            this.settings = settings;
-        }
-
         @Override
         protected void configure() {
             bind(Charset.class).toInstance(CharsetUtil.UTF_8);
@@ -64,7 +58,7 @@ public class AppTest {
             bind(ExecutorService.class).annotatedWith(Names.named(ServerModule.BACKGROUND_THREAD_POOL_NAME)).toInstance(exe);
             bind(RequestID.class).toInstance(new RequestID());
 
-            scope.bindTypes(binder(), Event.class,
+            scope.bindTypes(binder(), Event.class, HttpEvent.class,
                     Page.class, BasicCredentials.class, Thing.class);
         }
     }
@@ -112,7 +106,7 @@ public class AppTest {
     static class AuthenticationAction extends Acteur {
 
         @Inject
-        AuthenticationAction(Event event) {
+        AuthenticationAction(HttpEvent event) {
             BasicCredentials credentials = event.getHeader(Headers.AUTHORIZATION);
             if (credentials != null) {
                 setState(new ConsumedLockedState(credentials));
@@ -127,7 +121,7 @@ public class AppTest {
     static class ConvertHeadersAction extends Acteur {
 
         @Inject
-        ConvertHeadersAction(Event event) {
+        ConvertHeadersAction(HttpEvent event) {
             ReqParams p = event.getParametersAs(ReqParams.class);
             if (p == null) {
                 System.err.println("PARAM name is " + p.name() + " realname " + p.realname());
@@ -142,7 +136,7 @@ public class AppTest {
     static class ConvertBodyAction extends Acteur {
 
         @Inject
-        ConvertBodyAction(Event event) throws IOException {
+        ConvertBodyAction(Event<?> event) throws IOException {
             System.err.println("Convert body ");
             Thing thing = event.getContentAsJSON(Thing.class);
             if (thing == null) {

@@ -196,11 +196,12 @@ public class Application implements Iterable<Page> {
      * @param response
      * @return
      */
-    protected HttpResponse decorateResponse(Event event, Page page, Acteur action, HttpResponse response) {
+    protected HttpResponse decorateResponse(Event<?> event, Page page, Acteur action, HttpResponse response) {
         Headers.write(Headers.SERVER, getName(), response);
         Headers.write(Headers.DATE, new DateTime(), response);
         if (debug) {
-            Headers.write(Headers.custom("X-Req-Path"), event.getPath().toString(), response);
+            String pth = event instanceof HttpEvent ? ((HttpEvent)event).getPath().toString() : "";
+            Headers.write(Headers.custom("X-Req-Path"), pth, response);
         }
         return response;
     }
@@ -212,10 +213,10 @@ public class Application implements Iterable<Page> {
      * @param event
      * @return
      */
-    protected HttpResponse createNotFoundResponse(Event event) {
+    protected HttpResponse createNotFoundResponse(Event<?> event) {
         ByteBuf buf = Unpooled.copiedBuffer("<html><head>"
                 + "<title>Not Found</title></head><body><h1>Not Found</h1>"
-                + event.getPath() + " was not found\n<body></html>\n", charset);
+                + event + " was not found\n<body></html>\n", charset);
         DefaultFullHttpResponse resp = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1,
                 HttpResponseStatus.NOT_FOUND, buf);
         Headers.write(Headers.CONTENT_TYPE, MediaType.HTML_UTF_8.withCharset(charset), resp);
@@ -224,19 +225,20 @@ public class Application implements Iterable<Page> {
         Headers.write(Headers.CACHE_CONTROL, new CacheControl(CacheControlTypes.no_cache), resp);
         Headers.write(Headers.DATE, new DateTime(), resp);
         if (debug) {
-            Headers.write(Headers.custom("X-Req-Path"), event.getPath().toString(), resp);
+            String pth = event instanceof HttpEvent ? ((HttpEvent)event).getPath().toString() : "";
+            Headers.write(Headers.custom("X-Req-Path"), pth, resp);
         }
         return resp;
     }
 
-    protected void onAfterRespond(RequestID id, Event event, Acteur acteur, Page page, State state, HttpResponseStatus status, HttpResponse resp) {
+    protected void onAfterRespond(RequestID id, Event<?> event, Acteur acteur, Page page, State state, HttpResponseStatus status, HttpResponse resp) {
     }
 
-    protected void onBeforeRespond(RequestID id, Event event, HttpResponseStatus status) {
+    protected void onBeforeRespond(RequestID id, Event<?> event, HttpResponseStatus status) {
         logger.onRespond(id, event, status);
     }
 
-    protected void onBeforeEvent(RequestID id, Event event) {
+    protected void onBeforeEvent(RequestID id, Event<?> event) {
         logger.onBeforeEvent(id, event);
     }
 
@@ -266,14 +268,14 @@ public class Application implements Iterable<Page> {
      * @param channel
      * @return
      */
-    public CountDownLatch onEvent(final Event event, final Channel channel) {
+    public CountDownLatch onEvent(final Event<?> event, final Channel channel) {
         //XXX get rid of channel param?
         // Create a new incremented id for this request
         final RequestID id = new RequestID();
         // Enter request scope with the id and the event
-        return scope.run(new Invokable<Event, CountDownLatch, RuntimeException>() {
+        return scope.run(new Invokable<Event<?>, CountDownLatch, RuntimeException>() {
             @Override
-            public CountDownLatch run(Event argument) {
+            public CountDownLatch run(Event<?> argument) {
                 // Set the thread name
 //                Thread.currentThread().setName(event.getPath() + " " + event.getRemoteAddress());
                 onBeforeEvent(id, event);
@@ -330,10 +332,10 @@ public class Application implements Iterable<Page> {
         };
     }
 
-    protected void send404(RequestID id, Event event, Channel channel) {
+    protected void send404(RequestID id, Event<?> event, Channel channel) {
         HttpResponse response = createNotFoundResponse(event);
         onBeforeRespond(id, event, response.getStatus());
-        ChannelFutureListener closer = !event.isKeepAlive() ? ChannelFutureListener.CLOSE : null;
+        ChannelFutureListener closer = !ResponseImpl.isKeepAlive(event) ? ChannelFutureListener.CLOSE : null;
         ChannelFuture fut = channel.writeAndFlush(response);
         if (closer != null) {
             fut.addListener(closer);

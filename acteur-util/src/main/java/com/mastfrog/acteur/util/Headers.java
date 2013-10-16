@@ -1,4 +1,4 @@
-/* 
+/*
  * The MIT License
  *
  * Copyright 2013 Tim Boudreau.
@@ -25,6 +25,7 @@ package com.mastfrog.acteur.util;
 
 import com.google.common.net.MediaType;
 import com.mastfrog.url.Host;
+import com.mastfrog.url.URL;
 import com.mastfrog.util.Checks;
 import io.netty.handler.codec.http.ClientCookieEncoder;
 import io.netty.handler.codec.http.Cookie;
@@ -68,7 +69,7 @@ public final class Headers {
     public static final HeaderValueType<DateTime> RETRY_AFTER_DATE = new DateTimeHeader(HttpHeaders.Names.RETRY_AFTER);
     public static final HeaderValueType<Duration> RETRY_AFTER_DURATION = new DurationHeader(HttpHeaders.Names.RETRY_AFTER);
     public static final HeaderValueType<Host> HOST = new HostHeader(HttpHeaders.Names.HOST);
-    
+
     public static final HeaderValueType<MediaType> CONTENT_TYPE = new MediaTypeHeader();
     public static final HeaderValueType<String> SERVER = new StringHeader(HttpHeaders.Names.SERVER);
     public static final HeaderValueType<HeaderValueType[]> VARY = new VaryHeader();
@@ -92,11 +93,60 @@ public final class Headers {
     public static final HeaderValueType<Method[]> ACCESS_CONTROL_ALLOW = new AllowHeader(true);
     public static final HeaderValueType<Cookie> SET_COOKIE = new SetCookieHeader();
     public static final HeaderValueType<Cookie[]> COOKIE = new CookieHeader();
+    public static final HeaderValueType<String[]> WEBSOCKET_PROTOCOLS = new WebSocketProtocolsHeader();
+    public static final HeaderValueType<String> WEBSOCKET_PROTOCOL = new StringHeader(HttpHeaders.Names.WEBSOCKET_PROTOCOL);
+    public static final HeaderValueType<URL> WEBSOCKET_LOCATION = new WebSocketLocationHeader();
+    public static final HeaderValueType<String> UPGRADE = stringHeader(HttpHeaders.Names.UPGRADE);
 
     public static HeaderValueType<String> stringHeader(String key) {
         return new StringHeader(key);
     }
-    
+
+    private static final class WebSocketLocationHeader extends AbstractHeader<URL> {
+
+        public WebSocketLocationHeader() {
+            super(URL.class, HttpHeaders.Names.WEBSOCKET_LOCATION);
+        }
+
+        @Override
+        public String toString(URL value) {
+            return value.toUnescapedForm();
+        }
+
+        @Override
+        public URL toValue(String value) {
+            return URL.parse(value);
+        }
+    }
+
+    private static final class WebSocketProtocolsHeader extends AbstractHeader<String[]> {
+
+        WebSocketProtocolsHeader() {
+            super(String[].class, HttpHeaders.Names.WEBSOCKET_PROTOCOL);
+        }
+
+        @Override
+        public String toString(String[] value) {
+            StringBuilder sb = new StringBuilder();
+            for (String s : value) {
+                if (sb.length() > 0) {
+                    sb.append(", ");
+                }
+                sb.append(s);
+            }
+            return sb.toString();
+        }
+
+        @Override
+        public String[] toValue(String value) {
+            String[] result = value.split(",");
+            for (int i=0; i < result.length; i++) {
+                result[i] = result[i].trim();
+            }
+            return result;
+        }
+    }
+
     private static final class CookieHeader extends AbstractHeader<Cookie[]> {
         CookieHeader() {
             super(Cookie[].class, HttpHeaders.Names.COOKIE);
@@ -127,7 +177,7 @@ public final class Headers {
             return CookieDecoder.decode(value).iterator().next();
         }
     }
-    
+
     private static final class MediaTypeHeader extends AbstractHeader<MediaType> {
         MediaTypeHeader() {
             super(MediaType.class, HttpHeaders.Names.CONTENT_TYPE);
@@ -143,7 +193,7 @@ public final class Headers {
             try {
                 return MediaType.parse(value);
             } catch (IllegalArgumentException e) {
-                Logger.getLogger(MediaTypeHeader.class.getName()).log(Level.WARNING, 
+                Logger.getLogger(MediaTypeHeader.class.getName()).log(Level.WARNING,
                         "Bad media type {0}", value);
                 return null;
             }
@@ -228,7 +278,7 @@ public final class Headers {
             try {
                 return new URI(value);
             } catch (URISyntaxException ex) {
-                Logger.getLogger(Headers.class.getName()).log(Level.SEVERE, 
+                Logger.getLogger(Headers.class.getName()).log(Level.SEVERE,
                         "Bad URI in " + name() + " - " + value, ex);
                 return null;
             }
@@ -304,7 +354,7 @@ public final class Headers {
             try {
                 return new Duration(Long.parseLong(value));
             } catch (NumberFormatException nfe) {
-                Logger.getLogger(DurationHeader.class.getName()).log(Level.INFO, 
+                Logger.getLogger(DurationHeader.class.getName()).log(Level.INFO,
                         "Bad duration header '" + value + "'", nfe);
                 return null;
             }

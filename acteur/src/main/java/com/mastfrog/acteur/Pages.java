@@ -45,5 +45,5 @@ public interface Pages {
      * @param channel The channel
      * @return A latch which will count down when we're done
      */
-    CountDownLatch onEvent(final RequestID id, final Event event, final Channel channel);
+    CountDownLatch onEvent(final RequestID id, final Event<?> event, final Channel channel);
 }

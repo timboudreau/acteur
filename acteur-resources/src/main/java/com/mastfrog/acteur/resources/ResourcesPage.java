@@ -27,7 +27,7 @@ import com.google.common.net.MediaType;
 import com.google.inject.Inject;
 import com.mastfrog.acteur.Acteur;
 import com.mastfrog.acteur.ActeurFactory;
-import com.mastfrog.acteur.Event;
+import com.mastfrog.acteur.HttpEvent;
 import com.mastfrog.acteur.util.Headers;
 import com.mastfrog.acteur.Page;
 import com.mastfrog.acteur.Response;
@@ -74,7 +74,7 @@ public class ResourcesPage extends Page {
     private static final class ResourceNameMatcher extends Acteur {
 
         @Inject
-        ResourceNameMatcher(Event evt, StaticResources res, Settings settings, ExpiresPolicy policy, Page page) throws UnsupportedEncodingException {
+        ResourceNameMatcher(HttpEvent evt, StaticResources res, Settings settings, ExpiresPolicy policy, Page page) throws UnsupportedEncodingException {
             String base = settings.getString(SETTINGS_KEY_STATIC_RESOURCES_BASE_URL_PATH);
             String path = evt.getPath().toString();
             if (base != null && !base.isEmpty()) {
@@ -112,7 +112,7 @@ public class ResourcesPage extends Page {
     private static class BytesWriter extends Acteur {
 
         @Inject
-        BytesWriter(Event evt, Resource r) {
+        BytesWriter(HttpEvent evt, Resource r) {
             setState(new RespondWith(HttpResponseStatus.OK));
             setChunked(false);
             if (evt.getMethod() != Method.HEAD) {

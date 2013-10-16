@@ -35,6 +35,6 @@ import io.netty.handler.codec.http.HttpResponseStatus;
  */
 @ImplementedBy(DefaultRequestLogger.class)
 public interface RequestLogger {
-    void onBeforeEvent (RequestID rid, Event event);
-    void onRespond (RequestID rid, Event event, HttpResponseStatus status);
+    void onBeforeEvent (RequestID rid, Event<?> event);
+    void onRespond (RequestID rid, Event<?> event, HttpResponseStatus status);
 }

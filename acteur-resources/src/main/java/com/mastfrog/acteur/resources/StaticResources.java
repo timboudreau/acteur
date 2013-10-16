@@ -25,7 +25,7 @@ package com.mastfrog.acteur.resources;
 
 import com.google.common.net.MediaType;
 import com.google.inject.ImplementedBy;
-import com.mastfrog.acteur.Event;
+import com.mastfrog.acteur.HttpEvent;
 import com.mastfrog.acteur.Page;
 import com.mastfrog.acteur.Response;
 import org.joda.time.DateTime;
@@ -47,7 +47,7 @@ public interface StaticResources {
 
     public static interface Resource {
 
-        void decoratePage(Page page, Event evt, String path, Response response, boolean chunked);
+        void decoratePage(Page page, HttpEvent evt, String path, Response response, boolean chunked);
 
         String getEtag();
 
@@ -57,6 +57,6 @@ public interface StaticResources {
 
         long getLength();
         
-        void attachBytes(Event evt, Response response, boolean chunked);
+        void attachBytes(HttpEvent evt, Response response, boolean chunked);
     }
 }

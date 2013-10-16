@@ -27,7 +27,7 @@ import com.mastfrog.acteur.util.Realm;
 import com.mastfrog.acteur.util.BasicCredentials;
 import com.google.inject.Inject;
 import com.mastfrog.acteur.Acteur;
-import com.mastfrog.acteur.Event;
+import com.mastfrog.acteur.HttpEvent;
 import com.mastfrog.acteur.util.Headers;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import java.io.IOException;
@@ -43,7 +43,7 @@ import java.util.Map;
 public class AuthenticateBasicActeur extends Acteur {
 
     @Inject
-    AuthenticateBasicActeur(Event event, Authenticator authenticator, Realm r) throws IOException {
+    AuthenticateBasicActeur(HttpEvent event, Authenticator authenticator, Realm r) throws IOException {
         BasicCredentials credentials = event.getHeader(Headers.AUTHORIZATION);
         if (credentials == null) {
             unauthorized(r);

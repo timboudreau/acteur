@@ -137,7 +137,7 @@ final class ResponseImpl extends Response {
         Page p = Page.get();
         Application app = p.getApplication();
         Dependencies deps = app.getDependencies();
-        Event evt = deps.getInstance(Event.class);
+        HttpEvent evt = deps.getInstance(HttpEvent.class);
         Charset charset = deps.getInstance(Charset.class);
         ByteBufAllocator allocator = deps.getInstance(ByteBufAllocator.class);
         ObjectMapper mapper = deps.getInstance(ObjectMapper.class);
@@ -332,7 +332,7 @@ final class ResponseImpl extends Response {
         modify();
     }
 
-    <T extends ResponseWriter> void setWriter(T w, Dependencies deps, Event evt) {
+    <T extends ResponseWriter> void setWriter(T w, Dependencies deps, HttpEvent evt) {
 //        setChunked(true);
         Charset charset = deps.getInstance(Charset.class);
         ByteBufAllocator allocator = deps.getInstance(ByteBufAllocator.class);
@@ -342,7 +342,7 @@ final class ResponseImpl extends Response {
         setWriter(w, charset, allocator, mapper, evt, svc);
     }
 
-    <T extends ResponseWriter> void setWriter(Class<T> w, Dependencies deps, Event evt) {
+    <T extends ResponseWriter> void setWriter(Class<T> w, Dependencies deps, HttpEvent evt) {
 //        setChunked(true);
         Charset charset = deps.getInstance(Charset.class);
         ByteBufAllocator allocator = deps.getInstance(ByteBufAllocator.class);
@@ -374,21 +374,25 @@ final class ResponseImpl extends Response {
         }
 
         @Override
-        public ResponseWriter.Status write(Event evt, Output out) throws Exception {
+        public ResponseWriter.Status write(Event<?> evt, Output out) throws Exception {
             ResponseWriter actual = resp.call();
             return actual.write(evt, out);
         }
 
         @Override
-        public Status write(Event evt, Output out, int iteration) throws Exception {
+        public Status write(Event<?> evt, Output out, int iteration) throws Exception {
             ResponseWriter actual = resp.call();
             return actual.write(evt, out, iteration);
         }
     }
 
-    void setWriter(ResponseWriter w, Charset charset, ByteBufAllocator allocator, ObjectMapper mapper, Event evt, ExecutorService svc) {
+    static boolean isKeepAlive(Event<?> evt) {
+        return evt instanceof HttpEvent ? ((HttpEvent) evt).isKeepAlive() : false;
+    }
+    
+    void setWriter(ResponseWriter w, Charset charset, ByteBufAllocator allocator, ObjectMapper mapper, Event<?> evt, ExecutorService svc) {
         setBodyWriter(new ResponseWriterListener(evt, w, charset, allocator,
-                mapper, chunked, !evt.isKeepAlive(), svc));
+                mapper, chunked, !isKeepAlive(evt), svc));
     }
 
     private static final class ResponseWriterListener extends AbstractOutput implements ChannelFutureListener {
@@ -398,10 +402,10 @@ final class ResponseImpl extends Response {
         private final boolean chunked;
         private final ResponseWriter writer;
         private final boolean shouldClose;
-        private final Event evt;
+        private final Event<?> evt;
         private final ExecutorService svc;
 
-        public ResponseWriterListener(Event evt, ResponseWriter writer, Charset charset, ByteBufAllocator allocator, ObjectMapper mapper, boolean chunked, boolean shouldClose, ExecutorService svc) {
+        public ResponseWriterListener(Event<?> evt, ResponseWriter writer, Charset charset, ByteBufAllocator allocator, ObjectMapper mapper, boolean chunked, boolean shouldClose, ExecutorService svc) {
             super(charset, allocator, mapper);
             this.chunked = chunked;
             this.writer = writer;
@@ -492,9 +496,9 @@ final class ResponseImpl extends Response {
         }
     }
 
-    public HttpResponse toResponse(Event evt, Charset charset) {
+    public HttpResponse toResponse(Event<?> evt, Charset charset) {
         if (!canHaveBody(getResponseCode()) && (message != null || listener != null)) {
-            System.err.println(evt.getMethod() + " " + evt.getPath()
+            System.err.println(evt
                     + " attempts to attach a body to " + getResponseCode()
                     + " which cannot have one: " + message
                     + " - " + listener);
@@ -517,11 +521,11 @@ final class ResponseImpl extends Response {
         return resp;
     }
 
-    ChannelFuture sendMessage(Event evt, ChannelFuture future, HttpMessage resp) {
+    ChannelFuture sendMessage(Event<?> evt, ChannelFuture future, HttpMessage resp) {
         if (listener != null) {
             future = future.addListener(listener);
             return future;
-        } else if (!evt.isKeepAlive()) {
+        } else if (!isKeepAlive(evt)) {
             future = future.addListener(ChannelFutureListener.CLOSE);
         }
         return future;

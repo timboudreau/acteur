@@ -29,7 +29,6 @@ import com.mastfrog.settings.Settings;
 import com.mastfrog.util.Exceptions;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelFutureListener;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import java.nio.charset.Charset;
@@ -64,7 +63,7 @@ final class PagesImpl implements Pages {
      * @return A latch which will count down when we're done
      */
     @Override
-    public final CountDownLatch onEvent(final RequestID id, final Event event, final Channel channel) {
+    public final CountDownLatch onEvent(final RequestID id, final Event<?> event, final Channel channel) {
         Iterator<Page> it = application.iterator();
         CountDownLatch latch = new CountDownLatch(1);
         PageRunner pageRunner = new PageRunner(application, it, latch, id, event, channel);
@@ -78,10 +77,10 @@ final class PagesImpl implements Pages {
         private final Iterator<Page> pages;
         private final CountDownLatch latch;
         private final RequestID id;
-        private final Event event;
+        private final Event<?> event;
         private final Channel channel;
 
-        public PageRunner(Application application, Iterator<Page> pages, CountDownLatch latch, RequestID id, Event event, Channel channel) {
+        public PageRunner(Application application, Iterator<Page> pages, CountDownLatch latch, RequestID id, Event<?> event, Channel channel) {
             this.application = application;
             this.pages = pages;
             this.latch = latch;

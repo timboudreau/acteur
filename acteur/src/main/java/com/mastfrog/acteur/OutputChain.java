@@ -43,16 +43,16 @@ import java.util.List;
  */
 public class OutputChain implements ChannelFutureListener {
 
-    private final Event evt;
+    private final HttpEvent evt;
     private final List<Writer> writers = Collections.<Writer>synchronizedList(new LinkedList<Writer>());
     private final boolean chunked;
 
-    public OutputChain(Event evt, boolean chunked) {
+    public OutputChain(HttpEvent evt, boolean chunked) {
         this.chunked = chunked;
         this.evt = evt;
     }
 
-    public OutputChain(Event evt) {
+    public OutputChain(HttpEvent evt) {
         this(evt, false);
     }
 
@@ -105,8 +105,12 @@ public class OutputChain implements ChannelFutureListener {
         }
     }
 
+    private boolean isKeepAlive() {
+        return evt instanceof HttpEvent ? ((HttpEvent) evt).isKeepAlive() : false;
+    }
+    
     void reallyFinish(ChannelFuture cf) {
-        if (!evt.isKeepAlive()) {
+        if (!isKeepAlive()) {
             cf.addListener(CLOSE);
         }
     }

@@ -79,7 +79,7 @@ public class ActeursImpl implements Acteurs {
     }
 
     @Override
-    public void onEvent(Event event, ResponseSender receiver) {
+    public void onEvent(Event<?> event, ResponseSender receiver) {
         Checks.notNull("receiver", receiver);
         Checks.notNull("event", event);
         // Create a new empty response

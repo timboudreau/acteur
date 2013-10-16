@@ -63,7 +63,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * current list of Acteurs will continue, or if not, what happens to it.
  * <p/>
  * Acteurs are constructed by Guice - in fact, what a Page has is usually just a
- * list of classes. Objects they need, such as the current request {@link Event}
+ * list of classes. Objects they need, such as the current request {@link HttpEvent}
  * can simply be constructor parameters if the constructor is annotated with
  * Guice's &#064;Inject.
  * <p/>
@@ -383,14 +383,14 @@ public abstract class Acteur {
     protected <T extends ResponseWriter> void setResponseWriter(Class<T> writerType) {
         Page page = Page.get();
         Dependencies deps = page.getApplication().getDependencies();
-        Event evt = deps.getInstance(Event.class);
+        HttpEvent evt = deps.getInstance(HttpEvent.class);
         getResponse().setWriter(writerType, deps, evt);
     }
 
     protected <T extends ResponseWriter> void setResponseWriter(T writer) {
         Page page = Page.get();
         Dependencies deps = page.getApplication().getDependencies();
-        Event evt = deps.getInstance(Event.class);
+        HttpEvent evt = deps.getInstance(HttpEvent.class);
         getResponse().setWriter(writer, deps, evt);
     }
 

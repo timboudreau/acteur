@@ -105,7 +105,7 @@ public class ActeurFactory {
 
             @Override
             public State getState() {
-                Event event = deps.getInstance(Event.class);
+                HttpEvent event = deps.getInstance(HttpEvent.class);
                 boolean hasMethod = Arrays.asList(methods).contains(event.getMethod());
                 add(Headers.ALLOW, methods);
                 if (notSupp && !hasMethod) {
@@ -124,7 +124,7 @@ public class ActeurFactory {
 
             @Override
             public void describeYourself(Map<String, Object> into) {
-                into.put ("Methods", methods);
+                into.put("Methods", methods);
             }
         }
         return new MatchMethods();
@@ -135,7 +135,7 @@ public class ActeurFactory {
         return new Acteur() {
             @Override
             public State getState() {
-                Event event = deps.getInstance(Event.class);
+                HttpEvent event = deps.getInstance(HttpEvent.class);
                 if (event.getPath().getElements().length == length) {
                     return new Acteur.RejectedState();
                 } else {
@@ -156,7 +156,7 @@ public class ActeurFactory {
         return new Acteur() {
             @Override
             public State getState() {
-                Event event = deps.getInstance(Event.class);
+                HttpEvent event = deps.getInstance(HttpEvent.class);
                 if (event.getPath().getElements().length < length) {
                     return new RejectedState();
                 } else {
@@ -177,7 +177,7 @@ public class ActeurFactory {
         return new Acteur() {
             @Override
             public State getState() {
-                Event event = deps.getInstance(Event.class);
+                HttpEvent event = deps.getInstance(HttpEvent.class);
                 if (event.getPath().getElements().length > length) {
                     return new Acteur.RejectedState();
                 } else {
@@ -191,29 +191,30 @@ public class ActeurFactory {
             }
         };
     }
-    
+
     public Acteur redirect(String location) throws URISyntaxException {
         return redirect(location, HttpResponseStatus.SEE_OTHER);
     }
-    
+
     public Acteur redirect(String location, HttpResponseStatus status) throws URISyntaxException {
         Checks.notNull("location", location);
         Checks.notNull("status", status);
-        switch(status.code()) {
-            case 300 :
-            case 301 :
-            case 302 :
-            case 303 :
-            case 305 :
-            case 307 :
+        switch (status.code()) {
+            case 300:
+            case 301:
+            case 302:
+            case 303:
+            case 305:
+            case 307:
                 break;
-            default :
+            default:
                 throw new IllegalArgumentException(status + " is not a redirect");
         }
         return new Redirect(location, status);
     }
-    
+
     private static final class Redirect extends Acteur {
+
         private final URI location;
         private final HttpResponseStatus status;
 
@@ -221,12 +222,12 @@ public class ActeurFactory {
             this.location = new URI(location);
             this.status = status;
         }
-        
+
         public State getState() {
             add(Headers.LOCATION, location);
             return new RespondWith(status, "Redirecting to " + location);
         }
-        
+
     }
 
     /**
@@ -242,7 +243,7 @@ public class ActeurFactory {
 
             @Override
             public State getState() {
-                Event evt = deps.getInstance(Event.class);
+                HttpEvent evt = deps.getInstance(HttpEvent.class);
                 try {
                     T obj = evt.getContentAsJSON(type);
                     return new ConsumedLockedState(obj);
@@ -254,12 +255,12 @@ public class ActeurFactory {
 
             @Override
             public void describeYourself(Map<String, Object> into) {
-                into.put ("Expects JSON Request Body", true);
+                into.put("Expects JSON Request Body", true);
             }
         }
         return new InjectBody();
     }
-    
+
     private String stackTrace(Throwable t) {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         PrintStream ps = new PrintStream(baos);
@@ -284,7 +285,7 @@ public class ActeurFactory {
 
             @Override
             public State getState() {
-                Event evt = deps.getInstance(Event.class);
+                HttpEvent evt = deps.getInstance(HttpEvent.class);
                 T obj = evt.getParametersAs(type);
                 if (obj != null) {
                     return new ConsumedLockedState(obj);
@@ -326,7 +327,7 @@ public class ActeurFactory {
 
             @Override
             public State getState() {
-                Event event = deps.getInstance(Event.class);
+                HttpEvent event = deps.getInstance(HttpEvent.class);
                 for (String nm : names) {
                     String val = event.getParameter(nm);
                     if (val == null) {
@@ -349,13 +350,13 @@ public class ActeurFactory {
         }
         return new RequireParameters();
     }
-    
+
     public Acteur parametersMayNotBeCombined(final String... names) {
         class RequireParameters extends Acteur {
 
             @Override
             public State getState() {
-                Event event = deps.getInstance(Event.class);
+                HttpEvent event = deps.getInstance(HttpEvent.class);
                 String first = null;
                 for (String nm : names) {
                     String val = event.getParameter(nm);
@@ -364,8 +365,8 @@ public class ActeurFactory {
                             first = nm;
                         } else {
                             add(Headers.CONTENT_TYPE, MediaType.PLAIN_TEXT_UTF_8.withCharset(charset));
-                            return new Acteur.RespondWith(HttpResponseStatus.BAD_REQUEST, 
-                                    "Parameters may not contain both '" 
+                            return new Acteur.RespondWith(HttpResponseStatus.BAD_REQUEST,
+                                    "Parameters may not contain both '"
                                     + first + "' and '" + nm + "'\n");
                         }
                     }
@@ -375,7 +376,7 @@ public class ActeurFactory {
 
             @Override
             public String toString() {
-                return "Parameters may not be combined: " 
+                return "Parameters may not be combined: "
                         + Strings.toString(Arrays.asList(names));
             }
 
@@ -385,19 +386,19 @@ public class ActeurFactory {
             }
         }
         return new RequireParameters();
-    }    
+    }
 
     public Acteur parametersMustBeNumbersIfTheyArePresent(final boolean allowDecimal, final boolean allowNegative, final String... names) {
         class NumberParameters extends Acteur {
 
             @Override
             public void describeYourself(Map<String, Object> into) {
-                into.put("URL parameters must be numbers if present" + (allowNegative ? "(negative allowed) " : ("(must be non-negative) ")) +
-                        (allowDecimal ? "(decimal-allowed)" : "(must be integers)") + (""), names);
+                into.put("URL parameters must be numbers if present" + (allowNegative ? "(negative allowed) " : ("(must be non-negative) "))
+                        + (allowDecimal ? "(decimal-allowed)" : "(must be integers)") + (""), names);
             }
 
             public State getState() {
-                Event evt = deps.getInstance(Event.class);
+                HttpEvent evt = deps.getInstance(HttpEvent.class);
                 for (String name : names) {
                     String p = evt.getParameter(name);
                     if (p != null) {
@@ -448,7 +449,7 @@ public class ActeurFactory {
         class BanParameters extends Acteur {
 
             public State getState() {
-                Event evt = deps.getInstance(Event.class);
+                HttpEvent evt = deps.getInstance(HttpEvent.class);
                 for (Map.Entry<String, String> e : evt.getParametersAsMap().entrySet()) {
                     if (Arrays.binarySearch(names, e.getKey()) >= 0) {
                         return new RespondWith(HttpResponseStatus.BAD_REQUEST,
@@ -477,7 +478,7 @@ public class ActeurFactory {
 
             @Override
             public State getState() {
-                Event event = deps.getInstance(Event.class);
+                HttpEvent event = deps.getInstance(HttpEvent.class);
                 for (String nm : names) {
                     String val = event.getParameter(nm);
                     if (val != null) {
@@ -498,7 +499,7 @@ public class ActeurFactory {
             public void describeYourself(Map<String, Object> into) {
                 into.put("At least one parameter required", names);
             }
-            
+
             @Override
             public String toString() {
                 return "Require Parameters " + Arrays.asList(names);
@@ -518,8 +519,8 @@ public class ActeurFactory {
     }
 
     /**
-     * Reject the request if Event.getPath().toString() does not match one of
-     * the passed regular expressions
+     * Reject the request if HttpEvent.getPath().toString() does not match one
+     * of the passed regular expressions
      *
      * @param regexen Regexen
      * @return An acteur
@@ -529,7 +530,7 @@ public class ActeurFactory {
 
             @Override
             public State getState() {
-                Event event = deps.getInstance(Event.class);
+                HttpEvent event = deps.getInstance(HttpEvent.class);
                 for (String regex : regexen) {
                     Pattern p = getPattern(regex);
                     boolean matches = p.matcher(event.getPath().toString()).matches();
@@ -606,27 +607,28 @@ public class ActeurFactory {
         private final String msg;
 
         public ResponseCode(int code) {
-            this (code, null);
+            this(code, null);
         }
-        
+
         public ResponseCode(int code, String msg) {
-            this (HttpResponseStatus.valueOf(code), msg);
+            this(HttpResponseStatus.valueOf(code), msg);
         }
-        
+
         public ResponseCode(HttpResponseStatus code, String msg) {
             this.code = code;
             this.msg = msg;
-            
+
         }
+
         public ResponseCode(HttpResponseStatus code) {
-            this (code, null);
+            this(code, null);
         }
 
         @Override
         public void describeYourself(Map<String, Object> into) {
             into.put("Always responds with", code.code() + " " + code.reasonPhrase());
         }
-        
+
         @Override
         public State getState() {
             return msg == null ? new RespondWith(code) : new RespondWith(code, msg);
@@ -636,7 +638,7 @@ public class ActeurFactory {
     private static class CheckIfNoneMatchHeader extends Acteur {
 
         @Inject
-        CheckIfNoneMatchHeader(Event event, Page page) throws Exception {
+        CheckIfNoneMatchHeader(HttpEvent event, Page page) throws Exception {
             Checks.notNull("event", event);
             Checks.notNull("page", page);
             String etag = event.getHeader(Headers.IF_NONE_MATCH);
@@ -652,14 +654,14 @@ public class ActeurFactory {
 
         @Override
         public void describeYourself(Map<String, Object> into) {
-            into.put ("Supports If-None-Match header", true);
+            into.put("Supports If-None-Match header", true);
         }
     }
 
     private static class CheckIfUnmodifiedSinceHeader extends Acteur {
 
         @Inject
-        CheckIfUnmodifiedSinceHeader(Event event, Page page) {
+        CheckIfUnmodifiedSinceHeader(HttpEvent event, Page page) {
             DateTime dt = event.getHeader(Headers.IF_UNMODIFIED_SINCE);
             if (dt != null) {
                 DateTime pageLastModified = page.getReponseHeaders().getLastModified();
@@ -683,7 +685,7 @@ public class ActeurFactory {
     private static class CheckIfModifiedSinceHeader extends Acteur {
 
         @Inject
-        CheckIfModifiedSinceHeader(Event event, Page page) {
+        CheckIfModifiedSinceHeader(HttpEvent event, Page page) {
             DateTime lastModifiedMustBeNewerThan = event.getHeader(Headers.IF_MODIFIED_SINCE);
             DateTime pageLastModified = page.getReponseHeaders().getLastModified();
 

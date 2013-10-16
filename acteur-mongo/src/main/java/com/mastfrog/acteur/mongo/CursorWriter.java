@@ -5,6 +5,7 @@ import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.util.Providers;
 import com.mastfrog.acteur.Event;
+import com.mastfrog.acteur.HttpEvent;
 import com.mastfrog.acteur.ResponseWriter;
 import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
@@ -22,11 +23,11 @@ public class CursorWriter extends ResponseWriter {
     private final MapFilter filter;
 
     @Inject
-    public CursorWriter(DBCursor cursor, Event evt, Provider<? extends MapFilter> filter) {
+    public CursorWriter(DBCursor cursor, HttpEvent evt, Provider<? extends MapFilter> filter) {
         this(cursor, !evt.isKeepAlive(), filter);
     }
 
-    public CursorWriter(DBCursor cursor, Event evt) {
+    public CursorWriter(DBCursor cursor, HttpEvent evt) {
         this(cursor, evt, Providers.of(NO_FILTER));
     }
 
@@ -43,7 +44,7 @@ public class CursorWriter extends ResponseWriter {
     }
 
     @Override
-    public Status write(Event evt, Output out, int iter) throws Exception {
+    public Status write(Event<?> evt, Output out, int iter) throws Exception {
         try {
             if (iter == 0) {
                 out.write("[\n");

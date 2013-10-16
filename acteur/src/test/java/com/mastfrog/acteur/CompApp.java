@@ -69,7 +69,7 @@ public class CompApp extends Application {
         private static final class EchoActeur extends Acteur {
 
             @Inject
-            EchoActeur(Event evt) throws IOException {
+            EchoActeur(Event<?> evt) throws IOException {
                 if (!evt.getContent().isReadable()) {
                     setState(new RespondWith(400, "Content not readable"));
                 } else if (evt.getContent().readableBytes() <= 0) {
@@ -94,7 +94,7 @@ public class CompApp extends Application {
         private static class DeferActeur extends Acteur {
 
             @Inject
-            DeferActeur(Event evt) {
+            DeferActeur(HttpEvent evt) {
                 setResponseWriter(DeferredOutputWriter.class);
                 setState(new RespondWith(200));
             }
@@ -120,7 +120,7 @@ public class CompApp extends Application {
             }
 
             @Override
-            public synchronized Status write(Event evt, Output out) throws Exception {
+            public synchronized Status write(Event<?> evt, Output out) throws Exception {
                 System.out.println("Deferring write");
                 this.out = out;
                 Thread t = new Thread(this);
@@ -149,7 +149,7 @@ public class CompApp extends Application {
             private Integer max;
 
             @Inject
-            OldStyleActeur(Event evt) {
+            OldStyleActeur(HttpEvent evt) {
                 max = evt.getIntParameter("iters").get();
                 if (max == null) {
                     max = 5;
@@ -192,19 +192,19 @@ public class CompApp extends Application {
         static class IterActeur extends Acteur {
 
             @Inject
-            IterActeur(Event evt) {
+            IterActeur(HttpEvent evt) {
                 setResponseWriter(IterWriter.class);
                 setState(new RespondWith(OK));
             }
 
             static class IterWriter extends ResponseWriter {
 
-                private int max;
+                private final int max;
 
                 private String msg;
 
                 @Inject
-                IterWriter(Event evt) {
+                IterWriter(HttpEvent evt) {
                     max = evt.getIntParameter("iters").get();
                     System.out.println("Created an iterWriter");
                     msg = evt.getParameter("msg");
@@ -214,7 +214,7 @@ public class CompApp extends Application {
                 }
 
                 @Override
-                public Status write(Event evt, Output out, int iteration) throws Exception {
+                public Status write(Event<?> evt, Output out, int iteration) throws Exception {
                     System.out.println("Iteration " + iteration + "\n");
                     out.write(msg + iteration + "\n");
                     if (iteration < max) {

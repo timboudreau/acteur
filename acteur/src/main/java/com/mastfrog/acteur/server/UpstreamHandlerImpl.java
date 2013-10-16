@@ -39,6 +39,7 @@ import io.netty.handler.codec.http.HttpResponse;
 
 import static io.netty.handler.codec.http.HttpResponseStatus.*;
 import static io.netty.handler.codec.http.HttpVersion.*;
+import io.netty.handler.codec.http.websocketx.WebSocketFrame;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 
@@ -60,6 +61,8 @@ final class UpstreamHandlerImpl extends ChannelInboundHandlerAdapter {
     boolean aggregateChunks = PipelineFactoryImpl.DEFAULT_AGGREGATE_CHUNKS;
     private final ObjectMapper mapper;
     private final boolean decodeRealIP;
+    @Inject
+    private UnknownNetworkEventHandler uneh;
 
     @Inject
     UpstreamHandlerImpl(Application application, PathFactory paths, ObjectMapper mapper, Settings settings) {
@@ -81,7 +84,7 @@ final class UpstreamHandlerImpl extends ChannelInboundHandlerAdapter {
         }
         if (msg instanceof HttpRequest) {
             final HttpRequest request = (HttpRequest) msg;
-            
+
             if (!aggregateChunks && HttpHeaders.is100ContinueExpected(request)) {
                 send100Continue(ctx);
             }
@@ -98,8 +101,17 @@ final class UpstreamHandlerImpl extends ChannelInboundHandlerAdapter {
             EventImpl evt = new EventImpl(request, addr, ctx.channel(), paths, mapper);
             evt.setNeverKeepAlive(neverKeepAlive);
             application.onEvent(evt, ctx.channel());
+        } else if (msg instanceof WebSocketFrame) {
+            WebSocketFrame frame = (WebSocketFrame) msg;
+            SocketAddress addr = (SocketAddress) ctx.channel().remoteAddress();
+            // XXX - any way to decode real IP?
+            WebSocketEvent wsEvent = new WebSocketEvent(frame, ctx.channel(), addr, mapper);
+            
+            application.onEvent(wsEvent, ctx.channel());
         } else {
-            System.out.println("Don't know how to process " + msg + " " + msg.getClass().getName());
+            if (uneh != null) {
+                uneh.channelRead(ctx, msg);
+            }
         }
     }
 

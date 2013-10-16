@@ -34,9 +34,6 @@ import com.mastfrog.acteur.ResponseHeaders.ETagProvider;
 import com.mastfrog.acteur.util.CacheControlTypes;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelFuture;
-import static io.netty.channel.ChannelFutureListener.CLOSE;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.util.CharsetUtil;
 import java.io.ByteArrayOutputStream;
@@ -71,13 +68,13 @@ public abstract class ClasspathResourcePage extends Page implements ContentLengt
     private static final Map<Class<?>, Map<Path, byte[]>> contentForPathForType = new HashMap<>();
     private final Path path;
 
-    protected ClasspathResourcePage(final Event event, ActeurFactory f, DateTime serverStartTime, String... patterns) {
+    protected ClasspathResourcePage(final HttpEvent event, ActeurFactory f, DateTime serverStartTime, String... patterns) {
         this (null, event, f, serverStartTime, patterns);
     }
     
     @Deprecated
     @SuppressWarnings("LeakingThisInConstructor")
-    protected ClasspathResourcePage(final Application app, final Event event, ActeurFactory f, DateTime serverStartTime, String... patterns) {
+    protected ClasspathResourcePage(final Application app, final HttpEvent event, ActeurFactory f, DateTime serverStartTime, String... patterns) {
         this.path = event.getPath();
         responseHeaders.setLastModified(serverStartTime);
         responseHeaders.addCacheControl(CacheControlTypes.Public);
@@ -131,7 +128,7 @@ public abstract class ClasspathResourcePage extends Page implements ContentLengt
 
         @Inject
         @SuppressWarnings("ArrayIsStoredDirectly")
-        WriteBodyActeur(Event event, Page page) throws IOException {
+        WriteBodyActeur(HttpEvent event, Page page) throws IOException {
             byte[] content = ((ClasspathResourcePage) page).getContent(event.getPath());
             setState(new RespondWith(HttpResponseStatus.OK));
             setResponseWriter(new BodyWriter(content, event.isKeepAlive()));
@@ -141,7 +138,7 @@ public abstract class ClasspathResourcePage extends Page implements ContentLengt
     private static class HasStreamAction extends Acteur {
 
         @Inject
-        HasStreamAction(Page page, Event event) {
+        HasStreamAction(Page page, HttpEvent event) {
             boolean hasContent;
             Map<Path, byte[]> m = contentForPathForType.get(page.getClass());
             hasContent = (m != null && m.containsKey(event.getPath()) || getStream(event.getPath(), page.getClass()) != null);
@@ -207,7 +204,7 @@ public abstract class ClasspathResourcePage extends Page implements ContentLengt
             this.keepAlive = keepAlive;
         }
         @Override
-        public Status write(Event evt, Output out, int iteration) throws Exception {
+        public Status write(Event<?> evt, Output out, int iteration) throws Exception {
             int old = offset;
             int remaining = Math.min(chunksize, bytes.length - offset);
             offset += remaining;

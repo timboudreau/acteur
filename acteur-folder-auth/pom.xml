@@ -4,8 +4,8 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>com.mastfrog</groupId>
-        <artifactId>acteur-parent</artifactId>
-        <version>1.3.6-SNAPSHOT</version>
+        <artifactId>mastfrog-parent</artifactId>
+        <version>1.3.7-SNAPSHOT</version>
     </parent>
     <artifactId>folder-auth</artifactId>
     <name>Filesystem Based Authentication</name>

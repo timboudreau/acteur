@@ -32,5 +32,5 @@ import com.google.inject.ImplementedBy;
  */
 @ImplementedBy(ActeursImpl.class)
 public interface Acteurs extends Iterable<Acteur> {
-    void onEvent(Event event, ResponseSender receiver);
+    void onEvent(Event<?> event, ResponseSender receiver);
 }

@@ -1,11 +1,16 @@
 package com.mastfrog.acteur;
 
+import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
+import com.google.inject.name.Names;
 import com.mastfrog.giulius.tests.TestWith;
-import com.mastfrog.acteur.AppTest.M;
+import com.mastfrog.acteur.PutTest.M2;
 import com.mastfrog.acteur.util.CacheControlTypes;
 import com.mastfrog.acteur.util.Method;
 import com.mastfrog.acteur.server.ServerModule;
+import com.mastfrog.acteur.util.BasicCredentials;
+import com.mastfrog.acteur.util.RequestID;
+import com.mastfrog.guicy.scope.ReentrantScope;
 import com.mastfrog.util.Streams;
 import com.mastfrog.util.Strings;
 import com.mastfrog.util.Types;
@@ -16,10 +21,14 @@ import io.netty.channel.ChannelFutureListener;
 import static io.netty.channel.ChannelFutureListener.CLOSE;
 import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpResponseStatus;
+import io.netty.util.CharsetUtil;
 import java.io.IOException;
 import java.net.SocketException;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import org.apache.http.Header;
 import org.apache.http.HttpResponse;
 import org.apache.http.NoHttpResponseException;
@@ -34,9 +43,26 @@ import static org.junit.Assert.*;
  *
  * @author Tim Boudreau
  */
-@TestWith(M.class)
+@TestWith(M2.class)
 public class PutTest {
 
+    static class M2 extends AbstractModule {
+
+        @Override
+        protected void configure() {
+            bind(Charset.class).toInstance(CharsetUtil.UTF_8);
+            bind(Application.class).to(AppTest.App.class);
+            ReentrantScope scope = new ReentrantScope();
+            bind(ReentrantScope.class).toInstance(scope);
+            ExecutorService exe = Executors.newSingleThreadExecutor();
+            bind(ExecutorService.class).annotatedWith(Names.named(ServerModule.BACKGROUND_THREAD_POOL_NAME)).toInstance(exe);
+            bind(RequestID.class).toInstance(new RequestID());
+
+            scope.bindTypes(binder(), Event.class, 
+                    Page.class, BasicCredentials.class, AppTest.Thing.class);
+        }
+    }    
+    
     @Test
     public void testPuts() throws IOException, InterruptedException {
         ServerModule m = new ServerModule(EchoServer.class, 2, 2, 2);
@@ -119,7 +145,7 @@ public class PutTest {
     static class EchoActeur extends Acteur {
 
         @Inject
-        EchoActeur(Event evt) {
+        EchoActeur(HttpEvent evt) {
             System.out.println("EVENT " + evt.getMethod() + " " + evt.getPath());
             setChunked(true);
             if (evt.getMethod() == Method.GET) {
@@ -135,7 +161,7 @@ public class PutTest {
     
     private static class RWriter extends ResponseWriter {
         @Override
-        public ResponseWriter.Status write(Event evt, Output out) throws Exception {
+        public ResponseWriter.Status write(Event<?> evt, Output out) throws Exception {
             FullHttpRequest req = evt.getRequest() instanceof FullHttpRequest
                     ? (FullHttpRequest) evt.getRequest() : null;
             if (req != null) {
@@ -152,10 +178,10 @@ public class PutTest {
 
     private static class EchoWriter implements ChannelFutureListener {
 
-        private final Event evt;
+        private final HttpEvent evt;
 
         @Inject
-        EchoWriter(Event evt) {
+        EchoWriter(HttpEvent evt) {
             this.evt = evt;
         }
 

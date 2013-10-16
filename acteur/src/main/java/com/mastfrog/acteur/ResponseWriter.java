@@ -20,11 +20,11 @@ import java.nio.charset.Charset;
  */
 public abstract class ResponseWriter {
 
-    public Status write(Event evt, Output out, int iteration) throws Exception {
+    public Status write(Event<?> evt, Output out, int iteration) throws Exception {
         return write(evt, out);
     }
     
-    public Status write(Event evt, Output out) throws Exception {
+    public Status write(Event<?> evt, Output out) throws Exception {
         throw new UnsupportedOperationException("Must override one of the write() methods");
     }
 

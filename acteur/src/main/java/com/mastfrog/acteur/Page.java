@@ -238,7 +238,7 @@ public abstract class Page implements Iterable<Acteur> {
 //        }
     }
 
-    protected void decorateResponse(Event event, Acteur acteur, HttpResponse response) {
+    protected void decorateResponse(Event<?> event, Acteur acteur, HttpResponse response) {
         final ResponseHeaders properties = getReponseHeaders();
 
         List<HeaderValueType<?>> vary = new LinkedList<>();

@@ -27,6 +27,7 @@ import com.google.common.net.MediaType;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.mastfrog.acteur.Event;
+import com.mastfrog.acteur.HttpEvent;
 import com.mastfrog.acteur.Page;
 import com.mastfrog.acteur.Response;
 import com.mastfrog.acteur.ResponseHeaders;
@@ -202,7 +203,7 @@ public final class ClasspathResources implements StaticResources {
         }
 
         @Override
-        public void decoratePage(Page page, Event evt, String path, Response response, boolean chunked) {
+        public void decoratePage(Page page, HttpEvent evt, String path, Response response, boolean chunked) {
             ResponseHeaders h = page.getReponseHeaders();
             String ua = evt.getHeader("User-Agent");
             if (ua != null && !ua.contains("MSIE")) {
@@ -252,7 +253,7 @@ public final class ClasspathResources implements StaticResources {
         }
 
         @Override
-        public void attachBytes(Event evt, Response response, boolean chunked) {
+        public void attachBytes(HttpEvent evt, Response response, boolean chunked) {
             if (isGzip(evt)) {
                 CompressedBytesSender sender = new CompressedBytesSender(compressed, !evt.isKeepAlive(), chunked);
                 response.setBodyWriter(sender);
@@ -289,7 +290,7 @@ public final class ClasspathResources implements StaticResources {
         }
     }
 
-    boolean isGzip(Event evt) {
+    boolean isGzip(HttpEvent evt) {
         if (!internalGzip) {
             return false;
         }
@@ -306,7 +307,7 @@ public final class ClasspathResources implements StaticResources {
         }
 
         @Override
-        public Status write(Event evt, Output out) throws Exception {
+        public Status write(Event<?> evt, Output out) throws Exception {
             out.write(bytes);
 //            out.future().addListener(ChannelFutureListener.CLOSE);
             return Status.DONE;

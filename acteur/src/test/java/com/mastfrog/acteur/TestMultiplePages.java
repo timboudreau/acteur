@@ -77,7 +77,7 @@ public class TestMultiplePages {
     private static final class Act extends Acteur {
 
         @Inject
-        Act(Event evt, RequestID id) {
+        Act(HttpEvent evt, RequestID id) {
             setResponseBodyWriter(BlockingBodyWriter.class);
             setState(new RespondWith(HttpResponseStatus.OK));
             System.out.println("Create Act on " + Thread.currentThread());
@@ -88,10 +88,10 @@ public class TestMultiplePages {
 
         private final RequestID id;
         private final ExecutorService svc;
-        private final Event evt;
+        private final HttpEvent evt;
 
         @Inject
-        BlockingBodyWriter(RequestID id, @Named(ServerModule.BACKGROUND_THREAD_POOL_NAME) ExecutorService svc, Event evt) {
+        BlockingBodyWriter(RequestID id, @Named(ServerModule.BACKGROUND_THREAD_POOL_NAME) ExecutorService svc, HttpEvent evt) {
             this.id = id;
             this.svc = svc;
             this.evt = evt;

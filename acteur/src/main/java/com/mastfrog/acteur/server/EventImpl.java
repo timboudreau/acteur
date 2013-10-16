@@ -28,7 +28,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableSortedMap;
 import com.mastfrog.url.Path;
-import com.mastfrog.acteur.Event;
+import com.mastfrog.acteur.HttpEvent;
 import com.mastfrog.acteur.util.HeaderValueType;
 import com.mastfrog.acteur.util.Headers;
 import com.mastfrog.acteur.util.Connection;
@@ -58,7 +58,7 @@ import org.joda.time.Duration;
  *
  * @author Tim Boudreau
  */
-public final class EventImpl implements Event {
+public final class EventImpl implements HttpEvent {
 
     private final HttpRequest req;
     private final PathFactory paths;

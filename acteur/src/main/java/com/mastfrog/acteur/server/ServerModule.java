@@ -39,6 +39,7 @@ import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.guicy.scope.ReentrantScope;
 import com.mastfrog.acteur.Application;
 import com.mastfrog.acteur.Event;
+import com.mastfrog.acteur.HttpEvent;
 import com.mastfrog.acteur.ImplicitBindings;
 import com.mastfrog.acteur.Page;
 import com.mastfrog.acteur.util.BasicCredentials;
@@ -176,7 +177,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
         this(appType, -1, -1, -1);
     }
 
-    public ReentrantScope applicationScope() {
+    public final ReentrantScope applicationScope() {
         return scope;
     }
 
@@ -190,7 +191,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
         install(new JacksonModule());
         bind(ServerBootstrap.class).toProvider(new ServerBootstrapProvider(binder().getProvider(Settings.class), binder().getProvider(ByteBufAllocator.class)));
 
-        scope.bindTypes(binder(), Event.class,
+        scope.bindTypes(binder(), Event.class, HttpEvent.class,
                 Page.class, BasicCredentials.class);
 
         ImplicitBindings implicit = appType.getAnnotation(ImplicitBindings.class);
@@ -253,6 +254,28 @@ public class ServerModule<A extends Application> extends AbstractModule {
         }
         bind(Charset.class).toProvider(CharsetProvider.class);
         bind(ByteBufAllocator.class).toProvider(ByteBufAllocatorProvider.class);
+        bind(new ETL()).toProvider(EventProvider.class).in(scope);
+    }
+    
+    private static final class EventProvider implements Provider<Event<?>> {
+
+        @SuppressWarnings("unchecked")
+        private final Provider<Event> eventProvider;
+
+        @SuppressWarnings("unchecked")
+        @Inject
+        public EventProvider(Provider<Event> eventProvider) {
+            this.eventProvider = eventProvider;
+        }
+
+        @Override
+        public Event<?> get() {
+            return eventProvider.get();
+        }
+    }
+    
+    private static final class ETL extends TypeLiteral<Event<?>> {
+        
     }
 
     @Singleton
@@ -392,16 +415,16 @@ public class ServerModule<A extends Application> extends AbstractModule {
 
     private static final class CookiesProvider implements Provider<Set<Cookie>> {
 
-        private final Provider<Event> ev;
+        private final Provider<HttpEvent> ev;
 
         @Inject
-        public CookiesProvider(Provider<Event> ev) {
+        public CookiesProvider(Provider<HttpEvent> ev) {
             this.ev = ev;
         }
 
         @Override
         public Set<Cookie> get() {
-            Event evt = ev.get();
+            HttpEvent evt = ev.get();
             String h = evt.getHeader(HttpHeaders.Names.COOKIE);
             if (h != null) {
                 Set<Cookie> result = CookieDecoder.decode(h);
