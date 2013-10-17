@@ -78,10 +78,6 @@ final class UpstreamHandlerImpl extends ChannelInboundHandlerAdapter {
     }
 
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-        // HttpContent$2 - ?
-        if (msg instanceof FullHttpRequest) {
-            ((FullHttpRequest) msg).retain();
-        }
         if (msg instanceof HttpRequest) {
             final HttpRequest request = (HttpRequest) msg;
 
