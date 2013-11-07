@@ -23,6 +23,7 @@
  */
 package com.mastfrog.acteur;
 
+import com.google.common.base.Optional;
 import com.mastfrog.acteur.util.Headers;
 import com.google.common.net.MediaType;
 import com.google.inject.Inject;
@@ -34,23 +35,34 @@ import com.mastfrog.acteur.util.CacheControl;
 import com.mastfrog.acteur.util.CacheControlTypes;
 import com.mastfrog.acteur.server.ServerModule;
 import com.mastfrog.acteur.util.ErrorInterceptor;
+import com.mastfrog.acteur.util.HeaderValueType;
+import com.mastfrog.acteur.util.Method;
 import com.mastfrog.acteur.util.RequestID;
+import com.mastfrog.url.Path;
 import com.mastfrog.util.ConfigurationError;
 import com.mastfrog.util.Checks;
 import com.mastfrog.util.Exceptions;
 import com.mastfrog.util.Invokable;
+import com.mastfrog.util.Streams;
+import com.mastfrog.util.thread.QuietAutoCloseable;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
+import io.netty.handler.codec.http.DefaultHttpRequest;
+import io.netty.handler.codec.http.HttpMethod;
+import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpVersion;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -133,10 +145,104 @@ public class Application implements Iterable<Page> {
 
     Map<String, Object> describeYourself() {
         Map<String, Object> m = new HashMap<>();
-        for (Page page : this) {
-            page.describeYourself(m);
+
+        try (QuietAutoCloseable c = this.scope.enter(new FakeHttpEventForHelp())) {
+            Page old = Page.get();
+            try {
+                for (Page page : this) {
+                    Page.set(page);
+                    try (QuietAutoCloseable c1 = this.scope.enter(page)) {
+                        page.describeYourself(m);
+                    }
+                }
+            } finally {
+                Page.set(old);
+            }
         }
         return m;
+    }
+
+    private static class FakeHttpEventForHelp implements HttpEvent {
+
+        @Override
+        public Method getMethod() {
+            return Method.GET;
+        }
+
+        @Override
+        public String getHeader(String nm) {
+            return null;
+        }
+
+        @Override
+        public String getParameter(String param) {
+            return null;
+        }
+
+        @Override
+        public Path getPath() {
+            return Path.parse("help");
+        }
+
+        @Override
+        public <T> T getHeader(HeaderValueType<T> value) {
+            return null;
+        }
+
+        @Override
+        public Map<String, String> getParametersAsMap() {
+            return new HashMap<>();
+        }
+
+        @Override
+        public <T> T getParametersAs(Class<T> type) {
+            return null;
+        }
+
+        @Override
+        public Optional<Integer> getIntParameter(String name) {
+            return Optional.absent();
+        }
+
+        @Override
+        public Optional<Long> getLongParameter(String name) {
+            return Optional.absent();
+        }
+
+        @Override
+        public boolean isKeepAlive() {
+            return false;
+        }
+
+        @Override
+        public Channel getChannel() {
+            return null;
+        }
+
+        @Override
+        public HttpRequest getRequest() {
+            return new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/help");
+        }
+
+        @Override
+        public SocketAddress getRemoteAddress() {
+            return new InetSocketAddress("0.0.0.0", 0);
+        }
+
+        @Override
+        public <T> T getContentAsJSON(Class<T> type) throws IOException {
+            return null;
+        }
+
+        @Override
+        public ByteBuf getContent() throws IOException {
+            return Unpooled.buffer();
+        }
+
+        @Override
+        public OutputStream getContentAsStream() throws IOException {
+            return Streams.nullOutputStream();
+        }
     }
 
     /**
@@ -200,12 +306,11 @@ public class Application implements Iterable<Page> {
         Headers.write(Headers.SERVER, getName(), response);
         Headers.write(Headers.DATE, new DateTime(), response);
         if (debug) {
-            String pth = event instanceof HttpEvent ? ((HttpEvent)event).getPath().toString() : "";
+            String pth = event instanceof HttpEvent ? ((HttpEvent) event).getPath().toString() : "";
             Headers.write(Headers.custom("X-Req-Path"), pth, response);
         }
         return response;
     }
-    
 
     /**
      * Create a 404 response
@@ -225,7 +330,7 @@ public class Application implements Iterable<Page> {
         Headers.write(Headers.CACHE_CONTROL, new CacheControl(CacheControlTypes.no_cache), resp);
         Headers.write(Headers.DATE, new DateTime(), resp);
         if (debug) {
-            String pth = event instanceof HttpEvent ? ((HttpEvent)event).getPath().toString() : "";
+            String pth = event instanceof HttpEvent ? ((HttpEvent) event).getPath().toString() : "";
             Headers.write(Headers.custom("X-Req-Path"), pth, resp);
         }
         return resp;
