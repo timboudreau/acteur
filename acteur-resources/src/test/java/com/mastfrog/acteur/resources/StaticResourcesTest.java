@@ -42,6 +42,14 @@ public class StaticResourcesTest {
                 .assertContent(HELLO_CONTENT)
                 .getHeader(Headers.LAST_MODIFIED);
 
+        DateTime helloLastModified2 = har.get("static/hello.txt").go()
+                .assertHasContent()
+                .assertStatus(OK)
+                .assertHasHeader(Headers.LAST_MODIFIED.name())
+                .assertHasHeader(Headers.ETAG.name())
+                .assertContent(HELLO_CONTENT)
+                .getHeader(Headers.LAST_MODIFIED);
+
         aLastModified = har.get("static/another.txt").go()
                 .await()
                 .assertStatus(OK)
