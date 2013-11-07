@@ -448,6 +448,12 @@ public abstract class Acteur {
         ChannelFutureListener l = new C();
         setResponseBodyWriter(l);
     }
+    
+    protected Dependencies dependencies() {
+        final Page p = Page.get();
+        final Application app = p.getApplication();
+        return app.getDependencies();
+    }
 
     @Deprecated
     public final void setResponseBodyWriter(final ChannelFutureListener listener) {
