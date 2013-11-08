@@ -244,13 +244,13 @@ public final class FileResources implements StaticResources {
                 page.getReponseHeaders().addVaryHeader(Headers.ACCEPT_ENCODING);
             }
 //            if (productionMode()) {
-//                page.getReponseHeaders().addCacheControl(CacheControlTypes.Public);
-//                page.getReponseHeaders().addCacheControl(CacheControlTypes.max_age, Duration.standardHours(2));
-//                page.getReponseHeaders().addCacheControl(CacheControlTypes.must_revalidate);
+                page.getReponseHeaders().addCacheControl(CacheControlTypes.Public);
+                page.getReponseHeaders().addCacheControl(CacheControlTypes.max_age, Duration.standardHours(2));
+                page.getReponseHeaders().addCacheControl(CacheControlTypes.must_revalidate);
 //            } else {
-                page.getReponseHeaders().addCacheControl(CacheControlTypes.Private);
-                page.getReponseHeaders().addCacheControl(CacheControlTypes.no_cache);
-                page.getReponseHeaders().addCacheControl(CacheControlTypes.no_store);
+//                page.getReponseHeaders().addCacheControl(CacheControlTypes.Private);
+//                page.getReponseHeaders().addCacheControl(CacheControlTypes.no_cache);
+//                page.getReponseHeaders().addCacheControl(CacheControlTypes.no_store);
 //            }
 ////            if (evt.getMethod() != Method.HEAD) {
 //                page.getReponseHeaders().setContentLengthProvider(this);

@@ -78,9 +78,11 @@ import java.util.concurrent.ExecutorService;
 import org.joda.time.DateTime;
 
 /**
- * Thing which aggregates a bunch of Pages, each of which aggregates a bunch of
- * Acteurs which can compose repsonses to requests.
- *
+ * A web application.  Principally, the application is a collection of Page
+ * types, which are instantiated per-request and offered the request, in the
+ * order they are added, until one accepts it and takes responsibility for
+ * responding.
+ * 
  * @author Tim Boudreau
  */
 public class Application implements Iterable<Page> {
@@ -108,6 +110,11 @@ public class Application implements Iterable<Page> {
     @Named("acteur.debug")
     private boolean debug = true;
 
+    /**
+     * Create an application, optionally passing in an array of page
+     * types (you can also call <code>add()</code> to add them).
+     * @param types 
+     */
     protected Application(Class<?>... types) {
         for (Class<?> type : types) {
             add((Class<? extends Page>) type);
@@ -135,6 +142,11 @@ public class Application implements Iterable<Page> {
         return new Application(types);
     }
 
+    /**
+     * Get the <code>Scope</code> which is holds per-request state.
+     * 
+     * @return 
+     */
     public ReentrantScope getRequestScope() {
         return scope;
     }
@@ -336,13 +348,34 @@ public class Application implements Iterable<Page> {
         return resp;
     }
 
+    /**
+     * Override to do any post-response tasks
+     * @param id The incrementing ID of the request, for logging purposes
+     * @param event The event, usually HttpEvent
+     * @param acteur The final acteur in the chain
+     * @param page The page which took responsibility for answering the request
+     * @param state The state produced by the last acteur
+     * @param status The status code for the HTTP response
+     * @param resp The HTTP response, from Netty's HTTP codec
+     */
     protected void onAfterRespond(RequestID id, Event<?> event, Acteur acteur, Page page, State state, HttpResponseStatus status, HttpResponse resp) {
     }
 
+    /**
+     * Called before the response is sent
+     * @param id
+     * @param event
+     * @param status 
+     */
     protected void onBeforeRespond(RequestID id, Event<?> event, HttpResponseStatus status) {
         logger.onRespond(id, event, status);
     }
 
+    /**
+     * Called before an event is processed
+     * @param id The request id
+     * @param event The event
+     */
     protected void onBeforeEvent(RequestID id, Event<?> event) {
         logger.onBeforeEvent(id, event);
     }
@@ -362,6 +395,10 @@ public class Application implements Iterable<Page> {
         }
     }
 
+    /**
+     * Called when an exception is thrown
+     * @param err 
+     */
     public void onError(Throwable err) {
         err.printStackTrace();
     }
@@ -408,6 +445,13 @@ public class Application implements Iterable<Page> {
         return deps;
     }
 
+    /**
+     * Get the set of page instances, constructing them dynamically.
+     * Note that this should be called inside the application scope, with
+     * any objects which need to be available for injection available in the
+     * scope.
+     * @return An iterator
+     */
     @Override
     public Iterator<Page> iterator() {
         final Iterator<Class<? extends Page>> it = pages.iterator();

@@ -38,6 +38,7 @@ import io.netty.buffer.ByteBufInputStream;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.handler.codec.http.FullHttpRequest;
+import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.QueryStringDecoder;
 import java.io.ByteArrayOutputStream;
@@ -85,7 +86,7 @@ public final class EventImpl implements HttpEvent {
 
     @Override
     public String toString() {
-        return req.getUri() + " (" + address + ") as " + getPath();
+        return req.getUri();
     }
 
     public void setNeverKeepAlive(boolean val) {
@@ -223,8 +224,9 @@ public final class EventImpl implements HttpEvent {
         if (neverKeepAlive) {
             return false;
         }
-        Connection c = getHeader(Headers.CONNECTION);
-        return c == null ? false : c == Connection.keep_alive;
+        return HttpHeaders.isKeepAlive(req);
+//        Connection c = getHeader(Headers.CONNECTION);
+//        return c == null ? false : c == Connection.keep_alive;
     }
 
     @Override

@@ -513,10 +513,12 @@ final class ResponseImpl extends Response {
 
     public HttpResponse toResponse(Event<?> evt, Charset charset) {
         if (!canHaveBody(getResponseCode()) && (message != null || listener != null)) {
-            System.err.println(evt
+            if (listener != ChannelFutureListener.CLOSE) {
+                System.err.println(evt
                     + " attempts to attach a body to " + getResponseCode()
                     + " which cannot have one: " + message
                     + " - " + listener);
+            }
         }
         String msg = getMessage();
         HttpResponse resp;
@@ -536,7 +538,7 @@ final class ResponseImpl extends Response {
             if (this.status == NOT_MODIFIED) {
                 if (e.decorator == Headers.CONTENT_LENGTH) {
                     continue;
-                } else if (e.decorator == Headers.CONTENT_ENCODING) {
+                } else if (HttpHeaders.Names.CONTENT_ENCODING.equals(e.decorator.name())) {
                     continue;
                 } else if ("Transfer-Encoding".equals(e.decorator.name())) {
                     continue;

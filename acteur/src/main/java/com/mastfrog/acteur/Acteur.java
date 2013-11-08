@@ -77,7 +77,16 @@ import java.util.concurrent.atomic.AtomicReference;
  * given page, they will always be called in the sequence that page lists them
  * in, but there is no guarantee that any two adjacent Acteurs will be called on
  * the same thread. Any shared state should take the form of objects put into
- * the context when a the output State is created.
+ * the context when the output State is created.
+ * <p/>
+ * This makes it possible to incrementally respond to a request, for example,
+ * doing just enough computation to determine if a NOT MODIFIED response is
+ * possible without computing the complete response (which in that case would
+ * be thrown away).
+ * <p/>
+ * Their asynchronous nature means that many requests can be handled simultaneously
+ * and run small bits of logic, interleaved, on fewer threads, for maximum 
+ * throughput.
  *
  * @author Tim Boudreau
  */
@@ -191,6 +200,10 @@ public abstract class Acteur {
         }
     }
 
+    /**
+     * A shorthand state for responding with a particular http response code
+     * and optional message, which if non-string, will be rendered as JSON.
+     */
     public class RespondWith extends State {
 
         private final Page page;
@@ -262,6 +275,10 @@ public abstract class Acteur {
         }
     }
 
+    /**
+     * A state indicating the acteur neither accepts nor definitively 
+     * refuses a request.
+     */
     protected class RejectedState extends State {
 
         private final Page page;
@@ -302,6 +319,11 @@ public abstract class Acteur {
         }
     }
 
+    /**
+     * State indicating that this acteur chain is taking responsibility
+     * for responding to the request.  It may optionally include objects which
+     * should be available for injection into subsequent acteurs.
+     */
     protected class ConsumedState extends State {
 
         private final Page page;
@@ -380,6 +402,13 @@ public abstract class Acteur {
         }
     }
 
+     /**
+     * Set a response writer which can iteratively be called back until
+     * the response is completed.  The writer will be created dynamically
+     * but any object currently in scope can be injected into it.
+     * @param <T> The type of writer
+     * @param writer The writer
+     */
     protected <T extends ResponseWriter> void setResponseWriter(Class<T> writerType) {
         Page page = Page.get();
         Dependencies deps = page.getApplication().getDependencies();
@@ -387,6 +416,12 @@ public abstract class Acteur {
         getResponse().setWriter(writerType, deps, evt);
     }
 
+    /**
+     * Set a response writer which can iteratively be called back until
+     * the response is completed.
+     * @param <T> The type of writer
+     * @param writer The writer
+     */
     protected <T extends ResponseWriter> void setResponseWriter(T writer) {
         Page page = Page.get();
         Dependencies deps = page.getApplication().getDependencies();
@@ -394,6 +429,22 @@ public abstract class Acteur {
         getResponse().setWriter(writer, deps, evt);
     }
 
+    /**
+     * Set a ChannelFutureListener which will be called after headers
+     * are written. Prefer <code>setResponseWriter()</code> to this method
+     * unless you are not using chunked encoding and want to stream your
+     * response (in which case, be sure to setChunked(false) or you will
+     * have encoding errors).
+     * <p/>
+     * This method will dynamically construct the passed listener type using
+     * Guice, and including all of the contents of the scope in which
+     * this call was made.
+     * 
+     * @param <T> a type
+     * @param type The type of listener
+     * @deprecated Prefer setResponseWriter(), which will be iteratively 
+     * called back until it says its done
+     */
     @Deprecated
     protected final <T extends ChannelFutureListener> void setResponseBodyWriter(final Class<T> type) {
         final Page page = Page.get();
@@ -455,8 +506,20 @@ public abstract class Acteur {
         return app.getDependencies();
     }
 
-    @Deprecated
+    /**
+     * Set a ChannelFutureListener which will be called after headers
+     * are written. Prefer <code>setResponseWriter()</code> to this method
+     * unless you are not using chunked encoding and want to stream your
+     * response (in which case, be sure to setChunked(false) or you will
+     * have encoding errors).
+     * 
+     * @param listener 
+     */
     public final void setResponseBodyWriter(final ChannelFutureListener listener) {
+        if (listener == ChannelFutureListener.CLOSE || listener == ChannelFutureListener.CLOSE_ON_FAILURE) {
+            getResponse().setBodyWriter(listener);
+            return;
+        }
         final Page p = Page.get();
         final Application app = p.getApplication();
         class WL implements ChannelFutureListener, Callable<Void> {

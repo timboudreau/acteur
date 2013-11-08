@@ -24,9 +24,7 @@
 package com.mastfrog.acteur;
 
 import com.mastfrog.acteur.util.RequestID;
-import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponseStatus;
-import io.netty.handler.codec.http.websocketx.WebSocketFrame;
 import org.joda.time.Duration;
 import org.joda.time.format.PeriodFormatter;
 import org.joda.time.format.PeriodFormatterBuilder;
@@ -40,18 +38,18 @@ class DefaultRequestLogger implements RequestLogger {
 
     @Override
     public void onBeforeEvent(RequestID rid, Event<?> event) {
-        int reqNum = rid == null ? -1 : rid.getIndex();
-        Object msg = event.getRequest();
-        String uri = msg instanceof HttpRequest ? ((HttpRequest) msg).getUri() :
-                msg instanceof WebSocketFrame ? ((WebSocketFrame) msg).toString() :
-                "";
-//        System.out.println(reqNum + " " + event.getRemoteAddress() + " " + event.getMethod() + " " + event.getPath() + " " + uri);
+//        int reqNum = rid == null ? -1 : rid.getIndex();
+//        Object msg = event.getRequest();
+//        String uri = msg instanceof HttpRequest ? ((HttpRequest) msg).getUri() :
+//                msg instanceof WebSocketFrame ? ((WebSocketFrame) msg).toString() :
+//                "";
+////        System.out.println(reqNum + " " + event.getRemoteAddress() + " " + event.getMethod() + " " + event.getPath() + " " + uri);
     }
 
     @Override
     public void onRespond(RequestID rid, Event<?> event, HttpResponseStatus status) {
         int reqNum = rid == null ? -1 : rid.getIndex();
-        System.out.println(" " + " " + reqNum + " " + status + " " + FORMAT.print(rid == null ? Duration.ZERO.toPeriod() : rid.getDuration().toPeriod()));
+        System.out.println(reqNum + "\t" + status + "\t" + event + "\t" + FORMAT.print(rid == null ? Duration.ZERO.toPeriod() : rid.getDuration().toPeriod()));
     }
     private static final PeriodFormatter FORMAT =
             new PeriodFormatterBuilder().appendMinutes()

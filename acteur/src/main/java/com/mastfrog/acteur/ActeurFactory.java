@@ -1,4 +1,4 @@
-/* 
+/*
  * The MIT License
  *
  * Copyright 2013 Tim Boudreau.
@@ -32,6 +32,8 @@ import com.mastfrog.acteur.util.Method;
 import com.mastfrog.util.Checks;
 import com.mastfrog.util.Exceptions;
 import com.mastfrog.util.Strings;
+import io.netty.channel.ChannelFutureListener;
+import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -646,6 +648,9 @@ public class ActeurFactory {
             if (etag != null && pageEtag != null) {
                 if (etag.equals(pageEtag)) {
                     setState(new RespondWith(HttpResponseStatus.NOT_MODIFIED));
+                // XXX workaround for peculiar problem with FileResource = 
+                // not modified responses are leaving a hanging connection
+                setResponseBodyWriter(ChannelFutureListener.CLOSE);
                     return;
                 }
             }
@@ -698,6 +703,9 @@ public class ActeurFactory {
             if (notModified) {
                 setResponseCode(HttpResponseStatus.NOT_MODIFIED);
                 setState(new RespondWith(HttpResponseStatus.NOT_MODIFIED));
+                // XXX workaround for peculiar problem with FileResource = 
+                // not modified responses are leaving a hanging connection
+                setResponseBodyWriter(ChannelFutureListener.CLOSE);
                 return;
             }
             setState(new ConsumedState());
