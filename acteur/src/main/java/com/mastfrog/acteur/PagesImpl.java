@@ -24,6 +24,8 @@
 package com.mastfrog.acteur;
 
 import com.google.inject.Inject;
+import com.google.inject.name.Named;
+import com.mastfrog.acteur.server.ServerModule;
 import com.mastfrog.acteur.util.RequestID;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.util.Exceptions;
@@ -35,6 +37,10 @@ import java.nio.charset.Charset;
 import java.util.Iterator;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Thing which takes an event and runs it against all of the pages of the
@@ -46,11 +52,14 @@ final class PagesImpl implements Pages {
 
     private final Application application;
     private static boolean debug;
+    
+    private final ScheduledExecutorService scheduler;
 
     @Inject
-    PagesImpl(Application application, Settings settings) {
+    PagesImpl(Application application, Settings settings, @Named(ServerModule.WORKER_THREADS) ThreadFactory workerThreadFactory) {
         this.application = application;
         debug = settings.getBoolean("acteur.debug", true);
+        scheduler = Executors.newSingleThreadScheduledExecutor(workerThreadFactory);
     }
 
     /**
@@ -66,7 +75,7 @@ final class PagesImpl implements Pages {
     public final CountDownLatch onEvent(final RequestID id, final Event<?> event, final Channel channel) {
         Iterator<Page> it = application.iterator();
         CountDownLatch latch = new CountDownLatch(1);
-        PageRunner pageRunner = new PageRunner(application, it, latch, id, event, channel);
+        PageRunner pageRunner = new PageRunner(application, it, latch, id, event, channel, scheduler);
         application.getWorkerThreadPool().submit(pageRunner);
         return latch;
     }
@@ -79,14 +88,16 @@ final class PagesImpl implements Pages {
         private final RequestID id;
         private final Event<?> event;
         private final Channel channel;
+        private final ScheduledExecutorService scheduler;
 
-        public PageRunner(Application application, Iterator<Page> pages, CountDownLatch latch, RequestID id, Event<?> event, Channel channel) {
+        public PageRunner(Application application, Iterator<Page> pages, CountDownLatch latch, RequestID id, Event<?> event, Channel channel, ScheduledExecutorService scheduler) {
             this.application = application;
             this.pages = pages;
             this.latch = latch;
             this.id = id;
             this.event = event;
             this.channel = channel;
+            this.scheduler = scheduler;
         }
 
         @Override
@@ -143,15 +154,26 @@ final class PagesImpl implements Pages {
                     }
                     final HttpResponse resp = httpResponse;
                     try {
-                        // Give the application a last chance to do something
-                        application.onBeforeRespond(id, event, response.getResponseCode());
+                        
+                        Callable<ChannelFuture> c = new Callable<ChannelFuture>() {
+                            public ChannelFuture call() throws Exception {
+                                // Give the application a last chance to do something
+                                application.onBeforeRespond(id, event, response.getResponseCode());
 
-                        // Send the headers
-                        ChannelFuture fut = channel.writeAndFlush(httpResponse);
+                                // Send the headers
+                                ChannelFuture fut = channel.writeAndFlush(resp);
 
-                        final Page pg = state.getLockedPage();
-                        fut = response.sendMessage(event, fut, resp);
-                        application.onAfterRespond(id, event, acteur, pg, state, HttpResponseStatus.OK, resp);
+                                final Page pg = state.getLockedPage();
+                                fut = response.sendMessage(event, fut, resp);
+                                application.onAfterRespond(id, event, acteur, pg, state, HttpResponseStatus.OK, resp);
+                                return fut;
+                            }
+                        };
+                        if (response.getDelay() == null) {
+                            c.call();
+                        } else {
+                            scheduler.schedule(c, response.getDelay().getMillis(), TimeUnit.MILLISECONDS);
+                        }
 //                        // Ensure we don't write to the channel before the
 //                        // headers are sent
 //                        fut.addListener(new ChannelFutureListener() {
