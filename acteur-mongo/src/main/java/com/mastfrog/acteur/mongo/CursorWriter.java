@@ -9,6 +9,8 @@ import com.mastfrog.acteur.HttpEvent;
 import com.mastfrog.acteur.ResponseWriter;
 import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
 import java.util.Map;
 import org.bson.types.ObjectId;
 
@@ -23,8 +25,15 @@ public class CursorWriter extends ResponseWriter {
     private final MapFilter filter;
 
     @Inject
-    public CursorWriter(DBCursor cursor, HttpEvent evt, Provider<? extends MapFilter> filter) {
+    public CursorWriter(final DBCursor cursor, HttpEvent evt, Provider<? extends MapFilter> filter) {
         this(cursor, !evt.isKeepAlive(), filter);
+        evt.getChannel().closeFuture().addListener(new ChannelFutureListener() {
+
+            @Override
+            public void operationComplete(ChannelFuture f) throws Exception {
+                cursor.close();
+            }
+        });
     }
 
     public CursorWriter(DBCursor cursor, HttpEvent evt) {
