@@ -23,6 +23,7 @@
  */
 package com.mastfrog.acteur;
 
+import com.mastfrog.acteur.util.Headers;
 import com.mastfrog.acteur.util.RequestID;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import org.joda.time.Duration;
@@ -49,10 +50,22 @@ class DefaultRequestLogger implements RequestLogger {
     @Override
     public void onRespond(RequestID rid, Event<?> event, HttpResponseStatus status) {
         int reqNum = rid == null ? -1 : rid.getIndex();
-        System.out.println(reqNum + "\t" + status + "\t" + event + "\t" + FORMAT.print(rid == null ? Duration.ZERO.toPeriod() : rid.getDuration().toPeriod()));
+        StringBuilder sb = new StringBuilder(120)
+                .append(reqNum).append('\t')
+                .append(FORMAT.print(rid == null ? Duration.ZERO.toPeriod() : rid.getDuration().toPeriod()))
+                .append('\t').append(event.getRemoteAddress())
+                .append("\t").append(status)
+                .append("\t").append(event);
+        if (event instanceof HttpEvent) {
+            String referrer = ((HttpEvent) event).getHeader(Headers.REFERRER);
+            if (referrer != null) {
+                sb.append('\t').append(referrer);
+            }
+        }
+        System.out.println(sb);
     }
-    private static final PeriodFormatter FORMAT =
-            new PeriodFormatterBuilder().appendMinutes()
+    private static final PeriodFormatter FORMAT
+            = new PeriodFormatterBuilder().appendMinutes()
             .appendSeparatorIfFieldsBefore(":")
             .appendSecondsWithMillis().toFormatter();
 }

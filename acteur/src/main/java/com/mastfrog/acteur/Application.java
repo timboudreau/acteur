@@ -400,7 +400,7 @@ public class Application implements Iterable<Page> {
      * @param err 
      */
     public void onError(Throwable err) {
-        err.printStackTrace();
+        err.printStackTrace(System.err);
     }
 
     /**

@@ -97,6 +97,7 @@ public final class Headers {
     public static final HeaderValueType<String> WEBSOCKET_PROTOCOL = new StringHeader(HttpHeaders.Names.WEBSOCKET_PROTOCOL);
     public static final HeaderValueType<URL> WEBSOCKET_LOCATION = new WebSocketLocationHeader();
     public static final HeaderValueType<String> UPGRADE = stringHeader(HttpHeaders.Names.UPGRADE);
+    public static final HeaderValueType<String> REFERRER = stringHeader(HttpHeaders.Names.REFERER);
 
     public static HeaderValueType<String> stringHeader(String key) {
         return new StringHeader(key);
