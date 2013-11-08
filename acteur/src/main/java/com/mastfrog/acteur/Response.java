@@ -3,6 +3,7 @@ package com.mastfrog.acteur;
 import com.mastfrog.acteur.util.HeaderValueType;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.handler.codec.http.HttpResponseStatus;
+import org.joda.time.Duration;
 
 /**
  * Abstraction for a response
@@ -24,4 +25,6 @@ public abstract class Response {
     protected abstract <T> T get(HeaderValueType<T> header);
     
     public abstract void setChunked(boolean chunked);
+    
+    public abstract void setDelay(Duration delay);
 }

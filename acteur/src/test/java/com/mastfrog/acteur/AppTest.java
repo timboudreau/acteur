@@ -9,8 +9,10 @@ import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpVersion;
 import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
+import com.google.inject.Provider;
+import com.google.inject.TypeLiteral;
 import com.google.inject.name.Names;
-import com.mastfrog.settings.Settings;
+import com.google.inject.util.Providers;
 import com.mastfrog.giulius.tests.GuiceRunner;
 import com.mastfrog.giulius.tests.TestWith;
 import com.mastfrog.guicy.scope.ReentrantScope;
@@ -33,6 +35,7 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 import org.joda.time.DateTime;
 import org.joda.time.Duration;
 import org.junit.Test;
@@ -57,9 +60,28 @@ public class AppTest {
             ExecutorService exe = Executors.newSingleThreadExecutor();
             bind(ExecutorService.class).annotatedWith(Names.named(ServerModule.BACKGROUND_THREAD_POOL_NAME)).toInstance(exe);
             bind(RequestID.class).toInstance(new RequestID());
+            
+            //Generic madness - Event != Event<?>
+            final Provider<Event> e = binder().getProvider(Event.class);
+            bind(new TypeLiteral<Event<?>>(){}).toProvider(new Provider<Event<?>>() {
+
+                @Override
+                public Event<?> get() {
+                    return e.get();
+                }
+                
+            });
+            
 
             scope.bindTypes(binder(), Event.class, HttpEvent.class,
                     Page.class, BasicCredentials.class, Thing.class);
+            bind(ThreadFactory.class).annotatedWith(Names.named(ServerModule.WORKER_THREADS)).toInstance(new ThreadFactory() {
+
+                @Override
+                public Thread newThread(Runnable r) {
+                    throw new UnsupportedOperationException("Not supported yet.");
+                }
+            });            
         }
     }
 

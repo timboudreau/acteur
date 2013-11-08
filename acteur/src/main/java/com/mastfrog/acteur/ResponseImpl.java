@@ -66,6 +66,7 @@ import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicReference;
+import org.joda.time.Duration;
 
 /**
  * Aggregates the set of headers and a body writer which is used to respond to
@@ -81,6 +82,7 @@ final class ResponseImpl extends Response {
     private String message;
     ChannelFutureListener listener;
     private boolean chunked;
+    private Duration delay;
 
     ResponseImpl() {
     }
@@ -111,6 +113,9 @@ final class ResponseImpl extends Response {
             if (other.listener != null) {
                 setBodyWriter(other.listener);
             }
+            if (other.delay != null) {
+                this.delay = other.delay;
+            }
         }
     }
 
@@ -122,7 +127,12 @@ final class ResponseImpl extends Response {
         modify();
         this.message = message;
     }
-
+    
+    public void setDelay(Duration delay) {
+        modify();
+        this.delay = delay;
+    }
+    
     public void setResponseCode(HttpResponseStatus status) {
         modify();
         this.status = status;
@@ -145,6 +155,10 @@ final class ResponseImpl extends Response {
                 Names.named(ServerModule.BACKGROUND_THREAD_POOL_NAME));
         ExecutorService svc = deps.getInstance(key);
         setWriter(writer, charset, allocator, mapper, evt, svc);
+    }
+    
+    Duration getDelay() {
+        return delay;
     }
 
     static class HackHttpHeaders extends HttpHeaders {

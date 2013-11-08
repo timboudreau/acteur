@@ -1,5 +1,6 @@
 package com.mastfrog.acteur;
 
+import com.google.inject.name.Names;
 import com.mastfrog.guicy.annotations.Defaults;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.giulius.tests.GuiceTest;
@@ -11,6 +12,7 @@ import com.mastfrog.url.Path;
 import com.mastfrog.url.URL;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
+import java.util.concurrent.ThreadFactory;
 import static org.junit.Assert.*;
 import org.junit.Test;
 
@@ -24,6 +26,17 @@ public class PathFactoryTest extends GuiceTest {
             super(A.class);
         }
 
+        @Override
+        protected void configure() {
+            super.configure();
+            bind(ThreadFactory.class).annotatedWith(Names.named(ServerModule.WORKER_THREADS)).toInstance(new ThreadFactory() {
+
+                @Override
+                public Thread newThread(Runnable r) {
+                    throw new UnsupportedOperationException("Not supported yet.");
+                }
+            });
+        }
     }
 
     static class A extends Application {
