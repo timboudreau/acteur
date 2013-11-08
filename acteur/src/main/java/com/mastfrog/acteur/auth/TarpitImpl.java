@@ -5,6 +5,8 @@ import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.mastfrog.acteur.HttpEvent;
 import com.mastfrog.settings.Settings;
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -25,9 +27,10 @@ final class TarpitImpl implements Tarpit {
 
     private Map<String, Entry> map = Maps.newConcurrentMap();
     private Duration timeToExpiration;
+    private final TarpitCacheKeyFactory keyFactory;
 
     @Inject
-    TarpitImpl(Settings settings) {
+    TarpitImpl(Settings settings, TarpitCacheKeyFactory keyFactory) {
         timeToExpiration = Duration.standardMinutes(settings.getLong("tarpit.default.duration.minutes", 5));
         Timer timer = new Timer(true);
         timer.scheduleAtFixedRate(new TimerTask() {
@@ -36,12 +39,15 @@ final class TarpitImpl implements Tarpit {
                 garbageCollect();
             }
         }, DateTime.now().plus(timeToExpiration).toDate(), timeToExpiration.getMillis() / 2);
+        this.keyFactory = keyFactory;
     }
 
     @Override
     public int count(HttpEvent evt) {
-        Entry e = map.get(evt.getRemoteAddress().toString());
-        return e == null ? 0 : e.size();
+        Entry e = map.get(keyFactory.createKey(evt));
+        int result = e == null ? 0 : e.size();
+        System.out.println("Count " + result);
+        return result;
     }
 
     int garbageCollect() {
@@ -58,19 +64,30 @@ final class TarpitImpl implements Tarpit {
 
     @Override
     public int add(HttpEvent evt) {
-        String remoteAddress = evt.getRemoteAddress().toString();
+        String remoteAddress = keyFactory.createKey(evt);
         Entry entry = map.get(remoteAddress);
+        System.out.println("Add entry " + remoteAddress + " cache " + map);
         if (entry == null) {
             // still need atomicity for adding
             synchronized (map) {
+                System.out.println("Add " + remoteAddress);
                 entry = map.get(remoteAddress);
                 if (entry == null) {
                     entry = new Entry();
                     map.put(remoteAddress, entry);
+                } else {
+                    entry.touch();
                 }
             }
+        } else {
+            entry.touch();
         }
         return entry.touch();
+    }
+
+    @Override
+    public void remove(HttpEvent evt) {
+        map.remove(keyFactory.createKey(evt));
     }
 
     private class Entry {
@@ -96,6 +113,10 @@ final class TarpitImpl implements Tarpit {
                 }
             }
             return accesses.isEmpty();
+        }
+        
+        public String toString() {
+            return accesses.toString() + " expired " + isExpired();
         }
     }
 }

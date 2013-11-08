@@ -33,5 +33,14 @@ import java.io.IOException;
  */
 @ImplementedBy(MockAuthenticator.class)
 public interface Authenticator {
+    /**
+     * Handles authentication, saying yea or nay.
+     * 
+     * @param realm The Realm object used in authentication
+     * @param credentials The credentials
+     * @return An array of objects to inject into later acteurs if successful,
+     * null on failure
+     * @throws IOException if something goes wrong
+     */
     Object[] authenticate(String realm, BasicCredentials credentials) throws IOException;
 }
