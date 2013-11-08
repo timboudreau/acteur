@@ -23,8 +23,11 @@
  */
 package com.mastfrog.acteur.resources;
 
+import com.google.inject.Inject;
+import com.mastfrog.giulius.DeploymentMode;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.util.ConfigurationError;
+import com.mastfrog.util.Exceptions;
 import io.netty.buffer.ByteBufAllocator;
 import java.io.File;
 import java.util.ArrayList;
@@ -37,11 +40,12 @@ import java.util.List;
  */
 class DefaultStaticResources extends MergedResources {
 
-    DefaultStaticResources(Settings s, MimeTypes types, ByteBufAllocator allocator) {
-        super(find(s, types, allocator));
+    @Inject
+    DefaultStaticResources(Settings s, DeploymentMode mode, MimeTypes types, ByteBufAllocator allocator) {
+        super(find(s, mode, types, allocator));
     }
 
-    private static List<StaticResources> find(Settings settings, MimeTypes types, ByteBufAllocator allocator) {
+    private static List<StaticResources> find(Settings settings, DeploymentMode mode, MimeTypes types, ByteBufAllocator allocator) {
         List<StaticResources> result = new ArrayList<>();
 
         for (String name : splitAndTrim(settings.getString(RESOURCE_FOLDERS_KEY))) {
@@ -54,7 +58,11 @@ class DefaultStaticResources extends MergedResources {
                 throw new ConfigurationError("Not a folder for "
                         + RESOURCE_FOLDERS_KEY + " - " + f);
             }
-            result.add(new FileResources(f, types, settings, allocator));
+            try {
+                result.add(new FileResources(f, types, mode, allocator, settings));
+            } catch (Exception ex) {
+                Exceptions.chuck(ex);
+            }
         }
         for (String className : splitAndTrim(settings.getString(RESOURCE_CLASSES_KEY))) {
             try {

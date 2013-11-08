@@ -75,7 +75,16 @@ public class ResourcesApp extends Application {
             bind(HttpClient.class).toInstance(HttpClient.builder().build());
         }
     }
+    static class FileResourcesModule2 extends AbstractModule {
 
+        @Override
+        protected void configure() {
+            install(new ServerModule(ResourcesApp.class));
+            bind(File.class).toInstance(tmpdir);
+            bind(StaticResources.class).to(FileResources.class);
+            bind(HttpClient.class).toInstance(HttpClient.builder().build());
+        }
+    }
     static class ClasspathResourcesModule extends AbstractModule {
 
         @Override

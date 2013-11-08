@@ -24,6 +24,7 @@ import org.junit.runner.RunWith;
         iterate = {
             ResourcesApp.ClasspathResourcesModule.class,
             ResourcesApp.FileResourcesModule.class,
+            ResourcesApp.FileResourcesModule2.class,
             ResourcesApp.MergedResourcesModule.class
         })
 public class StaticResourcesTest {

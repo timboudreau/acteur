@@ -50,6 +50,7 @@ import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpMessage;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
+import static io.netty.handler.codec.http.HttpResponseStatus.NOT_MODIFIED;
 import io.netty.handler.codec.http.HttpVersion;
 import io.netty.handler.codec.http.LastHttpContent;
 import java.io.IOException;
@@ -527,9 +528,20 @@ final class ResponseImpl extends Response {
                     HttpVersion.HTTP_1_1, getResponseCode(), buf);
             resp = r;
         } else {
-            resp = new HackHttpResponse(getResponseCode(), chunked);
+            resp = new HackHttpResponse(getResponseCode(), this.status == NOT_MODIFIED ? false : chunked);
         }
         for (Entry<?> e : headers) {
+            // Remove things which cause problems for non-modified responses - 
+            // browsers will hold the connection open regardless
+            if (this.status == NOT_MODIFIED) {
+                if (e.decorator == Headers.CONTENT_LENGTH) {
+                    continue;
+                } else if (e.decorator == Headers.CONTENT_ENCODING) {
+                    continue;
+                } else if ("Transfer-Encoding".equals(e.decorator.name())) {
+                    continue;
+                }
+            }
             e.write(resp);
         }
         return resp;
