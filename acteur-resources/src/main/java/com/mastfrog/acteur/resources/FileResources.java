@@ -97,7 +97,12 @@ public class FileResources implements StaticResources {
 
         @Override
         public int weigh(String key, FileResource value) {
-            return value.bytes.readableBytes();
+            try {
+                return value.ensureLoaded().readableBytes();
+            } catch (IOException ex) {
+                ex.printStackTrace();
+                return 0;
+            }
         }
 
         @Override
@@ -116,11 +121,7 @@ public class FileResources implements StaticResources {
     }
 
     private FileResource _get(String path) {
-        try {
-            return new FileResource(new File(dir, path));
-        } catch (IOException ex) {
-            return Exceptions.chuck(ex);
-        }
+        return new FileResource(new File(dir, path));
     }
 
     @Override
@@ -147,18 +148,42 @@ public class FileResources implements StaticResources {
     private class FileResource implements Resource, ContentLengthProvider {
 
         private final File file;
-        private final ByteBuf bytes;
-        private final String etag;
+        private long lastModified;
+        private volatile ByteBuf bytes;
+        private String etag;
 
-        private FileResource(File file) throws FileNotFoundException, IOException {
+        private FileResource(File file) {
             this.file = file;
-            bytes = allocator.directBuffer();
+        }
+        
+        private ByteBuf load() throws IOException {
+            assert Thread.holdsLock(this);
+            lastModified = file.lastModified();
+            ByteBuf bytes = allocator.directBuffer();
             ByteBufOutputStream baos = new ByteBufOutputStream(bytes);
             HashingOutputStream o = new HashingOutputStream("SHA-1", baos);
             try (FileInputStream fi = new FileInputStream(file)) {
                 Streams.copy(fi, o);
             }
             etag = o.getHashAsString();
+            return bytes;
+        }
+        
+        ByteBuf ensureLoaded() throws IOException {
+            ByteBuf result = bytes;
+            if (result == null) {
+                synchronized(this) {
+                    result = bytes;
+                    if (result == null) {
+                        result = bytes = load();
+                    }
+                }
+            }
+            return result;
+        }
+        
+        boolean isStale() {
+            return lastModified < file.lastModified();
         }
 
         @Override
@@ -167,6 +192,11 @@ public class FileResources implements StaticResources {
             page.getReponseHeaders().addCacheControl(CacheControlTypes.Public);
             page.getReponseHeaders().addCacheControl(CacheControlTypes.max_age, Duration.standardHours(2));
             page.getReponseHeaders().addCacheControl(CacheControlTypes.must_revalidate);
+            try {
+                ensureLoaded();
+            } catch (IOException ex) {
+                Exceptions.chuck(ex);
+            }
             page.getReponseHeaders().setLastModified(lastModified());
             page.getReponseHeaders().setEtag(etag);
             response.setChunked(true);
@@ -180,7 +210,9 @@ public class FileResources implements StaticResources {
         }
 
         public ResponseWriter sender(HttpEvent evt) {
-            return new ClasspathResources.BytesSender(bytes);
+            ByteBuf copy = bytes.copy();
+            copy.resetReaderIndex();
+            return new ClasspathResources.BytesSender(copy);
         }
 
         public String getEtag() {
@@ -205,17 +237,25 @@ public class FileResources implements StaticResources {
 
         @Override
         public void attachBytes(final HttpEvent evt, Response response, final boolean chunked) {
+            try {
+                ensureLoaded();
+            } catch (IOException ex) {
+                Exceptions.chuck(ex);
+            }
             response.setBodyWriter(new ChannelFutureListener() {
                 @Override
                 public void operationComplete(ChannelFuture future) throws Exception {
+                    ByteBuf bytes = FileResource.this.ensureLoaded().copy();
                     if (chunked) {
-                        future = future.channel().write(new DefaultHttpContent(bytes)).channel().writeAndFlush(LastHttpContent.EMPTY_LAST_CONTENT);
+                        future = future.channel().writeAndFlush(new DefaultHttpContent(bytes)).channel().writeAndFlush(LastHttpContent.EMPTY_LAST_CONTENT);
                         if (!evt.isKeepAlive()) {
                             future.addListener(CLOSE);
                         }
                     } else {
                         future = future.channel().writeAndFlush(bytes);
-                        future.addListener(CLOSE);
+                        if (!evt.isKeepAlive()) {
+                            future.addListener(CLOSE);
+                        }
                     }
                 }
             });

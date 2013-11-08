@@ -131,7 +131,12 @@ public final class EventImpl implements HttpEvent {
             return (T) result;
         }
         ObjectMapper om = new ObjectMapper();
-        return om.readValue(new ByteBufInputStream(getContent()), type);
+        ByteBuf content = getContent();
+        try {
+            return om.readValue(new ByteBufInputStream(content), type);
+        } finally {
+            content.resetReaderIndex();
+        }
     }
 
     @Override

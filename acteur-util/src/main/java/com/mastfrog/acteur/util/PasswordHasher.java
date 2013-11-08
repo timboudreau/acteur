@@ -51,12 +51,15 @@ public final class PasswordHasher {
             + "<$^UJCMM<>OIUHGC^#YUJKTGYSUCINJd9f0awe0f9aefansjneaiw"
             + "aoeifa222222222222o(#(#(&@^!";
     private final Charset charset;
+    public static final String SETTINGS_KEY_PASSWORD_SALT = "salt";
+    public static final String SETTINGS_KEY_HASHING_ALGORITHM = "passwordHashingAlgorithm";
+    public static final String DEFAULT_HASHING_ALGORITHM = "SHA-512";
 
     @Inject
     PasswordHasher(Settings settings, Charset charset) throws NoSuchAlgorithmException {
         this.charset = charset;
-        String salt = settings.getString("salt", DEFAULT_SALT);
-        String alg = settings.getString("passwordHashingAlgorithm", "SHA-512");
+        String salt = settings.getString(SETTINGS_KEY_PASSWORD_SALT, DEFAULT_SALT);
+        String alg = settings.getString(SETTINGS_KEY_HASHING_ALGORITHM, DEFAULT_HASHING_ALGORITHM);
         if (settings.getBoolean("productionMode", false) && DEFAULT_SALT.equals(salt)) {
             throw new ConfigurationError("Default password salt should not be used in "
                     + "production mode.  Set property salt for namespace timetracker to "
