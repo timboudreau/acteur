@@ -1,6 +1,7 @@
 package com.mastfrog.acteur.auth;
 
 import com.google.common.collect.Maps;
+import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.mastfrog.acteur.HttpEvent;
 import com.mastfrog.settings.Settings;
@@ -25,6 +26,7 @@ final class TarpitImpl implements Tarpit {
     private Map<String, Entry> map = Maps.newConcurrentMap();
     private Duration timeToExpiration;
 
+    @Inject
     TarpitImpl(Settings settings) {
         timeToExpiration = Duration.standardMinutes(settings.getLong("tarpit.default.duration.minutes", 5));
         Timer timer = new Timer(true);
