@@ -13,27 +13,12 @@
     <description>The Acteur framework for building Netty-based web servers</description>
     <packaging>pom</packaging>
     <modules>
-         <module>url</module>
-         <module>acteur</module>
-         <module>acteur-util</module>
-         <module>acteur-folder-auth</module>
-         <module>acteur-resources</module>
-         <module>acteur-mongo</module>
-         <module>deprecated</module>
+        <module>url</module>
+        <module>acteur</module>
+        <module>acteur-util</module>
+        <module>acteur-folder-auth</module>
+        <module>acteur-resources</module>
+        <module>acteur-mongo</module>
+        <module>deprecated</module>
     </modules>
-    <repositories>
-        <repository>
-            <id>timboudreau-builds</id>
-            <name>timboudreau.com builds</name>
-            <url>http://timboudreau.com/builds/plugin/repository/everything/</url>
-            <releases>
-                <enabled>true</enabled>
-                <updatePolicy>never</updatePolicy>
-            </releases>
-            <snapshots>
-                <enabled>true</enabled>
-                <updatePolicy>never</updatePolicy>
-            </snapshots>
-        </repository>
-    </repositories>
 </project>
