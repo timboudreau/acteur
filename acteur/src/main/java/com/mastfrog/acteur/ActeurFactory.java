@@ -567,6 +567,10 @@ public class ActeurFactory {
         return Acteur.wrap(CheckIfNoneMatchHeader.class, deps);
     }
 
+    public Class<? extends Acteur> sendNotModifiedIfETagHeaderMatchesType() {
+        return CheckIfNoneMatchHeader.class;
+    }
+
     /**
      * Check the "If-Modified-Since" header and compares it to the current
      * Page's getLastModified (rounding milliseconds down). If the condition is
@@ -578,6 +582,10 @@ public class ActeurFactory {
         return Acteur.wrap(CheckIfModifiedSinceHeader.class, deps);
     }
 
+    public Class<? extends Acteur> sendNotModifiedIfIfModifiedSinceHeaderMatchesType() {
+        return CheckIfModifiedSinceHeader.class;
+    }
+
     /**
      * Check the "If-Unmodified-Since" header
      *
@@ -585,6 +593,10 @@ public class ActeurFactory {
      */
     public Acteur preconditionFailedIfUnmodifiedSinceMatches() {
         return Acteur.wrap(CheckIfUnmodifiedSinceHeader.class, deps);
+    }
+
+    public Class<? extends Acteur> preconditionFailedIfUnmodifiedSinceMatchesType() {
+        return CheckIfUnmodifiedSinceHeader.class;
     }
 
     public Acteur respondWith(int status) {
@@ -648,7 +660,7 @@ public class ActeurFactory {
             if (etag != null && pageEtag != null) {
                 if (etag.equals(pageEtag)) {
                     setState(new RespondWith(HttpResponseStatus.NOT_MODIFIED));
-                // XXX workaround for peculiar problem with FileResource = 
+                // XXX workaround for peculiar problem with FileResource =
                 // not modified responses are leaving a hanging connection
                 setResponseBodyWriter(ChannelFutureListener.CLOSE);
                     return;
@@ -703,7 +715,7 @@ public class ActeurFactory {
             if (notModified) {
                 setResponseCode(HttpResponseStatus.NOT_MODIFIED);
                 setState(new RespondWith(HttpResponseStatus.NOT_MODIFIED));
-                // XXX workaround for peculiar problem with FileResource = 
+                // XXX workaround for peculiar problem with FileResource =
                 // not modified responses are leaving a hanging connection
                 setResponseBodyWriter(ChannelFutureListener.CLOSE);
                 return;

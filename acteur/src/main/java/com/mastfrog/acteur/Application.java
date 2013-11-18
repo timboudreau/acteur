@@ -78,17 +78,17 @@ import java.util.concurrent.ExecutorService;
 import org.joda.time.DateTime;
 
 /**
- * A web application.  Principally, the application is a collection of Page
+ * A web application. Principally, the application is a collection of Page
  * types, which are instantiated per-request and offered the request, in the
  * order they are added, until one accepts it and takes responsibility for
  * responding.
- * 
+ *
  * @author Tim Boudreau
  */
 public class Application implements Iterable<Page> {
 
     private static final Set<String> checkedTypes = Collections.synchronizedSet(new HashSet<String>());
-    private final List<Class<? extends Page>> pages = new ArrayList<>();
+    private final List<Object> pages = new ArrayList<>();
     @Inject
     private Dependencies deps;
     @Inject
@@ -111,9 +111,10 @@ public class Application implements Iterable<Page> {
     private boolean debug = true;
 
     /**
-     * Create an application, optionally passing in an array of page
-     * types (you can also call <code>add()</code> to add them).
-     * @param types 
+     * Create an application, optionally passing in an array of page types (you
+     * can also call <code>add()</code> to add them).
+     *
+     * @param types
      */
     protected Application(Class<?>... types) {
         for (Class<?> type : types) {
@@ -144,8 +145,8 @@ public class Application implements Iterable<Page> {
 
     /**
      * Get the <code>Scope</code> which is holds per-request state.
-     * 
-     * @return 
+     *
+     * @return
      */
     public ReentrantScope getRequestScope() {
         return scope;
@@ -276,6 +277,10 @@ public class Application implements Iterable<Page> {
         assert checkConstructor(page);
         pages.add(page);
     }
+    
+    protected final void add(Page page) {
+        pages.add(page);
+    }
 
     static boolean checkConstructor(Class<?> type) {
         Checks.notNull("type", type);
@@ -350,6 +355,7 @@ public class Application implements Iterable<Page> {
 
     /**
      * Override to do any post-response tasks
+     *
      * @param id The incrementing ID of the request, for logging purposes
      * @param event The event, usually HttpEvent
      * @param acteur The final acteur in the chain
@@ -363,9 +369,10 @@ public class Application implements Iterable<Page> {
 
     /**
      * Called before the response is sent
+     *
      * @param id
      * @param event
-     * @param status 
+     * @param status
      */
     protected void onBeforeRespond(RequestID id, Event<?> event, HttpResponseStatus status) {
         logger.onRespond(id, event, status);
@@ -373,6 +380,7 @@ public class Application implements Iterable<Page> {
 
     /**
      * Called before an event is processed
+     *
      * @param id The request id
      * @param event The event
      */
@@ -397,7 +405,8 @@ public class Application implements Iterable<Page> {
 
     /**
      * Called when an exception is thrown
-     * @param err 
+     *
+     * @param err
      */
     public void onError(Throwable err) {
         err.printStackTrace(System.err);
@@ -446,15 +455,15 @@ public class Application implements Iterable<Page> {
     }
 
     /**
-     * Get the set of page instances, constructing them dynamically.
-     * Note that this should be called inside the application scope, with
-     * any objects which need to be available for injection available in the
-     * scope.
+     * Get the set of page instances, constructing them dynamically. Note that
+     * this should be called inside the application scope, with any objects
+     * which need to be available for injection available in the scope.
+     *
      * @return An iterator
      */
     @Override
     public Iterator<Page> iterator() {
-        final Iterator<Class<? extends Page>> it = pages.iterator();
+        final Iterator<Object> it = pages.iterator();
         return new Iterator<Page>() {
             @Override
             public boolean hasNext() {
@@ -464,8 +473,14 @@ public class Application implements Iterable<Page> {
             @Override
             public Page next() {
                 try {
-                    Class<? extends Page> clazz = it.next();
-                    Page result = deps.getInstance(clazz);
+                    Object o = it.next();
+                    Page result;
+                    if (o instanceof Class<?>) {
+                        Class<? extends Page> clazz = (Class<? extends Page>) o;
+                        result = deps.getInstance(clazz);
+                    } else {
+                        result = Page.class.cast(o);
+                    }
                     result.setApplication(Application.this);
                     return result;
                 } catch (Exception e) {

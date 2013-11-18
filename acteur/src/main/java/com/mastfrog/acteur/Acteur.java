@@ -63,9 +63,9 @@ import java.util.concurrent.atomic.AtomicReference;
  * current list of Acteurs will continue, or if not, what happens to it.
  * <p/>
  * Acteurs are constructed by Guice - in fact, what a Page has is usually just a
- * list of classes. Objects they need, such as the current request {@link HttpEvent}
- * can simply be constructor parameters if the constructor is annotated with
- * Guice's &#064;Inject.
+ * list of classes. Objects they need, such as the current request
+ * {@link HttpEvent} can simply be constructor parameters if the constructor is
+ * annotated with Guice's &#064;Inject.
  * <p/>
  * An Acteur may construct some objects which will then be included in the set
  * of objects the next Acteur in the chain can request for injection in its
@@ -81,12 +81,12 @@ import java.util.concurrent.atomic.AtomicReference;
  * <p/>
  * This makes it possible to incrementally respond to a request, for example,
  * doing just enough computation to determine if a NOT MODIFIED response is
- * possible without computing the complete response (which in that case would
- * be thrown away).
+ * possible without computing the complete response (which in that case would be
+ * thrown away).
  * <p/>
- * Their asynchronous nature means that many requests can be handled simultaneously
- * and run small bits of logic, interleaved, on fewer threads, for maximum 
- * throughput.
+ * Their asynchronous nature means that many requests can be handled
+ * simultaneously and run small bits of logic, interleaved, on fewer threads,
+ * for maximum throughput.
  *
  * @author Tim Boudreau
  */
@@ -109,6 +109,11 @@ public abstract class Acteur {
         }
     }
 
+    public interface Delegate {
+
+        Acteur getDelegate();
+    }
+
     private volatile ResponseImpl response;
 
     protected <T> void add(HeaderValueType<T> decorator, T value) {
@@ -116,6 +121,9 @@ public abstract class Acteur {
     }
 
     ResponseImpl getResponse() {
+        if (this instanceof Delegate) {
+            return ((Delegate) this).getDelegate().getResponse();
+        }
         if (response == null) {
             synchronized (this) {
                 if (response == null) {
@@ -201,8 +209,8 @@ public abstract class Acteur {
     }
 
     /**
-     * A shorthand state for responding with a particular http response code
-     * and optional message, which if non-string, will be rendered as JSON.
+     * A shorthand state for responding with a particular http response code and
+     * optional message, which if non-string, will be rendered as JSON.
      */
     public class RespondWith extends State {
 
@@ -273,11 +281,17 @@ public abstract class Acteur {
         protected Acteur getActeur() {
             return Acteur.this;
         }
+
+        @Override
+        public String toString() {
+            return "Respond with " + getResponse().getResponseCode() + " - "
+                    + super.toString() + " - " + getResponse().getMessage();
+        }
     }
 
     /**
-     * A state indicating the acteur neither accepts nor definitively 
-     * refuses a request.
+     * A state indicating the acteur neither accepts nor definitively refuses a
+     * request.
      */
     protected class RejectedState extends State {
 
@@ -320,9 +334,9 @@ public abstract class Acteur {
     }
 
     /**
-     * State indicating that this acteur chain is taking responsibility
-     * for responding to the request.  It may optionally include objects which
-     * should be available for injection into subsequent acteurs.
+     * State indicating that this acteur chain is taking responsibility for
+     * responding to the request. It may optionally include objects which should
+     * be available for injection into subsequent acteurs.
      */
     protected class ConsumedState extends State {
 
@@ -402,10 +416,11 @@ public abstract class Acteur {
         }
     }
 
-     /**
-     * Set a response writer which can iteratively be called back until
-     * the response is completed.  The writer will be created dynamically
-     * but any object currently in scope can be injected into it.
+    /**
+     * Set a response writer which can iteratively be called back until the
+     * response is completed. The writer will be created dynamically but any
+     * object currently in scope can be injected into it.
+     *
      * @param <T> The type of writer
      * @param writer The writer
      */
@@ -417,8 +432,9 @@ public abstract class Acteur {
     }
 
     /**
-     * Set a response writer which can iteratively be called back until
-     * the response is completed.
+     * Set a response writer which can iteratively be called back until the
+     * response is completed.
+     *
      * @param <T> The type of writer
      * @param writer The writer
      */
@@ -430,20 +446,20 @@ public abstract class Acteur {
     }
 
     /**
-     * Set a ChannelFutureListener which will be called after headers
-     * are written. Prefer <code>setResponseWriter()</code> to this method
-     * unless you are not using chunked encoding and want to stream your
-     * response (in which case, be sure to setChunked(false) or you will
-     * have encoding errors).
+     * Set a ChannelFutureListener which will be called after headers are
+     * written. Prefer <code>setResponseWriter()</code> to this method unless
+     * you are not using chunked encoding and want to stream your response (in
+     * which case, be sure to setChunked(false) or you will have encoding
+     * errors).
      * <p/>
      * This method will dynamically construct the passed listener type using
-     * Guice, and including all of the contents of the scope in which
-     * this call was made.
-     * 
+     * Guice, and including all of the contents of the scope in which this call
+     * was made.
+     *
      * @param <T> a type
      * @param type The type of listener
-     * @deprecated Prefer setResponseWriter(), which will be iteratively 
-     * called back until it says its done
+     * @deprecated Prefer setResponseWriter(), which will be iteratively called
+     * back until it says its done
      */
     @Deprecated
     protected final <T extends ChannelFutureListener> void setResponseBodyWriter(final Class<T> type) {
@@ -499,7 +515,7 @@ public abstract class Acteur {
         ChannelFutureListener l = new C();
         setResponseBodyWriter(l);
     }
-    
+
     protected Dependencies dependencies() {
         final Page p = Page.get();
         final Application app = p.getApplication();
@@ -507,13 +523,13 @@ public abstract class Acteur {
     }
 
     /**
-     * Set a ChannelFutureListener which will be called after headers
-     * are written. Prefer <code>setResponseWriter()</code> to this method
-     * unless you are not using chunked encoding and want to stream your
-     * response (in which case, be sure to setChunked(false) or you will
-     * have encoding errors).
-     * 
-     * @param listener 
+     * Set a ChannelFutureListener which will be called after headers are
+     * written. Prefer <code>setResponseWriter()</code> to this method unless
+     * you are not using chunked encoding and want to stream your response (in
+     * which case, be sure to setChunked(false) or you will have encoding
+     * errors).
+     *
+     * @param listener
      */
     public final void setResponseBodyWriter(final ChannelFutureListener listener) {
         if (listener == ChannelFutureListener.CLOSE || listener == ChannelFutureListener.CLOSE_ON_FAILURE) {
@@ -554,63 +570,80 @@ public abstract class Acteur {
     static Acteur wrap(final Class<? extends Acteur> type, final Dependencies deps) {
         Checks.notNull("type", type);
         final Charset charset = deps.getInstance(Charset.class);
-        return new Acteur() {
-            Acteur acteur;
+        return new WrapperActeur(deps, charset, type);
+    }
 
-            @Override
-            public void describeYourself(Map<String, Object> into) {
+    private static class WrapperActeur extends Acteur implements Delegate {
+
+        private final Dependencies deps;
+        private final Charset charset;
+        private final Class<? extends Acteur> type;
+
+        public WrapperActeur(Dependencies deps, Charset charset, Class<? extends Acteur> type) {
+            this.deps = deps;
+            this.charset = charset;
+            this.type = type;
+        }
+        Acteur acteur;
+
+        @Override
+        public void describeYourself(Map<String, Object> into) {
+            try {
+                delegate().describeYourself(into);
+            } catch (Exception e) {
+                //ok - we may be called without an event to play with
+            }
+        }
+
+        @Override
+        ResponseImpl getResponse() {
+            if (acteur != null) {
+                return acteur.getResponse();
+            }
+            return super.getResponse();
+        }
+
+        protected void onError(Throwable t) throws UnsupportedEncodingException {
+            if (!Dependencies.isProductionMode(deps.getInstance(Settings.class))) {
+                ByteArrayOutputStream out = new ByteArrayOutputStream();
+                t.printStackTrace(new PrintStream(out));
+                add(Headers.CONTENT_TYPE, MediaType.PLAIN_TEXT_UTF_8.withCharset(charset));
+                this.setMessage(new String(out.toByteArray(), charset));
+            }
+            this.setResponseCode(HttpResponseStatus.INTERNAL_SERVER_ERROR);
+        }
+        private State cachedState;
+
+        Acteur delegate() {
+            if (acteur == null) {
                 try {
-                    delegate().describeYourself(into);
+                    acteur = deps.getInstance(type);
                 } catch (Exception e) {
-                    //ok - we may be called without an event to play with
-                }
-            }
-
-            @Override
-            ResponseImpl getResponse() {
-                if (acteur != null) {
-                    return acteur.getResponse();
-                }
-                return super.getResponse();
-            }
-
-            protected void onError(Throwable t) throws UnsupportedEncodingException {
-                if (!Dependencies.isProductionMode(deps.getInstance(Settings.class))) {
-                    ByteArrayOutputStream out = new ByteArrayOutputStream();
-                    t.printStackTrace(new PrintStream(out));
-                    add(Headers.CONTENT_TYPE, MediaType.PLAIN_TEXT_UTF_8.withCharset(charset));
-                    this.setMessage(new String(out.toByteArray(), charset));
-                }
-                this.setResponseCode(HttpResponseStatus.INTERNAL_SERVER_ERROR);
-            }
-
-            private State cachedState;
-
-            Acteur delegate() {
-                if (acteur == null) {
                     try {
-                        acteur = deps.getInstance(type);
-                    } catch (Exception e) {
-                        try {
-                            onError(e);
-                            deps.getInstance(Application.class).internalOnError(e);
-                        } catch (UnsupportedEncodingException ex) {
-                            Exceptions.chuck(ex);
-                        }
+                        onError(e);
+                        deps.getInstance(Application.class).internalOnError(e);
+                    } catch (UnsupportedEncodingException ex) {
+                        Exceptions.chuck(ex);
                     }
                 }
-                return acteur;
             }
+            return acteur;
+        }
 
-            @Override
-            public State getState() {
-                return cachedState == null ? cachedState = delegate().getState() : cachedState;
-            }
+        @Override
+        public State getState() {
+            return cachedState == null ? cachedState = delegate().getState() : cachedState;
+        }
 
-            @Override
-            public String toString() {
-                return "Wrapper [" + (acteur == null ? type + " (type)" : acteur) + " lastState=" + cachedState + "]";
-            }
-        };
+        @Override
+        public String toString() {
+            return "Wrapper [" + (acteur == null ? type + " (type)" : acteur) 
+                    + " lastState=" + cachedState + "]";
+        }
+
+        @Override
+        public Acteur getDelegate() {
+            return delegate();
+        }
     }
 }
