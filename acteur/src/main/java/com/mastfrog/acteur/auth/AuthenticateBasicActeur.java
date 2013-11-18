@@ -30,6 +30,7 @@ import com.mastfrog.acteur.Acteur;
 import com.mastfrog.acteur.HttpEvent;
 import com.mastfrog.acteur.util.Headers;
 import com.mastfrog.settings.Settings;
+import io.netty.channel.ChannelFutureListener;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import static io.netty.handler.codec.http.HttpResponseStatus.SERVICE_UNAVAILABLE;
 import java.io.IOException;
@@ -70,11 +71,13 @@ public class AuthenticateBasicActeur extends Acteur {
         }
         BasicCredentials credentials = event.getHeader(Headers.AUTHORIZATION);
         if (credentials == null) {
+            System.out.println("Credentials null send unauthorized");
             unauthorized(r);
         } else {
             Object[] stuff = authenticator.authenticate(r.toString(), credentials);
             if (stuff == null) {
                 int badCount = tarpit.add(event);
+                System.out.println("Bad credentials " + credentials + " count " + badCount);
                 if (badCount > settings.getInt(SETTINGS_KEY_TARPIT_DELAY_RESPONSE_AFTER, DEFAULT_FAILED_LOGIN_ATTEMPT_DELAY_THRESHOLD)) {
                     Duration delayResponse = Duration.standardSeconds(badCount * settings.getInt(SETTINGS_KEY_TARPIT_DELAY_SECONDS, 1));
                     System.out.println("DELAYING RESPONSE " + FORMAT.print(delayResponse.toPeriod()));
@@ -82,8 +85,8 @@ public class AuthenticateBasicActeur extends Acteur {
                 }
                 unauthorized(r);
             } else {
-                List<Object> l = new ArrayList<>(Arrays.asList(stuff));
-                setState(new ConsumedLockedState(l.toArray(new Object[0])));
+                System.out.println("Good credentials, send login");
+                setState(new ConsumedLockedState(stuff));
             }
         }
     }
@@ -93,8 +96,10 @@ public class AuthenticateBasicActeur extends Acteur {
             .appendSecondsWithMillis().toFormatter();
 
     private void unauthorized(Realm realm) {
+        System.out.println("Send unauthorized with WWW-Authenticate for " + realm);
         add(Headers.WWW_AUTHENTICATE, realm);
         setState(new RespondWith(HttpResponseStatus.UNAUTHORIZED));
+        setResponseBodyWriter(ChannelFutureListener.CLOSE);
     }
 
     @Override
