@@ -9,7 +9,7 @@ import java.util.List;
  *
  * @author tim
  */
-public class InstantiationLists {
+final class InstantiationLists {
 
     public <T> Iterable<T> iterable(final Dependencies deps, List<Object> obj, final Class<T> type) {
         return CollectionUtils.<T>toIterable(CollectionUtils.<Object, T>convertedIterator(new Converter<T, Object>() {

@@ -71,21 +71,21 @@ public class AuthenticateBasicActeur extends Acteur {
         }
         BasicCredentials credentials = event.getHeader(Headers.AUTHORIZATION);
         if (credentials == null) {
-            System.out.println("Credentials null send unauthorized");
+//            System.out.println("Credentials null send unauthorized");
             unauthorized(r);
         } else {
             Object[] stuff = authenticator.authenticate(r.toString(), credentials);
             if (stuff == null) {
                 int badCount = tarpit.add(event);
-                System.out.println("Bad credentials " + credentials + " count " + badCount);
+//                System.out.println("Bad credentials " + credentials + " count " + badCount);
                 if (badCount > settings.getInt(SETTINGS_KEY_TARPIT_DELAY_RESPONSE_AFTER, DEFAULT_FAILED_LOGIN_ATTEMPT_DELAY_THRESHOLD)) {
                     Duration delayResponse = Duration.standardSeconds(badCount * settings.getInt(SETTINGS_KEY_TARPIT_DELAY_SECONDS, 1));
-                    System.out.println("DELAYING RESPONSE " + FORMAT.print(delayResponse.toPeriod()));
+//                    System.out.println("DELAYING RESPONSE " + FORMAT.print(delayResponse.toPeriod()));
                     response().setDelay(delayResponse);
                 }
                 unauthorized(r);
             } else {
-                System.out.println("Good credentials, send login");
+//                System.out.println("Good credentials, send login");
                 setState(new ConsumedLockedState(stuff));
             }
         }
@@ -96,7 +96,7 @@ public class AuthenticateBasicActeur extends Acteur {
             .appendSecondsWithMillis().toFormatter();
 
     private void unauthorized(Realm realm) {
-        System.out.println("Send unauthorized with WWW-Authenticate for " + realm);
+//        System.out.println("Send unauthorized with WWW-Authenticate for " + realm);
         add(Headers.WWW_AUTHENTICATE, realm);
         setState(new RespondWith(HttpResponseStatus.UNAUTHORIZED));
         setResponseBodyWriter(ChannelFutureListener.CLOSE);
