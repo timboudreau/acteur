@@ -224,9 +224,8 @@ public final class EventImpl implements HttpEvent {
         if (neverKeepAlive) {
             return false;
         }
-        return HttpHeaders.isKeepAlive(req);
-//        Connection c = getHeader(Headers.CONNECTION);
-//        return c == null ? false : c == Connection.keep_alive;
+        Connection c = getHeader(Headers.CONNECTION);
+        return c == null ? false : c == Connection.keep_alive;
     }
 
     @Override
