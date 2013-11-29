@@ -23,7 +23,6 @@
  */
 package com.mastfrog.acteur.server;
 
-import com.mastfrog.jackson.JacksonModule;
 import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 import com.google.inject.Module;
@@ -188,7 +187,6 @@ public class ServerModule<A extends Application> extends AbstractModule {
         bind(Application.class).to(appType).asEagerSingleton();
         bind(ChannelHandler.class).to(UpstreamHandlerImpl.class);
         bind(new CISC()).to(PipelineFactoryImpl.class);
-        install(new JacksonModule());
         bind(ServerBootstrap.class).toProvider(new ServerBootstrapProvider(binder().getProvider(Settings.class), binder().getProvider(ByteBufAllocator.class)));
 
         scope.bindTypes(binder(), Event.class, HttpEvent.class,
