@@ -104,18 +104,21 @@ final class PagesImpl implements Pages {
         public Void call() throws Exception {
             // See if any pages are left
             if (pages.hasNext()) {
-                Page page = pages.next();
-//                if (debug) {
-//                    System.out.println("PAGE " + page);
-//                }
-                Page.set(page);
-                try (AutoCloseable ac = application.getRequestScope().enter(page)) {
-                    // if so, grab its acteur runner
-                    Acteurs a = page.getActeurs(application.getWorkerThreadPool(), application.getRequestScope());
-                    // forward the event.  receive() will be called with the final
-                    // state, which will either send the response or re-submit this
-                    // object to call the next page (if any)
-                    a.onEvent(event, this);
+                try (AutoCloseable a1 = application.getRequestScope().enter(event, id, channel)) {
+                    Page page = pages.next();
+                    page.setApplication(application);
+    //                if (debug) {
+    //                    System.out.println("PAGE " + page);
+    //                }
+                    Page.set(page);
+                    try (AutoCloseable ac = application.getRequestScope().enter(page)) {
+                        // if so, grab its acteur runner
+                        Acteurs a = page.getActeurs(application.getWorkerThreadPool(), application.getRequestScope());
+                        // forward the event.  receive() will be called with the final
+                        // state, which will either send the response or re-submit this
+                        // object to call the next page (if any)
+                        a.onEvent(event, this);
+                    }
                 }
             } else {
                 try {

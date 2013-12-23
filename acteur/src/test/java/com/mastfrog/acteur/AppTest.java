@@ -92,6 +92,7 @@ public class AppTest {
         Page page = app.iterator().next();
         assertNotNull(page);
         try (AutoCloseable cl = app.getRequestScope().enter(page)) {
+            page.setApplication(app);
             ActeursImpl ai = (ActeursImpl) page.getActeurs(Executors.newSingleThreadExecutor(), scope);
 
             EventImpl event = createEvent(paths);

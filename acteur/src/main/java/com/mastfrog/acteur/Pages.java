@@ -34,7 +34,7 @@ import java.util.concurrent.CountDownLatch;
  * @author Tim Boudreau
  */
 @ImplementedBy(PagesImpl.class)
-public interface Pages {
+interface Pages {
 
     /**
      * Returns a CountDownLatch which can be used in tests to wait until a

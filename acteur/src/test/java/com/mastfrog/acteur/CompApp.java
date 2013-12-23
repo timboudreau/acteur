@@ -3,6 +3,7 @@ package com.mastfrog.acteur;
 import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 import com.mastfrog.acteur.Acteur.RespondWith;
+import com.mastfrog.acteur.ActeurFactory.Test;
 import com.mastfrog.acteur.server.ServerModule;
 import com.mastfrog.acteur.util.ErrorInterceptor;
 import com.mastfrog.acteur.util.Method;
@@ -27,6 +28,7 @@ public class CompApp extends Application {
         add(Unchunked.class);
         add(Echo.class);
         add(DeferredOutput.class);
+        add(Branch.class);
         add(NoContentPage.class);
     }
 
@@ -55,6 +57,38 @@ public class CompApp extends Application {
             bind(ErrorInterceptor.class).to(TestHarness.class);
         }
 
+    }
+    
+    private static final class Branch extends Page {
+        @Inject
+        Branch(ActeurFactory af) {
+            add(af.matchMethods(Method.GET));
+            add(af.matchPath("^branch$"));
+            add(af.branch(ABranch.class, BBranch.class, new Test() {
+
+                @Override
+                public boolean test(HttpEvent evt) {
+                    System.out.println("TEST");
+                    return "true".equals(evt.getParameter("a"));
+                }
+                
+            }));
+        }
+        
+        private static class ABranch extends Acteur {
+            @Inject
+            ABranch() {
+                System.out.println("abranch");
+                setState(new RespondWith(200, "A"));
+            }
+        }
+        private static class BBranch extends Acteur {
+            @Inject
+            BBranch() {
+                System.out.println("bbranch");
+                setState(new RespondWith(200, "B"));
+            }
+        }
     }
 
     private static final class Echo extends Page {
@@ -173,7 +207,9 @@ public class CompApp extends Application {
                 if (iteration++ < max) {
                     future.addListener(this);
                 } else {
-                    future.addListener(CLOSE);
+                    System.out.println("Close channel");
+//                    future.addListener(CLOSE);
+                    future.channel().close();
                 }
             }
         }

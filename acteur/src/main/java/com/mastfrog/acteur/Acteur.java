@@ -109,8 +109,17 @@ public abstract class Acteur {
         }
     }
 
+    /**
+     * If you write an acteur which delegates to another one, implement this
+     * so that that other one's changes to the response will be picked up.
+     * This pattern is sometimes used where a choice is made about which
+     * acteur to call next.
+     */
     public interface Delegate {
-
+        /**
+         * Get the acteur being delegated to
+         * @return An acteur
+         */
         Acteur getDelegate();
     }
 

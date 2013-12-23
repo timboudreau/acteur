@@ -23,18 +23,22 @@
  */
 package com.mastfrog.acteur;
 
-import com.mastfrog.acteur.util.Headers;
 import com.google.common.net.MediaType;
 import com.google.inject.Inject;
-import com.mastfrog.giulius.Dependencies;
+import com.mastfrog.acteur.Acteur.Delegate;
 import com.mastfrog.acteur.ResponseHeaders.ETagProvider;
+import com.mastfrog.acteur.server.PathFactory;
+import com.mastfrog.acteur.util.Headers;
 import com.mastfrog.acteur.util.Method;
+import com.mastfrog.giulius.Dependencies;
+import com.mastfrog.url.Path;
 import com.mastfrog.util.Checks;
 import com.mastfrog.util.Exceptions;
 import com.mastfrog.util.Strings;
 import io.netty.channel.ChannelFutureListener;
-import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpResponseStatus;
+import static io.netty.handler.codec.http.HttpResponseStatus.BAD_REQUEST;
+import static io.netty.handler.codec.http.HttpResponseStatus.SEE_OTHER;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
@@ -661,8 +665,8 @@ public class ActeurFactory {
                 if (etag.equals(pageEtag)) {
                     setState(new RespondWith(HttpResponseStatus.NOT_MODIFIED));
                 // XXX workaround for peculiar problem with FileResource =
-                // not modified responses are leaving a hanging connection
-                setResponseBodyWriter(ChannelFutureListener.CLOSE);
+                    // not modified responses are leaving a hanging connection
+                    setResponseBodyWriter(ChannelFutureListener.CLOSE);
                     return;
                 }
             }
@@ -764,6 +768,88 @@ public class ActeurFactory {
             }
         }
         return new A();
+    }
+
+    public Acteur requireParametersIfMethodMatches(final Method method, final String... params) {
+        Checks.notNull("method", method);
+        Checks.notNull("params", params);
+        Checks.notEmpty("params", Arrays.asList(params));
+        class RequireParametersIfMethodMatches extends Acteur {
+            public State getState() {
+                HttpEvent evt = deps.getInstance(HttpEvent.class);
+                if (method.equals(evt.getMethod())) {
+                    if (!evt.getParametersAsMap().keySet().containsAll(Arrays.asList(params))) {
+                        setState(new RespondWith(BAD_REQUEST, "Required parameters: "
+                                + Arrays.asList(params)));
+                    }
+                }
+                return new ConsumedState();
+            }
+        }
+        return new RequireParametersIfMethodMatches();
+    }
+
+    public Acteur redirectEmptyPath(final String to) throws URISyntaxException {
+        return redirectEmptyPath(Path.parse(to));
+    }
+
+    public Acteur redirectEmptyPath(final Path to) throws URISyntaxException {
+        Checks.notNull("to", to);
+        class MatchNothing extends Acteur {
+            public State getState() {
+                HttpEvent evt = deps.getInstance(HttpEvent.class);
+                if (evt.getPath().toString().isEmpty()) {
+                    PathFactory pf = deps.getInstance(PathFactory.class);
+                    add(Headers.LOCATION, pf.toExternalPath(to).toURI());
+                    return new RespondWith(SEE_OTHER);
+                } else {
+                    return new RejectedState();
+                }
+            }
+        }
+        return new MatchNothing();
+    }
+
+    public Acteur branch(final Class<? extends Acteur> ifTrue, final Class<? extends Acteur> ifFalse, final Test test) {
+        class Brancher extends Acteur implements Delegate {
+            private Acteur delegate;
+            @Override
+            public State getState() {
+                return getDelegate().getState();
+            }
+
+            @Override
+            ResponseImpl getResponse() {
+                return getDelegate().getResponse();
+            }
+
+            @Override
+            public Acteur getDelegate() {
+                if (delegate != null) {
+                    return delegate;
+                }
+                boolean result = test.test(deps.getInstance(HttpEvent.class));
+                if (result) {
+                    return delegate = deps.getInstance(ifTrue);
+                } else {
+                    return delegate = deps.getInstance(ifFalse);
+                }
+            }
+        }
+        return new Brancher();
+    }
+
+    /**
+     * A test which can be performed on a request, for example, to decide about
+     * branching
+     */
+    public interface Test {
+        /**
+         * Perform the test
+         * @param evt The request
+         * @return The result of the test
+         */
+        public boolean test(HttpEvent evt);
     }
 
     /**

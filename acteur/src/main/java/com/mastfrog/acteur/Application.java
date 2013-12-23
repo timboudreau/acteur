@@ -41,7 +41,6 @@ import com.mastfrog.acteur.util.RequestID;
 import com.mastfrog.url.Path;
 import com.mastfrog.util.ConfigurationError;
 import com.mastfrog.util.Checks;
-import com.mastfrog.util.Exceptions;
 import com.mastfrog.util.Invokable;
 import com.mastfrog.util.Streams;
 import com.mastfrog.util.thread.QuietAutoCloseable;
@@ -463,37 +462,38 @@ public class Application implements Iterable<Page> {
      */
     @Override
     public Iterator<Page> iterator() {
-        final Iterator<Object> it = pages.iterator();
-        return new Iterator<Page>() {
-            @Override
-            public boolean hasNext() {
-                return it.hasNext();
-            }
-
-            @Override
-            public Page next() {
-                try {
-                    Object o = it.next();
-                    Page result;
-                    if (o instanceof Class<?>) {
-                        Class<? extends Page> clazz = (Class<? extends Page>) o;
-                        result = deps.getInstance(clazz);
-                    } else {
-                        result = Page.class.cast(o);
-                    }
-                    result.setApplication(Application.this);
-                    return result;
-                } catch (Exception e) {
-                    Application.this.internalOnError(e);
-                    return Exceptions.chuck(e);
-                }
-            }
-
-            @Override
-            public void remove() {
-                throw new UnsupportedOperationException("Not supported");
-            }
-        };
+        return new InstantiatingIterators(deps).iterable(pages, Page.class).iterator();
+//        final Iterator<Object> it = pages.iterator();
+//        return new Iterator<Page>() {
+//            @Override
+//            public boolean hasNext() {
+//                return it.hasNext();
+//            }
+//
+//            @Override
+//            public Page next() {
+//                try {
+//                    Object o = it.next();
+//                    Page result;
+//                    if (o instanceof Class<?>) {
+//                        Class<? extends Page> clazz = (Class<? extends Page>) o;
+//                        result = deps.getInstance(clazz);
+//                    } else {
+//                        result = Page.class.cast(o);
+//                    }
+//                    result.setApplication(Application.this);
+//                    return result;
+//                } catch (Exception e) {
+//                    Application.this.internalOnError(e);
+//                    return Exceptions.chuck(e);
+//                }
+//            }
+//
+//            @Override
+//            public void remove() {
+//                throw new UnsupportedOperationException("Not supported");
+//            }
+//        };
     }
 
     protected void send404(RequestID id, Event<?> event, Channel channel) {

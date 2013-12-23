@@ -40,7 +40,9 @@ import java.util.List;
  * write a bit of output, to stagger these on output.
  *
  * @author Tim Boudreau
+ * @deprecated Rarely used and other things do this better
  */
+@Deprecated
 public class OutputChain implements ChannelFutureListener {
 
     private final HttpEvent evt;
@@ -115,11 +117,13 @@ public class OutputChain implements ChannelFutureListener {
         }
     }
 
+    @Deprecated
     public interface Writer {
 
         public ChannelFuture write(Channel channel) throws Exception;
     }
 
+    @Deprecated
     private static final class StringWriter implements Writer {
 
         private final String string;

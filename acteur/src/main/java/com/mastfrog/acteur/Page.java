@@ -75,18 +75,14 @@ import org.joda.time.Duration;
 public abstract class Page implements Iterable<Acteur> {
 
     private static final ThreadLocal<Page> CURRENT_PAGE = new ThreadLocal<>();
-    protected ResponseHeaders responseHeaders = new ResponseHeaders();
+    protected final ResponseHeaders responseHeaders = new ResponseHeaders();
     private final List<Object> acteurs = Collections.synchronizedList(new ArrayList<>());
     volatile Application application;
 
     protected Page() {
     }
 
-    protected synchronized final void setResponseHeaders(ResponseHeaders props) {
-        this.responseHeaders = props;
-    }
-
-    public synchronized ResponseHeaders getReponseHeaders() {
+    public final ResponseHeaders getReponseHeaders() {
         return responseHeaders;
     }
 
@@ -220,22 +216,8 @@ public abstract class Page implements Iterable<Acteur> {
         }
     }
 
-    protected Acteurs getActeurs(ExecutorService exe, ReentrantScope scope) {
+    Acteurs getActeurs(ExecutorService exe, ReentrantScope scope) {
         return new ActeursImpl(exe, scope, this, getApplication().getDependencies().getInstance(Settings.class));
-////        System.out.println("get acteurs");
-//        try {
-////            if (!getApplication().getRequestScope().inScope()) {
-////                throw new IllegalStateException("Must be in Page scope with a Page in the scope");
-////            } else if (!getApplication().getRequestScope().contains(Page.class)) {
-////                throw new IllegalStateException("No page in scope");
-////            }
-//            Acteurs a = getApplication().getDependencies().getInstance(Acteurs.class);
-//            System.out.println("a is " + a);
-//            return a;
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//            throw e;
-//        }
     }
 
     protected void decorateResponse(Event<?> event, Acteur acteur, HttpResponse response) {

@@ -27,6 +27,8 @@ import com.mastfrog.util.AbstractBuilder;
 import com.mastfrog.util.Checks;
 import com.mastfrog.util.Exceptions;
 import java.io.UnsupportedEncodingException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URLDecoder;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -385,6 +387,14 @@ public final class Path implements URLComponent, Iterable<PathElement> {
         int hash = 7;
         hash = 67 * hash + Arrays.deepHashCode(this.elements);
         return hash;
+    }
+    
+    public URI toURI() {
+        try {
+            return new URI(toString());
+        } catch (URISyntaxException ex) {
+            return Exceptions.chuck(ex);
+        }
     }
 
     private static final class PathBuilder extends AbstractBuilder<PathElement, Path> {
