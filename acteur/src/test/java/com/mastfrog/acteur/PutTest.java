@@ -135,7 +135,7 @@ public class PutTest {
 
             @Inject
             EchoPage(ActeurFactory af) {
-                getReponseHeaders().addCacheControl(CacheControlTypes.Public);
+                getResponseHeaders().addCacheControl(CacheControlTypes.Public);
                 add(af.matchMethods(Method.PUT, Method.GET));
                 add(EchoActeur.class);
             }

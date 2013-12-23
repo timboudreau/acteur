@@ -238,15 +238,15 @@ public final class FileResources implements StaticResources {
                     Exceptions.printStackTrace(ex);
                 }
             }
-            ResponseHeaders h = page.getReponseHeaders();
+            ResponseHeaders h = page.getResponseHeaders();
             String ua = evt.getHeader("User-Agent");
             if (ua != null && !ua.contains("MSIE")) {
-                page.getReponseHeaders().addVaryHeader(Headers.ACCEPT_ENCODING);
+                page.getResponseHeaders().addVaryHeader(Headers.ACCEPT_ENCODING);
             }
 //            if (productionMode()) {
-                page.getReponseHeaders().addCacheControl(CacheControlTypes.Public);
-                page.getReponseHeaders().addCacheControl(CacheControlTypes.max_age, Duration.standardHours(2));
-                page.getReponseHeaders().addCacheControl(CacheControlTypes.must_revalidate);
+                page.getResponseHeaders().addCacheControl(CacheControlTypes.Public);
+                page.getResponseHeaders().addCacheControl(CacheControlTypes.max_age, Duration.standardHours(2));
+                page.getResponseHeaders().addCacheControl(CacheControlTypes.must_revalidate);
 //            } else {
 //                page.getReponseHeaders().addCacheControl(CacheControlTypes.Private);
 //                page.getReponseHeaders().addCacheControl(CacheControlTypes.no_cache);
@@ -273,7 +273,7 @@ public final class FileResources implements StaticResources {
                 response.add(Headers.stringHeader("Transfer-Encoding"), "chunked");
             }
             if (isGzip(evt)) {
-                page.getReponseHeaders().setContentEncoding("gzip");
+                page.getResponseHeaders().setContentEncoding("gzip");
                 if (!chunked) {
                     response.add(Headers.CONTENT_LENGTH, (long) compressed.readableBytes());
                 }

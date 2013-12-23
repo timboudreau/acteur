@@ -23,18 +23,14 @@
  */
 package com.mastfrog.acteur;
 
-import com.mastfrog.acteur.util.HeaderValueType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.net.MediaType;
+import com.mastfrog.acteur.util.HeaderValueType;
 import com.mastfrog.acteur.util.Headers;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.guicy.scope.ReentrantScope;
-import com.mastfrog.util.Checks;
-import java.io.ByteArrayOutputStream;
-import java.io.PrintStream;
-import java.io.UnsupportedEncodingException;
-import java.util.concurrent.Callable;
 import com.mastfrog.settings.Settings;
+import com.mastfrog.util.Checks;
 import com.mastfrog.util.Exceptions;
 import com.mastfrog.util.Invokable;
 import io.netty.channel.ChannelFuture;
@@ -44,9 +40,13 @@ import static io.netty.handler.codec.http.HttpResponseStatus.BAD_REQUEST;
 import static io.netty.handler.codec.http.HttpResponseStatus.NOT_FOUND;
 import static io.netty.handler.codec.http.HttpResponseStatus.NO_CONTENT;
 import static io.netty.handler.codec.http.HttpResponseStatus.OK;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.PrintStream;
+import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;
 import java.util.Map;
+import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**

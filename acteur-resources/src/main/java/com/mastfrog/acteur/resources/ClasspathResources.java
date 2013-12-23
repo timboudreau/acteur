@@ -204,19 +204,19 @@ public final class ClasspathResources implements StaticResources {
 
         @Override
         public void decoratePage(Page page, HttpEvent evt, String path, Response response, boolean chunked) {
-            ResponseHeaders h = page.getReponseHeaders();
+            ResponseHeaders h = page.getResponseHeaders();
             String ua = evt.getHeader("User-Agent");
             if (ua != null && !ua.contains("MSIE")) {
-                page.getReponseHeaders().addVaryHeader(Headers.ACCEPT_ENCODING);
+                page.getResponseHeaders().addVaryHeader(Headers.ACCEPT_ENCODING);
             }
             if (productionMode()) {
-                page.getReponseHeaders().addCacheControl(CacheControlTypes.Public);
-                page.getReponseHeaders().addCacheControl(CacheControlTypes.max_age, Duration.standardHours(2));
-                page.getReponseHeaders().addCacheControl(CacheControlTypes.must_revalidate);
+                page.getResponseHeaders().addCacheControl(CacheControlTypes.Public);
+                page.getResponseHeaders().addCacheControl(CacheControlTypes.max_age, Duration.standardHours(2));
+                page.getResponseHeaders().addCacheControl(CacheControlTypes.must_revalidate);
             } else {
-                page.getReponseHeaders().addCacheControl(CacheControlTypes.Private);
-                page.getReponseHeaders().addCacheControl(CacheControlTypes.no_cache);
-                page.getReponseHeaders().addCacheControl(CacheControlTypes.no_store);
+                page.getResponseHeaders().addCacheControl(CacheControlTypes.Private);
+                page.getResponseHeaders().addCacheControl(CacheControlTypes.no_cache);
+                page.getResponseHeaders().addCacheControl(CacheControlTypes.no_store);
             }
 //            if (evt.getMethod() != Method.HEAD) {
 //                page.getReponseHeaders().setContentLengthProvider(this);
@@ -239,7 +239,7 @@ public final class ClasspathResources implements StaticResources {
                 response.add(Headers.stringHeader("Transfer-Encoding"), "chunked");
             }
             if (isGzip(evt)) {
-                page.getReponseHeaders().setContentEncoding("gzip");
+                page.getResponseHeaders().setContentEncoding("gzip");
                 if (!chunked) {
                     response.add(Headers.CONTENT_LENGTH, (long) compressed.readableBytes());
                 }

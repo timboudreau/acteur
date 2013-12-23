@@ -49,8 +49,8 @@ final class HelpPage extends Page {
     @Inject
     HelpPage(ActeurFactory af, Settings settings, DateTime serverStartTime) {
         String pattern = settings.getString(HELP_URL_PATTERN_SETTINGS_KEY, "^help$");
-        getReponseHeaders().addCacheControl(CacheControlTypes.Public);
-        getReponseHeaders().setLastModified(serverStartTime);
+        getResponseHeaders().addCacheControl(CacheControlTypes.Public);
+        getResponseHeaders().setLastModified(serverStartTime);
         add(af.matchPath(pattern));
         add(af.matchMethods(Method.GET));
         add(af.sendNotModifiedIfIfModifiedSinceHeaderMatches());

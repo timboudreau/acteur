@@ -82,8 +82,8 @@ public abstract class ClasspathResourcePage extends Page implements ContentLengt
         responseHeaders.addCacheControl(CacheControlTypes.max_age, Duration.standardDays(100));
         responseHeaders.setContentLengthProvider(this);
         responseHeaders.setETagProvider(this);
-        getReponseHeaders().setMaxAge(Duration.standardDays(100));
-        getReponseHeaders().addVaryHeader(Headers.CONTENT_ENCODING);
+        getResponseHeaders().setMaxAge(Duration.standardDays(100));
+        getResponseHeaders().addVaryHeader(Headers.CONTENT_ENCODING);
 
         add(f.matchPath(patterns));
         add(f.matchMethods(com.mastfrog.acteur.util.Method.GET, com.mastfrog.acteur.util.Method.HEAD));
@@ -145,7 +145,7 @@ public abstract class ClasspathResourcePage extends Page implements ContentLengt
             if (hasContent) {
                 String cachedEtag = getCachedEtag(page.getClass(), event.getPath());
                 if (cachedEtag != null) {
-                    page.getReponseHeaders().setEtag(cachedEtag);
+                    page.getResponseHeaders().setEtag(cachedEtag);
                 }
                 Long cachedSize = getCachedSize(page.getClass(), event.getPath());
                 if (cachedSize != null) {

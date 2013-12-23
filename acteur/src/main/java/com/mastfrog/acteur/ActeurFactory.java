@@ -660,7 +660,7 @@ public class ActeurFactory {
             Checks.notNull("event", event);
             Checks.notNull("page", page);
             String etag = event.getHeader(Headers.IF_NONE_MATCH);
-            String pageEtag = page.getReponseHeaders().getETag();
+            String pageEtag = page.getResponseHeaders().getETag();
             if (etag != null && pageEtag != null) {
                 if (etag.equals(pageEtag)) {
                     setState(new RespondWith(HttpResponseStatus.NOT_MODIFIED));
@@ -685,7 +685,7 @@ public class ActeurFactory {
         CheckIfUnmodifiedSinceHeader(HttpEvent event, Page page) {
             DateTime dt = event.getHeader(Headers.IF_UNMODIFIED_SINCE);
             if (dt != null) {
-                DateTime pageLastModified = page.getReponseHeaders().getLastModified();
+                DateTime pageLastModified = page.getResponseHeaders().getLastModified();
                 if (pageLastModified != null) {
                     boolean modSince = pageLastModified.getMillis() > dt.getMillis();
                     if (modSince) {
@@ -708,7 +708,7 @@ public class ActeurFactory {
         @Inject
         CheckIfModifiedSinceHeader(HttpEvent event, Page page) {
             DateTime lastModifiedMustBeNewerThan = event.getHeader(Headers.IF_MODIFIED_SINCE);
-            DateTime pageLastModified = page.getReponseHeaders().getLastModified();
+            DateTime pageLastModified = page.getResponseHeaders().getLastModified();
 
             boolean notModified = lastModifiedMustBeNewerThan != null && pageLastModified != null;
             if (notModified) {
@@ -746,7 +746,7 @@ public class ActeurFactory {
             @Override
             public State getState() {
                 Page page = deps.getInstance(Page.class);
-                page.getReponseHeaders().setETagProvider(this);
+                page.getResponseHeaders().setETagProvider(this);
                 CheckIfNoneMatchHeader h = deps.getInstance(CheckIfNoneMatchHeader.class);
                 State result = h.getState();
                 getResponse().merge(h.getResponse());

@@ -1,4 +1,4 @@
-/* 
+/*
  * The MIT License
  *
  * Copyright 2013 Tim Boudreau.
@@ -23,13 +23,13 @@
  */
 package com.mastfrog.acteur;
 
-import com.mastfrog.acteur.util.HeaderValueType;
-import com.mastfrog.acteur.util.Headers;
 import com.google.common.net.MediaType;
 import com.google.inject.ImplementedBy;
+import com.mastfrog.acteur.util.CacheControl;
+import com.mastfrog.acteur.util.HeaderValueType;
+import com.mastfrog.acteur.util.Headers;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.guicy.scope.ReentrantScope;
-import com.mastfrog.acteur.util.CacheControl;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.util.Exceptions;
 import io.netty.handler.codec.http.HttpHeaders;
@@ -82,18 +82,18 @@ public abstract class Page implements Iterable<Acteur> {
     protected Page() {
     }
 
-    public final ResponseHeaders getReponseHeaders() {
+    public final ResponseHeaders getResponseHeaders() {
         return responseHeaders;
     }
 
     public final void add(Acteur action) {
         acteurs.add(action);
     }
-    
+
     protected String getDescription() {
         return getClass().getSimpleName();
     }
-    
+
     void describeYourself(Map<String,Object> into) {
         Map<String,Object> m = new HashMap<>();
         int count = countActeurs();
@@ -221,23 +221,23 @@ public abstract class Page implements Iterable<Acteur> {
     }
 
     protected void decorateResponse(Event<?> event, Acteur acteur, HttpResponse response) {
-        final ResponseHeaders properties = getReponseHeaders();
+        final ResponseHeaders properties = getResponseHeaders();
 
         List<HeaderValueType<?>> vary = new LinkedList<>();
         properties.getVaryHeaders(vary);
         if (!vary.isEmpty()) {
             Headers.write(Headers.VARY, vary.toArray(new HeaderValueType<?>[vary.size()]), response);
         }
-        DateTime lastModified = getReponseHeaders().getLastModified();
+        DateTime lastModified = properties.getLastModified();
         if (lastModified != null) {
             Headers.write(Headers.LAST_MODIFIED, lastModified, response);
         }
-        String encoding = getReponseHeaders().getTransferEncoding();
+        String encoding = properties.getTransferEncoding();
         if (encoding != null) {
             HeaderValueType<String> hd = Headers.stringHeader(HttpHeaders.Names.TRANSFER_ENCODING);
             Headers.write(hd, encoding, response);
         }
-        String contentEncoding = getReponseHeaders().getContentEncoding();
+        String contentEncoding = properties.getContentEncoding();
         if (contentEncoding != null) {
             HeaderValueType<String> hd = Headers.stringHeader(HttpHeaders.Names.CONTENT_ENCODING);
             Headers.write(hd, contentEncoding, response);
