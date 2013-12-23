@@ -21,45 +21,35 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.mastfrog.acteur.util;
+package com.mastfrog.acteur.headers;
+
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import org.joda.time.Duration;
 
 /**
- * Enum of valid values for cache control
  *
  * @author Tim Boudreau
  */
-public enum CacheControlTypes {
-    Public, Private, must_revalidate, proxy_revalidate, no_cache, no_store, 
-    max_age(true), max_stale(true), min_fresh(true), 
-    no_transform, only_if_cached;
-    final boolean takesValue;
+final class DurationHeader extends AbstractHeader<Duration> {
 
-    private CacheControlTypes(boolean takesValue) {
-        this.takesValue = takesValue;
-    }
-
-    CacheControlTypes() {
-        this(false);
+    DurationHeader(String name) {
+        super(Duration.class, name);
     }
 
     @Override
-    public String toString() {
-        char[] c = name().toLowerCase().toCharArray();
-        for (int i = 0; i < c.length; i++) {
-            if (c[i] == '_') {
-                c[i] = '-';
-            }
-        }
-        return new String(c);
+    public String toString(Duration value) {
+        return value.getStandardSeconds() + "";
     }
 
-    public static CacheControlTypes find(String s) {
-        for (CacheControlTypes c : values()) {
-            if (s.startsWith(c.toString())) {
-                return c;
-            }
+    @Override
+    public Duration toValue(String value) {
+        try {
+            return new Duration(Long.parseLong(value));
+        } catch (NumberFormatException nfe) {
+            Logger.getLogger(DurationHeader.class.getName()).log(Level.INFO, "Bad duration header '" + value + "'", nfe);
+            return null;
         }
-        return null;
     }
-    
+
 }

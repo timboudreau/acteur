@@ -21,22 +21,29 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.mastfrog.acteur.util;
+package com.mastfrog.acteur.headers;
 
-import io.netty.handler.codec.http.HttpMethod;
-import io.netty.handler.codec.http.HttpRequest;
+import com.mastfrog.acteur.util.BasicCredentials;
+import io.netty.handler.codec.http.HttpHeaders;
 
 /**
- * Enum of standard HTTP methods
  *
  * @author Tim Boudreau
  */
-public enum Method implements com.mastfrog.acteur.util.HttpMethod {
+class BasicCredentialsHeader extends AbstractHeader<BasicCredentials> {
 
-    GET, PUT, POST, OPTIONS, HEAD, DELETE, TRACE, UNKNOWN;
-
-    public static Method get(HttpRequest req) {
-        HttpMethod m = req.getMethod();
-        return Method.valueOf(m.name().toUpperCase());
+    BasicCredentialsHeader() {
+        super(BasicCredentials.class, HttpHeaders.Names.AUTHORIZATION);
     }
+
+    @Override
+    public String toString(BasicCredentials value) {
+        return value.toString();
+    }
+
+    @Override
+    public BasicCredentials toValue(String value) {
+        return BasicCredentials.parse(value);
+    }
+
 }

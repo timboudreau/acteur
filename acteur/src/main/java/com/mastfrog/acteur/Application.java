@@ -24,7 +24,7 @@
 package com.mastfrog.acteur;
 
 import com.google.common.base.Optional;
-import com.mastfrog.acteur.util.Headers;
+import com.mastfrog.acteur.headers.Headers;
 import com.google.common.net.MediaType;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
@@ -35,8 +35,8 @@ import com.mastfrog.acteur.util.CacheControl;
 import com.mastfrog.acteur.util.CacheControlTypes;
 import com.mastfrog.acteur.server.ServerModule;
 import com.mastfrog.acteur.util.ErrorInterceptor;
-import com.mastfrog.acteur.util.HeaderValueType;
-import com.mastfrog.acteur.util.Method;
+import com.mastfrog.acteur.headers.HeaderValueType;
+import com.mastfrog.acteur.headers.Method;
 import com.mastfrog.acteur.util.RequestID;
 import com.mastfrog.url.Path;
 import com.mastfrog.util.ConfigurationError;

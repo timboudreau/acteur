@@ -8,7 +8,7 @@ import static com.mastfrog.acteur.auth.AuthenticateBasicActeur.SETTINGS_KEY_TARP
 import com.mastfrog.acteur.auth.Authenticator;
 import com.mastfrog.acteur.server.ServerModule;
 import com.mastfrog.acteur.util.BasicCredentials;
-import com.mastfrog.acteur.util.Method;
+import com.mastfrog.acteur.headers.Method;
 import com.mastfrog.acteur.util.Realm;
 import com.mastfrog.acteur.util.RotatingRealmProvider;
 import com.mastfrog.acteur.util.Server;

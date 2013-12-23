@@ -15,6 +15,10 @@
             <artifactId>acteur</artifactId>
         </dependency>
         <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>acteur-headers</artifactId>
+        </dependency>        
+        <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <scope>test</scope>

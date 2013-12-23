@@ -1,6 +1,6 @@
 package com.mastfrog.acteur.resources;
 
-import com.mastfrog.acteur.util.Headers;
+import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.giulius.tests.GuiceRunner;
 import com.mastfrog.giulius.tests.TestWith;
 import static com.mastfrog.netty.http.client.StateType.Closed;

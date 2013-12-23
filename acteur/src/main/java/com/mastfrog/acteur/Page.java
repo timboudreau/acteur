@@ -26,15 +26,15 @@ package com.mastfrog.acteur;
 import com.google.common.net.MediaType;
 import com.google.inject.ImplementedBy;
 import com.mastfrog.acteur.util.CacheControl;
-import com.mastfrog.acteur.util.HeaderValueType;
-import com.mastfrog.acteur.util.Headers;
+import com.mastfrog.acteur.headers.HeaderValueType;
+import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.guicy.scope.ReentrantScope;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.util.Exceptions;
+import com.mastfrog.util.thread.QuietAutoCloseable;
 import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpResponse;
-import io.netty.handler.codec.http.HttpResponseStatus;
 import java.lang.reflect.Modifier;
 import java.net.URI;
 import java.util.ArrayList;
@@ -110,23 +110,22 @@ public abstract class Page implements Iterable<Acteur> {
         }
     }
 
-    static AutoCloseable set(Page page) {
-        final Page old = CURRENT_PAGE.get();
+    static QuietAutoCloseable set(Page page) {
+        PageReset result = new PageReset();
         CURRENT_PAGE.set(page);
-        return new AutoCloseable() {
-            @Override
-            public void close() throws Exception {
-                if (old != null) {
-                    CURRENT_PAGE.set(old);
-                } else {
-                    CURRENT_PAGE.remove();
-                }
-            }
-        };
+        return result;
     }
 
-    static void clear() {
-        CURRENT_PAGE.remove();
+    static final class PageReset extends QuietAutoCloseable {
+        private final Page old = CURRENT_PAGE.get();
+        @Override
+        public void close() {
+            if (old != null) {
+                CURRENT_PAGE.set(old);
+            } else {
+                CURRENT_PAGE.remove();
+            }
+        }
     }
 
     static Page get() {
@@ -171,15 +170,14 @@ public abstract class Page implements Iterable<Acteur> {
     }
 
     final Acteur getActeur(int ix, boolean logErrors) {
-        Page.set(this);
-        try {
-            Application application = getApplication();
-            if (application == null) {
+        try (QuietAutoCloseable ac = Page.set(this)) {
+            Application app = getApplication();
+            if (app == null) {
                 throw new NullPointerException("Application is null - being called out of scope?");
             }
             Object o = acteurs.get(ix);
             if (o instanceof Class<?>) {
-                Dependencies deps = application.getDependencies();
+                Dependencies deps = app.getDependencies();
                 try {
                     Class<? extends Acteur> c = (Class<? extends Acteur>) o;
                     return deps.getInstance(c);
@@ -187,32 +185,20 @@ public abstract class Page implements Iterable<Acteur> {
                     return Exceptions.chuck(e);
                 } catch (final Exception t) {
                     if (logErrors) {
-                        application.internalOnError(t);
+                        app.internalOnError(t);
                     }
-                    return new Acteur() {
-                        @Override
-                        public State getState() {
-                            return new Acteur.RespondWith(HttpResponseStatus.INTERNAL_SERVER_ERROR, t.getMessage());
-                        }
-                    };
+                    return new Acteur.ErrorActeur(this, t);
                 } catch (final Error t) {
                     if (logErrors) {
-                        application.internalOnError(t);
+                        app.internalOnError(t);
                     }
-                    return new Acteur() {
-                        @Override
-                        public State getState() {
-                            return new Acteur.RespondWith(HttpResponseStatus.INTERNAL_SERVER_ERROR, t.getMessage());
-                        }
-                    };
+                    return new Acteur.ErrorActeur(this, t);
                 }
             } else if (o instanceof Acteur) {
                 return (Acteur) o;
             } else {
                 throw new AssertionError("?: " + o + " in " + this);
             }
-        } finally {
-            Page.clear();
         }
     }
 
@@ -228,67 +214,30 @@ public abstract class Page implements Iterable<Acteur> {
         if (!vary.isEmpty()) {
             Headers.write(Headers.VARY, vary.toArray(new HeaderValueType<?>[vary.size()]), response);
         }
-        DateTime lastModified = properties.getLastModified();
-        if (lastModified != null) {
-            Headers.write(Headers.LAST_MODIFIED, lastModified, response);
-        }
-        String encoding = properties.getTransferEncoding();
-        if (encoding != null) {
-            HeaderValueType<String> hd = Headers.stringHeader(HttpHeaders.Names.TRANSFER_ENCODING);
-            Headers.write(hd, encoding, response);
-        }
-        String contentEncoding = properties.getContentEncoding();
-        if (contentEncoding != null) {
-            HeaderValueType<String> hd = Headers.stringHeader(HttpHeaders.Names.CONTENT_ENCODING);
-            Headers.write(hd, contentEncoding, response);
-        }
-        String etag = properties.getETag();
-        if (etag != null) {
-            Headers.write(Headers.ETAG, etag, response);
-        }
-        DateTime expires = properties.getExpires();
-        if (expires != null) {
-            Headers.write(Headers.EXPIRES, expires, response);
-        }
+        Headers.writeIfNotNull(Headers.LAST_MODIFIED, properties.getLastModified(), response);
+        Headers.writeIfNotNull(Headers.TRANSFER_ENCODING, properties.getTransferEncoding(), response);
+        Headers.writeIfNotNull(Headers.CONTENT_ENCODING, properties.getContentEncoding(), response);
+        Headers.writeIfNotNull(Headers.ETAG, properties.getETag(), response);
+        Headers.writeIfNotNull(Headers.EXPIRES, properties.getExpires(), response);
         CacheControl cacheControl = properties.getCacheControl();
         if (cacheControl != null && !cacheControl.isEmpty()) {
             Headers.write(Headers.CACHE_CONTROL, cacheControl, response);
         }
-        MediaType contentType = properties.getContentType();
-        if (contentType != null) {
-            Headers.write(Headers.CONTENT_TYPE, contentType, response);
-        }
-        Locale locale = properties.getContentLanguage();
-        if (locale != null) {
-            Headers.write(Headers.CONTENT_LANGUAGE, locale, response);
-        }
-        Duration age = properties.getAge();
-        if (age != null) {
-            Headers.write(Headers.AGE, age, response);
-        }
+        Headers.writeIfNotNull(Headers.CONTENT_TYPE, properties.getContentType(), response);
+        Headers.writeIfNotNull(Headers.CONTENT_LANGUAGE, properties.getContentLanguage(), response);
+        Headers.writeIfNotNull(Headers.AGE, properties.getAge(), response);
         Duration maxAge = properties.getMaxAge();
         if (maxAge != null) {
             Headers.write(Headers.EXPIRES, new DateTime().plus(maxAge), response);
         }
-        URI contentLocation = properties.getContentLocation();
-        if (contentLocation != null) {
-            Headers.write(Headers.CONTENT_LOCATION, contentLocation, response);
-        }
-        URI location = properties.getLocation();
-        if (location != null) {
-            Headers.write(Headers.LOCATION, location, response);
-        }
-        Long contentLength = properties.getContentLength();
-        if (contentLength != null) {
-            Headers.write(Headers.CONTENT_LENGTH, contentLength, response);
-        }
+        Headers.writeIfNotNull(Headers.CONTENT_LOCATION, properties.getContentLocation(), response);
+        Headers.writeIfNotNull(Headers.LOCATION, properties.getLocation(), response);
+        Headers.writeIfNotNull(Headers.CONTENT_LENGTH, properties.getContentLength(), response);
     }
 
     @Override
     public Iterator<Acteur> iterator() {
-        if (getApplication() == null) {
-            throw new IllegalStateException("Application is null - called outside request?");
-        }
+        assert getApplication() != null : "Application is null - called outside request?";
         return new I();
     }
 

@@ -21,7 +21,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.mastfrog.acteur.util;
+package com.mastfrog.acteur.headers;
 
 /**
  * Base interface for things that convert an HTTP header to an appropriate

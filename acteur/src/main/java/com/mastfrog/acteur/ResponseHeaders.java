@@ -26,7 +26,7 @@ package com.mastfrog.acteur;
 import com.google.common.net.MediaType;
 import com.mastfrog.acteur.util.CacheControl;
 import com.mastfrog.acteur.util.CacheControlTypes;
-import com.mastfrog.acteur.util.HeaderValueType;
+import com.mastfrog.acteur.headers.HeaderValueType;
 import java.net.URI;
 import java.util.LinkedList;
 import java.util.List;

@@ -6,7 +6,7 @@ import com.mastfrog.acteur.Acteur.RespondWith;
 import com.mastfrog.acteur.ActeurFactory.Test;
 import com.mastfrog.acteur.server.ServerModule;
 import com.mastfrog.acteur.util.ErrorInterceptor;
-import com.mastfrog.acteur.util.Method;
+import com.mastfrog.acteur.headers.Method;
 import com.mastfrog.netty.http.test.harness.TestHarness;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFuture;

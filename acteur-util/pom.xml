@@ -23,23 +23,7 @@
         </dependency>
         <dependency>
             <groupId>com.mastfrog</groupId>
-            <artifactId>url</artifactId>
-            <type>jar</type>
-        </dependency>
-        <dependency>
-            <groupId>com.mastfrog</groupId>
             <artifactId>giulius-settings</artifactId>
-            <type>jar</type>
-        </dependency>        
-        <dependency>
-            <groupId>com.mastfrog</groupId>
-            <artifactId>giulius</artifactId>
-            <type>jar</type>
-            <scope>test</scope>
-        </dependency>         
-        <dependency>
-            <groupId>io.netty</groupId>
-            <artifactId>netty-codec-http</artifactId>
             <type>jar</type>
         </dependency>
         <dependency>
@@ -48,13 +32,14 @@
             <type>jar</type>
         </dependency>
         <dependency>
-            <groupId>com.google.inject</groupId>
-            <artifactId>guice</artifactId>
+            <groupId>commons-codec</groupId>
+            <artifactId>commons-codec</artifactId>
             <type>jar</type>
         </dependency>
         <dependency>
-            <groupId>commons-codec</groupId>
-            <artifactId>commons-codec</artifactId>
+            <groupId>javax.inject</groupId>
+            <artifactId>javax.inject</artifactId>
+            <version>1</version>
             <type>jar</type>
         </dependency>
     </dependencies>

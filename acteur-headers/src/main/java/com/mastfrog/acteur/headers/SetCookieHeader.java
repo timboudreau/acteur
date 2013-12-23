@@ -21,45 +21,31 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.mastfrog.acteur.util;
+package com.mastfrog.acteur.headers;
+
+import io.netty.handler.codec.http.Cookie;
+import io.netty.handler.codec.http.CookieDecoder;
+import io.netty.handler.codec.http.HttpHeaders;
+import io.netty.handler.codec.http.ServerCookieEncoder;
 
 /**
- * Enum of valid values for cache control
  *
  * @author Tim Boudreau
  */
-public enum CacheControlTypes {
-    Public, Private, must_revalidate, proxy_revalidate, no_cache, no_store, 
-    max_age(true), max_stale(true), min_fresh(true), 
-    no_transform, only_if_cached;
-    final boolean takesValue;
+final class SetCookieHeader extends AbstractHeader<Cookie> {
 
-    private CacheControlTypes(boolean takesValue) {
-        this.takesValue = takesValue;
-    }
-
-    CacheControlTypes() {
-        this(false);
+    SetCookieHeader() {
+        super(Cookie.class, HttpHeaders.Names.SET_COOKIE);
     }
 
     @Override
-    public String toString() {
-        char[] c = name().toLowerCase().toCharArray();
-        for (int i = 0; i < c.length; i++) {
-            if (c[i] == '_') {
-                c[i] = '-';
-            }
-        }
-        return new String(c);
+    public String toString(Cookie value) {
+        return ServerCookieEncoder.encode(value);
     }
 
-    public static CacheControlTypes find(String s) {
-        for (CacheControlTypes c : values()) {
-            if (s.startsWith(c.toString())) {
-                return c;
-            }
-        }
-        return null;
+    @Override
+    public Cookie toValue(String value) {
+        return CookieDecoder.decode(value).iterator().next();
     }
-    
+
 }

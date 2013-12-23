@@ -21,45 +21,48 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.mastfrog.acteur.util;
+package com.mastfrog.acteur.headers;
 
 /**
- * Enum of valid values for cache control
  *
  * @author Tim Boudreau
  */
-public enum CacheControlTypes {
-    Public, Private, must_revalidate, proxy_revalidate, no_cache, no_store, 
-    max_age(true), max_stale(true), min_fresh(true), 
-    no_transform, only_if_cached;
-    final boolean takesValue;
+abstract class AbstractHeader<T> implements HeaderValueType<T> {
+    private final Class<T> type;
+    private final String name;
 
-    private CacheControlTypes(boolean takesValue) {
-        this.takesValue = takesValue;
+    AbstractHeader(Class<T> type, String name) {
+        this.type = type;
+        this.name = name;
     }
 
-    CacheControlTypes() {
-        this(false);
+    @Override
+    public String name() {
+        return name;
+    }
+
+    @Override
+    public Class<T> type() {
+        return type;
     }
 
     @Override
     public String toString() {
-        char[] c = name().toLowerCase().toCharArray();
-        for (int i = 0; i < c.length; i++) {
-            if (c[i] == '_') {
-                c[i] = '-';
-            }
-        }
-        return new String(c);
+        return name;
     }
 
-    public static CacheControlTypes find(String s) {
-        for (CacheControlTypes c : values()) {
-            if (s.startsWith(c.toString())) {
-                return c;
-            }
-        }
-        return null;
+    @Override
+    public boolean equals(Object obj) {
+        return obj instanceof HeaderValueType<?> && ((HeaderValueType<?>) obj).type() == type() 
+                && ((HeaderValueType<?>) obj).name().equals(name());
     }
-    
+
+    @Override
+    public int hashCode() {
+        int hash = 7;
+        hash = 79 * hash + this.type.hashCode();
+        hash = 79 * hash + this.name.hashCode();
+        return hash;
+    }
+
 }

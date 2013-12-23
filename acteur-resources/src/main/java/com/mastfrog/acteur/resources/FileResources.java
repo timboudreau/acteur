@@ -34,7 +34,7 @@ import com.mastfrog.acteur.ResponseHeaders;
 import com.mastfrog.acteur.ResponseHeaders.ContentLengthProvider;
 import com.mastfrog.acteur.ResponseWriter;
 import com.mastfrog.acteur.util.CacheControlTypes;
-import com.mastfrog.acteur.util.Headers;
+import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.giulius.DeploymentMode;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.util.Checks;

@@ -21,45 +21,40 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.mastfrog.acteur.util;
+package com.mastfrog.acteur.headers;
+
+import io.netty.handler.codec.http.HttpHeaders;
 
 /**
- * Enum of valid values for cache control
  *
  * @author Tim Boudreau
  */
-public enum CacheControlTypes {
-    Public, Private, must_revalidate, proxy_revalidate, no_cache, no_store, 
-    max_age(true), max_stale(true), min_fresh(true), 
-    no_transform, only_if_cached;
-    final boolean takesValue;
+final class VaryHeader extends AbstractHeader<HeaderValueType[]> {
 
-    private CacheControlTypes(boolean takesValue) {
-        this.takesValue = takesValue;
-    }
-
-    CacheControlTypes() {
-        this(false);
+    VaryHeader() {
+        super(HeaderValueType[].class, HttpHeaders.Names.VARY);
     }
 
     @Override
-    public String toString() {
-        char[] c = name().toLowerCase().toCharArray();
-        for (int i = 0; i < c.length; i++) {
-            if (c[i] == '_') {
-                c[i] = '-';
+    public String toString(HeaderValueType[] value) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < value.length; i++) {
+            sb.append(value[i].name());
+            if (i != value.length - 1) {
+                sb.append(", ");
             }
         }
-        return new String(c);
+        return sb.toString();
     }
 
-    public static CacheControlTypes find(String s) {
-        for (CacheControlTypes c : values()) {
-            if (s.startsWith(c.toString())) {
-                return c;
-            }
+    @Override
+    public HeaderValueType<?>[] toValue(String value) {
+        String[] s = value.split(",");
+        HeaderValueType<?>[] result = new HeaderValueType<?>[s.length];
+        for (int i = 0; i < s.length; i++) {
+            result[i] = new StringHeader(s[i].trim());
         }
-        return null;
+        return result;
     }
-    
+
 }

@@ -25,8 +25,8 @@ package com.mastfrog.acteur;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.net.MediaType;
-import com.mastfrog.acteur.util.HeaderValueType;
-import com.mastfrog.acteur.util.Headers;
+import com.mastfrog.acteur.headers.HeaderValueType;
+import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.guicy.scope.ReentrantScope;
 import com.mastfrog.settings.Settings;
@@ -203,7 +203,7 @@ public abstract class Acteur {
         setState(new RespondWith(OK));
     }
 
-    private static final class ErrorActeur extends Acteur {
+    static final class ErrorActeur extends Acteur {
 
         ErrorActeur(Page page, Throwable t) {
             StringBuilder sb = new StringBuilder("Page " + page + " (" + page.getClass().getName() + " threw " + t.getMessage() + '\n');
@@ -456,7 +456,8 @@ public abstract class Acteur {
 
     /**
      * Set a ChannelFutureListener which will be called after headers are
-     * written. Prefer <code>setResponseWriter()</code> to this method unless
+     * written and flushed to the socket; 
+     * prefer <code>setResponseWriter()</code> to this method unless
      * you are not using chunked encoding and want to stream your response (in
      * which case, be sure to setChunked(false) or you will have encoding
      * errors).
@@ -467,10 +468,7 @@ public abstract class Acteur {
      *
      * @param <T> a type
      * @param type The type of listener
-     * @deprecated Prefer setResponseWriter(), which will be iteratively called
-     * back until it says its done
      */
-    @Deprecated
     protected final <T extends ChannelFutureListener> void setResponseBodyWriter(final Class<T> type) {
         final Page page = Page.get();
         final Dependencies deps = page.getApplication().getDependencies();
@@ -533,7 +531,8 @@ public abstract class Acteur {
 
     /**
      * Set a ChannelFutureListener which will be called after headers are
-     * written. Prefer <code>setResponseWriter()</code> to this method unless
+     * written and flushed to the socket; 
+     * prefer <code>setResponseWriter()</code> to this method unless
      * you are not using chunked encoding and want to stream your response (in
      * which case, be sure to setChunked(false) or you will have encoding
      * errors).

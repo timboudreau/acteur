@@ -23,14 +23,14 @@
  */
 package com.mastfrog.acteur.server;
 
-import com.mastfrog.acteur.util.Method;
+import com.mastfrog.acteur.headers.Method;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableSortedMap;
 import com.mastfrog.url.Path;
 import com.mastfrog.acteur.HttpEvent;
-import com.mastfrog.acteur.util.HeaderValueType;
-import com.mastfrog.acteur.util.Headers;
+import com.mastfrog.acteur.headers.HeaderValueType;
+import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.acteur.util.Connection;
 import com.mastfrog.util.Streams;
 import io.netty.buffer.ByteBuf;

@@ -30,9 +30,9 @@ import com.mastfrog.acteur.ResponseWriter.AbstractOutput;
 import com.mastfrog.acteur.ResponseWriter.Output;
 import com.mastfrog.acteur.ResponseWriter.Status;
 import com.mastfrog.acteur.server.ServerModule;
-import com.mastfrog.acteur.util.HeaderValueType;
-import com.mastfrog.acteur.util.Headers;
-import com.mastfrog.acteur.util.Method;
+import com.mastfrog.acteur.headers.HeaderValueType;
+import com.mastfrog.acteur.headers.Headers;
+import com.mastfrog.acteur.headers.Method;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.guicy.scope.ReentrantScope;
 import com.mastfrog.util.Checks;
@@ -128,12 +128,12 @@ final class ResponseImpl extends Response {
         modify();
         this.message = message;
     }
-    
+
     public void setDelay(Duration delay) {
         modify();
         this.delay = delay;
     }
-    
+
     public void setResponseCode(HttpResponseStatus status) {
         modify();
         this.status = status;
@@ -157,7 +157,7 @@ final class ResponseImpl extends Response {
         ExecutorService svc = deps.getInstance(key);
         setWriter(writer, charset, allocator, mapper, evt, svc);
     }
-    
+
     Duration getDelay() {
         return delay;
     }
@@ -404,7 +404,7 @@ final class ResponseImpl extends Response {
     static boolean isKeepAlive(Event<?> evt) {
         return evt instanceof HttpEvent ? ((HttpEvent) evt).isKeepAlive() : false;
     }
-    
+
     void setWriter(ResponseWriter w, Charset charset, ByteBufAllocator allocator, ObjectMapper mapper, Event<?> evt, ExecutorService svc) {
         setBodyWriter(new ResponseWriterListener(evt, w, charset, allocator,
                 mapper, chunked, !isKeepAlive(evt), svc));
@@ -487,9 +487,17 @@ final class ResponseImpl extends Response {
         }
     }
 
-    @Deprecated
+    /**
+     * Set a ChannelFutureListener which will be called after headers are
+     * written and flushed to the socket;
+     * prefer <code>setResponseWriter()</code> to this method unless
+     * you are not using chunked encoding and want to stream your response (in
+     * which case, be sure to setChunked(false) or you will have encoding
+     * errors).
+     *
+     * @param listener
+     */
     public void setBodyWriter(ChannelFutureListener listener) {
-//        modify();
         if (this.listener != null) {
             throw new IllegalStateException("Listener already set to " + this.listener);
         }
@@ -533,7 +541,7 @@ final class ResponseImpl extends Response {
             resp = new HackHttpResponse(getResponseCode(), this.status == NOT_MODIFIED ? false : chunked);
         }
         for (Entry<?> e : headers) {
-            // Remove things which cause problems for non-modified responses - 
+            // Remove things which cause problems for non-modified responses -
             // browsers will hold the connection open regardless
             if (this.status == NOT_MODIFIED) {
                 if (e.decorator == Headers.CONTENT_LENGTH) {

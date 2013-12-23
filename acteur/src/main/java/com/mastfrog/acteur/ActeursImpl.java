@@ -23,7 +23,7 @@
  */
 package com.mastfrog.acteur;
 
-import com.mastfrog.acteur.util.Headers;
+import com.mastfrog.acteur.headers.Headers;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import com.mastfrog.acteur.server.ServerModule;
@@ -33,6 +33,7 @@ import com.mastfrog.treadmill.Treadmill;
 import com.mastfrog.util.Checks;
 import com.mastfrog.util.collections.CollectionUtils;
 import com.mastfrog.util.collections.Converter;
+import com.mastfrog.util.thread.QuietAutoCloseable;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -134,13 +135,10 @@ public class ActeursImpl implements Acteurs {
         @Override
         public Callable<Object[]> convert(Acteur acteur) {
             Checks.notNull("Null acteur", acteur);
-            Page.set(page);
 //            System.out.println("Run acteur " + acteur + " for " + page);
-            try {
+//            try (QuietAutoCloseable ac = Page.set(page)){
                 return new ActeurCallable(page, acteur, response, lastState, !acteurs.hasNext());
-            } finally {
-                Page.clear();
-            }
+//            }
         }
 
         @Override
@@ -215,8 +213,7 @@ public class ActeursImpl implements Acteurs {
 //                System.out.println("ACTEUR " + acteur);
 //            }
             // Set the Page ThreadLocal, for things that will call Page.get()
-            Page.set(page);
-            try {
+            try (QuietAutoCloseable ac = Page.set(page)){
                 // Get the state
                 State state = acteur.getState();
                 // Null is not permitted - broken Acteur implementation didn't
@@ -256,9 +253,6 @@ public class ActeursImpl implements Acteurs {
                 response.merge(acteur.getResponse());
                 page.getApplication().internalOnError(e);
                 throw e;
-            } finally {
-                // Clear the current page ThreadLocal
-                Page.clear();
             }
         }
     }

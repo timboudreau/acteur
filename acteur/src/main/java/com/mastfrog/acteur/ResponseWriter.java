@@ -24,7 +24,7 @@
 package com.mastfrog.acteur;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.mastfrog.acteur.util.HeaderValueType;
+import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.util.Streams;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;

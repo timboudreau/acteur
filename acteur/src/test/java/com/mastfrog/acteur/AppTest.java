@@ -1,6 +1,6 @@
 package com.mastfrog.acteur;
 
-import com.mastfrog.acteur.util.Headers;
+import com.mastfrog.acteur.headers.Headers;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.net.MediaType;
 import io.netty.handler.codec.http.HttpHeaders;
@@ -21,7 +21,7 @@ import com.mastfrog.acteur.util.BasicCredentials;
 import com.mastfrog.acteur.util.CacheControl;
 import com.mastfrog.acteur.util.CacheControlTypes;
 import com.mastfrog.acteur.server.EventImpl;
-import com.mastfrog.acteur.util.Method;
+import com.mastfrog.acteur.headers.Method;
 import com.mastfrog.acteur.server.PathFactory;
 import com.mastfrog.acteur.server.ServerModule;
 import com.mastfrog.acteur.util.RequestID;

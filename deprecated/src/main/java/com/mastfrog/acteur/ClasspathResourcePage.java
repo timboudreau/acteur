@@ -23,7 +23,7 @@
  */
 package com.mastfrog.acteur;
 
-import com.mastfrog.acteur.util.Headers;
+import com.mastfrog.acteur.headers.Headers;
 import com.google.common.net.MediaType;
 import com.google.inject.Inject;
 import com.mastfrog.url.Path;
@@ -86,12 +86,12 @@ public abstract class ClasspathResourcePage extends Page implements ContentLengt
         getResponseHeaders().addVaryHeader(Headers.CONTENT_ENCODING);
 
         add(f.matchPath(patterns));
-        add(f.matchMethods(com.mastfrog.acteur.util.Method.GET, com.mastfrog.acteur.util.Method.HEAD));
+        add(f.matchMethods(com.mastfrog.acteur.headers.Method.GET, com.mastfrog.acteur.headers.Method.HEAD));
         add(HasStreamAction.class);
 
         add(f.sendNotModifiedIfETagHeaderMatches());
         add(f.sendNotModifiedIfIfModifiedSinceHeaderMatches());
-        if (event.getMethod() != com.mastfrog.acteur.util.Method.HEAD) {
+        if (event.getMethod() != com.mastfrog.acteur.headers.Method.HEAD) {
             add(WriteBodyActeur.class);
         } else {
             add(f.responseCode(HttpResponseStatus.OK));

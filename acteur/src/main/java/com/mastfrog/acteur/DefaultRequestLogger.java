@@ -23,7 +23,7 @@
  */
 package com.mastfrog.acteur;
 
-import com.mastfrog.acteur.util.Headers;
+import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.acteur.util.RequestID;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import org.joda.time.Duration;

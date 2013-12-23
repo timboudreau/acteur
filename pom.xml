@@ -20,5 +20,6 @@
         <module>acteur-resources</module>
         <module>acteur-mongo</module>
         <module>deprecated</module>
+        <module>acteur-headers</module>
     </modules>
 </project>

@@ -1,9 +1,9 @@
 package com.mastfrog.acteur.util;
 
-import com.google.inject.Provider;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.util.GUIDFactory;
 import javax.inject.Inject;
+import javax.inject.Provider;
 import javax.inject.Singleton;
 import org.joda.time.Duration;
 

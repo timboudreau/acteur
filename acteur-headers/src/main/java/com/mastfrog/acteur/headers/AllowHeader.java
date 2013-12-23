@@ -21,45 +21,47 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.mastfrog.acteur.util;
+package com.mastfrog.acteur.headers;
+
+import io.netty.handler.codec.http.HttpHeaders;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
- * Enum of valid values for cache control
  *
  * @author Tim Boudreau
  */
-public enum CacheControlTypes {
-    Public, Private, must_revalidate, proxy_revalidate, no_cache, no_store, 
-    max_age(true), max_stale(true), min_fresh(true), 
-    no_transform, only_if_cached;
-    final boolean takesValue;
+final class AllowHeader extends AbstractHeader<Method[]> {
 
-    private CacheControlTypes(boolean takesValue) {
-        this.takesValue = takesValue;
-    }
-
-    CacheControlTypes() {
-        this(false);
+    AllowHeader(boolean isAllowOrigin) {
+        super(Method[].class, isAllowOrigin ? "Access-Control-Allow-Methods" : HttpHeaders.Names.ALLOW);
     }
 
     @Override
-    public String toString() {
-        char[] c = name().toLowerCase().toCharArray();
-        for (int i = 0; i < c.length; i++) {
-            if (c[i] == '_') {
-                c[i] = '-';
+    public String toString(Method[] value) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < value.length; i++) {
+            sb.append(value[i].name());
+            if (i != value.length - 1) {
+                sb.append(", ");
             }
         }
-        return new String(c);
+        return sb.toString();
     }
 
-    public static CacheControlTypes find(String s) {
-        for (CacheControlTypes c : values()) {
-            if (s.startsWith(c.toString())) {
-                return c;
+    @Override
+    public Method[] toValue(String value) {
+        String[] s = value.split(",");
+        Method[] result = new Method[s.length];
+        for (int i = 0; i < s.length; i++) {
+            try {
+                result[i] = Method.valueOf(s[i]);
+            } catch (Exception e) {
+                Logger.getLogger(AllowHeader.class.getName()).log(Level.INFO, "Bad methods in allow header '" + value + "'", e);
+                return null;
             }
         }
-        return null;
+        return result;
     }
-    
+
 }

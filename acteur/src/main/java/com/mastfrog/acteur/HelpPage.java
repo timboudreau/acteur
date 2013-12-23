@@ -23,12 +23,12 @@
  */
 package com.mastfrog.acteur;
 
-import com.mastfrog.acteur.util.Headers;
+import com.mastfrog.acteur.headers.Headers;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.net.MediaType;
 import com.google.inject.Inject;
 import com.mastfrog.acteur.util.CacheControlTypes;
-import com.mastfrog.acteur.util.Method;
+import com.mastfrog.acteur.headers.Method;
 import com.mastfrog.settings.Settings;
 import java.io.IOException;
 import java.nio.charset.Charset;

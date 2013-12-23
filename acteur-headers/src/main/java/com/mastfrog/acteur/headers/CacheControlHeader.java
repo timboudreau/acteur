@@ -21,45 +21,29 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.mastfrog.acteur.util;
+package com.mastfrog.acteur.headers;
+
+import com.mastfrog.acteur.util.CacheControl;
+import io.netty.handler.codec.http.HttpHeaders;
 
 /**
- * Enum of valid values for cache control
  *
  * @author Tim Boudreau
  */
-public enum CacheControlTypes {
-    Public, Private, must_revalidate, proxy_revalidate, no_cache, no_store, 
-    max_age(true), max_stale(true), min_fresh(true), 
-    no_transform, only_if_cached;
-    final boolean takesValue;
+final class CacheControlHeader extends AbstractHeader<CacheControl> {
 
-    private CacheControlTypes(boolean takesValue) {
-        this.takesValue = takesValue;
-    }
-
-    CacheControlTypes() {
-        this(false);
+    CacheControlHeader() {
+        super(CacheControl.class, HttpHeaders.Names.CACHE_CONTROL);
     }
 
     @Override
-    public String toString() {
-        char[] c = name().toLowerCase().toCharArray();
-        for (int i = 0; i < c.length; i++) {
-            if (c[i] == '_') {
-                c[i] = '-';
-            }
-        }
-        return new String(c);
+    public String toString(CacheControl value) {
+        return value.toString();
     }
 
-    public static CacheControlTypes find(String s) {
-        for (CacheControlTypes c : values()) {
-            if (s.startsWith(c.toString())) {
-                return c;
-            }
-        }
-        return null;
+    @Override
+    public CacheControl toValue(String value) {
+        return CacheControl.fromString(value);
     }
-    
+
 }
