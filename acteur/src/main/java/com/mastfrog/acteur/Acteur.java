@@ -23,7 +23,6 @@
  */
 package com.mastfrog.acteur;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.net.MediaType;
 import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.acteur.headers.Headers;
@@ -31,6 +30,7 @@ import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.guicy.scope.ReentrantScope;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.util.Checks;
+import com.mastfrog.util.Codec;
 import com.mastfrog.util.Exceptions;
 import com.mastfrog.util.Invokable;
 import io.netty.channel.ChannelFuture;
@@ -245,16 +245,24 @@ public abstract class Acteur {
          */
         public RespondWith(HttpResponseStatus status, Object msg) {
             page = Page.get();
-            ObjectMapper mapper = page.getApplication().getDependencies().getInstance(ObjectMapper.class);
-            try {
-                String m = msg instanceof String ? msg.toString() : msg != null
-                        ? mapper.writeValueAsString(msg) + '\n' : null;
+            if (msg instanceof String) {
                 setResponseCode(status);
-                if (m != null) {
-                    setMessage(m);
+                setMessage((String) msg);
+            } else if (msg != null) {
+                if (page == null) {
+                    throw new IllegalStateException("No page set");
                 }
-            } catch (IOException ioe) {
-                Exceptions.chuck(ioe);
+                Codec mapper = page.getApplication().getDependencies().getInstance(Codec.class);
+                try {
+                    String m = msg instanceof String ? msg.toString() : msg != null
+                            ? mapper.writeValueAsString(msg) + '\n' : null;
+                    setResponseCode(status);
+                    if (m != null) {
+                        setMessage(m);
+                    }
+                } catch (IOException ioe) {
+                    Exceptions.chuck(ioe);
+                }
             }
         }
 
@@ -431,7 +439,7 @@ public abstract class Acteur {
      * object currently in scope can be injected into it.
      *
      * @param <T> The type of writer
-     * @param writer The writer
+     * @param writerType The writer class
      */
     protected <T extends ResponseWriter> void setResponseWriter(Class<T> writerType) {
         Page page = Page.get();

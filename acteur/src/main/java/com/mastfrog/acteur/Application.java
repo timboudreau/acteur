@@ -97,7 +97,7 @@ public class Application implements Iterable<Page> {
     private RequestLogger logger;
     @Inject
     private ReentrantScope scope;
-    private Exception stackTrace = new Exception();
+    private final Exception stackTrace = new Exception();
     @Inject
     private Pages runner;
     @Inject(optional = true)
@@ -463,37 +463,6 @@ public class Application implements Iterable<Page> {
     @Override
     public Iterator<Page> iterator() {
         return new InstantiatingIterators(deps).iterable(pages, Page.class).iterator();
-//        final Iterator<Object> it = pages.iterator();
-//        return new Iterator<Page>() {
-//            @Override
-//            public boolean hasNext() {
-//                return it.hasNext();
-//            }
-//
-//            @Override
-//            public Page next() {
-//                try {
-//                    Object o = it.next();
-//                    Page result;
-//                    if (o instanceof Class<?>) {
-//                        Class<? extends Page> clazz = (Class<? extends Page>) o;
-//                        result = deps.getInstance(clazz);
-//                    } else {
-//                        result = Page.class.cast(o);
-//                    }
-//                    result.setApplication(Application.this);
-//                    return result;
-//                } catch (Exception e) {
-//                    Application.this.internalOnError(e);
-//                    return Exceptions.chuck(e);
-//                }
-//            }
-//
-//            @Override
-//            public void remove() {
-//                throw new UnsupportedOperationException("Not supported");
-//            }
-//        };
     }
 
     protected void send404(RequestID id, Event<?> event, Channel channel) {

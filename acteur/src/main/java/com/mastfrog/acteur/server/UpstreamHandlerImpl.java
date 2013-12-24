@@ -23,22 +23,20 @@
  */
 package com.mastfrog.acteur.server;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.handler.codec.http.HttpHeaders;
-import io.netty.handler.codec.http.HttpRequest;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import com.mastfrog.acteur.Application;
 import static com.mastfrog.acteur.server.ServerModule.DECODE_REAL_IP;
 import com.mastfrog.settings.Settings;
+import com.mastfrog.util.Codec;
+import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.handler.codec.http.DefaultHttpResponse;
-import io.netty.handler.codec.http.FullHttpRequest;
+import io.netty.handler.codec.http.HttpHeaders;
+import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponse;
-
-import static io.netty.handler.codec.http.HttpResponseStatus.*;
-import static io.netty.handler.codec.http.HttpVersion.*;
+import static io.netty.handler.codec.http.HttpResponseStatus.CONTINUE;
+import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
 import io.netty.handler.codec.http.websocketx.WebSocketFrame;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
@@ -59,13 +57,13 @@ final class UpstreamHandlerImpl extends ChannelInboundHandlerAdapter {
     private @Inject(optional = true)
     @Named("aggregateChunks")
     boolean aggregateChunks = PipelineFactoryImpl.DEFAULT_AGGREGATE_CHUNKS;
-    private final ObjectMapper mapper;
+    private final Codec mapper;
     private final boolean decodeRealIP;
     @Inject
     private UnknownNetworkEventHandler uneh;
 
     @Inject
-    UpstreamHandlerImpl(Application application, PathFactory paths, ObjectMapper mapper, Settings settings) {
+    UpstreamHandlerImpl(Application application, PathFactory paths, Codec mapper, Settings settings) {
         this.application = application;
         this.paths = paths;
         this.mapper = mapper;
@@ -115,5 +113,4 @@ final class UpstreamHandlerImpl extends ChannelInboundHandlerAdapter {
         HttpResponse response = new DefaultHttpResponse(HTTP_1_1, CONTINUE);
         ctx.write(response);
     }
-
 }

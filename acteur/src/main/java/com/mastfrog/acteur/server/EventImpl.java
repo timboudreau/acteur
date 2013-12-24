@@ -23,22 +23,23 @@
  */
 package com.mastfrog.acteur.server;
 
-import com.mastfrog.acteur.headers.Method;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mastfrog.acteur.headers.Method;
 import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableSortedMap;
+import com.google.inject.util.Providers;
 import com.mastfrog.url.Path;
 import com.mastfrog.acteur.HttpEvent;
 import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.acteur.util.Connection;
+import com.mastfrog.util.Codec;
 import com.mastfrog.util.Streams;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.handler.codec.http.FullHttpRequest;
-import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.QueryStringDecoder;
 import java.io.ByteArrayOutputStream;
@@ -66,22 +67,22 @@ public final class EventImpl implements HttpEvent {
     private final SocketAddress address;
     private boolean neverKeepAlive = false;
     private final Channel channel;
-    private final ObjectMapper mapper;
+    private final Codec codec;
 
     public EventImpl(HttpRequest req, PathFactory paths) {
         this.req = req;
         this.paths = paths;
         address = new InetSocketAddress("timboudreau.com", 8985); //XXX for tests
         this.channel = null;
-        mapper = new ObjectMapper();
+        this.codec = new ServerModule.CodecImpl(Providers.of(new ObjectMapper()));
     }
 
-    public EventImpl(HttpRequest req, SocketAddress addr, Channel channel, PathFactory paths, ObjectMapper mapper) {
+    public EventImpl(HttpRequest req, SocketAddress addr, Channel channel, PathFactory paths, Codec codec) {
         this.req = req;
         this.paths = paths;
         address = addr;
         this.channel = channel;
-        this.mapper = mapper;
+        this.codec = codec;
     }
 
     @Override
@@ -131,10 +132,9 @@ public final class EventImpl implements HttpEvent {
             }
             return (T) result;
         }
-        ObjectMapper om = new ObjectMapper();
         ByteBuf content = getContent();
         try {
-            return om.readValue(new ByteBufInputStream(content), type);
+            return codec.readValue(new ByteBufInputStream(content), type);
         } finally {
             content.resetReaderIndex();
         }
@@ -167,15 +167,6 @@ public final class EventImpl implements HttpEvent {
     @Override
     public String getParameter(String param) {
         return getParametersAsMap().get(param);
-//        QueryStringDecoder queryStringDecoder = new QueryStringDecoder(req.getUri());
-//        Map<String, List<String>> params = queryStringDecoder.parameters();
-//        if (params != null && !params.isEmpty()) {
-//            List<String> p = params.get(param);
-//            if (p != null && !p.isEmpty()) {
-//                return p.iterator().next();
-//            }
-//        }
-//        return null;
     }
 
     @Override

@@ -23,13 +23,13 @@
  */
 package com.mastfrog.acteur;
 
-import com.mastfrog.acteur.headers.Headers;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.net.MediaType;
 import com.google.inject.Inject;
-import com.mastfrog.acteur.util.CacheControlTypes;
+import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.acteur.headers.Method;
+import com.mastfrog.acteur.util.CacheControlTypes;
 import com.mastfrog.settings.Settings;
+import com.mastfrog.util.Codec;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.Collections;
@@ -61,11 +61,11 @@ final class HelpPage extends Page {
 
         private final Application app;
         private final boolean html;
-        private final ObjectMapper mapper;
+        private final Codec mapper;
         private final Charset charset;
 
         @Inject
-        HelpActeur(Application app, HttpEvent evt, ObjectMapper mapper, Charset charset) {
+        HelpActeur(Application app, HttpEvent evt, Codec mapper, Charset charset) {
             this.app = app;
             this.charset = charset;
             this.html = "true".equals(evt.getParameter("html"));
@@ -87,11 +87,11 @@ final class HelpPage extends Page {
         }
 
         public static final class HelpWriter extends ResponseWriter {
-            private final ObjectMapper mapper;
+            private final Codec mapper;
             private final boolean html;
             private final Application app;
             @Inject
-            HelpWriter (ObjectMapper mapper, boolean html, Application app) {
+            HelpWriter (Codec mapper, boolean html, Application app) {
                 this.mapper = mapper;
                 this.html = html;
                 this.app = app;

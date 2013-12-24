@@ -23,6 +23,7 @@
  */
 package com.mastfrog.acteur.server;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 import com.google.inject.Module;
@@ -44,6 +45,7 @@ import com.mastfrog.acteur.Page;
 import com.mastfrog.acteur.util.BasicCredentials;
 import com.mastfrog.acteur.server.ServerModule.TF;
 import com.mastfrog.acteur.util.Server;
+import com.mastfrog.util.Codec;
 import com.mastfrog.util.ConfigurationError;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBufAllocator;
@@ -58,6 +60,8 @@ import io.netty.handler.codec.http.CookieDecoder;
 import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.util.CharsetUtil;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.lang.Thread.UncaughtExceptionHandler;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
@@ -253,6 +257,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
         bind(Charset.class).toProvider(CharsetProvider.class);
         bind(ByteBufAllocator.class).toProvider(ByteBufAllocatorProvider.class);
         bind(new ETL()).toProvider(EventProvider.class).in(scope);
+        bind(Codec.class).to(CodecImpl.class);
     }
     
     private static final class EventProvider implements Provider<Event<?>> {
@@ -274,6 +279,30 @@ public class ServerModule<A extends Application> extends AbstractModule {
     
     private static final class ETL extends TypeLiteral<Event<?>> {
         
+    }
+    
+    static class CodecImpl implements Codec {
+        private final Provider<ObjectMapper> mapper;
+
+        @Inject
+        public CodecImpl(Provider<ObjectMapper> mapper) {
+            this.mapper = mapper;
+        }
+
+        @Override
+        public <T> String writeValueAsString(T object) throws IOException {
+            return mapper.get().writeValueAsString(object);
+        }
+
+        @Override
+        public <T> byte[] writeValueAsBytes(T object, OutputStream out) throws IOException {
+            return mapper.get().writeValueAsBytes(out);
+        }
+
+        @Override
+        public <T> T readValue(InputStream byteBufInputStream, Class<T> type) throws IOException {
+            return mapper.get().readValue(byteBufInputStream, type);
+        }
     }
 
     @Singleton

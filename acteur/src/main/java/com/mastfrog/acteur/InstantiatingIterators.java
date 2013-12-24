@@ -49,13 +49,13 @@ final class InstantiatingIterators {
 
             @Override
             public Object unconvert(T r) {
-                throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+                return r;
             }
 
             @Override
             public T convert(Object t) {
                 if (t instanceof Class<?>) {
-                    return type.cast(deps.getInstance((Class<T>) t));
+                    return type.cast(deps.getInstance((Class<?>) t));
                 } else {
                     return type.cast(t);
                 }

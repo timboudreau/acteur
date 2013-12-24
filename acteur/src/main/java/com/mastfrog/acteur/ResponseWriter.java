@@ -23,8 +23,8 @@
  */
 package com.mastfrog.acteur;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mastfrog.acteur.headers.HeaderValueType;
+import com.mastfrog.util.Codec;
 import com.mastfrog.util.Streams;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
@@ -98,9 +98,9 @@ public abstract class ResponseWriter {
 
         private final Charset charset;
         private final ByteBufAllocator allocator;
-        private final ObjectMapper mapper;
+        private final Codec mapper;
 
-        protected AbstractOutput(Charset charset, ByteBufAllocator allocator, ObjectMapper mapper) {
+        protected AbstractOutput(Charset charset, ByteBufAllocator allocator, Codec mapper) {
             this.charset = charset;
             this.allocator = allocator;
             this.mapper = mapper;

@@ -120,7 +120,8 @@ public class ActeurFactory {
                             + event.getMethod() + " not allowed.  Accepted methods are "
                             + Headers.ALLOW.toString(methods) + " " + typeName + "\n");
                 }
-                return hasMethod ? new ConsumedState() : new RejectedState();
+                State result = hasMethod ? new ConsumedState() : new RejectedState();
+                return result;
             }
 
             @Override

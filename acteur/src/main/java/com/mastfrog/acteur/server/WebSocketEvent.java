@@ -1,7 +1,7 @@
 package com.mastfrog.acteur.server;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mastfrog.acteur.Event;
+import com.mastfrog.util.Codec;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;
 import io.netty.channel.Channel;
@@ -16,19 +16,19 @@ import java.net.SocketAddress;
  * @author Tim Boudreau
  */
 final class WebSocketEvent implements Event<WebSocketFrame> {
-    
+
     private final WebSocketFrame frame;
     private final Channel channel;
     private final SocketAddress addr;
-    private final ObjectMapper mapper;
+    private final Codec mapper;
 
-    public WebSocketEvent(WebSocketFrame frame, Channel channel, SocketAddress addr, ObjectMapper mapper) {
+    public WebSocketEvent(WebSocketFrame frame, Channel channel, SocketAddress addr, Codec mapper) {
         this.frame = frame;
         this.channel = channel;
         this.addr = addr;
         this.mapper = mapper;
     }
-    
+
     @Override
     public Channel getChannel() {
         return channel;

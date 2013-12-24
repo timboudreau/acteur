@@ -23,19 +23,19 @@
  */
 package com.mastfrog.acteur;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.inject.Key;
 import com.google.inject.name.Names;
 import com.mastfrog.acteur.ResponseWriter.AbstractOutput;
 import com.mastfrog.acteur.ResponseWriter.Output;
 import com.mastfrog.acteur.ResponseWriter.Status;
-import com.mastfrog.acteur.server.ServerModule;
 import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.acteur.headers.Method;
+import com.mastfrog.acteur.server.ServerModule;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.guicy.scope.ReentrantScope;
 import com.mastfrog.util.Checks;
+import com.mastfrog.util.Codec;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.Unpooled;
@@ -151,7 +151,7 @@ final class ResponseImpl extends Response {
         HttpEvent evt = deps.getInstance(HttpEvent.class);
         Charset charset = deps.getInstance(Charset.class);
         ByteBufAllocator allocator = deps.getInstance(ByteBufAllocator.class);
-        ObjectMapper mapper = deps.getInstance(ObjectMapper.class);
+        Codec mapper = deps.getInstance(Codec.class);
         Key<ExecutorService> key = Key.get(ExecutorService.class,
                 Names.named(ServerModule.BACKGROUND_THREAD_POOL_NAME));
         ExecutorService svc = deps.getInstance(key);
@@ -351,7 +351,7 @@ final class ResponseImpl extends Response {
 //        setChunked(true);
         Charset charset = deps.getInstance(Charset.class);
         ByteBufAllocator allocator = deps.getInstance(ByteBufAllocator.class);
-        ObjectMapper mapper = deps.getInstance(ObjectMapper.class);
+        Codec mapper = deps.getInstance(Codec.class);
         Key<ExecutorService> key = Key.get(ExecutorService.class, Names.named(ServerModule.BACKGROUND_THREAD_POOL_NAME));
         ExecutorService svc = deps.getInstance(key);
         setWriter(w, charset, allocator, mapper, evt, svc);
@@ -363,7 +363,7 @@ final class ResponseImpl extends Response {
         ByteBufAllocator allocator = deps.getInstance(ByteBufAllocator.class);
         Key<ExecutorService> key = Key.get(ExecutorService.class, Names.named(ServerModule.BACKGROUND_THREAD_POOL_NAME));
         ExecutorService svc = deps.getInstance(key);
-        ObjectMapper mapper = deps.getInstance(ObjectMapper.class);
+        Codec mapper = deps.getInstance(Codec.class);
         setWriter(new DynResponseWriter(w, deps), charset, allocator, mapper, evt, svc);
     }
 
@@ -405,7 +405,7 @@ final class ResponseImpl extends Response {
         return evt instanceof HttpEvent ? ((HttpEvent) evt).isKeepAlive() : false;
     }
 
-    void setWriter(ResponseWriter w, Charset charset, ByteBufAllocator allocator, ObjectMapper mapper, Event<?> evt, ExecutorService svc) {
+    void setWriter(ResponseWriter w, Charset charset, ByteBufAllocator allocator, Codec mapper, Event<?> evt, ExecutorService svc) {
         setBodyWriter(new ResponseWriterListener(evt, w, charset, allocator,
                 mapper, chunked, !isKeepAlive(evt), svc));
     }
@@ -420,7 +420,9 @@ final class ResponseImpl extends Response {
         private final Event<?> evt;
         private final ExecutorService svc;
 
-        public ResponseWriterListener(Event<?> evt, ResponseWriter writer, Charset charset, ByteBufAllocator allocator, ObjectMapper mapper, boolean chunked, boolean shouldClose, ExecutorService svc) {
+        public ResponseWriterListener(Event<?> evt, ResponseWriter writer, Charset charset, 
+                ByteBufAllocator allocator, Codec mapper, boolean chunked, 
+                boolean shouldClose, ExecutorService svc) {
             super(charset, allocator, mapper);
             this.chunked = chunked;
             this.writer = writer;
@@ -508,7 +510,7 @@ final class ResponseImpl extends Response {
         return message;
     }
 
-    public boolean canHaveBody(HttpResponseStatus status) {
+    final boolean canHaveBody(HttpResponseStatus status) {
         switch (status.code()) {
             case 204:
             case 205:
