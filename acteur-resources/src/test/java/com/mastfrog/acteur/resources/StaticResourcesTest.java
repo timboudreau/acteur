@@ -38,16 +38,16 @@ public class StaticResourcesTest {
         helloLastModified = har.get("static/hello.txt").go()
                 .assertHasContent()
                 .assertStatus(OK)
-                .assertHasHeader(Headers.LAST_MODIFIED.name())
-                .assertHasHeader(Headers.ETAG.name())
+                .assertHasHeader(Headers.LAST_MODIFIED.name().toString())
+                .assertHasHeader(Headers.ETAG.name().toString())
                 .assertContent(HELLO_CONTENT)
                 .getHeader(Headers.LAST_MODIFIED);
 
         DateTime helloLastModified2 = har.get("static/hello.txt").go()
                 .assertHasContent()
                 .assertStatus(OK)
-                .assertHasHeader(Headers.LAST_MODIFIED.name())
-                .assertHasHeader(Headers.ETAG.name())
+                .assertHasHeader(Headers.LAST_MODIFIED.name().toString())
+                .assertHasHeader(Headers.ETAG.name().toString())
                 .assertContent(HELLO_CONTENT)
                 .getHeader(Headers.LAST_MODIFIED);
 
@@ -55,8 +55,8 @@ public class StaticResourcesTest {
                 .await()
                 .assertStatus(OK)
                 .assertHasContent()
-                .assertHasHeader(Headers.LAST_MODIFIED.name())
-                .assertHasHeader(Headers.ETAG.name())
+                .assertHasHeader(Headers.LAST_MODIFIED.name().toString())
+                .assertHasHeader(Headers.ETAG.name().toString())
                 .assertContent("This is another file.  It has some data in it.\n")
                 .getHeader(Headers.LAST_MODIFIED);
 
@@ -91,8 +91,8 @@ public class StaticResourcesTest {
                     .assertStateSeen(Closed)
                     .assertHasContent()
                     .assertStatus(OK)
-                    .assertHasHeader(Headers.LAST_MODIFIED.name())
-                    .assertHasHeader(Headers.ETAG.name())
+                    .assertHasHeader(Headers.LAST_MODIFIED.name().toString())
+                    .assertHasHeader(Headers.ETAG.name().toString())
                     .assertContent(ResourcesApp.stuff)
                     .getHeader(Headers.LAST_MODIFIED);
 

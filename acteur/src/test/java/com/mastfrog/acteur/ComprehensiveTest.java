@@ -21,7 +21,6 @@ import org.junit.runner.RunWith;
 public class ComprehensiveTest {
     @Test
     public void testGets(TestHarness harness) throws Exception, Throwable {
-        System.out.println("testGets");
         harness.get("iter").log().addQueryPair("iters", "5").setTimeout(Duration.standardSeconds(30)).go()
                 .assertContent(iter("Iteration", 5))
                 .assertCode(200)
@@ -33,11 +32,11 @@ public class ComprehensiveTest {
                 .assertContent(iter("Hello", 7))
                 .throwIfError();
 
-        harness.post("echo").log().setBody("Echo this back to me", PLAIN_TEXT_UTF_8)
-                .setTimeout(standardMinutes(1)).go()
-                .throwIfError()
-                .assertStatus(OK)
-                .assertContent("Echo this back to me");
+//        harness.post("echo").log().setBody("Echo this back to me", PLAIN_TEXT_UTF_8)
+//                .setTimeout(standardMinutes(1)).go()
+//                .throwIfError()
+//                .assertStatus(OK)
+//                .assertContent("Echo this back to me");
 
         harness.get("deferred").log().setTimeout(Duration.standardSeconds(10)).go()
                 .throwIfError()
