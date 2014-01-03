@@ -177,12 +177,12 @@ final class ResponseImpl extends Response {
         }
 
         @Override
-        public String get(String name) {
+        public String get(CharSequence name) {
             return orig.get(name);
         }
 
         @Override
-        public List<String> getAll(String name) {
+        public List<String> getAll(CharSequence name) {
             return orig.getAll(name);
         }
 
@@ -192,7 +192,7 @@ final class ResponseImpl extends Response {
         }
 
         @Override
-        public boolean contains(String name) {
+        public boolean contains(CharSequence name) {
             return orig.contains(name);
         }
 
@@ -207,7 +207,7 @@ final class ResponseImpl extends Response {
         }
 
         @Override
-        public HttpHeaders add(String name, Object value) {
+        public HttpHeaders add(CharSequence name, Object value) {
             if (Names.TRANSFER_ENCODING.equals(name)) {
                 return this;
             }
@@ -215,7 +215,7 @@ final class ResponseImpl extends Response {
         }
 
         @Override
-        public HttpHeaders add(String name, Iterable<?> values) {
+        public HttpHeaders add(CharSequence name, Iterable<?> values) {
             if (Names.TRANSFER_ENCODING.equals(name)) {
                 return this;
             }
@@ -227,7 +227,7 @@ final class ResponseImpl extends Response {
         }
 
         @Override
-        public HttpHeaders set(String name, Object value) {
+        public HttpHeaders set(CharSequence name, Object value) {
             if (Names.TRANSFER_ENCODING.equals(name)) {
                 return this;
             }
@@ -243,7 +243,7 @@ final class ResponseImpl extends Response {
         }
 
         @Override
-        public HttpHeaders set(String name, Iterable<?> values) {
+        public HttpHeaders set(CharSequence name, Iterable<?> values) {
             if (Names.TRANSFER_ENCODING.equals(name)) {
                 return this;
             }
@@ -259,7 +259,7 @@ final class ResponseImpl extends Response {
         }
 
         @Override
-        public HttpHeaders remove(String name) {
+        public HttpHeaders remove(CharSequence name) {
             if (Names.TRANSFER_ENCODING.equals(name)) {
                 return this;
             }
@@ -581,7 +581,6 @@ final class ResponseImpl extends Response {
 
         Entry(HeaderValueType<T> decorator, T value) {
             Checks.notNull("decorator", decorator);
-            Checks.notNull(decorator.name(), value);
 //            assert value == null || decorator.type().isInstance(value) :
 //                    value + " of type " + value.getClass() + " is not a " + decorator.type();
             this.decorator = decorator;

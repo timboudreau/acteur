@@ -29,15 +29,15 @@ package com.mastfrog.acteur.headers;
  */
 abstract class AbstractHeader<T> implements HeaderValueType<T> {
     private final Class<T> type;
-    private final String name;
+    private final CharSequence name;
 
-    AbstractHeader(Class<T> type, String name) {
+    AbstractHeader(Class<T> type, CharSequence name) {
         this.type = type;
         this.name = name;
     }
 
     @Override
-    public String name() {
+    public CharSequence name() {
         return name;
     }
 
@@ -48,7 +48,7 @@ abstract class AbstractHeader<T> implements HeaderValueType<T> {
 
     @Override
     public String toString() {
-        return name;
+        return name.toString();
     }
 
     @Override

@@ -42,7 +42,7 @@ public interface HeaderValueType<T> {
      * The header name as it should appear in HTTP headers
      * @return The name
      */
-    public String name();
+    public CharSequence name();
 
     /**
      * Convert an object to a String suitable for inclusion in headers.

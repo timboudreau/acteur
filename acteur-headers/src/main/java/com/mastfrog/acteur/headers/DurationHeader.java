@@ -33,7 +33,7 @@ import org.joda.time.Duration;
  */
 final class DurationHeader extends AbstractHeader<Duration> {
 
-    DurationHeader(String name) {
+    DurationHeader(CharSequence name) {
         super(Duration.class, name);
     }
 

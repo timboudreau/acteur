@@ -31,7 +31,7 @@ import java.util.Locale;
  */
 class LocaleHeader extends AbstractHeader<Locale> {
 
-    LocaleHeader(String name) {
+    LocaleHeader(CharSequence name) {
         super(Locale.class, name);
     }
 

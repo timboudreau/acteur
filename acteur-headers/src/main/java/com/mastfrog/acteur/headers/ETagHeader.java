@@ -29,7 +29,7 @@ package com.mastfrog.acteur.headers;
  */
 class ETagHeader extends AbstractHeader<String> {
 
-    ETagHeader(String name) {
+    ETagHeader(CharSequence name) {
         super(String.class, name);
     }
 

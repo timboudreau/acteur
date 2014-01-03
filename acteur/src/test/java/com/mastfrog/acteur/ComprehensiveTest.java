@@ -8,6 +8,7 @@ import com.mastfrog.netty.http.test.harness.TestHarness;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import static io.netty.handler.codec.http.HttpResponseStatus.OK;
 import org.joda.time.Duration;
+import static org.joda.time.Duration.standardMinutes;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -21,19 +22,19 @@ public class ComprehensiveTest {
     @Test
     public void testGets(TestHarness harness) throws Exception, Throwable {
         System.out.println("testGets");
-//        harness.get("iter").log().addQueryPair("iters", "5").setTimeout(Duration.standardSeconds(30)).go()
-//                .assertContent(iter("Iteration", 5))
-//                .assertCode(200)
-//                .throwIfError();
-//
-//        harness.get("iter").log().addQueryPair("iters", "7")
-//                .addQueryPair("msg", "Hello ").setTimeout(Duration.standardSeconds(30)).go()
-//                .assertCode(200)
-//                .assertContent(iter("Hello", 7))
-//                .throwIfError();
+        harness.get("iter").log().addQueryPair("iters", "5").setTimeout(Duration.standardSeconds(30)).go()
+                .assertContent(iter("Iteration", 5))
+                .assertCode(200)
+                .throwIfError();
+
+        harness.get("iter").log().addQueryPair("iters", "7")
+                .addQueryPair("msg", "Hello ").setTimeout(Duration.standardSeconds(30)).go()
+                .assertCode(200)
+                .assertContent(iter("Hello", 7))
+                .throwIfError();
 
         harness.post("echo").log().setBody("Echo this back to me", PLAIN_TEXT_UTF_8)
-                .setTimeout(Duration.standardSeconds(30)).go()
+                .setTimeout(standardMinutes(1)).go()
                 .throwIfError()
                 .assertStatus(OK)
                 .assertContent("Echo this back to me");

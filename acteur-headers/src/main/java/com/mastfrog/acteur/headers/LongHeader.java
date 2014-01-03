@@ -29,7 +29,7 @@ package com.mastfrog.acteur.headers;
  */
 class LongHeader extends AbstractHeader<Long> {
 
-    LongHeader(String name) {
+    LongHeader(CharSequence name) {
         super(Long.TYPE, name);
     }
 

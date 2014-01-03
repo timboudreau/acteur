@@ -160,7 +160,7 @@ public final class EventImpl implements HttpEvent {
     }
 
     @Override
-    public String getHeader(String nm) {
+    public String getHeader(CharSequence nm) {
         return req.headers().get(nm);
     }
 

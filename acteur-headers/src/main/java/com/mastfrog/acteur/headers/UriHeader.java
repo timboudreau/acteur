@@ -34,7 +34,7 @@ import java.util.logging.Logger;
  */
 final class UriHeader extends AbstractHeader<URI> {
 
-    UriHeader(String name) {
+    UriHeader(CharSequence name) {
         super(URI.class, name);
     }
 

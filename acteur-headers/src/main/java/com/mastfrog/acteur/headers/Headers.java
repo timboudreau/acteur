@@ -97,7 +97,7 @@ public final class Headers {
     public static final HeaderValueType<String> REFERRER = stringHeader(HttpHeaders.Names.REFERER);
     public static final HeaderValueType<String> TRANSFER_ENCODING = stringHeader(HttpHeaders.Names.TRANSFER_ENCODING);
 
-    public static HeaderValueType<String> stringHeader(String key) {
+    public static HeaderValueType<String> stringHeader(CharSequence key) {
         return new StringHeader(key);
     }
 

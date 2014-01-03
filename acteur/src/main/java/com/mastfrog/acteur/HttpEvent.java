@@ -49,7 +49,7 @@ public interface HttpEvent extends Event<HttpRequest> {
      * @param nm The header name
      * @return The header
      */
-    String getHeader(String nm);
+    String getHeader(CharSequence nm);
 
     /**
      * Get a single request parameter

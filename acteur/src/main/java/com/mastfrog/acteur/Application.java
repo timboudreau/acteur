@@ -182,7 +182,7 @@ public class Application implements Iterable<Page> {
         }
 
         @Override
-        public String getHeader(String nm) {
+        public String getHeader(CharSequence nm) {
             return null;
         }
 

@@ -30,7 +30,7 @@ package com.mastfrog.acteur.headers;
 //class HostHeader extends AbstractHeader<Host> {
 class HostHeader extends AbstractHeader<String> {
 
-    HostHeader(String name) {
+    HostHeader(CharSequence name) {
         super(String.class, name);
     }
 
