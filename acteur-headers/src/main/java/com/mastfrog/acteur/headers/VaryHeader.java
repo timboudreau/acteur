@@ -32,7 +32,7 @@ import io.netty.handler.codec.http.HttpHeaders;
 final class VaryHeader extends AbstractHeader<HeaderValueType[]> {
 
     VaryHeader() {
-        super(HeaderValueType[].class, HttpHeaders.Names.VARY);
+        super(HeaderValueType[].class, HttpHeaders.Names.VARY.toString());
     }
 
     @Override

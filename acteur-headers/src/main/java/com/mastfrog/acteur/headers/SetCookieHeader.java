@@ -35,7 +35,7 @@ import io.netty.handler.codec.http.ServerCookieEncoder;
 final class SetCookieHeader extends AbstractHeader<Cookie> {
 
     SetCookieHeader() {
-        super(Cookie.class, HttpHeaders.Names.SET_COOKIE);
+        super(Cookie.class, HttpHeaders.Names.SET_COOKIE.toString());
     }
 
     @Override
