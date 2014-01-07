@@ -239,7 +239,6 @@ public class ActeursImpl implements Acteurs {
 //                if (!done || isLast) {
                   response.merge(acteur.getResponse());
 //                }
-                System.out.println("DONE? " + done + " CODE " + acteur.getResponse().getResponseCode());
                 
                 // If the state is rejected, return null - we're done processing
                 // in this Treadmill
