@@ -5,8 +5,6 @@ import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.mastfrog.acteur.HttpEvent;
 import com.mastfrog.settings.Settings;
-import java.net.InetSocketAddress;
-import java.net.SocketAddress;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -25,8 +23,8 @@ import org.joda.time.Duration;
 @Singleton
 final class TarpitImpl implements Tarpit {
 
-    private Map<String, Entry> map = Maps.newConcurrentMap();
-    private Duration timeToExpiration;
+    private final Map<String, Entry> map = Maps.newConcurrentMap();
+    private final Duration timeToExpiration;
     private final TarpitCacheKeyFactory keyFactory;
 
     @Inject
@@ -46,12 +44,11 @@ final class TarpitImpl implements Tarpit {
     public int count(HttpEvent evt) {
         Entry e = map.get(keyFactory.createKey(evt));
         int result = e == null ? 0 : e.size();
-        System.out.println("Count " + result);
         return result;
     }
 
     int garbageCollect() {
-        Map<String, Entry> copy = new HashMap<String, Entry>(map);
+        Map<String, Entry> copy = new HashMap<>(map);
         int result = 0;
         for (Map.Entry<String, Entry> e : copy.entrySet()) {
             if (e.getValue().isExpired()) {
@@ -66,11 +63,9 @@ final class TarpitImpl implements Tarpit {
     public int add(HttpEvent evt) {
         String remoteAddress = keyFactory.createKey(evt);
         Entry entry = map.get(remoteAddress);
-        System.out.println("Add entry " + remoteAddress + " cache " + map);
         if (entry == null) {
             // still need atomicity for adding
             synchronized (map) {
-                System.out.println("Add " + remoteAddress);
                 entry = map.get(remoteAddress);
                 if (entry == null) {
                     entry = new Entry();
@@ -115,6 +110,7 @@ final class TarpitImpl implements Tarpit {
             return accesses.isEmpty();
         }
         
+        @Override
         public String toString() {
             return accesses.toString() + " expired " + isExpired();
         }
