@@ -23,7 +23,6 @@
  */
 package com.mastfrog.acteur;
 
-import com.google.common.net.MediaType;
 import com.google.inject.ImplementedBy;
 import com.mastfrog.acteur.util.CacheControl;
 import com.mastfrog.acteur.headers.HeaderValueType;
@@ -33,17 +32,14 @@ import com.mastfrog.guicy.scope.ReentrantScope;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.util.Exceptions;
 import com.mastfrog.util.thread.QuietAutoCloseable;
-import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpResponse;
 import java.lang.reflect.Modifier;
-import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import org.joda.time.DateTime;
