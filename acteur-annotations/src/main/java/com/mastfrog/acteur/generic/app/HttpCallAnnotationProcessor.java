@@ -26,13 +26,17 @@ package com.mastfrog.acteur.generic.app;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.Completion;
 import javax.annotation.processing.FilerException;
@@ -43,10 +47,13 @@ import javax.annotation.processing.SupportedAnnotationTypes;
 import javax.annotation.processing.SupportedSourceVersion;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.AnnotationMirror;
+import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
+import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
-import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import javax.tools.Diagnostic;
@@ -85,6 +92,84 @@ public class HttpCallAnnotationProcessor extends AbstractProcessor {
         return types.isSubtype(e.asType(), sceneType.asType());
     }
 
+    private AnnotationMirror findMirror(Element el) {
+        for (AnnotationMirror mir : el.getAnnotationMirrors()) {
+            TypeMirror type = mir.getAnnotationType().asElement().asType();
+            if (HttpCall.class.getName().equals(type.toString())) {
+                return mir;
+            }
+        }
+        return null;
+    }
+
+    private String canonicalize(TypeMirror tm, Types types) {
+        TypeElement e = (TypeElement) types.asElement(tm);
+        StringBuilder nm = new StringBuilder(e.getQualifiedName().toString());
+        Element enc = e.getEnclosingElement();
+        while (enc != null && enc.getKind() != ElementKind.PACKAGE) {
+            int ix = nm.lastIndexOf(".");
+            if (ix > 0) {
+                nm.setCharAt(ix, '$');
+            }
+            enc = enc.getEnclosingElement();
+        }
+        return nm.toString();
+    }    
+    
+    private static String types(Object o) { //debug stuff
+        List<String> s = new ArrayList<String>();
+        Class<?> x = o.getClass();
+        while (x != Object.class) {
+            s.add(x.getName());
+            for (Class<?> c : x.getInterfaces()) {
+                s.add(c.getName());
+            }
+            x = x.getSuperclass();
+        }
+        StringBuilder sb = new StringBuilder();
+        for (String ss : s) {
+            sb.append(ss);
+            sb.append(", ");
+        }
+        return sb.toString();
+    }
+
+    private List<String> bindingTypes(Element el) {
+        AnnotationMirror mirror = findMirror(el);
+        List<String> result = new ArrayList<>();
+        if (mirror != null) {
+            for (Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> x : mirror.getElementValues().entrySet()) {
+                String annoParam = x.getKey().getSimpleName().toString();
+                if ("scopeTypes".equals(annoParam)) {
+                    if (x.getValue().getValue() instanceof List) {
+                        List<?> list = (List<?>) x.getValue().getValue();
+                        for (Object o : list) {
+                            if (o instanceof AnnotationValue) {
+                                AnnotationValue av = (AnnotationValue) o;
+                                if (av.getValue() instanceof DeclaredType) {
+                                    DeclaredType dt = (DeclaredType) av.getValue();
+                                    // Convert e.g. mypackage.Foo.Bar.Baz to mypackage.Foo$Bar$Baz
+                                    String canonical = canonicalize(dt.asElement().asType(), env.getTypeUtils());
+                                    result.add(canonical);
+                                } else {
+                                    env.getMessager().printMessage(Diagnostic.Kind.WARNING,
+                                            "Not a declared type: " + av + " on " + el.asType());
+                                }
+                            } else {
+                                env.getMessager().printMessage(Diagnostic.Kind.WARNING,
+                                        "Annotation value for scopeTypes is not an AnnotationValue " + el.asType());
+                            }
+                        }
+                    } else {
+                        env.getMessager().printMessage(Diagnostic.Kind.WARNING,
+                                "Annotation value for scopeTypes is not a list on " + el.asType());
+                    }
+                }
+            }
+        }
+        return result;
+    }
+
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
         if (roundEnv.processingOver()) {
@@ -108,6 +193,18 @@ public class HttpCallAnnotationProcessor extends AbstractProcessor {
                     lines.append('\n');
                 }
                 lines.append(e.asType()).append(":").append(anno.order());
+                List<String> bindingTypes = bindingTypes(e);
+                if (!bindingTypes.isEmpty()) {
+                    lines.append('{');
+                    for (Iterator<String> it = bindingTypes.iterator(); it.hasNext();) {
+                        lines.append(it.next());
+                        if (it.hasNext()) {
+                            lines.append(',');
+                        } else {
+                            lines.append('}');
+                        }
+                    }
+                }
             }
             if (lines.length() > 0) {
                 if (!elements.isEmpty()) {

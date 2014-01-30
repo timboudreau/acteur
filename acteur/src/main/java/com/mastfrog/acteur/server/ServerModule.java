@@ -162,8 +162,8 @@ public class ServerModule<A extends Application> extends AbstractModule {
      * address.
      */
     public static final String DECODE_REAL_IP = "decodeRealIP";
-    private final Class<A> appType;
-    private final ReentrantScope scope = new ReentrantScope();
+    protected final Class<A> appType;
+    protected final ReentrantScope scope = new ReentrantScope();
     private final int eventThreads;
     private final int workerThreads;
     private final int backgroundThreads;

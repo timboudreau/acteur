@@ -14,4 +14,5 @@ import java.lang.annotation.Target;
 public @interface HttpCall {
     public static final String META_INF_PATH = "META-INF/http/pages.list";
     int order() default 0;
+    Class<?>[] scopeTypes() default {};
 }
