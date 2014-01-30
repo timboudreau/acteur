@@ -18,11 +18,18 @@ import java.util.Set;
 public class GenericApplication extends Application {
 
     public GenericApplication() {
+        // Even though the varags version is semantically identical, Guice will
+        // attempt to inject a Class[] into it and fail
+        this(new Class<?>[0]);
+    }
+    
+    public GenericApplication(Class<?>... excludePages) {
+        Set<Class<?>> excluded = new HashSet<>(Arrays.asList(excludePages));
         ImplicitBindings implicit = getClass().getAnnotation(ImplicitBindings.class);
         Set<Class<?>> alreadyBound = implicit == null ? Collections.<Class<?>>emptySet()
                 : new HashSet<>(Arrays.asList(implicit.value()));
         for (Class<? extends Page> pageType : new HttpCallRegistryLoader(getClass())) {
-            if (!alreadyBound.contains(pageType)) {
+            if (!alreadyBound.contains(pageType) && !excluded.contains(pageType)) {
                 add(pageType);
             }
         }

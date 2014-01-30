@@ -20,10 +20,6 @@ import org.junit.Test;
  */
 public class GenericApplicationTest {
     
-    static class GA extends GenericApplication {
-        
-    }
-    
     @Test
     public void testRegistry() {
         HttpCallRegistryLoader ldr = new HttpCallRegistryLoader(GenericApplicationTest.class);
@@ -35,7 +31,7 @@ public class GenericApplicationTest {
 
     @Test
     public void testRegistration() throws IOException {
-        Dependencies deps = Dependencies.builder().add(new GenericApplicationModule(GA.class)).add(SettingsBuilder.createDefault().build(), Namespace.DEFAULT).build();
+        Dependencies deps = Dependencies.builder().add(new GenericApplicationModule()).add(SettingsBuilder.createDefault().build(), Namespace.DEFAULT).build();
         GenericApplication app = deps.getInstance(GenericApplication.class);
         int ix = 0;
         for (Page p : app) {
