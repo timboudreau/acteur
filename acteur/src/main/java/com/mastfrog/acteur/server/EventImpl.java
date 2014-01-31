@@ -24,15 +24,15 @@
 package com.mastfrog.acteur.server;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.mastfrog.acteur.headers.Method;
 import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableSortedMap;
 import com.google.inject.util.Providers;
-import com.mastfrog.url.Path;
 import com.mastfrog.acteur.HttpEvent;
 import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.acteur.headers.Headers;
+import com.mastfrog.acteur.headers.Method;
 import com.mastfrog.acteur.util.Connection;
+import com.mastfrog.url.Path;
 import com.mastfrog.util.Codec;
 import com.mastfrog.util.Streams;
 import io.netty.buffer.ByteBuf;
@@ -60,7 +60,7 @@ import org.joda.time.Duration;
  *
  * @author Tim Boudreau
  */
-public final class EventImpl implements HttpEvent {
+final class EventImpl implements HttpEvent {
 
     private final HttpRequest req;
     private final PathFactory paths;

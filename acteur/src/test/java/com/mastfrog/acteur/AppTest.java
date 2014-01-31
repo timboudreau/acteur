@@ -19,8 +19,8 @@ import com.mastfrog.acteur.AppTest.M;
 import com.mastfrog.acteur.util.BasicCredentials;
 import com.mastfrog.acteur.util.CacheControl;
 import com.mastfrog.acteur.util.CacheControlTypes;
-import com.mastfrog.acteur.server.EventImpl;
 import com.mastfrog.acteur.headers.Method;
+import com.mastfrog.acteur.server.EventImplFactory;
 import com.mastfrog.acteur.server.PathFactory;
 import com.mastfrog.acteur.server.ServerModule;
 import com.mastfrog.acteur.util.RequestID;
@@ -94,7 +94,7 @@ public class AppTest {
             page.setApplication(app);
             ActeursImpl ai = (ActeursImpl) page.getActeurs(Executors.newSingleThreadExecutor(), scope);
 
-            EventImpl event = createEvent(paths);
+            Event event = createEvent(paths);
 
             R r = new R();
 
@@ -191,7 +191,7 @@ public class AppTest {
         }
     }
 
-    private EventImpl createEvent(PathFactory paths) throws IOException {
+    private Event createEvent(PathFactory paths) throws IOException {
         ByteBuf buf = Unpooled.directBuffer(256);
         DefaultFullHttpRequest req = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET,
                 "/root/captcha/image/test.png?select=1&value=3&realname=Joe%20Blow&name=joey&password=abcdefg", buf);
@@ -219,7 +219,7 @@ public class AppTest {
 
         ObjectMapper m = new ObjectMapper();
         m.writeValue(new ByteBufOutputStream(buf), new Thing());
-        return new EventImpl(req, paths);
+        return EventImplFactory.newEvent(req, paths);
     }
 
     static interface ReqParams {

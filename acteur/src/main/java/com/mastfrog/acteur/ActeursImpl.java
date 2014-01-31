@@ -23,7 +23,6 @@
  */
 package com.mastfrog.acteur;
 
-import com.mastfrog.acteur.headers.Headers;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import com.mastfrog.acteur.server.ServerModule;
@@ -44,7 +43,7 @@ import java.util.concurrent.atomic.AtomicReference;
  *
  * @author Tim Boudreau
  */
-public class ActeursImpl implements Acteurs {
+final class ActeursImpl implements Acteurs {
 
     private final ReentrantScope scope;
     private final ExecutorService exe;
