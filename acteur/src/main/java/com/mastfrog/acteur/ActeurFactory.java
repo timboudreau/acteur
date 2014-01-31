@@ -582,34 +582,43 @@ public class ActeurFactory {
         return CheckIfNoneMatchHeader.class;
     }
 
+    static String patternFromGlob(String pattern) {
+        if (pattern.length() > 0 && pattern.charAt(0) == '/') {
+            pattern = pattern.substring(1);
+        }
+        StringBuilder match = new StringBuilder("^\\/?");
+        for (char c : pattern.toCharArray()) {
+            switch (c) {
+                case '$':
+                case '.':
+                case '{':
+                case '}':
+                case '[':
+                case ']':
+                case ')':
+                case '(':
+                case '^':
+                case '/':
+                    match.append("\\" + c);
+                    break;
+                case '*':
+                    match.append("[^\\/]*?");
+                    break;
+                case '?':
+                    match.append("[^\\/]?");
+                    break;
+                default:
+                    match.append(c);
+            }
+        }
+        match.append("$");
+        return match.toString();
+    }
+
     public Acteur globPathMatch(String... patterns) {
         String[] rexen = new String[patterns.length];
-        for (String p : patterns) {
-            StringBuilder match = new StringBuilder("^");
-            for (char c : p.toCharArray()) {
-                switch (c) {
-                    case '$':
-                    case '.':
-                    case '{':
-                    case '}':
-                    case '[':
-                    case ']':
-                    case ')':
-                    case '(':
-                    case '^':
-                    case '/':
-                        match.append("\\" + c);
-                        break;
-                    case '*':
-                        match.append("[^\\/]*?");
-                        break;
-                    case '?':
-                        match.append("[^\\/]?");
-                        break;
-                    default:
-                        match.append(c);
-                }
-            }
+        for (int i = 0; i < rexen.length; i++) {
+            rexen[i] = patternFromGlob(patterns[i]);
         }
         return matchPath(rexen);
     }
@@ -691,9 +700,6 @@ public class ActeurFactory {
             return msg == null ? new RespondWith(code) : new RespondWith(code, msg);
         }
     }
-
-
-
 
     /**
      * Compute the etag on demand, and send a not modified header if the one in
