@@ -53,12 +53,15 @@ public class GenericApplicationTest {
                 case 2:
                     assertTrue(ix + "", p instanceof AnotherPage);
                     break;
+                case 3 :
+                    assertTrue(ix +"", p instanceof X__GenPage);
+                    break;
                 default:
                     throw new AssertionError(ix);
             }
             System.out.println("PAGE " + p);
         }
-        assertEquals(3, ix);
+        assertEquals(4, ix);
     }
 
     @GuiceModule
