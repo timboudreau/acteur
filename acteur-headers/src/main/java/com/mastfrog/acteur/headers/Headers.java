@@ -40,16 +40,16 @@ import org.joda.time.DateTimeZone;
 import org.joda.time.Duration;
 import org.joda.time.format.DateTimeFormatter;
 import org.joda.time.format.DateTimeFormatterBuilder;
+
 /**
- * A collection of standard HTTP headers and objects that convert between
- * them and actual header strings and vice versa.
- * Typical usage would be something like:
+ * A collection of standard HTTP headers and objects that convert between them
+ * and actual header strings and vice versa. Typical usage would be something
+ * like:
  * <pre>
  * response.setHeader(Headers.LAST_MODIFIED, new DateTime());
- * </pre>
- * This handles conversion between header strings and Java objects without
- * creating a class which dicatates what headers should be or what they should
- * look like.
+ * </pre> This handles conversion between header strings and Java objects
+ * without creating a class which dicatates what headers should be or what they
+ * should look like.
  *
  * @author Tim Boudreau
  */
@@ -91,11 +91,15 @@ public final class Headers {
     public static final HeaderValueType<Cookie> SET_COOKIE = new SetCookieHeader();
     public static final HeaderValueType<Cookie[]> COOKIE = new CookieHeader();
     public static final HeaderValueType<String[]> WEBSOCKET_PROTOCOLS = new WebSocketProtocolsHeader();
-//    public static final HeaderValueType<String> WEBSOCKET_PROTOCOL = new StringHeader(HttpHeaders.Names.WEBSOCKET_PROTOCOL);
+    public static final HeaderValueType<String> WEBSOCKET_PROTOCOL = new StringHeader(HttpHeaders.Names.WEBSOCKET_PROTOCOL);
 //    public static final HeaderValueType<URL> WEBSOCKET_LOCATION = new WebSocketLocationHeader();
     public static final HeaderValueType<String> UPGRADE = stringHeader(HttpHeaders.Names.UPGRADE.toString());
     public static final HeaderValueType<String> REFERRER = stringHeader(HttpHeaders.Names.REFERER.toString());
     public static final HeaderValueType<String> TRANSFER_ENCODING = stringHeader(HttpHeaders.Names.TRANSFER_ENCODING.toString());
+    public static final HeaderValueType<String> ACCESS_CONTROL_ALLOW_ORIGIN = stringHeader(HttpHeaders.Names.ACCESS_CONTROL_ALLOW_ORIGIN.toString());
+    public static final HeaderValueType<String> ACCESS_CONTROL_ALLOW_METHODS = stringHeader(HttpHeaders.Names.ACCESS_CONTROL_ALLOW_METHODS.toString());
+    public static final HeaderValueType<HeaderValueType<?>[]> ACCESS_CONTROL_ALLOW_HEADERS = new HeaderNamesHeader(HttpHeaders.Names.ACCESS_CONTROL_ALLOW_HEADERS);
+    public static final HeaderValueType<Duration> ACCESS_CONTROL_MAX_AGE = new DurationHeader(HttpHeaders.Names.ACCESS_CONTROL_MAX_AGE.toString());
 
     public static HeaderValueType<String> stringHeader(String key) {
         return new StringHeader(key);
@@ -122,8 +126,8 @@ public final class Headers {
         return val;
     }
 
-    public static final DateTimeFormatter ISO2822DateFormat =
-            new DateTimeFormatterBuilder().appendDayOfWeekShortText()
+    public static final DateTimeFormatter ISO2822DateFormat
+            = new DateTimeFormatterBuilder().appendDayOfWeekShortText()
             .appendLiteral(", ").appendDayOfMonth(2).appendLiteral(" ")
             .appendMonthOfYearShortText().appendLiteral(" ")
             .appendYear(4, 4).appendLiteral(" ").appendHourOfDay(2)

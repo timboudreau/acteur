@@ -26,7 +26,8 @@ package com.mastfrog.acteur.server;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import com.mastfrog.acteur.Application;
-import static com.mastfrog.acteur.server.ServerModule.DECODE_REAL_IP;
+import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_CORS_ENABLED;
+import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_DECODE_REAL_IP;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.util.Codec;
 import io.netty.channel.ChannelHandlerContext;
@@ -58,16 +59,18 @@ final class UpstreamHandlerImpl extends ChannelInboundHandlerAdapter {
     @Named("aggregateChunks")
     boolean aggregateChunks = PipelineFactoryImpl.DEFAULT_AGGREGATE_CHUNKS;
     private final Codec mapper;
-    private final boolean decodeRealIP;
     @Inject
     private UnknownNetworkEventHandler uneh;
+
+    @Inject(optional = true)
+    @Named(SETTINGS_KEY_DECODE_REAL_IP)
+    private boolean decodeRealIP = true;
 
     @Inject
     UpstreamHandlerImpl(Application application, PathFactory paths, Codec mapper, Settings settings) {
         this.application = application;
         this.paths = paths;
         this.mapper = mapper;
-        decodeRealIP = settings.getBoolean(DECODE_REAL_IP, true);
     }
 
     @Override
@@ -100,7 +103,7 @@ final class UpstreamHandlerImpl extends ChannelInboundHandlerAdapter {
             SocketAddress addr = (SocketAddress) ctx.channel().remoteAddress();
             // XXX - any way to decode real IP?
             WebSocketEvent wsEvent = new WebSocketEvent(frame, ctx.channel(), addr, mapper);
-            
+
             application.onEvent(wsEvent, ctx.channel());
         } else {
             if (uneh != null) {

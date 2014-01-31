@@ -165,7 +165,8 @@ public class ServerModule<A extends Application> extends AbstractModule {
      * acteur application behind a reverse proxy does not mask the actual IP
      * address.
      */
-    public static final String DECODE_REAL_IP = "decodeRealIP";
+    public static final String SETTINGS_KEY_DECODE_REAL_IP = "decodeRealIP";
+    public static final String SETTINGS_KEY_CORS_ENABLED = "cors.enabled";
     protected final Class<A> appType;
     protected final ReentrantScope scope = new ReentrantScope();
     private final int eventThreads;

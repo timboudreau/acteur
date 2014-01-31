@@ -26,6 +26,7 @@ package com.mastfrog.acteur.server;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.name.Named;
+import com.mastfrog.acteur.Application;
 import static com.mastfrog.acteur.server.ServerModule.EVENT_THREADS;
 import static com.mastfrog.acteur.server.ServerModule.WORKER_THREADS;
 import com.mastfrog.acteur.util.Server;
@@ -67,6 +68,8 @@ final class ServerImpl implements Server {
     private final String applicationName;
     private final ShutdownHookRegistry registry;
     private final Provider<ServerBootstrap> bootstrapProvider;
+    private final Provider<Application> app;
+    private final Settings settings;
 
     @Inject
     ServerImpl(
@@ -80,6 +83,7 @@ final class ServerImpl implements Server {
             @Named("application") String applicationName,
             Provider<ServerBootstrap> bootstrapProvider,
             ShutdownHookRegistry registry,
+            Provider<Application> app,
             Settings settings) {
         this.port = settings.getInt(ServerModule.PORT, 8123);
         this.pipelineFactory = pipelineFactory;
@@ -92,6 +96,8 @@ final class ServerImpl implements Server {
         this.applicationName = applicationName;
         this.bootstrapProvider = bootstrapProvider;
         this.registry = registry;
+        this.app = app;
+        this.settings = settings;
     }
 
     @Override
@@ -124,6 +130,9 @@ final class ServerImpl implements Server {
             System.err.println("Starting " + this);
 
             final CountDownLatch afterStart = new CountDownLatch(1);
+            if (settings.getBoolean(ServerModule.SETTINGS_KEY_CORS_ENABLED, true)) {
+                app.get().enableDefaultCorsHandling();
+            }
             result.events.submit(new Runnable() {
 
                 @Override

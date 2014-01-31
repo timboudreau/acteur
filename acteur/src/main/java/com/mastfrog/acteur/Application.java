@@ -51,6 +51,7 @@ import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
 import io.netty.handler.codec.http.DefaultHttpRequest;
+import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponse;
@@ -75,6 +76,7 @@ import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import org.joda.time.DateTime;
+import org.joda.time.Duration;
 
 /**
  * A web application. Principally, the application is a collection of Page
@@ -104,6 +106,13 @@ public class Application implements Iterable<Page> {
     private ErrorInterceptor errorHandler;
     @Inject
     private Charset charset;
+    @Inject(optional = true)
+    @Named(CORSResource.SETTINGS_KEY_CORS_ALLOW_ORIGIN)
+    String corsAllowOrigin = "*";
+
+    @Inject(optional = true)
+    @Named(CORSResource.SETTINGS_KEY_CORS_MAX_AGE_MINUTES)
+    long corsMaxAgeMinutes = 5;
 
     @Inject(optional = true)
     @Named("acteur.debug")
@@ -130,6 +139,20 @@ public class Application implements Iterable<Page> {
      */
     public static Class<? extends Page> helpPageType() {
         return HelpPage.class;
+    }
+
+    private boolean corsEnabled;
+
+    public final boolean isDefaultCorsHandlingEnabled() {
+        return corsEnabled;
+    }
+
+    public final void enableDefaultCorsHandling() {
+        System.out.println("ENABLE CORS HANDLING");
+        if (!corsEnabled) {
+            corsEnabled = true;
+            pages.add(0, CORSResource.class);
+        }
     }
 
     /**
@@ -276,7 +299,7 @@ public class Application implements Iterable<Page> {
         assert checkConstructor(page);
         pages.add(page);
     }
-    
+
     protected final void add(Page page) {
         pages.add(page);
     }
@@ -323,7 +346,16 @@ public class Application implements Iterable<Page> {
         Headers.write(Headers.DATE, new DateTime(), response);
         if (debug) {
             String pth = event instanceof HttpEvent ? ((HttpEvent) event).getPath().toString() : "";
-            Headers.write(Headers.custom("X-Req-Path"), pth, response);
+            Headers.write(Headers.stringHeader("X-Req-Path"), pth, response);
+            Headers.write(Headers.stringHeader("X-Acteur"), action.getClass().getName(), response);
+            Headers.write(Headers.stringHeader("X-Page"), page.getClass().getName(), response);
+        }
+        if (corsEnabled && !response.headers().contains(HttpHeaders.Names.ACCESS_CONTROL_ALLOW_ORIGIN)) {
+            System.out.println("  add cors header '" + corsAllowOrigin + "'");
+            Headers.write(Headers.ACCESS_CONTROL_ALLOW_ORIGIN, corsAllowOrigin, response);
+            if (!response.headers().contains(HttpHeaders.Names.ACCESS_CONTROL_MAX_AGE)) {
+                Headers.write(Headers.ACCESS_CONTROL_MAX_AGE, new Duration(corsMaxAgeMinutes), response);
+            }
         }
         return response;
     }

@@ -26,6 +26,7 @@ package com.mastfrog.acteur;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import com.mastfrog.acteur.server.ServerModule;
+import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_CORS_ENABLED;
 import com.mastfrog.acteur.util.RequestID;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.util.Exceptions;

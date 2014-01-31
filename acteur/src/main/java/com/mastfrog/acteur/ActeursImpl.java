@@ -174,10 +174,6 @@ public class ActeursImpl implements Acteurs {
                 } else {
                     // Pass it into the receiver
                     try {
-                        if (debug) {
-                            response.add(Headers.stringHeader("X-Acteur"), state.getActeur().getClass().getName());
-                            response.add(Headers.stringHeader("X-Page"), state.getLockedPage().getClass().getName());
-                        }
                         try (AutoCloseable cl = Page.set(state.getLockedPage())) {
                             receiver.receive(state.getActeur(), state, response);
                         }
