@@ -1,13 +1,16 @@
 package com.mastfrog.acteur.annotations;
 
+import com.google.inject.Module;
 import com.mastfrog.acteur.Page;
 import com.mastfrog.util.Exceptions;
 import com.mastfrog.util.Streams;
 import com.mastfrog.util.collections.CollectionUtils;
 import com.mastfrog.util.collections.Converter;
+import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
@@ -34,6 +37,33 @@ public final class HttpCallRegistryLoader implements Iterable<Class<? extends Pa
         Set<Class<?>> types = new LinkedHashSet();
         for (Entry e : entries()) {
             types.addAll(e.bindings);
+        }
+        return types;
+    }
+
+    @SuppressWarnings("unchecked")
+    public Set<Class<? extends Module>> modules() throws IOException, ClassNotFoundException {
+        Set<Class<? extends Module>> types = new HashSet();
+        ClassLoader cl = type.getClassLoader();
+        for (URL url : CollectionUtils.toIterable(cl.getResources(GuiceModule.META_INF_PATH))) {
+            System.out.println("LOAD " + url);
+            try (final InputStream in = url.openStream()) {
+                // Split into lines
+                String[] lines = Streams.readString(in, "UTF-8").split("\n");
+                for (String line : lines) {
+                    line = line.trim();
+                    // Skip comments and blanks - these could be
+                    // generated manually
+                    if (line.isEmpty() || line.charAt(0) == '#') {
+                        continue;
+                    }
+                    Class<?> moduleType = Class.forName(line);
+                    if (!Module.class.isAssignableFrom(moduleType)) {
+                        throw new ClassCastException("Not a subclass of " + Module.class.getName() + ": " + line);
+                    }
+                    types.add((Class<? extends Module>) moduleType);
+                }
+            }
         }
         return types;
     }

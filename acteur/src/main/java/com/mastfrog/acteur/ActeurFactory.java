@@ -75,7 +75,9 @@ public class ActeurFactory {
      *
      * @param methods Methods
      * @return An Acteur that can be used in a page
+     * @deprecated Use &#064Methods instead - it is self-documenting
      */
+    @Deprecated
     public Acteur matchMethods(final Method... methods) {
         boolean asserts = false;
         assert asserts = true;
@@ -427,14 +429,16 @@ public class ActeurFactory {
                                     if (i == 0 && allowNegative) {
                                         break;
                                     }
+                                //fall thru
                                 case '.':
                                     if (!decimalSeen && allowDecimal) {
                                         decimalSeen = true;
                                         break;
                                     }
+                                //fall thru
                                 default:
                                     return new RespondWith(HttpResponseStatus.BAD_REQUEST,
-                                            "Parameter " + name + " is not a number: '" + p + "'\n");
+                                            "Parameter " + name + " is not a legal number here: '" + p + "'\n");
                             }
                         }
                     }
@@ -531,7 +535,9 @@ public class ActeurFactory {
      *
      * @param regexen Regexen
      * @return An acteur
+     * @deprecated Use &#064PathRegex instead - it is self-documenting
      */
+    @Deprecated
     public Acteur matchPath(final String... regexen) {
         class MatchPath extends Acteur {
 
@@ -574,6 +580,38 @@ public class ActeurFactory {
 
     public Class<? extends Acteur> sendNotModifiedIfETagHeaderMatchesType() {
         return CheckIfNoneMatchHeader.class;
+    }
+    
+    public Acteur globPathMatch(String... patterns) {
+        String[] rexen = new String[patterns.length];
+        for (String p : patterns) {
+            StringBuilder match = new StringBuilder("^");
+            for (char c : p.toCharArray()) {
+                switch (c) {
+                    case '$' :
+                    case '.' :
+                    case '{' :
+                    case '}' :
+                    case '[' :
+                    case ']' :
+                    case ')' :
+                    case '(' :
+                    case '^' :
+                    case '/' :
+                        match.append("\\" + c);
+                        break;
+                    case '*' :
+                        match.append("[^\\/]*?");
+                        break;
+                    case '?' :
+                        match.append("[^\\/]?");
+                        break;
+                    default :
+                        match.append(c);
+                }
+            }
+        }
+        return matchPath(rexen);
     }
 
     /**

@@ -28,8 +28,10 @@ public class GenericApplication extends Application {
         ImplicitBindings implicit = getClass().getAnnotation(ImplicitBindings.class);
         Set<Class<?>> alreadyBound = implicit == null ? Collections.<Class<?>>emptySet()
                 : new HashSet<>(Arrays.asList(implicit.value()));
+        System.out.println("Generic app with the following HTTP calls:");
         for (Class<? extends Page> pageType : new HttpCallRegistryLoader(getClass())) {
             if (!alreadyBound.contains(pageType) && !excluded.contains(pageType)) {
+                System.out.println("  " + pageType.getSimpleName());
                 add(pageType);
             }
         }

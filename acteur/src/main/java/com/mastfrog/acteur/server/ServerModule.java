@@ -178,6 +178,9 @@ public class ServerModule<A extends Application> extends AbstractModule {
     private final List<Module> otherModules = new ArrayList<>();
 
     public ServerModule(Class<A> appType, int workerThreadCount, int eventThreadCount, int backgroundThreadCount) {
+        if (!Application.class.isAssignableFrom(appType)) {
+            throw new ClassCastException(appType.getName() + " is not a subclass of " + Application.class.getName());
+        }
         this.appType = appType;
         this.workerThreads = workerThreadCount;
         this.eventThreads = eventThreadCount;

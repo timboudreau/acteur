@@ -35,8 +35,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.Completion;
 import javax.annotation.processing.FilerException;
@@ -85,11 +83,11 @@ public class HttpCallAnnotationProcessor extends AbstractProcessor {
     private boolean isPageSubtype(Element e) {
         Types types = env.getTypeUtils();
         Elements elements = env.getElementUtils();
-        TypeElement sceneType = elements.getTypeElement("com.mastfrog.acteur.Page");
-        if (sceneType == null) {
+        TypeElement pageType = elements.getTypeElement("com.mastfrog.acteur.Page");
+        if (pageType == null) {
             return false;
         }
-        return types.isSubtype(e.asType(), sceneType.asType());
+        return types.isSubtype(e.asType(), pageType.asType());
     }
 
     private AnnotationMirror findMirror(Element el) {
@@ -192,7 +190,7 @@ public class HttpCallAnnotationProcessor extends AbstractProcessor {
                 if (lines.length() > 0) {
                     lines.append('\n');
                 }
-                lines.append(e.asType()).append(":").append(anno.order());
+                lines.append(canonicalize(e.asType(), env.getTypeUtils())).append(":").append(anno.order());
                 List<String> bindingTypes = bindingTypes(e);
                 if (!bindingTypes.isEmpty()) {
                     lines.append('{');

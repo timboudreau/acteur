@@ -24,14 +24,21 @@
 package com.mastfrog.acteur;
 
 import com.google.inject.ImplementedBy;
+import com.mastfrog.acteur.auth.AuthenticateBasicActeur;
 import com.mastfrog.acteur.util.CacheControl;
 import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.acteur.headers.Headers;
+import com.mastfrog.acteur.preconditions.BasicAuth;
+import com.mastfrog.acteur.preconditions.Methods;
+import com.mastfrog.acteur.preconditions.ParametersMustBeNumbersIfPresent;
+import com.mastfrog.acteur.preconditions.PathRegex;
+import com.mastfrog.acteur.preconditions.RequiredUrlParameters;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.guicy.scope.ReentrantScope;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.util.Checks;
 import com.mastfrog.util.Exceptions;
+import com.mastfrog.util.collections.CollectionUtils;
 import com.mastfrog.util.thread.AutoCloseThreadLocal;
 import com.mastfrog.util.thread.QuietAutoCloseable;
 import io.netty.handler.codec.http.HttpResponse;
@@ -61,9 +68,8 @@ import org.joda.time.Duration;
  * <li>Accept responsibility for this page responding to the request (other
  * pages will not be tried)</li>
  * <li>Respond to the request, ending processing of it, by setting the response
- * code and optionally adding a
- * <code>ChannelFutureListener</code> which can start writing the response body
- * once the headers are sent</li>
+ * code and optionally adding a <code>ChannelFutureListener</code> which can
+ * start writing the response body once the headers are sent</li>
  * </ul>
  * The point is to break the logic of responding to requests into small,
  * reusable chunks implemented as Acteurs.
@@ -92,8 +98,8 @@ public abstract class Page implements Iterable<Acteur> {
         return getClass().getSimpleName();
     }
 
-    void describeYourself(Map<String,Object> into) {
-        Map<String,Object> m = new HashMap<>();
+    void describeYourself(Map<String, Object> into) {
+        Map<String, Object> m = new HashMap<>();
         int count = countActeurs();
         for (int i = 0; i < count; i++) {
             try {
@@ -136,7 +142,7 @@ public abstract class Page implements Iterable<Acteur> {
         acteurs.add(action);
     }
 
-    public final Application getApplication() {
+    final Application getApplication() {
         return application;
     }
 
@@ -222,10 +228,60 @@ public abstract class Page implements Iterable<Acteur> {
         Headers.writeIfNotNull(Headers.CONTENT_LENGTH, properties.getContentLength(), response);
     }
 
+    private Iterator<Acteur> annotationActeurs() {
+        List<Acteur> acteurs = new LinkedList<>();
+        Class<?> c = getClass();
+        PathRegex regex = c.getAnnotation(PathRegex.class);
+        ActeurFactory a = null;
+        if (regex != null) {
+            ActeurFactory af = a = getApplication().getDependencies().getInstance(ActeurFactory.class);
+            acteurs.add(af.matchPath(regex.value()));
+        }
+        Methods m = c.getAnnotation(Methods.class);
+        if (m != null) {
+            ActeurFactory af = a != null ? a : (a = getApplication().getDependencies().getInstance(ActeurFactory.class));
+            acteurs.add(af.matchMethods(m.value()));
+        }
+        RequiredUrlParameters params = c.getAnnotation(RequiredUrlParameters.class);
+        if (params != null) {
+            ActeurFactory af = a != null ? a : (a = getApplication().getDependencies().getInstance(ActeurFactory.class));
+            switch(params.combination()) {
+                case ALL :
+                    acteurs.add(af.requireParameters(params.value()));
+                    break;
+                case AT_LEAST_ONE :
+                    acteurs.add(af.requireAtLeastOneParameter(params.value()));
+                    break;
+                default :
+                    throw new AssertionError(params.combination());
+            }
+        }
+        ParametersMustBeNumbersIfPresent nums = c.getAnnotation(ParametersMustBeNumbersIfPresent.class);
+        if (nums != null) {
+            ActeurFactory af = a != null ? a : (a = getApplication().getDependencies().getInstance(ActeurFactory.class));
+            acteurs.add(af.parametersMustBeNumbersIfTheyArePresent(nums.allowDecimal(), nums.allowNegative(), nums.value()));
+        }
+        BasicAuth auth = c.getAnnotation(BasicAuth.class);
+        if (auth != null) {
+            acteurs.add(Acteur.wrap(AuthenticateBasicActeur.class, application.getDependencies()));
+        }
+        return acteurs.iterator();
+    }
+
+    private boolean hasAnnotations() {
+        Class<?> c = getClass();
+        return c.getAnnotation(Methods.class) != null || c.getAnnotation(PathRegex.class) != null ||
+                c.getAnnotation(RequiredUrlParameters.class) != null;
+    }
+
     @Override
     public Iterator<Acteur> iterator() {
         assert getApplication() != null : "Application is null - called outside request?";
-        return new I();
+        if (hasAnnotations()) {
+            return CollectionUtils.combine(annotationActeurs(), new I());
+        } else {
+            return new I();
+        }
     }
 
     /**
