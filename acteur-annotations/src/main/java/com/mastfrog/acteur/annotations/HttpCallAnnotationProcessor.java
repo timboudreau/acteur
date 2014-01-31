@@ -49,6 +49,7 @@ import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
@@ -56,6 +57,7 @@ import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import javax.tools.Diagnostic;
 import javax.tools.FileObject;
+import javax.tools.JavaFileObject;
 import javax.tools.StandardLocation;
 import org.openide.util.lookup.ServiceProvider;
 
@@ -90,6 +92,16 @@ public class HttpCallAnnotationProcessor extends AbstractProcessor {
         return types.isSubtype(e.asType(), pageType.asType());
     }
 
+    private boolean isActeurSubtype(Element e) {
+        Types types = env.getTypeUtils();
+        Elements elements = env.getElementUtils();
+        TypeElement pageType = elements.getTypeElement("com.mastfrog.acteur.Acteur");
+        if (pageType == null) {
+            return false;
+        }
+        return types.isSubtype(e.asType(), pageType.asType());
+    }
+
     private AnnotationMirror findMirror(Element el) {
         for (AnnotationMirror mir : el.getAnnotationMirrors()) {
             TypeMirror type = mir.getAnnotationType().asElement().asType();
@@ -112,8 +124,8 @@ public class HttpCallAnnotationProcessor extends AbstractProcessor {
             enc = enc.getEnclosingElement();
         }
         return nm.toString();
-    }    
-    
+    }
+
     private static String types(Object o) { //debug stuff
         List<String> s = new ArrayList<String>();
         Class<?> x = o.getClass();
@@ -132,13 +144,12 @@ public class HttpCallAnnotationProcessor extends AbstractProcessor {
         return sb.toString();
     }
 
-    private List<String> bindingTypes(Element el) {
-        AnnotationMirror mirror = findMirror(el);
+    private List<String> typeList(AnnotationMirror mirror, String param) {
         List<String> result = new ArrayList<>();
         if (mirror != null) {
             for (Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> x : mirror.getElementValues().entrySet()) {
                 String annoParam = x.getKey().getSimpleName().toString();
-                if ("scopeTypes".equals(annoParam)) {
+                if (param.equals(annoParam)) {
                     if (x.getValue().getValue() instanceof List) {
                         List<?> list = (List<?>) x.getValue().getValue();
                         for (Object o : list) {
@@ -151,21 +162,26 @@ public class HttpCallAnnotationProcessor extends AbstractProcessor {
                                     result.add(canonical);
                                 } else {
                                     env.getMessager().printMessage(Diagnostic.Kind.WARNING,
-                                            "Not a declared type: " + av + " on " + el.asType());
+                                            "Not a declared type: " + av);
                                 }
                             } else {
                                 env.getMessager().printMessage(Diagnostic.Kind.WARNING,
-                                        "Annotation value for scopeTypes is not an AnnotationValue " + el.asType());
+                                        "Annotation value for scopeTypes is not an AnnotationValue ");
                             }
                         }
                     } else {
                         env.getMessager().printMessage(Diagnostic.Kind.WARNING,
-                                "Annotation value for scopeTypes is not a list on " + el.asType());
+                                "Annotation value for scopeTypes is not a list on ");
                     }
                 }
             }
         }
         return result;
+    }
+
+    private List<String> bindingTypes(Element el) {
+        AnnotationMirror mirror = findMirror(el);
+        return typeList(mirror, "scopeTypes");
     }
 
     @Override
@@ -182,24 +198,33 @@ public class HttpCallAnnotationProcessor extends AbstractProcessor {
                 if (anno == null) {
                     continue;
                 }
-                if (!isPageSubtype(e)) {
-                    env.getMessager().printMessage(Diagnostic.Kind.ERROR, "Not a subclass of Page: " + e.asType(), e);
+                boolean acteur = isActeurSubtype(e);
+                if (!isPageSubtype(e) && !acteur) {
+                    env.getMessager().printMessage(Diagnostic.Kind.ERROR, "Not a subclass of Page or Acteur: " + e.asType(), e);
                     continue;
                 }
                 elements.add(e);
-                if (lines.length() > 0) {
-                    lines.append('\n');
-                }
-                lines.append(canonicalize(e.asType(), env.getTypeUtils())).append(":").append(anno.order());
-                List<String> bindingTypes = bindingTypes(e);
-                if (!bindingTypes.isEmpty()) {
-                    lines.append('{');
-                    for (Iterator<String> it = bindingTypes.iterator(); it.hasNext();) {
-                        lines.append(it.next());
-                        if (it.hasNext()) {
-                            lines.append(',');
-                        } else {
-                            lines.append('}');
+                if (isActeurSubtype(e)) {
+                    String className = generatePageSource((TypeElement) e);
+                    if (lines.length() > 0) {
+                        lines.append('\n');
+                    }
+                    lines.append(className).append(':').append(anno.order());
+                } else {
+                    if (lines.length() > 0) {
+                        lines.append('\n');
+                    }
+                    lines.append(canonicalize(e.asType(), env.getTypeUtils())).append(":").append(anno.order());
+                    List<String> bindingTypes = bindingTypes(e);
+                    if (!bindingTypes.isEmpty()) {
+                        lines.append('{');
+                        for (Iterator<String> it = bindingTypes.iterator(); it.hasNext();) {
+                            lines.append(it.next());
+                            if (it.hasNext()) {
+                                lines.append(',');
+                            } else {
+                                lines.append('}');
+                            }
                         }
                     }
                 }
@@ -225,11 +250,79 @@ public class HttpCallAnnotationProcessor extends AbstractProcessor {
             Logger.getLogger(HttpCallAnnotationProcessor.class.getName()).log(Level.SEVERE, null, ex);
             return false;
         }
-        return result;
+        return true;
     }
 
     @Override
     public Iterable<? extends Completion> getCompletions(Element element, AnnotationMirror annotation, ExecutableElement member, String userText) {
         return Collections.<Completion>emptySet();
+    }
+
+    private PackageElement findPackage(Element el) {
+        while (el != null && !(el instanceof PackageElement)) {
+            el = el.getEnclosingElement();
+        }
+        return (PackageElement) el;
+    }
+
+    private String generatePageSource(TypeElement typeElement) throws IOException {
+        PackageElement pkg = findPackage(typeElement);
+        String className = typeElement.getSimpleName() + "__GenPage";
+        JavaFileObject jfo = env.getFiler().createSourceFile(pkg.getQualifiedName() + "." + className, typeElement);
+        try (PrintStream ps = new PrintStream(jfo.openOutputStream())) {
+            ps.println("package " + pkg.getQualifiedName() + ";");
+            TypeElement outer = typeElement;
+            while (!outer.getEnclosingElement().equals(pkg)) {
+                outer = (TypeElement) outer.getEnclosingElement();
+            }
+            ps.println("\nimport com.mastfrog.acteur.Page;");
+            for (AnnotationMirror am : typeElement.getAnnotationMirrors()) {
+                ps.println("import " + am.getAnnotationType() + ";");
+            }
+            ps.println();
+            List<String> precursorClassNames = new ArrayList<>();
+            for (AnnotationMirror am : typeElement.getAnnotationMirrors()) {
+                if (am.getAnnotationType().toString().equals(Precursors.class.getName())) {
+                    if (!am.getElementValues().entrySet().isEmpty()) {
+                        for (String s : typeList(am, "value")) {
+                            precursorClassNames.add(s.replace('$', '.'));
+                        }
+                        continue;
+                    }
+                }
+                ps.print("@" + am.getAnnotationType());
+                boolean first = true;
+                Iterator it = am.getElementValues().entrySet().iterator();
+                if (it.hasNext()) {
+                    while (it.hasNext()) {
+                        Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> el = (Map.Entry<? extends ExecutableElement, ? extends AnnotationValue>) it.next();
+                        if (first) {
+                            ps.print('(');
+                            first = false;
+                        } else {
+                            ps.print(',');
+                        }
+                        String key = "" + el.getKey();
+                        ps.print(key.substring(0, key.length() - 2));
+                        ps.print('=');
+                        ps.print(el.getValue());
+                        if (!it.hasNext()) {
+                            ps.print(")\n");
+                        }
+                    }
+                } else {
+                    ps.print('\n');
+                }
+            }
+            ps.println("\npublic final class " + className + " extends Page {\n");
+            ps.println("    " + className + "(){");
+            for (String p : precursorClassNames) {
+                ps.println("        add(" + p + ".class);");
+            }
+            ps.println("        add(" + typeElement.getQualifiedName() + ".class);");
+            ps.println("    }");
+            ps.println("}");
+        }
+        return pkg.getQualifiedName() + "." + className;
     }
 }

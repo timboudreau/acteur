@@ -69,7 +69,7 @@ public class GuiceModuleAnnotationProcessor extends AbstractProcessor {
         }
         return nm.toString();
     }
-    
+
     public boolean checkConstructors(TypeElement el) {
         int ccount = 0;
         for (Element e : el.getEnclosedElements()) {
