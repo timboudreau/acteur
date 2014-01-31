@@ -1,4 +1,4 @@
-package com.mastfrog.acteur.generic.app;
+package com.mastfrog.acteur.annotations;
 
 import com.mastfrog.acteur.server.ServerModule;
 
@@ -6,7 +6,7 @@ import com.mastfrog.acteur.server.ServerModule;
  *
  * @author Tim Boudreau
  */
-public class GenericApplicationModule extends ServerModule {
+public final class GenericApplicationModule extends ServerModule {
 
     GenericApplicationModule() {
         super(GenericApplication.class);

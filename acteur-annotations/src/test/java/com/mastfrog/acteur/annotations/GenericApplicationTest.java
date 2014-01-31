@@ -1,5 +1,8 @@
-package com.mastfrog.acteur.generic.app;
+package com.mastfrog.acteur.annotations;
 
+import com.mastfrog.acteur.annotations.HttpCallRegistryLoader;
+import com.mastfrog.acteur.annotations.GenericApplicationModule;
+import com.mastfrog.acteur.annotations.GenericApplication;
 import com.mastfrog.acteur.Page;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.guicy.annotations.Namespace;

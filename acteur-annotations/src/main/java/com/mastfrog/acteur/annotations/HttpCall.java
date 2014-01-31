@@ -1,4 +1,4 @@
-package com.mastfrog.acteur.generic.app;
+package com.mastfrog.acteur.annotations;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

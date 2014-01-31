@@ -25,9 +25,8 @@ package com.mastfrog.acteur.server;
 
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
-import com.mastfrog.acteur.Application;
-import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_CORS_ENABLED;
 import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_DECODE_REAL_IP;
+import com.mastfrog.acteur.spi.ApplicationControl;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.util.Codec;
 import io.netty.channel.ChannelHandlerContext;
@@ -50,7 +49,7 @@ import java.net.SocketAddress;
 //@Singleton
 final class UpstreamHandlerImpl extends ChannelInboundHandlerAdapter {
 
-    private final Application application;
+    private final ApplicationControl application;
     private final PathFactory paths;
     @Inject(optional = true)
     @Named("neverKeepAlive")
@@ -67,7 +66,7 @@ final class UpstreamHandlerImpl extends ChannelInboundHandlerAdapter {
     private boolean decodeRealIP = true;
 
     @Inject
-    UpstreamHandlerImpl(Application application, PathFactory paths, Codec mapper, Settings settings) {
+    UpstreamHandlerImpl(ApplicationControl application, PathFactory paths, Codec mapper, Settings settings) {
         this.application = application;
         this.paths = paths;
         this.mapper = mapper;
@@ -81,7 +80,6 @@ final class UpstreamHandlerImpl extends ChannelInboundHandlerAdapter {
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
         if (msg instanceof HttpRequest) {
             final HttpRequest request = (HttpRequest) msg;
-
             if (!aggregateChunks && HttpHeaders.is100ContinueExpected(request)) {
                 send100Continue(ctx);
             }

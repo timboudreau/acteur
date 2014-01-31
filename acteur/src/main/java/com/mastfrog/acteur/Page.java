@@ -30,7 +30,9 @@ import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.guicy.scope.ReentrantScope;
 import com.mastfrog.settings.Settings;
+import com.mastfrog.util.Checks;
 import com.mastfrog.util.Exceptions;
+import com.mastfrog.util.thread.AutoCloseThreadLocal;
 import com.mastfrog.util.thread.QuietAutoCloseable;
 import io.netty.handler.codec.http.HttpResponse;
 import java.lang.reflect.Modifier;
@@ -70,7 +72,7 @@ import org.joda.time.Duration;
  */
 public abstract class Page implements Iterable<Acteur> {
 
-    private static final ThreadLocal<Page> CURRENT_PAGE = new ThreadLocal<>();
+    private static final AutoCloseThreadLocal<Page> CURRENT_PAGE = new AutoCloseThreadLocal<>();
     protected final ResponseHeaders responseHeaders = new ResponseHeaders();
     private final List<Object> acteurs = Collections.synchronizedList(new ArrayList<>());
     volatile Application application;
@@ -107,21 +109,10 @@ public abstract class Page implements Iterable<Acteur> {
     }
 
     static QuietAutoCloseable set(Page page) {
-        PageReset result = new PageReset();
-        CURRENT_PAGE.set(page);
+        Checks.notNull("page", page);
+        QuietAutoCloseable result = CURRENT_PAGE.set(page);
+        assert CURRENT_PAGE.get() != null;
         return result;
-    }
-
-    static final class PageReset extends QuietAutoCloseable {
-        private final Page old = CURRENT_PAGE.get();
-        @Override
-        public void close() {
-            if (old != null) {
-                CURRENT_PAGE.set(old);
-            } else {
-                CURRENT_PAGE.remove();
-            }
-        }
     }
 
     static Page get() {

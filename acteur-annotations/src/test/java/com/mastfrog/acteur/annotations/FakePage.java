@@ -1,7 +1,8 @@
-package com.mastfrog.acteur.generic.app;
+package com.mastfrog.acteur.annotations;
 
+import com.mastfrog.acteur.annotations.HttpCall;
 import com.mastfrog.acteur.Page;
-import com.mastfrog.acteur.generic.app.FakePage.Foo.Bar;
+import com.mastfrog.acteur.annotations.FakePage.Foo.Bar;
 import com.mastfrog.util.GUIDFactory;
 
 /**

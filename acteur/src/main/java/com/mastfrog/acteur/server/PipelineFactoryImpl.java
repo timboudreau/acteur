@@ -26,7 +26,7 @@ package com.mastfrog.acteur.server;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.name.Named;
-import com.mastfrog.acteur.Application;
+import com.mastfrog.acteur.spi.ApplicationControl;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
@@ -55,12 +55,13 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
     int maxContentLength = 1048576;
     @Named("httpCompression")
     boolean httpCompression = false;
-    private final Provider<Application> app;
+    private final Provider<ApplicationControl> app;
 
     @Inject
-    PipelineFactoryImpl(Provider<ChannelHandler> handler, Provider<Application> app) {
+    PipelineFactoryImpl(Provider<ChannelHandler> handler, Provider<ApplicationControl> app) {
         this.handler = handler;
         this.app = app;
+        System.out.println("Create a pipeline factory impl");
     }
 
     @Override
@@ -73,6 +74,7 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
         if (maxContentLength == 0) {
             maxContentLength = 1048576;
         }
+        System.out.println("Init channel");
         // Create a default pipeline implementation.
         ChannelPipeline pipeline = ch.pipeline();
 

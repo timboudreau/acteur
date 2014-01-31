@@ -28,6 +28,7 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 import com.google.inject.Module;
 import com.google.inject.Provider;
+import com.google.inject.Scopes;
 import com.google.inject.Singleton;
 import com.google.inject.TypeLiteral;
 import com.google.inject.name.Names;
@@ -44,6 +45,7 @@ import com.mastfrog.acteur.ImplicitBindings;
 import com.mastfrog.acteur.Page;
 import com.mastfrog.acteur.util.BasicCredentials;
 import com.mastfrog.acteur.server.ServerModule.TF;
+import com.mastfrog.acteur.spi.ApplicationControl;
 import com.mastfrog.acteur.util.Server;
 import com.mastfrog.util.Codec;
 import com.mastfrog.util.ConfigurationError;
@@ -63,6 +65,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.Thread.UncaughtExceptionHandler;
+import java.lang.reflect.InvocationTargetException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -209,11 +212,12 @@ public class ServerModule<A extends Application> extends AbstractModule {
         }
 
         Provider<Application> appProvider = binder().getProvider(Application.class);
+        Provider<ApplicationControl> appControlProvider = binder().getProvider(ApplicationControl.class);
         Provider<Settings> set = binder().getProvider(Settings.class);
 
-        TF eventThreadFactory = new TF(EVENT_THREADS, appProvider);
-        TF workerThreadFactory = new TF(WORKER_THREADS, appProvider);
-        TF backgroundThreadFactory = new TF(BACKGROUND_THREAD_POOL_NAME, appProvider);
+        TF eventThreadFactory = new TF(EVENT_THREADS, appControlProvider);
+        TF workerThreadFactory = new TF(WORKER_THREADS, appControlProvider);
+        TF backgroundThreadFactory = new TF(BACKGROUND_THREAD_POOL_NAME, appControlProvider);
 
         bind(ThreadGroup.class).annotatedWith(Names.named(BACKGROUND_THREAD_POOL_NAME)).toInstance(backgroundThreadFactory.tg);
         bind(ThreadGroup.class).annotatedWith(Names.named(WORKER_THREADS)).toInstance(workerThreadFactory.tg);
@@ -265,6 +269,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
         bind(ByteBufAllocator.class).toProvider(ByteBufAllocatorProvider.class);
         bind(new ETL()).toProvider(EventProvider.class).in(scope);
         bind(Codec.class).to(CodecImpl.class);
+        bind(ApplicationControl.class).toProvider(ApplicationControlProvider.class).in(Scopes.SINGLETON);
     }
 
     private static final class EventProvider implements Provider<Event<?>> {
@@ -286,6 +291,27 @@ public class ServerModule<A extends Application> extends AbstractModule {
 
     private static final class ETL extends TypeLiteral<Event<?>> {
 
+    }
+
+    static class ApplicationControlProvider implements Provider<ApplicationControl> {
+
+        private final ApplicationControl control;
+
+        @Inject
+        public ApplicationControlProvider(Provider<Application> app) throws NoSuchMethodException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
+            // In order to separate the API and SPI of Application, so Application
+            // is not polluted with methods a subclasser should never call,
+            // we do this:
+            Application a = app.get();
+            java.lang.reflect.Method method = Application.class.getDeclaredMethod("control");
+            method.setAccessible(true);
+            control = (ApplicationControl) method.invoke(a);
+        }
+
+        @Override
+        public ApplicationControl get() {
+            return control;
+        }
     }
 
     static class CodecImpl implements Codec {
@@ -509,11 +535,11 @@ public class ServerModule<A extends Application> extends AbstractModule {
     static final class TF implements ThreadFactory, UncaughtExceptionHandler {
 
         private final String name;
-        private final Provider<Application> app;
+        private final Provider<ApplicationControl> app;
         private final AtomicInteger count = new AtomicInteger();
         private final ThreadGroup tg;
 
-        public TF(String name, Provider<Application> app) {
+        public TF(String name, Provider<ApplicationControl> app) {
             this.name = name;
             this.app = app;
             tg = new ThreadGroup(Thread.currentThread().getThreadGroup(), name + "s");

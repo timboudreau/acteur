@@ -1,4 +1,4 @@
-package com.mastfrog.acteur.generic.app;
+package com.mastfrog.acteur.annotations;
 
 import com.mastfrog.acteur.Application;
 import com.mastfrog.acteur.ImplicitBindings;

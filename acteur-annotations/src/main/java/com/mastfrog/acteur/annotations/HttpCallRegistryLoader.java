@@ -1,4 +1,4 @@
-package com.mastfrog.acteur.generic.app;
+package com.mastfrog.acteur.annotations;
 
 import com.mastfrog.acteur.Page;
 import com.mastfrog.util.Exceptions;

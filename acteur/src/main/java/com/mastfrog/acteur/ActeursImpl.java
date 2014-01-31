@@ -211,6 +211,9 @@ public class ActeursImpl implements Acteurs {
             // Set the Page ThreadLocal, for things that will call Page.get()
             try (QuietAutoCloseable ac = Page.set(page)){
                 // Get the state
+                if (Page.get() != page) {
+                    throw new AssertionError("Page not actually set");
+                }
                 State state = acteur.getState();
                 // Null is not permitted - broken Acteur implementation didn't
                 // call setState() in its constructor or didn't override getState(),
@@ -242,13 +245,14 @@ public class ActeursImpl implements Acteurs {
             } catch (ThreadDeath | OutOfMemoryError e) {
                 throw e;
             } catch (Exception | Error e) {
-//                page.getApplication().onError(e);
-//                throw e;
-                State state = Acteur.error(page, e).getState();
-                lastState.set(state);
-                response.merge(acteur.getResponse());
                 page.getApplication().internalOnError(e);
-                throw e;
+                try (QuietAutoCloseable ac = Page.set(page)) {
+                    State state = Acteur.error(page, e).getState();
+                    lastState.set(state);
+                    response.merge(acteur.getResponse());
+                }
+                return new Object[0];
+//                throw e;
             }
         }
     }

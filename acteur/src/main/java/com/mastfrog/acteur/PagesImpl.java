@@ -147,7 +147,7 @@ final class PagesImpl implements Pages {
                     // Create a netty response
                     HttpResponse httpResponse = response.toResponse(event, charset);
                     // Allow the application to add headers
-                    httpResponse = application.decorateResponse(event, state.getLockedPage(), acteur, httpResponse);
+                    httpResponse = application._decorateResponse(event, state.getLockedPage(), acteur, httpResponse);
 
                     // Allow the page to add headers
                     state.getLockedPage().decorateResponse(event, acteur, httpResponse);

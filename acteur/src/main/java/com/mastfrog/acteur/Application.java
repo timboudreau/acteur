@@ -1,4 +1,4 @@
-/* 
+/*
  * The MIT License
  *
  * Copyright 2013 Tim Boudreau.
@@ -37,6 +37,7 @@ import com.mastfrog.acteur.server.ServerModule;
 import com.mastfrog.acteur.util.ErrorInterceptor;
 import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.acteur.headers.Method;
+import com.mastfrog.acteur.spi.ApplicationControl;
 import com.mastfrog.acteur.util.RequestID;
 import com.mastfrog.url.Path;
 import com.mastfrog.util.ConfigurationError;
@@ -147,12 +148,33 @@ public class Application implements Iterable<Page> {
         return corsEnabled;
     }
 
-    public final void enableDefaultCorsHandling() {
-        System.out.println("ENABLE CORS HANDLING");
+    final void enableDefaultCorsHandling() {
         if (!corsEnabled) {
             corsEnabled = true;
             pages.add(0, CORSResource.class);
         }
+    }
+
+    private final ApplicationControl control = new ApplicationControl() {
+        @Override
+        public void enableDefaultCorsHandling() {
+            Application.this.enableDefaultCorsHandling();
+        }
+
+        @Override
+        public CountDownLatch onEvent(Event<?> event, Channel channel) {
+            return Application.this.onEvent(event, channel);
+        }
+
+        @Override
+        public void internalOnError(Throwable err) {
+            Application.this.internalOnError(err);
+        }
+
+    };
+
+    ApplicationControl control() {
+        return control;
     }
 
     /**
@@ -180,18 +202,13 @@ public class Application implements Iterable<Page> {
 
     Map<String, Object> describeYourself() {
         Map<String, Object> m = new HashMap<>();
-
         try (QuietAutoCloseable c = this.scope.enter(new FakeHttpEventForHelp())) {
-            Page old = Page.get();
-            try {
-                for (Page page : this) {
-                    Page.set(page);
+            for (Page page : this) {
+                try (QuietAutoCloseable c2 = Page.set(page)) {
                     try (QuietAutoCloseable c1 = this.scope.enter(page)) {
                         page.describeYourself(m);
                     }
                 }
-            } finally {
-                Page.set(old);
             }
         }
         return m;
@@ -342,6 +359,10 @@ public class Application implements Iterable<Page> {
      * @return
      */
     protected HttpResponse decorateResponse(Event<?> event, Page page, Acteur action, HttpResponse response) {
+        return response;
+    }
+
+    HttpResponse _decorateResponse(Event<?> event, Page page, Acteur action, HttpResponse response) {
         Headers.write(Headers.SERVER, getName(), response);
         Headers.write(Headers.DATE, new DateTime(), response);
         if (debug) {
@@ -351,13 +372,12 @@ public class Application implements Iterable<Page> {
             Headers.write(Headers.stringHeader("X-Page"), page.getClass().getName(), response);
         }
         if (corsEnabled && !response.headers().contains(HttpHeaders.Names.ACCESS_CONTROL_ALLOW_ORIGIN)) {
-            System.out.println("  add cors header '" + corsAllowOrigin + "'");
             Headers.write(Headers.ACCESS_CONTROL_ALLOW_ORIGIN, corsAllowOrigin, response);
             if (!response.headers().contains(HttpHeaders.Names.ACCESS_CONTROL_MAX_AGE)) {
                 Headers.write(Headers.ACCESS_CONTROL_MAX_AGE, new Duration(corsMaxAgeMinutes), response);
             }
         }
-        return response;
+        return decorateResponse(event, page, action, response);
     }
 
     /**
@@ -424,7 +444,7 @@ public class Application implements Iterable<Page> {
      *
      * @param err
      */
-    public final void internalOnError(Throwable err) {
+    final void internalOnError(Throwable err) {
         try {
             if (errorHandler != null) {
                 errorHandler.onError(err);
@@ -450,7 +470,7 @@ public class Application implements Iterable<Page> {
      * @param channel
      * @return
      */
-    public CountDownLatch onEvent(final Event<?> event, final Channel channel) {
+    private CountDownLatch onEvent(final Event<?> event, final Channel channel) {
         //XXX get rid of channel param?
         // Create a new incremented id for this request
         final RequestID id = new RequestID();
@@ -471,7 +491,7 @@ public class Application implements Iterable<Page> {
         }, event, id);
     }
 
-    @SuppressWarnings({"unchecked"})
+    @SuppressWarnings({"unchecked", "ThrowableInstanceNotThrown", "ThrowableInstanceNeverThrown"})
     Dependencies getDependencies() {
         if (deps == null) {
             try {

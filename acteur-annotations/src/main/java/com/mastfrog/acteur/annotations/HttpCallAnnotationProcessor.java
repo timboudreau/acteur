@@ -21,7 +21,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.mastfrog.acteur.generic.app;
+package com.mastfrog.acteur.annotations;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -71,7 +71,7 @@ import org.openide.util.lookup.ServiceProvider;
  * @author Tim Boudreau
  */
 @ServiceProvider(service = Processor.class)
-@SupportedAnnotationTypes("com.mastfrog.acteur.generic.app.HttpCall")
+@SupportedAnnotationTypes("com.mastfrog.acteur.annotations.HttpCall")
 @SupportedSourceVersion(SourceVersion.RELEASE_6)
 public class HttpCallAnnotationProcessor extends AbstractProcessor {
 

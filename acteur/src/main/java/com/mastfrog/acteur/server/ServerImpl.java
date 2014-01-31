@@ -26,9 +26,9 @@ package com.mastfrog.acteur.server;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.name.Named;
-import com.mastfrog.acteur.Application;
 import static com.mastfrog.acteur.server.ServerModule.EVENT_THREADS;
 import static com.mastfrog.acteur.server.ServerModule.WORKER_THREADS;
+import com.mastfrog.acteur.spi.ApplicationControl;
 import com.mastfrog.acteur.util.Server;
 import com.mastfrog.acteur.util.ServerControl;
 import com.mastfrog.giulius.ShutdownHookRegistry;
@@ -68,7 +68,7 @@ final class ServerImpl implements Server {
     private final String applicationName;
     private final ShutdownHookRegistry registry;
     private final Provider<ServerBootstrap> bootstrapProvider;
-    private final Provider<Application> app;
+    private final Provider<ApplicationControl> app;
     private final Settings settings;
 
     @Inject
@@ -83,7 +83,7 @@ final class ServerImpl implements Server {
             @Named("application") String applicationName,
             Provider<ServerBootstrap> bootstrapProvider,
             ShutdownHookRegistry registry,
-            Provider<Application> app,
+            Provider<ApplicationControl> app,
             Settings settings) {
         this.port = settings.getInt(ServerModule.PORT, 8123);
         this.pipelineFactory = pipelineFactory;
@@ -117,8 +117,7 @@ final class ServerImpl implements Server {
     public ServerControl start(int port) throws IOException {
         this.port = port;
         try {
-            final ConditionImpl result = new ConditionImpl(port);
-
+            final ServerControlImpl result = new ServerControlImpl(port);
             ServerBootstrap bootstrap = bootstrapProvider.get();
 
             bootstrap.group(result.events, result.workers)
@@ -143,7 +142,6 @@ final class ServerImpl implements Server {
                     afterStart.countDown();
                 }
             });
-
             afterStart.await();
             // Bind and start to accept incoming connections.
             return result;
@@ -173,13 +171,13 @@ final class ServerImpl implements Server {
         }
     }
 
-    private class ConditionImpl implements ServerControl, Runnable {
+    private class ServerControlImpl implements ServerControl, Runnable {
 
         private final NioEventLoopGroup events = new NioEventLoopGroup(eventThreadCount.get(), eventThreadFactory);
         private final NioEventLoopGroup workers = new NioEventLoopGroup(workerThreadCount.get(), workerThreadFactory);
         private final int port;
 
-        ConditionImpl(int port) {
+        ServerControlImpl(int port) {
             this.port = port;
         }
 
