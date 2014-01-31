@@ -27,7 +27,7 @@ public class GenericApplicationTest {
         HttpCallRegistryLoader ldr = new HttpCallRegistryLoader(GenericApplicationTest.class);
         Set<Class<?>> types = ldr.implicitBindings();
         assertNotNull("Types is null", types);
-        Set<Class<?>> expect = new LinkedHashSet<>(Arrays.asList(new Class<?>[]{String.class, Integer.class, GUIDFactory.class, FakePage.Foo.Bar.class}));
+        Set<Class<?>> expect = new LinkedHashSet<>(Arrays.asList(new Class<?>[]{String.class, Integer.class, GUIDFactory.class, FakePage.Foo.Bar.class, FakePage.Foo.class}));
         assertTrue("GOT " + types, types.equals(expect));
     }
 

@@ -184,16 +184,17 @@ public class HttpCallAnnotationProcessor extends AbstractProcessor {
         return typeList(mirror, "scopeTypes");
     }
 
+    StringBuilder lines = new StringBuilder();
+    Set<Element> elements = new HashSet<>();
+
+    int ix;
+
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
-        if (roundEnv.processingOver()) {
-            return false;
-        }
-        boolean result = true;
-        StringBuilder lines = new StringBuilder();
+        Set<? extends Element> all = roundEnv.getElementsAnnotatedWith(HttpCall.class);
         try {
-            Set<Element> elements = new HashSet<>();
-            for (Element e : roundEnv.getElementsAnnotatedWith(HttpCall.class)) {
+            System.out.println("ROUND " + ++ix + " " + all.size() + " els");
+            for (Element e : all) {
                 HttpCall anno = e.getAnnotation(HttpCall.class);
                 if (anno == null) {
                     continue;
@@ -206,10 +207,7 @@ public class HttpCallAnnotationProcessor extends AbstractProcessor {
                 elements.add(e);
                 if (isActeurSubtype(e)) {
                     String className = generatePageSource((TypeElement) e);
-                    if (lines.length() > 0) {
-                        lines.append('\n');
-                    }
-                    lines.append(className).append(':').append(anno.order());
+                    env.getMessager().printMessage(Diagnostic.Kind.NOTE, "Generated " + className + " for " + e.asType(), e);
                 } else {
                     if (lines.length() > 0) {
                         lines.append('\n');
@@ -229,11 +227,13 @@ public class HttpCallAnnotationProcessor extends AbstractProcessor {
                     }
                 }
             }
-            if (lines.length() > 0) {
+            if (all.isEmpty() && lines.length() > 0) {
+                System.out.println("Write lines " + lines);
                 if (!elements.isEmpty()) {
                     String path = HttpCall.META_INF_PATH;
                     try {
-                        env.getMessager().printMessage(Diagnostic.Kind.NOTE, "Found the following Page classes annotated with @HttpCall:\n" + lines);
+                        env.getMessager().printMessage(Diagnostic.Kind.NOTE, 
+                                "Found the following Page classes annotated with @HttpCall:\n" + lines);
                         FileObject fo = env.getFiler().createResource(StandardLocation.CLASS_OUTPUT,
                                 "", path, elements.toArray(new Element[0]));
                         try (OutputStream out = fo.openOutputStream()) {
@@ -242,6 +242,8 @@ public class HttpCallAnnotationProcessor extends AbstractProcessor {
                             }
                         }
                     } catch (FilerException ex) {
+                        // Harmless;  sort this out at some point - we gat called
+                        // again for our generated source
                         ex.printStackTrace();
                     }
                 }
