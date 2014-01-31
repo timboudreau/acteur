@@ -25,14 +25,15 @@ package com.mastfrog.acteur;
 
 import com.google.inject.ImplementedBy;
 import com.mastfrog.acteur.auth.AuthenticateBasicActeur;
-import com.mastfrog.acteur.util.CacheControl;
 import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.acteur.preconditions.BasicAuth;
 import com.mastfrog.acteur.preconditions.Methods;
 import com.mastfrog.acteur.preconditions.ParametersMustBeNumbersIfPresent;
+import com.mastfrog.acteur.preconditions.Path;
 import com.mastfrog.acteur.preconditions.PathRegex;
 import com.mastfrog.acteur.preconditions.RequiredUrlParameters;
+import com.mastfrog.acteur.util.CacheControl;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.guicy.scope.ReentrantScope;
 import com.mastfrog.settings.Settings;
@@ -237,6 +238,12 @@ public abstract class Page implements Iterable<Acteur> {
             ActeurFactory af = a = getApplication().getDependencies().getInstance(ActeurFactory.class);
             acteurs.add(af.matchPath(regex.value()));
         }
+        Path path = c.getAnnotation(Path.class);
+        if (path != null) {
+            ActeurFactory af = a != null ? a : (a = getApplication().getDependencies().getInstance(ActeurFactory.class));
+            acteurs.add(af.globPathMatch(path.value()));
+        }
+
         Methods m = c.getAnnotation(Methods.class);
         if (m != null) {
             ActeurFactory af = a != null ? a : (a = getApplication().getDependencies().getInstance(ActeurFactory.class));

@@ -581,32 +581,32 @@ public class ActeurFactory {
     public Class<? extends Acteur> sendNotModifiedIfETagHeaderMatchesType() {
         return CheckIfNoneMatchHeader.class;
     }
-    
+
     public Acteur globPathMatch(String... patterns) {
         String[] rexen = new String[patterns.length];
         for (String p : patterns) {
             StringBuilder match = new StringBuilder("^");
             for (char c : p.toCharArray()) {
                 switch (c) {
-                    case '$' :
-                    case '.' :
-                    case '{' :
-                    case '}' :
-                    case '[' :
-                    case ']' :
-                    case ')' :
-                    case '(' :
-                    case '^' :
-                    case '/' :
+                    case '$':
+                    case '.':
+                    case '{':
+                    case '}':
+                    case '[':
+                    case ']':
+                    case ')':
+                    case '(':
+                    case '^':
+                    case '/':
                         match.append("\\" + c);
                         break;
-                    case '*' :
+                    case '*':
                         match.append("[^\\/]*?");
                         break;
-                    case '?' :
+                    case '?':
                         match.append("[^\\/]?");
                         break;
-                    default :
+                    default:
                         match.append(c);
                 }
             }
@@ -692,85 +692,8 @@ public class ActeurFactory {
         }
     }
 
-    private static class CheckIfNoneMatchHeader extends Acteur {
 
-        @Inject
-        CheckIfNoneMatchHeader(HttpEvent event, Page page) throws Exception {
-            Checks.notNull("event", event);
-            Checks.notNull("page", page);
-            String etag = event.getHeader(Headers.IF_NONE_MATCH);
-            String pageEtag = page.getResponseHeaders().getETag();
-            if (etag != null && pageEtag != null) {
-                if (etag.equals(pageEtag)) {
-                    setState(new RespondWith(HttpResponseStatus.NOT_MODIFIED));
-                // XXX workaround for peculiar problem with FileResource =
-                    // not modified responses are leaving a hanging connection
-                    setResponseBodyWriter(ChannelFutureListener.CLOSE);
-                    return;
-                }
-            }
-            setState(new ConsumedState());
-        }
 
-        @Override
-        public void describeYourself(Map<String, Object> into) {
-            into.put("Supports If-None-Match header", true);
-        }
-    }
-
-    private static class CheckIfUnmodifiedSinceHeader extends Acteur {
-
-        @Inject
-        CheckIfUnmodifiedSinceHeader(HttpEvent event, Page page) {
-            DateTime dt = event.getHeader(Headers.IF_UNMODIFIED_SINCE);
-            if (dt != null) {
-                DateTime pageLastModified = page.getResponseHeaders().getLastModified();
-                if (pageLastModified != null) {
-                    boolean modSince = pageLastModified.getMillis() > dt.getMillis();
-                    if (modSince) {
-                        setState(new RespondWith(HttpResponseStatus.PRECONDITION_FAILED));
-                        return;
-                    }
-                }
-            }
-            setState(new ConsumedState());
-        }
-
-        @Override
-        public void describeYourself(Map<String, Object> into) {
-            into.put("Supports If-Unmodified-Since", true);
-        }
-    }
-
-    private static class CheckIfModifiedSinceHeader extends Acteur {
-
-        @Inject
-        CheckIfModifiedSinceHeader(HttpEvent event, Page page) {
-            DateTime lastModifiedMustBeNewerThan = event.getHeader(Headers.IF_MODIFIED_SINCE);
-            DateTime pageLastModified = page.getResponseHeaders().getLastModified();
-
-            boolean notModified = lastModifiedMustBeNewerThan != null && pageLastModified != null;
-            if (notModified) {
-                pageLastModified = pageLastModified.withMillisOfSecond(0);
-                notModified = pageLastModified.getMillis() <= lastModifiedMustBeNewerThan.getMillis();
-            }
-
-            if (notModified) {
-                setResponseCode(HttpResponseStatus.NOT_MODIFIED);
-                setState(new RespondWith(HttpResponseStatus.NOT_MODIFIED));
-                // XXX workaround for peculiar problem with FileResource =
-                // not modified responses are leaving a hanging connection
-                setResponseBodyWriter(ChannelFutureListener.CLOSE);
-                return;
-            }
-            setState(new ConsumedState());
-        }
-
-        @Override
-        public void describeYourself(Map<String, Object> into) {
-            into.put("Supports If-Modified-Since header", true);
-        }
-    }
 
     /**
      * Compute the etag on demand, and send a not modified header if the one in
@@ -814,6 +737,7 @@ public class ActeurFactory {
         Checks.notNull("params", params);
         Checks.notEmpty("params", Arrays.asList(params));
         class RequireParametersIfMethodMatches extends Acteur {
+
             public State getState() {
                 HttpEvent evt = deps.getInstance(HttpEvent.class);
                 if (method.equals(evt.getMethod())) {
@@ -835,6 +759,7 @@ public class ActeurFactory {
     public Acteur redirectEmptyPath(final Path to) throws URISyntaxException {
         Checks.notNull("to", to);
         class MatchNothing extends Acteur {
+
             public State getState() {
                 HttpEvent evt = deps.getInstance(HttpEvent.class);
                 if (evt.getPath().toString().isEmpty()) {
@@ -851,7 +776,9 @@ public class ActeurFactory {
 
     public Acteur branch(final Class<? extends Acteur> ifTrue, final Class<? extends Acteur> ifFalse, final Test test) {
         class Brancher extends Acteur implements Delegate {
+
             private Acteur delegate;
+
             @Override
             public State getState() {
                 return getDelegate().getState();
@@ -883,8 +810,10 @@ public class ActeurFactory {
      * branching
      */
     public interface Test {
+
         /**
          * Perform the test
+         *
          * @param evt The request
          * @return The result of the test
          */
