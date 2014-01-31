@@ -1,7 +1,7 @@
-/* 
+/*
  * The MIT License
  *
- * Copyright 2013 Tim Boudreau.
+ * Copyright 2011-2014 Tim Boudreau.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,12 +24,15 @@
 package com.mastfrog.acteur.server;
 
 import com.google.inject.Inject;
+import com.google.inject.Provider;
 import com.google.inject.name.Named;
 import static com.mastfrog.acteur.server.ServerModule.EVENT_THREADS;
 import static com.mastfrog.acteur.server.ServerModule.WORKER_THREADS;
 import com.mastfrog.acteur.util.Server;
+import com.mastfrog.acteur.util.ServerControl;
 import com.mastfrog.giulius.ShutdownHookRegistry;
 import com.mastfrog.settings.Settings;
+import com.mastfrog.util.Exceptions;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelInitializer;
@@ -37,16 +40,15 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import java.io.IOException;
+import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
 import java.net.InetSocketAddress;
 import java.util.Date;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.Condition;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import org.openide.util.Exceptions;
 
 /**
  *
@@ -63,7 +65,8 @@ final class ServerImpl implements Server {
     private final ThreadCount workerThreadCount;
     private final ThreadGroup workerThreadGroup;
     private final String applicationName;
-    private final ServerBootstrap bootstrap;
+    private final ShutdownHookRegistry registry;
+    private final Provider<ServerBootstrap> bootstrapProvider;
 
     @Inject
     ServerImpl(
@@ -75,7 +78,7 @@ final class ServerImpl implements Server {
             @Named(WORKER_THREADS) ThreadCount workerThreadCount,
             @Named(WORKER_THREADS) ThreadGroup workerThreadGroup,
             @Named("application") String applicationName,
-            ServerBootstrap bootstrap,
+            Provider<ServerBootstrap> bootstrapProvider,
             ShutdownHookRegistry registry,
             Settings settings) {
         this.port = settings.getInt(ServerModule.PORT, 8123);
@@ -87,33 +90,8 @@ final class ServerImpl implements Server {
         this.workerThreadCount = workerThreadCount;
         this.workerThreadGroup = workerThreadGroup;
         this.applicationName = applicationName;
-        this.bootstrap = bootstrap;
-        registry.add(new ServerShutdown(this));
-    }
-
-    private static final class ServerShutdown implements Runnable {
-
-        private final WeakReference<ServerImpl> server;
-
-        public ServerShutdown(ServerImpl server) {
-            this.server = new WeakReference<>(server);
-        }
-
-        @Override
-        public void run() {
-            ServerImpl im = server.get();
-            if (im != null && im.isStarted()) {
-                try {
-                    im.shutdown(false, 10, TimeUnit.SECONDS);
-                } catch (InterruptedException ex) {
-                    Exceptions.printStackTrace(ex);
-                }
-            }
-        }
-    }
-
-    boolean isStarted() {
-        return events != null && !events.isTerminated();
+        this.bootstrapProvider = bootstrapProvider;
+        this.registry = registry;
     }
 
     @Override
@@ -123,125 +101,127 @@ final class ServerImpl implements Server {
 
     @Override
     public String toString() {
-        return applicationName + " on port " + port + " with " + 
-                eventThreadCount.get() + " event threads and " + 
-                workerThreadCount.get() + " worker threads.";
+        return applicationName + " on port " + port + " with "
+                + eventThreadCount.get() + " event threads and "
+                + workerThreadCount.get() + " worker threads.";
     }
     private Channel localChannel;
 
     @Override
-    public Condition start(int port) throws IOException {
+    public ServerControl start(int port) throws IOException {
         this.port = port;
-        return start();
-    }
-
-    NioEventLoopGroup events;
-    NioEventLoopGroup workers;
-
-    public Condition start() throws IOException {
-        if (events != null) {
-            throw new IllegalStateException("Already started");
-        }
         try {
-            events = new NioEventLoopGroup(eventThreadCount.get(), eventThreadFactory);
-            workers = new NioEventLoopGroup(workerThreadCount.get(), workerThreadFactory);
-            
-            bootstrap.group(events, workers)
+            final ConditionImpl result = new ConditionImpl(port);
+
+            ServerBootstrap bootstrap = bootstrapProvider.get();
+
+            bootstrap.group(result.events, result.workers)
                     .channel(NioServerSocketChannel.class)
                     .childHandler(pipelineFactory)
                     .localAddress(new InetSocketAddress(port));
 
             localChannel = bootstrap.bind().sync().channel();
             System.err.println("Starting " + this);
-            
+
             final CountDownLatch afterStart = new CountDownLatch(1);
-            events.submit(new Runnable() {
+            result.events.submit(new Runnable() {
 
                 @Override
                 public void run() {
+                    // Ensure a server is not held in memory if it has been
+                    // gc'd
+                    registry.add(new WeakRunnable(result));
                     afterStart.countDown();
                 }
             });
 
             afterStart.await();
             // Bind and start to accept incoming connections.
-            return getCondition();
+            return result;
         } catch (InterruptedException ex) {
-            throw new Error(ex);
+            return Exceptions.chuck(ex);
         }
     }
 
-    public void shutdown(boolean immediately, long timeout, TimeUnit unit) throws InterruptedException {
-        shutdown(immediately, timeout, unit, true);
+    public ServerControl start() throws IOException {
+        return start(this.port);
     }
 
-    private void shutdown(boolean immediately, long timeout, TimeUnit unit, boolean await) throws InterruptedException {
-        // XXX this can actually take 3x the timeout
-        eventThreadGroup.interrupt();
-        if (events != null) {
-            events.shutdownGracefully(0, immediately ? 0L : timeout / 2, unit);
+    private static class WeakRunnable implements Runnable {
+
+        private final Reference<Runnable> delegate;
+
+        WeakRunnable(Runnable real) {
+            this.delegate = new WeakReference(real);
         }
-        if (workers != null) {
-            workers.shutdownGracefully(0, immediately ? 0L : timeout / 2, unit);
-        }
-        workerThreadGroup.interrupt();
-        try {
-            if (localChannel != null) {
-                if (localChannel.isOpen()) {
-                    if (await) {
-                        localChannel.close().await(timeout, unit);
-                    } else {
-                        localChannel.close();
-                    }
-                }
+
+        @Override
+        public void run() {
+            Runnable real = delegate.get();
+            if (real != null) {
+                real.run();
             }
-        } finally {
+        }
+    }
+
+    private class ConditionImpl implements ServerControl, Runnable {
+
+        private final NioEventLoopGroup events = new NioEventLoopGroup(eventThreadCount.get(), eventThreadFactory);
+        private final NioEventLoopGroup workers = new NioEventLoopGroup(workerThreadCount.get(), workerThreadFactory);
+        private final int port;
+
+        ConditionImpl(int port) {
+            this.port = port;
+        }
+
+        public void shutdown(boolean immediately, long timeout, TimeUnit unit) throws InterruptedException {
+            shutdown(immediately, timeout, unit, true);
+        }
+
+        private boolean isTerminated() {
+            return events.isTerminated() && workers.isTerminated();
+        }
+
+        private void shutdown(boolean immediately, long timeout, TimeUnit unit, boolean await) throws InterruptedException {
+            // XXX this can actually take 3x the timeout
+            eventThreadGroup.interrupt();
             if (events != null) {
-                events.awaitTermination(timeout, unit);
-                if (events.isTerminated()) {
-                    events = null;
-                }
+                events.shutdownGracefully(0, immediately ? 0L : timeout / 2, unit);
             }
             if (workers != null) {
-                workers.awaitTermination(timeout, unit);
-                if (workers.isTerminated()) {
-                    workers = null;
+                workers.shutdownGracefully(0, immediately ? 0L : timeout / 2, unit);
+            }
+            workerThreadGroup.interrupt();
+            try {
+                if (localChannel != null) {
+                    if (localChannel.isOpen()) {
+                        if (await) {
+                            localChannel.close().await(timeout, unit);
+                        } else {
+                            localChannel.close();
+                        }
+                    }
                 }
+            } finally {
+                events.awaitTermination(timeout, unit);
+                workers.awaitTermination(timeout, unit);
             }
         }
-    }
 
-    @Override
-    public void shutdown(boolean immediately) throws InterruptedException {
-        shutdown(false, 1, TimeUnit.SECONDS, true);
-        await();
-    }
-
-    void await() throws InterruptedException {
-        if (events == null) {
-            return;
+        @Override
+        public void shutdown(boolean immediately) throws InterruptedException {
+            shutdown(false, 1, TimeUnit.SECONDS, true);
+            await();
         }
-        if (events != null) {
-            events.awaitTermination(1, TimeUnit.DAYS);
-        }
-        if (workers != null) {
-            workers.awaitTermination(1, TimeUnit.DAYS);
-        }
-    }
-
-    private boolean isTerminated() {
-        return events == null ? true : events.isTerminated();
-    }
-
-    Condition getCondition() {
-        return new ConditionImpl();
-    }
-
-    private class ConditionImpl implements Condition {
 
         @Override
         public void await() throws InterruptedException {
-            ServerImpl.this.await();
+            if (events != null) {
+                events.awaitTermination(Integer.MAX_VALUE, TimeUnit.DAYS);
+            }
+            if (workers != null) {
+                workers.awaitTermination(Integer.MAX_VALUE, TimeUnit.DAYS);
+            }
         }
 
         @Override
@@ -292,6 +272,22 @@ final class ServerImpl implements Server {
             } catch (InterruptedException ex) {
                 Logger.getLogger(ServerImpl.class.getName()).log(Level.SEVERE, null, ex);
             }
+        }
+
+        @Override
+        public void run() {
+            try {
+                if (!isTerminated()) {
+                    shutdown(true, 0, TimeUnit.MILLISECONDS, false);
+                }
+            } catch (InterruptedException ex) {
+                Exceptions.printStackTrace(ex);
+            }
+        }
+
+        @Override
+        public int getPort() {
+            return port;
         }
     }
 }

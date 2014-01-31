@@ -24,8 +24,6 @@
 package com.mastfrog.acteur.util;
 
 import java.io.IOException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.Condition;
 
 /**
  * A server which can be started, waited on and shutdown.
@@ -36,37 +34,29 @@ import java.util.concurrent.locks.Condition;
 public interface Server {
     
     /**
-     * Get the port this server is running on
+     * Get the default port this server will run on, or if multiple instances
+     * have been started on different ports, the last-used port.  For accurate
+     * values, use ServerControl.getPort() after calling start().
      * @return The port
      */
     int getPort();
 
     /**
-     * Shut down, waiting for thread pools to terminate and connections to
-     * be closed (unlike getCondition().signal()).
-     * @param immediately If thread pools should be shut down without
-     * processing any pending work
-     * @param timeout How long to wait for shutdown (may nonetheless wait
-     * longer since closing the channel does not afford a timeout)
-     * @param unit A time unit
-     * @throws InterruptedException
-     */
-    void shutdown(boolean immediately, long timeout, TimeUnit unit) throws InterruptedException;
-    /**
-     * Shut down and wait for termination
-     * @param immediately If thread pools should be shut down without
-     * processing pending work
-     * @throws InterruptedException If something interrupts shutdown
-     */
-    void shutdown(boolean immediately) throws InterruptedException;
-
-    /**
      * Start the server.
-     * @return A Condition object which can be waited on for the server
+     * @return A ServerControl object which can be waited on for the server
      * to be shut down, and whose signal()/signalAll() methods will trigger
      * a shutdown
      * @throws IOException if something goes wrong
      */
-    Condition start() throws IOException;
-    Condition start(int port) throws IOException;
+    ServerControl start() throws IOException;
+    /**
+     * Start the server on a specific port.
+     * 
+     * @param port The port
+     * @return A ServerControl object which can be waited on for the server
+     * to be shut down, and whose signal()/signalAll() methods will trigger
+     * a shutdown
+     * @throws IOException 
+     */
+    ServerControl start(int port) throws IOException;
 }

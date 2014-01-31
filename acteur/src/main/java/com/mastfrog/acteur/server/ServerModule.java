@@ -82,31 +82,33 @@ import org.joda.time.Duration;
  */
 @Defaults("realm=Users")
 public class ServerModule<A extends Application> extends AbstractModule {
-    
+
     /**
-     * Name of the &#064;Named parameter that should be used in an annotation
-     * if you want Guice to inject the specific thread pool used for processing
+     * Name of the &#064;Named parameter that should be used in an annotation if
+     * you want Guice to inject the specific thread pool used for processing
      * requests.
      */
     public static final String BACKGROUND_THREAD_POOL_NAME = "background";
     /**
-     * Name of the &#064;Named parameter that should be used in an annotation
-     * if you want Guice to inject the specific thread pool used for processing
+     * Name of the &#064;Named parameter that should be used in an annotation if
+     * you want Guice to inject the specific thread pool used for processing
      * requests.
      */
     public static final String WORKER_THREAD_POOL_NAME = "workers";
     /**
-     * Name of the &#064;Named parameter that should be used in an annotation
-     * if you want Guice to inject the specific thread pool used for processing
-     * requests, but wrappered so that all runnables are run within the application's
-     * request scope and have whatever context they were submitted with.
+     * Name of the &#064;Named parameter that should be used in an annotation if
+     * you want Guice to inject the specific thread pool used for processing
+     * requests, but wrappered so that all runnables are run within the
+     * application's request scope and have whatever context they were submitted
+     * with.
      */
     public static final String SCOPED_WORKER_THREAD_POOL_NAME = "scopedWorkers";
     /**
-     * Name of the &#064;Named parameter that should be used in an annotation
-     * if you want Guice to inject the specific thread pool used for processing
-     * requests, but wrappered so that all runnables are run within the application's
-     * request scope and have whatever context they were submitted with.
+     * Name of the &#064;Named parameter that should be used in an annotation if
+     * you want Guice to inject the specific thread pool used for processing
+     * requests, but wrappered so that all runnables are run within the
+     * application's request scope and have whatever context they were submitted
+     * with.
      */
     public static final String SCOPED_BACKGROUND_THREAD_POOL_NAME = "scopedBackground";
 
@@ -140,7 +142,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
      */
     public static final String DEFAULT_ALLOCATOR = POOLED_ALLOCATOR;
     /**
-     * Settings key for the nnumber of worker threads to use.  
+     * Settings key for the nnumber of worker threads to use.
      */
     public static final String WORKER_THREADS = "workerThreads";
     /**
@@ -148,13 +150,15 @@ public class ServerModule<A extends Application> extends AbstractModule {
      */
     public static final String EVENT_THREADS = "eventThreads";
     /**
-     * Number of background thread pool threads.  The background thread pool
-     * is used by a few things which chunk responses.
+     * Number of background thread pool threads. The background thread pool is
+     * used by a few things which chunk responses.
      */
     public static final String BACKGROUND_THREADS = "backgroundThreads";
-    /** The port to run on */
+    /**
+     * The port to run on
+     */
     public static final String PORT = "port";
-    
+
     /**
      * If true, the return value of Event.getRemoteAddress() will prefer the
      * headers X-Forwarded-For or X-Real-IP if present, so that running an
@@ -186,12 +190,14 @@ public class ServerModule<A extends Application> extends AbstractModule {
 
     @Override
     protected void configure() {
-        bind(Server.class).to(ServerImpl.class).asEagerSingleton();
+        bind(Server.class).to(ServerImpl.class);
         bind(ReentrantScope.class).toInstance(scope);
         bind(Application.class).to(appType).asEagerSingleton();
         bind(ChannelHandler.class).to(UpstreamHandlerImpl.class);
         bind(new CISC()).to(PipelineFactoryImpl.class);
-        bind(ServerBootstrap.class).toProvider(new ServerBootstrapProvider(binder().getProvider(Settings.class), binder().getProvider(ByteBufAllocator.class)));
+        bind(ServerBootstrap.class).toProvider(new ServerBootstrapProvider(
+                binder().getProvider(Settings.class),
+                binder().getProvider(ByteBufAllocator.class)));
 
         scope.bindTypes(binder(), Event.class, HttpEvent.class,
                 Page.class, BasicCredentials.class);
@@ -224,10 +230,10 @@ public class ServerModule<A extends Application> extends AbstractModule {
         bind(ThreadFactory.class).annotatedWith(Names.named(EVENT_THREADS)).toInstance(eventThreadFactory);
         bind(ThreadFactory.class).annotatedWith(Names.named(BACKGROUND_THREAD_POOL_NAME)).toInstance(backgroundThreadFactory);
 
-        Provider<ExecutorService> workerProvider =
-                new ExecutorServiceProvider(workerThreadFactory, workerThreadCount);
-        Provider<ExecutorService> backgroundProvider =
-                new ExecutorServiceProvider(backgroundThreadFactory, backgroundThreadCount);
+        Provider<ExecutorService> workerProvider
+                = new ExecutorServiceProvider(workerThreadFactory, workerThreadCount);
+        Provider<ExecutorService> backgroundProvider
+                = new ExecutorServiceProvider(backgroundThreadFactory, backgroundThreadCount);
 
         bind(ExecutorService.class).annotatedWith(Names.named(
                 WORKER_THREAD_POOL_NAME)).toProvider(workerProvider);
@@ -237,11 +243,11 @@ public class ServerModule<A extends Application> extends AbstractModule {
 
         bind(ExecutorService.class).annotatedWith(Names.named(
                 SCOPED_WORKER_THREAD_POOL_NAME)).toProvider(
-                new WrappedWorkerThreadPoolProvider(workerProvider, scope));
+                        new WrappedWorkerThreadPoolProvider(workerProvider, scope));
 
         bind(ExecutorService.class).annotatedWith(Names.named(
                 SCOPED_BACKGROUND_THREAD_POOL_NAME)).toProvider(
-                new WrappedWorkerThreadPoolProvider(backgroundProvider, scope));
+                        new WrappedWorkerThreadPoolProvider(backgroundProvider, scope));
 
         bind(DateTime.class).toInstance(DateTime.now());
         bind(Duration.class).toProvider(UptimeProvider.class);
@@ -259,7 +265,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
         bind(new ETL()).toProvider(EventProvider.class).in(scope);
         bind(Codec.class).to(CodecImpl.class);
     }
-    
+
     private static final class EventProvider implements Provider<Event<?>> {
 
         @SuppressWarnings("unchecked")
@@ -276,12 +282,13 @@ public class ServerModule<A extends Application> extends AbstractModule {
             return eventProvider.get();
         }
     }
-    
+
     private static final class ETL extends TypeLiteral<Event<?>> {
-        
+
     }
-    
+
     static class CodecImpl implements Codec {
+
         private final Provider<ObjectMapper> mapper;
 
         @Inject
