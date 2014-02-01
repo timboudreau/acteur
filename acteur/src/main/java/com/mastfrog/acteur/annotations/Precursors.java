@@ -10,7 +10,7 @@ import java.lang.annotation.Target;
  *
  * @author Tim Boudreau
  */
-@Retention(RetentionPolicy.SOURCE)
+@Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
 public @interface Precursors {
     Class<? extends Acteur>[] value();

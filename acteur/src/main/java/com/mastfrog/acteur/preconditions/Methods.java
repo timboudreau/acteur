@@ -38,6 +38,7 @@ import java.lang.annotation.Target;
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
+@Description("Match HTTP methods")
 public @interface Methods {
 
     Method[] value() default Method.GET;

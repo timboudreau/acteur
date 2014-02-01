@@ -589,7 +589,7 @@ public abstract class Acteur {
         return new WrapperActeur(deps, charset, type);
     }
 
-    private static class WrapperActeur extends Acteur implements Delegate {
+    static class WrapperActeur extends Acteur implements Delegate {
 
         private final Dependencies deps;
         private final Charset charset;
@@ -601,6 +601,10 @@ public abstract class Acteur {
             this.type = type;
         }
         Acteur acteur;
+        
+        public Class<? extends Acteur> type() {
+            return type;
+        }
 
         @Override
         public void describeYourself(Map<String, Object> into) {

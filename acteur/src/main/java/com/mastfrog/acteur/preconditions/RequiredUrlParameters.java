@@ -13,6 +13,7 @@ import java.lang.annotation.Target;
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
+@Description("Required URL parameters")
 public @interface RequiredUrlParameters {
 
     String[] value();

@@ -28,6 +28,7 @@ import com.mastfrog.acteur.auth.AuthenticateBasicActeur;
 import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.acteur.preconditions.BasicAuth;
+import com.mastfrog.acteur.preconditions.Description;
 import com.mastfrog.acteur.preconditions.Methods;
 import com.mastfrog.acteur.preconditions.PageAnnotationHandler;
 import com.mastfrog.acteur.preconditions.ParametersMustBeNumbersIfPresent;
@@ -99,9 +100,16 @@ public abstract class Page implements Iterable<Acteur> {
     protected String getDescription() {
         return getClass().getSimpleName();
     }
+    
+    Iterable<Object> contents() {
+        return CollectionUtils.toIterable(this.acteurs.iterator());
+    }
 
     void describeYourself(Map<String, Object> into) {
         Map<String, Object> m = new HashMap<>();
+        if (getClass().getAnnotation(Description.class) != null) {
+            m.put("description", getClass().getAnnotation(Description.class).value());
+        }
         int count = countActeurs();
         for (int i = 0; i < count; i++) {
             try {
@@ -253,14 +261,14 @@ public abstract class Page implements Iterable<Acteur> {
         RequiredUrlParameters params = c.getAnnotation(RequiredUrlParameters.class);
         if (params != null) {
             ActeurFactory af = a != null ? a : (a = getApplication().getDependencies().getInstance(ActeurFactory.class));
-            switch(params.combination()) {
-                case ALL :
+            switch (params.combination()) {
+                case ALL:
                     acteurs.add(af.requireParameters(params.value()));
                     break;
-                case AT_LEAST_ONE :
+                case AT_LEAST_ONE:
                     acteurs.add(af.requireAtLeastOneParameter(params.value()));
                     break;
-                default :
+                default:
                     throw new AssertionError(params.combination());
             }
         }
@@ -280,8 +288,8 @@ public abstract class Page implements Iterable<Acteur> {
 
     private boolean hasAnnotations() {
         Class<?> c = getClass();
-        return c.getAnnotation(Methods.class) != null || c.getAnnotation(PathRegex.class) != null ||
-                c.getAnnotation(RequiredUrlParameters.class) != null;
+        return c.getAnnotation(Methods.class) != null || c.getAnnotation(PathRegex.class) != null
+                || c.getAnnotation(RequiredUrlParameters.class) != null;
     }
 
     @Override

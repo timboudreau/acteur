@@ -6,12 +6,13 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
+ * Provide a description for a page which will be used by 
+ * Application.getHelpPageType() to provide an API-level help call.
  *
  * @author Tim Boudreau
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
-@Description("Glob-style URL Path")
-public @interface Path {
-    String[] value();
+public @interface Description {
+    String value();
 }

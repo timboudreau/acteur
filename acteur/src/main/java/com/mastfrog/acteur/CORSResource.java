@@ -27,6 +27,9 @@ import com.google.inject.Inject;
 import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.acteur.headers.Method;
+import static com.mastfrog.acteur.headers.Method.OPTIONS;
+import com.mastfrog.acteur.preconditions.Description;
+import com.mastfrog.acteur.preconditions.Methods;
 import com.mastfrog.acteur.util.CacheControl;
 import com.mastfrog.acteur.util.CacheControlTypes;
 import com.mastfrog.settings.Settings;
@@ -38,6 +41,8 @@ import org.joda.time.Duration;
  *
  * @author Tim Boudreau
  */
+@Description("Answers CORS preflight HTTP OPTIONS requests - see the ajax spec")
+@Methods(OPTIONS)
 final class CORSResource extends Page {
 
     public static final String SETTINGS_KEY_CORS_MAX_AGE_MINUTES = "cors.max.age.minutes";
@@ -62,9 +67,7 @@ final class CORSResource extends Page {
 
     @Inject
     CORSResource(ActeurFactory af) {
-        add(af.matchMethods(Method.OPTIONS));
         add(CorsHeaders.class);
-
         getResponseHeaders().setContentLength(0);
     }
 

@@ -29,13 +29,13 @@ import com.mastfrog.acteur.Acteur.Delegate;
 import com.mastfrog.acteur.ResponseHeaders.ETagProvider;
 import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.acteur.headers.Method;
+import com.mastfrog.acteur.preconditions.Description;
 import com.mastfrog.acteur.server.PathFactory;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.url.Path;
 import com.mastfrog.util.Checks;
 import com.mastfrog.util.Exceptions;
 import com.mastfrog.util.Strings;
-import io.netty.channel.ChannelFutureListener;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import static io.netty.handler.codec.http.HttpResponseStatus.BAD_REQUEST;
 import static io.netty.handler.codec.http.HttpResponseStatus.SEE_OTHER;
@@ -51,7 +51,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
-import org.joda.time.DateTime;
 
 /**
  * Factory for standard Acteur implementations, mainly used to determine if a
@@ -290,6 +289,7 @@ public class ActeurFactory {
      * exactly to the parameter names desired.
      */
     public <T> Acteur injectRequestParametersAs(final Class<T> type) {
+        @Description("Inject request parameters as a type")
         class InjectParams extends Acteur {
 
             @Override
@@ -312,17 +312,19 @@ public class ActeurFactory {
      * @return An acteur
      */
     public Acteur responseCode(final HttpResponseStatus status) {
-        return new Acteur() {
+        @Description("Send a response code")
+        class SendResponseCode extends Acteur {
             @Override
             public State getState() {
-                return new RespondWith(status);
+                return new Acteur.RespondWith(status);
             }
 
             @Override
             public void describeYourself(Map<String, Object> into) {
                 into.put("Responds With", status);
             }
-        };
+        }
+        return new SendResponseCode();
     }
 
     /**
@@ -332,6 +334,7 @@ public class ActeurFactory {
      * @return An acteur
      */
     public Acteur requireParameters(final String... names) {
+        @Description("Requires specific parameters")
         class RequireParameters extends Acteur {
 
             @Override
@@ -361,7 +364,8 @@ public class ActeurFactory {
     }
 
     public Acteur parametersMayNotBeCombined(final String... names) {
-        class RequireParameters extends Acteur {
+        @Description("Requires that parameters not appear together in the URL")
+        class RequireParametersNotBeCombined extends Acteur {
 
             @Override
             public State getState() {
@@ -394,10 +398,11 @@ public class ActeurFactory {
                 into.put("requiredParameters", names);
             }
         }
-        return new RequireParameters();
+        return new RequireParametersNotBeCombined();
     }
 
     public Acteur parametersMustBeNumbersIfTheyArePresent(final boolean allowDecimal, final boolean allowNegative, final String... names) {
+        @Description("Requires that parameters be numbers if they are present")
         class NumberParameters extends Acteur {
 
             @Override
@@ -457,6 +462,7 @@ public class ActeurFactory {
      */
     public Acteur banParameters(final String... names) {
         Arrays.sort(names);
+        @Description("Requires that parameters not be present")
         class BanParameters extends Acteur {
 
             public State getState() {
@@ -485,6 +491,7 @@ public class ActeurFactory {
      * @return
      */
     public Acteur requireAtLeastOneParameter(final String... names) {
+        @Description("Requires that at least one specified parameter be present")
         class RequireAtLeastOneParameter extends Acteur {
 
             @Override

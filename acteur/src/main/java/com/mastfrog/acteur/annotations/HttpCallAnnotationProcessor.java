@@ -23,6 +23,7 @@
  */
 package com.mastfrog.acteur.annotations;
 
+import static com.mastfrog.acteur.annotations.HttpCall.GENERATED_SOURCE_SUFFIX;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
@@ -267,7 +268,7 @@ public class HttpCallAnnotationProcessor extends AbstractProcessor {
 
     private String generatePageSource(TypeElement typeElement) throws IOException {
         PackageElement pkg = findPackage(typeElement);
-        String className = typeElement.getSimpleName() + "__GenPage";
+        String className = typeElement.getSimpleName() + GENERATED_SOURCE_SUFFIX;
         JavaFileObject jfo = env.getFiler().createSourceFile(pkg.getQualifiedName() + "." + className, typeElement);
         try (PrintStream ps = new PrintStream(jfo.openOutputStream())) {
             ps.println("package " + pkg.getQualifiedName() + ";");

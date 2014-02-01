@@ -19,7 +19,7 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
 public @interface HttpCall {
-
+    public static final String GENERATED_SOURCE_SUFFIX = "__GenPage";
     public static final String META_INF_PATH = "META-INF/http/pages.list";
 
     /**

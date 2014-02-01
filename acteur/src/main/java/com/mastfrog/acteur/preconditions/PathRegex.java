@@ -36,6 +36,7 @@ import java.lang.annotation.Target;
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
+@Description("Regular expression URL path")
 public @interface PathRegex {
 
     String[] value();

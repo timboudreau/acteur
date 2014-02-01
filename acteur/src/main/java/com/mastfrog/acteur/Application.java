@@ -23,11 +23,14 @@
  */
 package com.mastfrog.acteur;
 
-import com.google.common.base.Optional;
 import com.mastfrog.acteur.headers.Headers;
 import com.google.common.net.MediaType;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
+import com.mastfrog.acteur.Acteur.WrapperActeur;
+import com.mastfrog.acteur.annotations.HttpCall;
+import com.mastfrog.acteur.annotations.Precursors;
+import com.mastfrog.acteur.preconditions.Description;
 import com.mastfrog.settings.SettingsBuilder;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.guicy.scope.ReentrantScope;
@@ -35,35 +38,26 @@ import com.mastfrog.acteur.util.CacheControl;
 import com.mastfrog.acteur.util.CacheControlTypes;
 import com.mastfrog.acteur.server.ServerModule;
 import com.mastfrog.acteur.util.ErrorInterceptor;
-import com.mastfrog.acteur.headers.HeaderValueType;
-import com.mastfrog.acteur.headers.Method;
 import com.mastfrog.acteur.spi.ApplicationControl;
 import com.mastfrog.acteur.util.RequestID;
-import com.mastfrog.url.Path;
 import com.mastfrog.util.ConfigurationError;
 import com.mastfrog.util.Checks;
 import com.mastfrog.util.Invokable;
-import com.mastfrog.util.Streams;
-import com.mastfrog.util.thread.QuietAutoCloseable;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
-import io.netty.handler.codec.http.DefaultHttpRequest;
 import io.netty.handler.codec.http.HttpHeaders;
-import io.netty.handler.codec.http.HttpMethod;
-import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpVersion;
 import java.io.IOException;
-import java.io.OutputStream;
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Modifier;
-import java.net.InetSocketAddress;
-import java.net.SocketAddress;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -78,6 +72,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import org.joda.time.DateTime;
 import org.joda.time.Duration;
+import org.openide.util.Exceptions;
 
 /**
  * A web application. Principally, the application is a collection of Page
@@ -126,8 +121,16 @@ public class Application implements Iterable<Page> {
      * @param types
      */
     protected Application(Class<?>... types) {
+        this();
         for (Class<?> type : types) {
             add((Class<? extends Page>) type);
+        }
+    }
+
+    protected Application() {
+        Help help = getClass().getAnnotation(Help.class);
+        if (help != null) {
+            add(helpPageType());
         }
     }
 
@@ -200,101 +203,106 @@ public class Application implements Iterable<Page> {
         return exe;
     }
 
+    private void introspectAnnotation(Annotation a, Map<String, Object> into) throws IllegalAccessException, IllegalArgumentException, InvocationTargetException {
+        if (a instanceof HttpCall) {
+            return;
+        }
+        if (a instanceof Precursors) {
+            Precursors p = (Precursors) a;
+            for (Class<?> t : p.value()) {
+                for (Annotation anno : t.getAnnotations()) {
+                    introspectAnnotation(anno, into);
+                }
+            }
+        } else {
+            Class<? extends Annotation> type = a.annotationType();
+            for (java.lang.reflect.Method m : type.getMethods()) {
+                switch (m.getName()) {
+                    case "annotationType":
+                    case "toString":
+                    case "hashCode":
+                        break;
+                    default:
+                        if (m.getParameterTypes().length == 0 && m.getReturnType() != null) {
+                            into.put(m.getName(), m.invoke(a));
+                        }
+                }
+            }
+            if (type.getAnnotation(Description.class) != null) {
+                Description d = type.getAnnotation(Description.class);
+                into.put("Description", d.value());
+            }
+        }
+    }
+
     Map<String, Object> describeYourself() {
         Map<String, Object> m = new HashMap<>();
-        try (QuietAutoCloseable c = this.scope.enter(new FakeHttpEventForHelp())) {
-            for (Page page : this) {
-                try (QuietAutoCloseable c2 = Page.set(page)) {
-                    try (QuietAutoCloseable c1 = this.scope.enter(page)) {
-                        page.describeYourself(m);
+        for (Object o : this.pages) {
+            if (o instanceof Class<?>) {
+                Class<?> type = (Class<?>) o;
+                Map<String, Object> pageDescription = new HashMap<>();
+                pageDescription.put("type", type.getName());
+                String nm = type.getSimpleName();
+                if (nm.endsWith(HttpCall.GENERATED_SOURCE_SUFFIX)) {
+                    nm = nm.substring(0, nm.length() - HttpCall.GENERATED_SOURCE_SUFFIX.length());
+                }
+                m.put(nm, pageDescription);
+                Annotation[] l = type.getAnnotations();
+                for (Annotation a : l) {
+                    if (a instanceof HttpCall) {
+                        continue;
+                    }
+                    Map<String, Object> annoDescription = new HashMap<>();
+//                    Description d = a.annotationType().getAnnotation(Description.class);
+//                    if (d != null) {
+//                        annoDescription.put("description", d.value());
+//                    }
+                    pageDescription.put(a.annotationType().getSimpleName(), annoDescription);
+                    try {
+                        introspectAnnotation(a, annoDescription);
+                    } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
+                        Exceptions.printStackTrace(ex);
+                    }
+                    if (annoDescription.size() == 1 && "value".equals(annoDescription.keySet().iterator().next())) {
+                        pageDescription.put(a.annotationType().getSimpleName(), annoDescription.values().iterator().next());
                     }
                 }
+                try {
+                    Page p = (Page) deps.getInstance(type);
+                    for (Object acteur : p.contents()) {
+                        Class<?> at = null;
+                        if (acteur instanceof Acteur.WrapperActeur) {
+                            at = ((WrapperActeur) acteur).type();
+                        } else if (acteur instanceof Class<?>) {
+                            at = (Class<?>) acteur;
+                        }
+                        if (at != null) {
+                            Map<String,Object> callFlow = new HashMap<>();
+                            for (Annotation a1 : at.getAnnotations()) {
+                                introspectAnnotation(a1, callFlow);
+                            }
+                            if (!callFlow.isEmpty()) {
+                                pageDescription.put(at.getSimpleName(), callFlow);
+                            }
+//                        } else if (acteur instanceof Acteur) {
+//                            Map<String,Object> callFlow = new HashMap<>();
+//                            for (Annotation a1 : acteur.getClass().getAnnotations()) {
+//                                introspectAnnotation(a1, callFlow);
+//                            }
+//                            ((Acteur) acteur).describeYourself(callFlow);
+//                            if (!callFlow.isEmpty()) {
+//                                pageDescription.put(acteur.toString(), callFlow);
+//                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    // A page may legitiimately be uninstantiable
+                }
+            } else if (o instanceof Page) {
+                ((Page) o).describeYourself(m);
             }
         }
         return m;
-    }
-
-    private static class FakeHttpEventForHelp implements HttpEvent {
-
-        @Override
-        public Method getMethod() {
-            return Method.GET;
-        }
-
-        @Override
-        public String getHeader(String nm) {
-            return null;
-        }
-
-        @Override
-        public String getParameter(String param) {
-            return null;
-        }
-
-        @Override
-        public Path getPath() {
-            return Path.parse("help");
-        }
-
-        @Override
-        public <T> T getHeader(HeaderValueType<T> value) {
-            return null;
-        }
-
-        @Override
-        public Map<String, String> getParametersAsMap() {
-            return new HashMap<>();
-        }
-
-        @Override
-        public <T> T getParametersAs(Class<T> type) {
-            return null;
-        }
-
-        @Override
-        public Optional<Integer> getIntParameter(String name) {
-            return Optional.absent();
-        }
-
-        @Override
-        public Optional<Long> getLongParameter(String name) {
-            return Optional.absent();
-        }
-
-        @Override
-        public boolean isKeepAlive() {
-            return false;
-        }
-
-        @Override
-        public Channel getChannel() {
-            return null;
-        }
-
-        @Override
-        public HttpRequest getRequest() {
-            return new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/help");
-        }
-
-        @Override
-        public SocketAddress getRemoteAddress() {
-            return new InetSocketAddress("0.0.0.0", 0);
-        }
-
-        @Override
-        public <T> T getContentAsJSON(Class<T> type) throws IOException {
-            return null;
-        }
-
-        @Override
-        public ByteBuf getContent() throws IOException {
-            return Unpooled.buffer();
-        }
-
-        @Override
-        public OutputStream getContentAsStream() throws IOException {
-            return Streams.nullOutputStream();
-        }
     }
 
     /**
