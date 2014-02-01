@@ -241,22 +241,22 @@ public class Application implements Iterable<Page> {
             if (o instanceof Class<?>) {
                 Class<?> type = (Class<?>) o;
                 Map<String, Object> pageDescription = new HashMap<>();
-                pageDescription.put("type", type.getName());
-                String nm = type.getSimpleName();
-                if (nm.endsWith(HttpCall.GENERATED_SOURCE_SUFFIX)) {
-                    nm = nm.substring(0, nm.length() - HttpCall.GENERATED_SOURCE_SUFFIX.length());
+                String typeName = type.getName();
+                if (typeName.endsWith(HttpCall.GENERATED_SOURCE_SUFFIX)) {
+                    typeName = typeName.substring(0, typeName.length() - HttpCall.GENERATED_SOURCE_SUFFIX.length());
                 }
-                m.put(nm, pageDescription);
+                pageDescription.put("type", type.getName());
+                String className = type.getSimpleName();
+                if (className.endsWith(HttpCall.GENERATED_SOURCE_SUFFIX)) {
+                    className = className.substring(0, className.length() - HttpCall.GENERATED_SOURCE_SUFFIX.length());
+                }
+                m.put(className, pageDescription);
                 Annotation[] l = type.getAnnotations();
                 for (Annotation a : l) {
                     if (a instanceof HttpCall) {
                         continue;
                     }
                     Map<String, Object> annoDescription = new HashMap<>();
-//                    Description d = a.annotationType().getAnnotation(Description.class);
-//                    if (d != null) {
-//                        annoDescription.put("description", d.value());
-//                    }
                     pageDescription.put(a.annotationType().getSimpleName(), annoDescription);
                     try {
                         introspectAnnotation(a, annoDescription);
@@ -277,22 +277,24 @@ public class Application implements Iterable<Page> {
                             at = (Class<?>) acteur;
                         }
                         if (at != null) {
-                            Map<String,Object> callFlow = new HashMap<>();
+                            Map<String, Object> callFlow = new HashMap<>();
                             for (Annotation a1 : at.getAnnotations()) {
                                 introspectAnnotation(a1, callFlow);
                             }
-                            if (!callFlow.isEmpty()) {
-                                pageDescription.put(at.getSimpleName(), callFlow);
+                            if (!className.equals(at.getSimpleName())) {
+                                if (!callFlow.isEmpty()) {
+                                    pageDescription.put(at.getSimpleName(), callFlow);
+                                }
                             }
-//                        } else if (acteur instanceof Acteur) {
-//                            Map<String,Object> callFlow = new HashMap<>();
-//                            for (Annotation a1 : acteur.getClass().getAnnotations()) {
-//                                introspectAnnotation(a1, callFlow);
-//                            }
-//                            ((Acteur) acteur).describeYourself(callFlow);
-//                            if (!callFlow.isEmpty()) {
-//                                pageDescription.put(acteur.toString(), callFlow);
-//                            }
+                        } else if (acteur instanceof Acteur) {
+                            Map<String,Object> callFlow = new HashMap<>();
+                            for (Annotation a1 : acteur.getClass().getAnnotations()) {
+                                introspectAnnotation(a1, callFlow);
+                            }
+                            ((Acteur) acteur).describeYourself(callFlow);
+                            if (!callFlow.isEmpty()) {
+                                pageDescription.put(acteur.toString(), callFlow);
+                            }
                         }
                     }
                 } catch (Exception e) {

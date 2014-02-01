@@ -111,7 +111,7 @@ final class HelpPage extends Page {
                             + "<code>--basepath $PATH</code> on the command-line"
                             + "or set in a properties file."
                             + "<i></p>");
-                    writeOut(null, help, sb);
+                    writeOut(null, help, sb, null);
                     sb.append("</body></html>\n");
                     out.write(sb.toString());
                     return Status.DONE;
@@ -147,8 +147,9 @@ final class HelpPage extends Page {
                 return sb.toString();
             }
 
-            private StringBuilder writeOut(String key, Object object, StringBuilder sb) {
-                boolean code = "PathRegex".equals(key) || "Path".equals(key) || "Methods".equals(key);
+            private StringBuilder writeOut(String key, Object object, StringBuilder sb, String parentKey) {
+                boolean code = ("PathRegex".equals(parentKey) || "Path".equals(parentKey) || "Methods".equals(parentKey))
+                        && "value".equals(key);
                 String codeOpen = code ? "<code>" : "";
                 String codeClose = code ? "</code>" : "";
                 String humanized = deBicapitalize(key);
@@ -162,13 +163,9 @@ final class HelpPage extends Page {
                     Collections.sort(sortedKeys);
                     for (String k : sortedKeys) {
                         Object val = m.get(k);
-                        if ("value".equals(k)) {
-                            sb.append(codeOpen);;
-                        }
-                        writeOut(k, val, sb);
-                        if ("value".equals(k)) {
-                            sb.append(codeClose);
-                        }
+                        sb.append(codeOpen);;
+                        writeOut(k, val, sb, key);
+                        sb.append(codeClose);
                         if (key == null) {
                             sb.append("\n<tr><td colspan=2><hr/></td></tr>\n");
                         }
@@ -185,22 +182,29 @@ final class HelpPage extends Page {
                             .append("</td></tr>\n");
                 } else if (object != null && object.getClass().isArray()) {
                     String s = toString(object);;
-                    sb.append("\n<tr><th bgcolor='#DDDDDD'>").append(humanized).append("</th><td>").append(s).append("</td></tr>\n");
+                    sb.append("\n<tr><th bgcolor='#DDDDDD'>").append(humanized).append("</th><td>")
+                            .append(codeOpen)
+                            .append(s)
+                            .append(codeClose)
+                            .append("</td></tr>\n");
                 } else {
-                    sb.append("\n<tr><th bgcolor='#DDDDDD'>").append(humanized).append("</th><td>").append(object).append("</td></tr>\n");
+                    sb.append("\n<tr><th bgcolor='#DDDDDD'>").append(humanized).append("</th><td>")
+                            .append(codeOpen)
+                            .append(object)
+                            .append(codeClose)
+                            .append("</td></tr>\n");
                 }
                 return sb;
             }
 
             private String toString(Object o) {
                 if (o.getClass().isArray()) {
-                    Class<?> c = o.getClass().getComponentType();
                     StringBuilder sb = new StringBuilder();
                     for (int i = 0; i < Array.getLength(o); i++) {
                         if (sb.length() > 0) {
                             sb.append(", ");
                         }
-                        sb.append(Objects.toString(Array.get(o, i)));
+                        sb.append(toString(Array.get(o, i)));
                     }
                     return sb.toString();
                 } else {
