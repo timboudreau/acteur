@@ -193,7 +193,6 @@ public class HttpCallAnnotationProcessor extends AbstractProcessor {
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
         Set<? extends Element> all = roundEnv.getElementsAnnotatedWith(HttpCall.class);
         try {
-            System.out.println("ROUND " + ++ix + " " + all.size() + " els");
             for (Element e : all) {
                 HttpCall anno = e.getAnnotation(HttpCall.class);
                 if (anno == null) {
@@ -228,7 +227,6 @@ public class HttpCallAnnotationProcessor extends AbstractProcessor {
                 }
             }
             if (all.isEmpty() && lines.length() > 0) {
-                System.out.println("Write lines " + lines);
                 if (!elements.isEmpty()) {
                     String path = HttpCall.META_INF_PATH;
                     try {

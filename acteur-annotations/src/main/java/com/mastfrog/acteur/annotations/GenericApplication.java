@@ -1,8 +1,11 @@
 package com.mastfrog.acteur.annotations;
 
+import com.google.inject.Inject;
+import com.google.inject.name.Named;
 import com.mastfrog.acteur.Application;
 import com.mastfrog.acteur.ImplicitBindings;
 import com.mastfrog.acteur.Page;
+import static com.mastfrog.acteur.annotations.GenericApplicationModule.EXCLUDED_CLASSES;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -23,7 +26,8 @@ public class GenericApplication extends Application {
         this(new Class<?>[0]);
     }
     
-    public GenericApplication(Class<?>... excludePages) {
+    @Inject
+    public GenericApplication(@Named(EXCLUDED_CLASSES) Class<?>... excludePages) {
         Set<Class<?>> excluded = new HashSet<>(Arrays.asList(excludePages));
         ImplicitBindings implicit = getClass().getAnnotation(ImplicitBindings.class);
         Set<Class<?>> alreadyBound = implicit == null ? Collections.<Class<?>>emptySet()
