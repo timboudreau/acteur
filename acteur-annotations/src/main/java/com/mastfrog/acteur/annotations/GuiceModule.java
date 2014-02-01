@@ -13,7 +13,9 @@ import java.lang.annotation.Target;
  * constructor).
  * <p/>
  * Such modules <i>must</i> have a no-arg constructor or a 1-arg constructor
- * where the argument type is Settings.
+ * where the argument type is Settings, or a 2-arg constructor in which one
+ * argument is Settings and the other is ReentrantScope (since some applications
+ * need to do special binding of things within Acteur's request scope).
  *
  * @author Tim Boudreau
  */

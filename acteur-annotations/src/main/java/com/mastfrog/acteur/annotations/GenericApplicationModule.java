@@ -5,6 +5,7 @@ import com.google.inject.Module;
 import com.google.inject.TypeLiteral;
 import com.google.inject.name.Names;
 import com.mastfrog.acteur.server.ServerModule;
+import com.mastfrog.guicy.scope.ReentrantScope;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.util.Exceptions;
 import java.io.IOException;
@@ -32,11 +33,13 @@ public final class GenericApplicationModule extends ServerModule {
 
     /**
      * Constructor which just takes a Settings, for use with giulius-tests
-     * @param settings 
+     *
+     * @param settings
      */
     public GenericApplicationModule(Settings settings) {
         this(settings, GenericApplication.class, new Class<?>[0]);
     }
+
     /**
      * Create a new GenericApplicationModule using the passed settings and the
      * specified class exclusion list.
@@ -71,9 +74,21 @@ public final class GenericApplicationModule extends ServerModule {
                 c.setAccessible(true);
                 return c.newInstance();
             } catch (NoSuchMethodException e) {
-                Constructor<T> c = m.getDeclaredConstructor(Settings.class);
-                c.setAccessible(true);
-                return c.newInstance(settings);
+                try {
+                    Constructor<T> c = m.getDeclaredConstructor(Settings.class);
+                    c.setAccessible(true);
+                    return c.newInstance(settings);
+                } catch (NoSuchMethodException e1) {
+                    try {
+                        Constructor<T> c = m.getDeclaredConstructor(Settings.class, ReentrantScope.class);
+                        c.setAccessible(true);
+                        return c.newInstance(settings, scope);
+                    } catch (NoSuchMethodException e2) {
+                        Constructor<T> c = m.getDeclaredConstructor(ReentrantScope.class, Settings.class);
+                        c.setAccessible(true);
+                        return c.newInstance(scope, settings);
+                    }
+                }
             }
         } catch (NoSuchMethodException e) {
             return m.newInstance();
