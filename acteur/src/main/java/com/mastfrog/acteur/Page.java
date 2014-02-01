@@ -29,6 +29,7 @@ import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.acteur.preconditions.BasicAuth;
 import com.mastfrog.acteur.preconditions.Methods;
+import com.mastfrog.acteur.preconditions.PageAnnotationHandler;
 import com.mastfrog.acteur.preconditions.ParametersMustBeNumbersIfPresent;
 import com.mastfrog.acteur.preconditions.Path;
 import com.mastfrog.acteur.preconditions.PathRegex;
@@ -272,6 +273,8 @@ public abstract class Page implements Iterable<Acteur> {
         if (auth != null) {
             acteurs.add(Acteur.wrap(AuthenticateBasicActeur.class, application.getDependencies()));
         }
+        PageAnnotationHandler handler = getApplication().getDependencies().getInstance(PageAnnotationHandler.class);
+        handler.processAnnotations(this, acteurs);
         return acteurs.iterator();
     }
 

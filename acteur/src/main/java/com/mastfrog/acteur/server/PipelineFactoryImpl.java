@@ -74,7 +74,6 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
         if (maxContentLength == 0) {
             maxContentLength = 1048576;
         }
-        System.out.println("Init channel");
         // Create a default pipeline implementation.
         ChannelPipeline pipeline = ch.pipeline();
 

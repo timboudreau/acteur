@@ -4,6 +4,7 @@ import com.google.inject.Inject;
 import com.mastfrog.acteur.TestAnnotations.M;
 import static com.mastfrog.acteur.headers.Method.POST;
 import com.mastfrog.acteur.preconditions.Methods;
+import com.mastfrog.acteur.preconditions.PageAnnotationHandler;
 import com.mastfrog.acteur.preconditions.PathRegex;
 import com.mastfrog.acteur.preconditions.RequiredUrlParameters;
 import com.mastfrog.acteur.server.ServerModule;
@@ -16,6 +17,8 @@ import static io.netty.handler.codec.http.HttpResponseStatus.NOT_FOUND;
 import static io.netty.handler.codec.http.HttpResponseStatus.NO_CONTENT;
 import static io.netty.handler.codec.http.HttpResponseStatus.OK;
 import java.io.IOException;
+import java.util.List;
+import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -30,6 +33,7 @@ public class TestAnnotations {
     @Test
     public void test(TestHarness harn) throws IOException, Throwable {
         harn.get("one").go().assertStatus(BAD_REQUEST);
+        assertTrue(annotationHandlerCalled);
         harn.get("one").addQueryPair("foo", "hey").go().assertStatus(BAD_REQUEST);
         harn.get("one").addQueryPair("foo", "hey").addQueryPair("bar", "you").go().assertStatus(OK).assertContent("one");
         harn.get("two").go().assertStatus(BAD_REQUEST);
@@ -73,6 +77,17 @@ public class TestAnnotations {
         }
     }
 
+    static boolean annotationHandlerCalled;
+    static class PAH implements PageAnnotationHandler {
+
+        @Override
+        public <T extends Page> boolean processAnnotations(T page, List<? super Acteur> addTo) {
+            annotationHandlerCalled = true;
+            return true;
+        }
+        
+    }
+
     static class A extends Application {
 
         A() {
@@ -86,6 +101,12 @@ public class TestAnnotations {
 
         M() {
             super(A.class);
+        }
+
+        @Override
+        protected void configure() {
+            super.configure();
+            bind(PageAnnotationHandler.class).to(PAH.class);
         }
     }
 }
