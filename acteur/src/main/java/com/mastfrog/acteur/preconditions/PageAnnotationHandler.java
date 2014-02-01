@@ -1,5 +1,6 @@
 package com.mastfrog.acteur.preconditions;
 
+import com.google.inject.ImplementedBy;
 import com.mastfrog.acteur.Acteur;
 import com.mastfrog.acteur.Page;
 import java.util.List;
@@ -11,6 +12,7 @@ import java.util.List;
  *
  * @author Tim Boudreau
  */
+@ImplementedBy(DefaultPageAnnotationHandler.class)
 public interface PageAnnotationHandler {
     <T extends Page> boolean processAnnotations(T page, List<? super Acteur> addTo);
 }
