@@ -154,6 +154,16 @@ final class ServerImpl implements Server {
         return start(this.port);
     }
 
+    @Override
+    public ServerControl start(boolean ssl) throws IOException {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    @Override
+    public ServerControl start(int port, boolean ssl) throws IOException {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
     private static class WeakRunnable implements Runnable {
 
         private final Reference<Runnable> delegate;

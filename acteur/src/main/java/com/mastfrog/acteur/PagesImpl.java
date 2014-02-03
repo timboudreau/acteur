@@ -26,12 +26,12 @@ package com.mastfrog.acteur;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import com.mastfrog.acteur.server.ServerModule;
-import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_CORS_ENABLED;
 import com.mastfrog.acteur.util.RequestID;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.util.Exceptions;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import java.nio.charset.Charset;
@@ -40,6 +40,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
@@ -52,15 +53,17 @@ import java.util.concurrent.TimeUnit;
 final class PagesImpl implements Pages {
 
     private final Application application;
-    private static boolean debug;
-    
+
     private final ScheduledExecutorService scheduler;
+
+    public static final String SETTINGS_KEY_DELAY_THREAD_POOL_THREADS = "delay.response.threads";
+    private static final int DEFAULT_DELAY_THREADS = 2;
 
     @Inject
     PagesImpl(Application application, Settings settings, @Named(ServerModule.WORKER_THREADS) ThreadFactory workerThreadFactory) {
         this.application = application;
-        debug = settings.getBoolean("acteur.debug", true);
-        scheduler = Executors.newSingleThreadScheduledExecutor(workerThreadFactory);
+        int count = settings.getInt(SETTINGS_KEY_DELAY_THREAD_POOL_THREADS, DEFAULT_DELAY_THREADS);
+        scheduler = Executors.newScheduledThreadPool(count, workerThreadFactory);
     }
 
     /**
@@ -109,8 +112,8 @@ final class PagesImpl implements Pages {
                     Page page = pages.next();
                     page.setApplication(application);
     //                if (debug) {
-    //                    System.out.println("PAGE " + page);
-    //                }
+                    //                    System.out.println("PAGE " + page);
+                    //                }
                     Page.set(page);
                     try (AutoCloseable ac = application.getRequestScope().enter(page)) {
                         // if so, grab its acteur runner
@@ -158,7 +161,7 @@ final class PagesImpl implements Pages {
                     }
                     final HttpResponse resp = httpResponse;
                     try {
-                        
+
                         Callable<ChannelFuture> c = new Callable<ChannelFuture>() {
                             public ChannelFuture call() throws Exception {
                                 // Give the application a last chance to do something
@@ -176,7 +179,14 @@ final class PagesImpl implements Pages {
                         if (response.getDelay() == null) {
                             c.call();
                         } else {
-                            scheduler.schedule(c, response.getDelay().getMillis(), TimeUnit.MILLISECONDS);
+                            final ScheduledFuture<?> s = scheduler.schedule(c, response.getDelay().getMillis(), TimeUnit.MILLISECONDS);
+                            channel.closeFuture().addListener(new ChannelFutureListener() {
+                                @Override
+                                public void operationComplete(ChannelFuture f) throws Exception {
+                                    s.cancel(true);
+                                }
+                            });
+
                         }
 //                        // Ensure we don't write to the channel before the
 //                        // headers are sent

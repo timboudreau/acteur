@@ -39,6 +39,7 @@ import com.mastfrog.giulius.DeploymentMode;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.util.Checks;
 import com.mastfrog.util.Streams;
+import com.mastfrog.util.Strings;
 import com.mastfrog.util.streams.HashingOutputStream;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
@@ -89,6 +90,8 @@ public final class FileResources implements StaticResources {
     private final ByteBufAllocator allocator;
     private final boolean internalGzip;
     private File dir;
+    
+    public static final String RESOURCES_BASE_PATH = "resources.base.path";
 
     @Inject
     public FileResources(File dir, MimeTypes types, DeploymentMode mode, ByteBufAllocator allocator, Settings settings) throws Exception {
@@ -103,9 +106,11 @@ public final class FileResources implements StaticResources {
         this.mode = mode;
         List<String> l = new ArrayList<>();
         scan(dir, "", l);
+        System.out.println("Serving files from " + dir);
         patterns = l.toArray(new String[0]);
+        String resourcesBasePath = settings.getString(RESOURCES_BASE_PATH, "");
         for (String name : l) {
-            this.names.put(name, new FileResource2(name));
+            this.names.put(Strings.join(resourcesBasePath,name), new FileResource2(name));
         }
     }
 

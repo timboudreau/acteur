@@ -76,6 +76,10 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
         }
         // Create a default pipeline implementation.
         ChannelPipeline pipeline = ch.pipeline();
+        
+//        SSLEngine engine = SecureChatSslContextFactory.getServerContext().createSSLEngine();
+//        engine.setUseClientMode(false);
+//        pipeline.addLast("ssl", new SslHandler(engine));
 
         pipeline.addLast("decoder", new HttpRequestDecoder());
         // Uncomment the following line if you don't want to handle HttpChunks.
@@ -99,8 +103,9 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
             out.writeBytes(msg);
         }
     }
-    
+
     private static class SelectiveCompressor extends HttpContentCompressor {
+
         protected Result beginEncode(HttpResponse headers, String acceptEncoding) throws Exception {
             if (headers.headers().contains("X-Internal-Compress")) {
                 return null;

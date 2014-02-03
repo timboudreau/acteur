@@ -59,4 +59,24 @@ public interface Server {
      * @throws IOException 
      */
     ServerControl start(int port) throws IOException;
+    
+    /**
+     * Start the server.
+     * @return A ServerControl object which can be waited on for the server
+     * to be shut down, and whose signal()/signalAll() methods will trigger
+     * a shutdown
+     * @throws IOException if something goes wrong
+     */
+    ServerControl start(boolean ssl) throws IOException;    
+    /**
+     * Start the server on a specific port.
+     * 
+     * @param port The port
+     * @return A ServerControl object which can be waited on for the server
+     * to be shut down, and whose signal()/signalAll() methods will trigger
+     * a shutdown
+     * @throws IOException 
+     */
+    ServerControl start(int port, boolean ssl) throws IOException;
+    
 }
