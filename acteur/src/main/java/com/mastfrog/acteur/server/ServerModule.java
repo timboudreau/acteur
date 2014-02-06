@@ -47,6 +47,7 @@ import com.mastfrog.acteur.util.BasicCredentials;
 import com.mastfrog.acteur.server.ServerModule.TF;
 import com.mastfrog.acteur.spi.ApplicationControl;
 import com.mastfrog.acteur.util.Server;
+import com.mastfrog.treadmill.Treadmill;
 import com.mastfrog.util.Codec;
 import com.mastfrog.util.ConfigurationError;
 import io.netty.bootstrap.ServerBootstrap;
@@ -213,6 +214,10 @@ public class ServerModule<A extends Application> extends AbstractModule {
         if (implicit != null) {
             scope.bindTypes(binder(), implicit.value());
         }
+        // Acteurs can ask for a Deferral to pause execution while some
+        // other operation completes, such as making an external HTTP request
+        // to another server
+        scope.bindTypes(binder(), Treadmill.Deferral.class);
 
         Provider<Application> appProvider = binder().getProvider(Application.class);
         Provider<ApplicationControl> appControlProvider = binder().getProvider(ApplicationControl.class);
