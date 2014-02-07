@@ -29,9 +29,12 @@ import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_DECODE_REAL_I
 import com.mastfrog.acteur.spi.ApplicationControl;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.util.Codec;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.handler.codec.http.DefaultHttpResponse;
+import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponse;
@@ -93,6 +96,16 @@ final class UpstreamHandlerImpl extends ChannelInboundHandlerAdapter {
                     addr = new InetSocketAddress(hdr, addr instanceof InetSocketAddress ? ((InetSocketAddress) addr).getPort() : 80);
                 }
             }
+            ctx.channel().closeFuture().addListener(new ChannelFutureListener(){
+
+                @Override
+                public void operationComplete(ChannelFuture f) throws Exception {
+                    if (request instanceof FullHttpRequest) {
+                        ((FullHttpRequest) request).content().release();
+                    }
+                }
+                
+            });
             EventImpl evt = new EventImpl(request, addr, ctx.channel(), paths, mapper);
             evt.setNeverKeepAlive(neverKeepAlive);
             application.onEvent(evt, ctx.channel());

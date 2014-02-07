@@ -43,6 +43,8 @@ import com.mastfrog.acteur.util.RequestID;
 import com.mastfrog.util.ConfigurationError;
 import com.mastfrog.util.Checks;
 import com.mastfrog.util.Invokable;
+import com.mastfrog.util.perf.Benchmark;
+import com.mastfrog.util.perf.Benchmark.Kind;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
@@ -287,7 +289,7 @@ public class Application implements Iterable<Page> {
                                 }
                             }
                         } else if (acteur instanceof Acteur) {
-                            Map<String,Object> callFlow = new HashMap<>();
+                            Map<String, Object> callFlow = new HashMap<>();
                             for (Annotation a1 : acteur.getClass().getAnnotations()) {
                                 introspectAnnotation(a1, callFlow);
                             }
@@ -454,6 +456,7 @@ public class Application implements Iterable<Page> {
      *
      * @param err
      */
+    @Benchmark(value = "uncaughtExceptions", publish = Kind.CALL_COUNT)
     final void internalOnError(Throwable err) {
         try {
             if (errorHandler != null) {
@@ -480,6 +483,7 @@ public class Application implements Iterable<Page> {
      * @param channel
      * @return
      */
+    @Benchmark(value = "httpEvents", publish = Kind.CALL_COUNT)
     private CountDownLatch onEvent(final Event<?> event, final Channel channel) {
         //XXX get rid of channel param?
         // Create a new incremented id for this request

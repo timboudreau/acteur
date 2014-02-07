@@ -4,6 +4,7 @@ import com.google.common.collect.Maps;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.mastfrog.acteur.HttpEvent;
+import com.mastfrog.giulius.ShutdownHookRegistry;
 import com.mastfrog.settings.Settings;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -26,18 +27,31 @@ final class TarpitImpl implements Tarpit {
     private final Map<String, Entry> map = Maps.newConcurrentMap();
     private final Duration timeToExpiration;
     private final TarpitCacheKeyFactory keyFactory;
+    private final GarbageCollect gc = new GarbageCollect();
 
+    
     @Inject
-    TarpitImpl(Settings settings, TarpitCacheKeyFactory keyFactory) {
-        timeToExpiration = Duration.standardMinutes(settings.getLong("tarpit.default.duration.minutes", 5));
+    TarpitImpl(Settings settings, TarpitCacheKeyFactory keyFactory, ShutdownHookRegistry reg) {
+        timeToExpiration = Duration.standardMinutes(settings.getLong(SETTINGS_KEY_TARPIT_EXPIRATION_TIME_MINUTES, 5));
         Timer timer = new Timer(true);
-        timer.scheduleAtFixedRate(new TimerTask() {
+        timer.scheduleAtFixedRate(gc, DateTime.now().plus(timeToExpiration).toDate(), timeToExpiration.getMillis() / 2);
+        reg.add(new Runnable() {
+
             @Override
             public void run() {
-                garbageCollect();
+                gc.cancel();
             }
-        }, DateTime.now().plus(timeToExpiration).toDate(), timeToExpiration.getMillis() / 2);
+
+        });
         this.keyFactory = keyFactory;
+    }
+
+    private class GarbageCollect extends TimerTask {
+
+        @Override
+        public void run() {
+            garbageCollect();
+        }
     }
 
     @Override
@@ -87,7 +101,7 @@ final class TarpitImpl implements Tarpit {
 
     private class Entry {
 
-        ConcurrentLinkedDeque<Long> accesses = new ConcurrentLinkedDeque<Long>();
+        ConcurrentLinkedDeque<Long> accesses = new ConcurrentLinkedDeque<>();
 
         int touch() {
             accesses.offerLast(System.currentTimeMillis());
@@ -109,7 +123,7 @@ final class TarpitImpl implements Tarpit {
             }
             return accesses.isEmpty();
         }
-        
+
         @Override
         public String toString() {
             return accesses.toString() + " expired " + isExpired();

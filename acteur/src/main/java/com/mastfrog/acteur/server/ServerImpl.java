@@ -295,6 +295,7 @@ final class ServerImpl implements Server {
         public void run() {
             try {
                 if (!isTerminated()) {
+                    System.out.println("Orderly server shutdown");
                     shutdown(true, 0, TimeUnit.MILLISECONDS, false);
                 }
             } catch (InterruptedException ex) {

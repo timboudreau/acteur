@@ -337,7 +337,7 @@ public final class FileResources implements StaticResources {
         private final ByteBuf bytes;
 
         public BytesSender(ByteBuf bytes) {
-            this.bytes = Unpooled.wrappedBuffer(bytes);
+            this.bytes = bytes.duplicate();
         }
 
         @Override
@@ -355,7 +355,7 @@ public final class FileResources implements StaticResources {
         private final boolean chunked;
 
         public CompressedBytesSender(ByteBuf bytes, boolean close, boolean chunked) {
-            this.bytes = Unpooled.wrappedBuffer(bytes);
+            this.bytes = bytes.duplicate();
             this.close = close;
             this.chunked = chunked;
         }
