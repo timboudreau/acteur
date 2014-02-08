@@ -24,7 +24,7 @@
 package com.mastfrog.acteur;
 
 import com.google.inject.ImplementedBy;
-import com.mastfrog.acteur.auth.AuthenticateBasicActeur;
+import com.mastfrog.acteur.auth.AuthenticationActeur;
 import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.acteur.preconditions.BasicAuth;
@@ -280,7 +280,7 @@ public abstract class Page implements Iterable<Acteur> {
         }
         BasicAuth auth = c.getAnnotation(BasicAuth.class);
         if (auth != null) {
-            acteurs.add(Acteur.wrap(AuthenticateBasicActeur.class, application.getDependencies()));
+            acteurs.add(Acteur.wrap(AuthenticationActeur.class, application.getDependencies()));
         }
         PageAnnotationHandler handler = getApplication().getDependencies().getInstance(PageAnnotationHandler.class);
         handler.processAnnotations(this, acteurs);

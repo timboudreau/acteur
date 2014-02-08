@@ -25,7 +25,6 @@ package com.mastfrog.acteur.auth;
 
 import com.google.inject.ImplementedBy;
 import com.google.inject.Inject;
-import com.mastfrog.acteur.Acteur;
 import com.mastfrog.acteur.HttpEvent;
 import com.mastfrog.acteur.Page;
 import com.mastfrog.acteur.Response;
@@ -53,8 +52,11 @@ import org.joda.time.format.PeriodFormatterBuilder;
  * </ul>
  *
  * @author Tim Boudreau
+ * @deprecated Do not use directly - bind AuthenticationActeur instead, so that
+ * authentication strategies are pluggable
  */
-public class AuthenticateBasicActeur extends Acteur {
+@Deprecated
+public class AuthenticateBasicActeur extends AuthenticationActeur {
 
     public static final String SETTINGS_KEY_TARPIT_BAD_LOGIN_ATTEMPT_COUNT = "max.allowed.failed.login.attempts";
     public static final String SETTINGS_KEY_TARPIT_DELAY_RESPONSE_AFTER = "delay.failed.login.attempts.after";
