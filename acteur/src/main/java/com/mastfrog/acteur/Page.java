@@ -35,6 +35,7 @@ import com.mastfrog.acteur.preconditions.PageAnnotationHandler;
 import com.mastfrog.acteur.preconditions.ParametersMustBeNumbersIfPresent;
 import com.mastfrog.acteur.preconditions.Path;
 import com.mastfrog.acteur.preconditions.PathRegex;
+import com.mastfrog.acteur.preconditions.RequireParametersIfMethodMatches;
 import com.mastfrog.acteur.preconditions.RequiredUrlParameters;
 import com.mastfrog.acteur.util.CacheControl;
 import com.mastfrog.giulius.Dependencies;
@@ -272,6 +273,11 @@ public abstract class Page implements Iterable<Acteur> {
                 default:
                     throw new AssertionError(params.combination());
             }
+        }
+        RequireParametersIfMethodMatches methodParams = c.getAnnotation(RequireParametersIfMethodMatches.class);
+        if (methodParams != null) {
+            ActeurFactory af = a != null ? a : (a = getApplication().getDependencies().getInstance(ActeurFactory.class));
+            acteurs.add(af.requireParametersIfMethodMatches(methodParams.method(), methodParams.value()));
         }
         ParametersMustBeNumbersIfPresent nums = c.getAnnotation(ParametersMustBeNumbersIfPresent.class);
         if (nums != null) {
