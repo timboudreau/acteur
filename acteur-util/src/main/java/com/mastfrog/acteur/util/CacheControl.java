@@ -1,4 +1,4 @@
-/* 
+/*
  * The MIT License
  *
  * Copyright 2013 Tim Boudreau.
@@ -37,10 +37,10 @@ import org.joda.time.Duration;
 public final class CacheControl {
 
     private final List<E> entries = new ArrayList<>();
-    public static CacheControl PUBLIC_MUST_REVALIDATE =
-            new CacheControl(Public, must_revalidate);
-    public static CacheControl PUBLIC_MUST_REVALIDATE_MAX_AGE_1_DAY =
-            new CacheControl(Public, must_revalidate).add(max_age, Duration.standardDays(1));
+    public static CacheControl PUBLIC_MUST_REVALIDATE
+            = new CacheControl(Public, must_revalidate);
+    public static CacheControl PUBLIC_MUST_REVALIDATE_MAX_AGE_1_DAY
+            = new CacheControl(Public, must_revalidate).add(max_age, Duration.standardDays(1));
 
     public CacheControl(CacheControlTypes... types) {
         for (CacheControlTypes c : types) {
@@ -119,9 +119,10 @@ public final class CacheControl {
         if (type.takesValue) {
             throw new IllegalArgumentException(type + " requires a value");
         }
-        for (E e : entries) {
+        for (Iterator<E> it = entries.iterator(); it.hasNext();) {
+            E e = it.next();
             if (e.type == type) {
-                throw new IllegalStateException(type + " already set");
+                it.remove();
             }
         }
         entries.add(new E(type));
@@ -131,9 +132,10 @@ public final class CacheControl {
         if (!type.takesValue) {
             throw new IllegalArgumentException(type + " requires a value");
         }
-        for (E e : entries) {
+        for (Iterator<E> it = entries.iterator(); it.hasNext();) {
+            E e = it.next();
             if (e.type == type) {
-                throw new IllegalStateException(type + " already set");
+                it.remove();
             }
         }
         entries.add(new E(type, value.toStandardSeconds().getSeconds()));

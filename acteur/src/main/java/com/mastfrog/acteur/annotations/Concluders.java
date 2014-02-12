@@ -7,14 +7,15 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Annotation which is <i>only useful on Acteurs with the HttpCall annotation
- * to trigger page source generation</i>, which specifies some more Acteurs
- * to run before the annotated one.
- * 
+ * Annotation which is <i>only useful on Acteurs with the HttpCall annotation to
+ * trigger page source generation</i>, which specifies some more Acteurs to run
+ * after the annotated one.
+ *
  * @author Tim Boudreau
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
-public @interface Precursors {
+public @interface Concluders {
+
     Class<? extends Acteur>[] value();
 }

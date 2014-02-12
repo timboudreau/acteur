@@ -128,7 +128,7 @@ public class HttpCallAnnotationProcessor extends AbstractProcessor {
     }
 
     private static String types(Object o) { //debug stuff
-        List<String> s = new ArrayList<String>();
+        List<String> s = new ArrayList<>();
         Class<?> x = o.getClass();
         while (x != Object.class) {
             s.add(x.getName());
@@ -282,6 +282,7 @@ public class HttpCallAnnotationProcessor extends AbstractProcessor {
             }
             ps.println();
             List<String> precursorClassNames = new ArrayList<>();
+            List<String> denoumentClassNames = new ArrayList<>();
             for (AnnotationMirror am : typeElement.getAnnotationMirrors()) {
                 if (am.getAnnotationType().toString().equals(Precursors.class.getName())) {
                     if (!am.getElementValues().entrySet().isEmpty()) {
@@ -291,6 +292,14 @@ public class HttpCallAnnotationProcessor extends AbstractProcessor {
                         continue;
                     }
                 }
+                if (am.getAnnotationType().toString().equals(Concluders.class.getName())) {
+                    if (!am.getElementValues().entrySet().isEmpty()) {
+                        for (String s : typeList(am, "value")) {
+                            denoumentClassNames.add(s.replace('$', '.'));
+                        }
+                        continue;
+                    }
+                }                
                 ps.print("@" + am.getAnnotationType());
                 boolean first = true;
                 Iterator it = am.getElementValues().entrySet().iterator();
@@ -318,9 +327,12 @@ public class HttpCallAnnotationProcessor extends AbstractProcessor {
             ps.println("\npublic final class " + className + " extends Page {\n");
             ps.println("    " + className + "(){");
             for (String p : precursorClassNames) {
-                ps.println("        add(" + p + ".class);");
+                ps.println("        add(" + p + ".class); //precursor");
             }
             ps.println("        add(" + typeElement.getQualifiedName() + ".class);");
+            for (String p : denoumentClassNames) {
+                ps.println("        add(" + p + ".class); //denoument");
+            }
             ps.println("    }");
             ps.println("}");
         }
