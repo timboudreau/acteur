@@ -489,6 +489,7 @@ public class Application implements Iterable<Page> {
         // Create a new incremented id for this request
         final RequestID id = new RequestID();
         // Enter request scope with the id and the event
+        // XXX is the scope entry here actually needed anymore?
         return scope.run(new Invokable<Event<?>, CountDownLatch, RuntimeException>() {
             @Override
             public CountDownLatch run(Event<?> argument) {

@@ -79,7 +79,8 @@ final class PagesImpl implements Pages {
     public final CountDownLatch onEvent(final RequestID id, final Event<?> event, final Channel channel) {
         Iterator<Page> it = application.iterator();
         CountDownLatch latch = new CountDownLatch(1);
-        PageRunner pageRunner = new PageRunner(application, it, latch, id, event, channel, scheduler);
+        Closables closables = new Closables(channel, application);
+        PageRunner pageRunner = new PageRunner(application, it, latch, id, event, channel, scheduler, closables);
         application.getWorkerThreadPool().submit(pageRunner);
         return latch;
     }
@@ -93,8 +94,9 @@ final class PagesImpl implements Pages {
         private final Event<?> event;
         private final Channel channel;
         private final ScheduledExecutorService scheduler;
+        private final Closables close;
 
-        public PageRunner(Application application, Iterator<Page> pages, CountDownLatch latch, RequestID id, Event<?> event, Channel channel, ScheduledExecutorService scheduler) {
+        public PageRunner(Application application, Iterator<Page> pages, CountDownLatch latch, RequestID id, Event<?> event, Channel channel, ScheduledExecutorService scheduler, Closables close) {
             this.application = application;
             this.pages = pages;
             this.latch = latch;
@@ -102,13 +104,14 @@ final class PagesImpl implements Pages {
             this.event = event;
             this.channel = channel;
             this.scheduler = scheduler;
+            this.close = close;
         }
 
         @Override
         public Void call() throws Exception {
             // See if any pages are left
             if (pages.hasNext()) {
-                try (AutoCloseable a1 = application.getRequestScope().enter(event, id, channel)) {
+                try (AutoCloseable a1 = application.getRequestScope().enter(event, id, channel, close)) {
                     Page page = pages.next();
                     page.setApplication(application);
     //                if (debug) {

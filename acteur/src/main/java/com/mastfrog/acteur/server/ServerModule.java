@@ -39,6 +39,7 @@ import com.mastfrog.settings.SettingsBuilder;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.guicy.scope.ReentrantScope;
 import com.mastfrog.acteur.Application;
+import com.mastfrog.acteur.Closables;
 import com.mastfrog.acteur.Event;
 import com.mastfrog.acteur.HttpEvent;
 import com.mastfrog.acteur.ImplicitBindings;
@@ -208,7 +209,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
                 binder().getProvider(ByteBufAllocator.class)));
 
         scope.bindTypes(binder(), Event.class, HttpEvent.class,
-                Page.class, BasicCredentials.class);
+                Page.class, BasicCredentials.class, Closables.class);
 
         ImplicitBindings implicit = appType.getAnnotation(ImplicitBindings.class);
         if (implicit != null) {
