@@ -61,7 +61,6 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
     PipelineFactoryImpl(Provider<ChannelHandler> handler, Provider<ApplicationControl> app) {
         this.handler = handler;
         this.app = app;
-        System.out.println("Create a pipeline factory impl");
     }
 
     @Override
