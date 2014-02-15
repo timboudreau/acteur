@@ -21,6 +21,8 @@ public final class MongoModule extends AbstractModule {
     public static final String MONGO_HOST = "mongoHost";
     public static final String MONGO_PORT = "mongoPort";
     public static final String DATABASE_NAME = "_dbName";
+    public static final String SETTINGS_KEY_MONGO_USER = "mongo.user";
+    public static final String SETTINGS_KEY_MONGO_PASSWORD = "mongo.password";
     private boolean configured;
     private final Map<String, String> collectionForName = new HashMap<>();
     private final String databaseName;
