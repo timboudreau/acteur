@@ -16,7 +16,7 @@ import java.util.Set;
  *
  * @author Tim Boudreau
  */
-public final class MongoModule extends AbstractModule {
+public final class MongoModule extends AbstractModule implements MongoConfig<MongoModule> {
 
     public static final String MONGO_HOST = "mongoHost";
     public static final String MONGO_PORT = "mongoPort";

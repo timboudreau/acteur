@@ -70,34 +70,34 @@ public class MongoHarness {
                 pb.redirectError(ProcessBuilder.Redirect.INHERIT);
                 pb.redirectOutput(ProcessBuilder.Redirect.INHERIT);
                 try {
-                    System.out.println("Try graceful shutdown " + pb);
+                    System.out.println("Try graceful mongodb shutdown " + pb);
                     Process shutdown = pb.start();
                     boolean exited = false;
-                    for (int i = 0; i < 1000; i++) {
+                    for (int i = 0; i < 5000; i++) {
                         try {
                             int exit = shutdown.exitValue();
-                            System.out.println("Shutdown call exited with " + exit);
+                            System.out.println("Shutdown mongodb call exited with " + exit);
                             break;
                         } catch (IllegalThreadStateException ex) {
-                            System.out.println("no exit code yet, sleeping");
+//                            System.out.println("no exit code yet, sleeping");
                             try {
-                                Thread.sleep(100);
+                                Thread.sleep(20);
                             } catch (InterruptedException ex1) {
                                 org.openide.util.Exceptions.printStackTrace(ex1);
                             }
                         }
                     }
                     System.out.println("Wait for mongodb exit");
-                    for (int i = 0; i < 1000; i++) {
+                    for (int i = 0; i < 5000; i++) {
                         try {
                             int code = mongo.exitValue();
                             System.out.println("Exit code " + code);
                             exited = true;
                             break;
                         } catch (IllegalThreadStateException ex) {
-                            System.out.println("Not exited yet; sleep 100ms");
+//                            System.out.println("Not exited yet; sleep 100ms");
                             try {
-                                Thread.sleep(100);
+                                Thread.sleep(20);
                             } catch (InterruptedException ex1) {
                                 Exceptions.printStackTrace(ex1);
                             }
@@ -114,8 +114,6 @@ public class MongoHarness {
                     mongo = null;
                 }
                 mongo = null;
-            } else {
-                System.out.println("mongo is null, do nothing");
             }
         }
 

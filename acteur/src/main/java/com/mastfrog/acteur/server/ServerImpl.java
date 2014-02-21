@@ -43,6 +43,7 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import java.io.IOException;
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.Date;
 import java.util.concurrent.CountDownLatch;
@@ -120,10 +121,20 @@ final class ServerImpl implements Server {
             final ServerControlImpl result = new ServerControlImpl(port);
             ServerBootstrap bootstrap = bootstrapProvider.get();
 
+            String bindAddress = settings.getString("bindAddress");
+            InetAddress addr = null;
+            if (bindAddress != null) {
+                addr = InetAddress.getByName(bindAddress);
+            }
+
             bootstrap.group(result.events, result.workers)
                     .channel(NioServerSocketChannel.class)
-                    .childHandler(pipelineFactory)
-                    .localAddress(new InetSocketAddress(port));
+                    .childHandler(pipelineFactory);
+            if (addr == null) {
+                bootstrap = bootstrap.localAddress(new InetSocketAddress(port));
+            } else {
+                bootstrap = bootstrap.localAddress(addr, port);
+            }
 
             localChannel = bootstrap.bind().sync().channel();
             System.err.println("Starting " + this);
