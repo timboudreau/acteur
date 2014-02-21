@@ -159,14 +159,14 @@ public class MongoHarness {
                     mongoDir.getAbsolutePath(), "--nojournal", "--smallfiles", "-nssize", "1",
                     "--noprealloc", "--slowms", "5", "--port", "" + port,
                     "--maxConns", "50", "--nohttpinterface", "--syncdelay", "0", "--oplogSize", "1",
-                    "--nounixsocket", "--diaglog", "0");
+                    "--diaglog", "0");
             System.out.println(pb.command());
             pb.redirectError(ProcessBuilder.Redirect.INHERIT);
             pb.redirectOutput(ProcessBuilder.Redirect.INHERIT);
 
             // XXX instead of sleep, loop trying to connect?
             Process result = pb.start();
-            Thread.sleep(10);
+            Thread.sleep(150);
             for (int i = 0;; i++) {
                 try {
                     Socket s = new Socket("localhost", port);
