@@ -159,7 +159,7 @@ public class MongoHarness {
                     mongoDir.getAbsolutePath(), "--nojournal", "--smallfiles", "-nssize", "1",
                     "--noprealloc", "--slowms", "5", "--port", "" + port,
                     "--maxConns", "50", "--nohttpinterface", "--syncdelay", "0", "--oplogSize", "1",
-                    "--nounixsocket");
+                    "--nounixsocket", "--diaglog", "0");
             System.out.println(pb.command());
             pb.redirectError(ProcessBuilder.Redirect.INHERIT);
             pb.redirectOutput(ProcessBuilder.Redirect.INHERIT);
@@ -169,10 +169,12 @@ public class MongoHarness {
             Thread.sleep(10);
             for (int i = 0;; i++) {
                 try {
-                    new Socket("localhost", port);
+                    Socket s = new Socket("localhost", port);
+                    s.close();
+                    Thread.sleep(50);
                     break;
                 } catch (ConnectException e) {
-                    if (i > 250) {
+                    if (i > 750) {
                         throw new IOException("Could not connect to mongodb "
                                 + "after " + i + " attempts.  Assuming it's dead.");
                     }
@@ -249,7 +251,6 @@ public class MongoHarness {
         }
 
         private int findPort() {
-            System.out.println("findPort");
             Random r = new Random(System.currentTimeMillis());
             int port;
             do {
@@ -257,7 +258,6 @@ public class MongoHarness {
                 // both the mongo port and the http port
                 int startPort = 28002;
                 port = r.nextInt(65536 - startPort) + startPort;
-                System.out.println("Try port " + port);
             } while (!available(port));
             return port;
         }
@@ -265,7 +265,6 @@ public class MongoHarness {
         private boolean available(int port) {
             try (ServerSocket ss = new ServerSocket(port)) {
                 ss.setReuseAddress(true);
-                System.out.println("ss " + ss);
                 try (DatagramSocket ds = new DatagramSocket(port)) {
                     ds.setReuseAddress(true);
                     return true;
@@ -273,7 +272,6 @@ public class MongoHarness {
                     return false;
                 }
             } catch (IOException e) {
-                System.out.println("FAIL " + e);
                 return false;
             }
         }
