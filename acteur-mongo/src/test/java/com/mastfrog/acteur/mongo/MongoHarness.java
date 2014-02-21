@@ -10,8 +10,10 @@ import com.mastfrog.util.Checks;
 import com.mastfrog.util.Exceptions;
 import java.io.File;
 import java.io.IOException;
+import java.net.ConnectException;
 import java.net.DatagramSocket;
 import java.net.ServerSocket;
+import java.net.Socket;
 import java.util.Random;
 
 /**
@@ -20,9 +22,8 @@ import java.util.Random;
  * use MongoHarness.Module, to have the db started for you and automatically
  * cleaned up.
  * <p/>
- * Test
- * <code>failed()</code> if you want to detect if you're running on a machine
- * where mongodb is not installed.
+ * Test <code>failed()</code> if you want to detect if you're running on a
+ * machine where mongodb is not installed.
  *
  * @author Tim Boudreau
  */
@@ -165,16 +166,20 @@ public class MongoHarness {
 
             // XXX instead of sleep, loop trying to connect?
             Process result = pb.start();
-            Thread.sleep(400);
-            try {
-                int code = result.exitValue();
-                failed = true;
-                System.out.println("MongoDB process exited with " + code);
-                return null;
-            } catch (IllegalThreadStateException ex) {
-                System.out.println("Started MongoDB");
-                return result;
+            Thread.sleep(10);
+            for (int i = 0;; i++) {
+                try {
+                    new Socket("localhost", port);
+                    break;
+                } catch (ConnectException e) {
+                    if (i > 250) {
+                        throw new IOException("Could not connect to mongodb "
+                                + "after " + i + " attempts.  Assuming it's dead.");
+                    }
+                    Thread.yield();
+                }
             }
+            return result;
         }
     }
 
