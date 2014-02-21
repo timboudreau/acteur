@@ -156,8 +156,10 @@ public class MongoHarness {
             System.out.println("Starting mongodb on port " + port + " with data dir " + mongoDir);
             ProcessBuilder pb = new ProcessBuilder().command("mongod", "--dbpath",
                     mongoDir.getAbsolutePath(), "--nojournal", "--smallfiles", "-nssize", "1",
-                    "--noprealloc", "--nohttpinterface", "--slowms", "5", "--port", "" + port);
-
+                    "--noprealloc", "--slowms", "5", "--port", "" + port,
+                    "--maxConns", "50", "--nohttpinterface", "--syncdelay", "0", "--oplogSize", "1",
+                    "--nounixsocket");
+            System.out.println(pb.command());
             pb.redirectError(ProcessBuilder.Redirect.INHERIT);
             pb.redirectOutput(ProcessBuilder.Redirect.INHERIT);
 
