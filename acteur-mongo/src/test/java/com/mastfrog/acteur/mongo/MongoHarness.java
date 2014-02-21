@@ -73,7 +73,7 @@ public class MongoHarness {
                     System.out.println("Try graceful mongodb shutdown " + pb);
                     Process shutdown = pb.start();
                     boolean exited = false;
-                    for (int i = 0; i < 5000; i++) {
+                    for (int i = 0; i < 19000; i++) {
                         try {
                             int exit = shutdown.exitValue();
                             System.out.println("Shutdown mongodb call exited with " + exit);
@@ -81,14 +81,14 @@ public class MongoHarness {
                         } catch (IllegalThreadStateException ex) {
 //                            System.out.println("no exit code yet, sleeping");
                             try {
-                                Thread.sleep(20);
+                                Thread.sleep(10);
                             } catch (InterruptedException ex1) {
                                 org.openide.util.Exceptions.printStackTrace(ex1);
                             }
                         }
                     }
                     System.out.println("Wait for mongodb exit");
-                    for (int i = 0; i < 5000; i++) {
+                    for (int i = 0; i < 10000; i++) {
                         try {
                             int code = mongo.exitValue();
                             System.out.println("Exit code " + code);
@@ -97,7 +97,7 @@ public class MongoHarness {
                         } catch (IllegalThreadStateException ex) {
 //                            System.out.println("Not exited yet; sleep 100ms");
                             try {
-                                Thread.sleep(20);
+                                Thread.sleep(10);
                             } catch (InterruptedException ex1) {
                                 Exceptions.printStackTrace(ex1);
                             }
@@ -161,8 +161,9 @@ public class MongoHarness {
             pb.redirectError(ProcessBuilder.Redirect.INHERIT);
             pb.redirectOutput(ProcessBuilder.Redirect.INHERIT);
 
+            // XXX instead of sleep, loop trying to connect?
             Process result = pb.start();
-            Thread.sleep(2000);
+            Thread.sleep(400);
             try {
                 int code = result.exitValue();
                 failed = true;
