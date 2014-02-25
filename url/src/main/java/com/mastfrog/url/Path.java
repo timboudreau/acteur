@@ -396,6 +396,14 @@ public final class Path implements URLComponent, Iterable<PathElement> {
             return Exceptions.chuck(ex);
         }
     }
+    
+    public URI toURIWithLeadingSlash() {
+        try {
+            return new URI(toStringWithLeadingSlash());
+        } catch (URISyntaxException ex) {
+            return Exceptions.chuck(ex);
+        }
+    }
 
     private static final class PathBuilder extends AbstractBuilder<PathElement, Path> {
         
