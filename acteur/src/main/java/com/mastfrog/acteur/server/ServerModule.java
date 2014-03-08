@@ -32,22 +32,23 @@ import com.google.inject.Scopes;
 import com.google.inject.Singleton;
 import com.google.inject.TypeLiteral;
 import com.google.inject.name.Names;
-import com.mastfrog.guicy.annotations.Defaults;
-import com.mastfrog.settings.Settings;
-import com.mastfrog.settings.MutableSettings;
-import com.mastfrog.settings.SettingsBuilder;
-import com.mastfrog.giulius.Dependencies;
-import com.mastfrog.guicy.scope.ReentrantScope;
 import com.mastfrog.acteur.Application;
 import com.mastfrog.acteur.Closables;
 import com.mastfrog.acteur.Event;
 import com.mastfrog.acteur.HttpEvent;
 import com.mastfrog.acteur.ImplicitBindings;
 import com.mastfrog.acteur.Page;
-import com.mastfrog.acteur.util.BasicCredentials;
+import com.mastfrog.acteur.errors.ExceptionEvaluatorRegistry;
 import com.mastfrog.acteur.server.ServerModule.TF;
 import com.mastfrog.acteur.spi.ApplicationControl;
+import com.mastfrog.acteur.util.BasicCredentials;
 import com.mastfrog.acteur.util.Server;
+import com.mastfrog.giulius.Dependencies;
+import com.mastfrog.guicy.annotations.Defaults;
+import com.mastfrog.guicy.scope.ReentrantScope;
+import com.mastfrog.settings.MutableSettings;
+import com.mastfrog.settings.Settings;
+import com.mastfrog.settings.SettingsBuilder;
 import com.mastfrog.treadmill.Treadmill;
 import com.mastfrog.util.Codec;
 import com.mastfrog.util.ConfigurationError;
@@ -279,6 +280,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
         bind(new ETL()).toProvider(EventProvider.class).in(scope);
         bind(Codec.class).to(CodecImpl.class);
         bind(ApplicationControl.class).toProvider(ApplicationControlProvider.class).in(Scopes.SINGLETON);
+        bind(ExceptionEvaluatorRegistry.class).asEagerSingleton();
     }
 
     private static final class EventProvider implements Provider<Event<?>> {

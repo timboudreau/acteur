@@ -6,6 +6,7 @@ import com.mastfrog.giulius.tests.TestWith;
 import static com.mastfrog.netty.http.client.StateType.Closed;
 import com.mastfrog.netty.http.test.harness.TestHarness;
 import io.netty.handler.codec.http.HttpResponseStatus;
+import static io.netty.handler.codec.http.HttpResponseStatus.CONFLICT;
 import static io.netty.handler.codec.http.HttpResponseStatus.OK;
 import org.joda.time.Duration;
 import org.junit.Test;
@@ -18,6 +19,7 @@ import org.junit.runner.RunWith;
 @RunWith(GuiceRunner.class)
 @TestWith(CompApp.Module.class)
 public class ComprehensiveTest {
+
     @Test
     public void testGets(TestHarness harness) throws Exception, Throwable {
         System.out.println("testGets");
@@ -60,7 +62,12 @@ public class ComprehensiveTest {
                 .await()
                 .assertStatus(OK)
                 .assertContent("B");
-        
+
+        harness.get("fail").log().setTimeout(Duration.standardSeconds(50)).go()
+                .await()
+                .assertStatus(CONFLICT)
+                .assertContent("Hoober");
+
 //        harness.get("unchunked").log().addQueryPair("iters", "7").setTimeout(Duration.standardSeconds(14)).go()
 //                .assertCode(200)
 //                .assertContent(iter("Iteration", 7))

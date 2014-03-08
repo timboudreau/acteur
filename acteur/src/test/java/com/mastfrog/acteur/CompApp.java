@@ -1,12 +1,18 @@
 package com.mastfrog.acteur;
 
 import com.google.inject.AbstractModule;
+import com.google.inject.ConfigurationException;
 import com.google.inject.Inject;
 import com.mastfrog.acteur.Acteur.RespondWith;
 import com.mastfrog.acteur.ActeurFactory.Test;
+import com.mastfrog.acteur.errors.Err;
+import com.mastfrog.acteur.errors.ErrorRenderer;
+import com.mastfrog.acteur.errors.ErrorResponse;
+import com.mastfrog.acteur.errors.ExceptionEvaluator;
+import com.mastfrog.acteur.errors.ExceptionEvaluatorRegistry;
+import com.mastfrog.acteur.headers.Method;
 import com.mastfrog.acteur.server.ServerModule;
 import com.mastfrog.acteur.util.ErrorInterceptor;
-import com.mastfrog.acteur.headers.Method;
 import com.mastfrog.netty.http.test.harness.TestHarness;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFuture;
@@ -15,6 +21,8 @@ import io.netty.handler.codec.http.HttpResponseStatus;
 import static io.netty.handler.codec.http.HttpResponseStatus.OK;
 import io.netty.util.CharsetUtil;
 import java.io.IOException;
+import java.util.Map;
+import static org.junit.Assert.assertNotNull;
 import org.openide.util.Exceptions;
 
 /**
@@ -29,6 +37,7 @@ public class CompApp extends Application {
         add(Echo.class);
         add(DeferredOutput.class);
         add(Branch.class);
+        add(Fails.class);
         add(NoContentPage.class);
     }
 
@@ -55,11 +64,78 @@ public class CompApp extends Application {
         protected void configure() {
             install(new ServerModule(CompApp.class));
             bind(ErrorInterceptor.class).to(TestHarness.class);
+            bind(ExceptionEval.class).asEagerSingleton();
+            bind(ErrorRenderer.class).to(ExceptionRen.class);
+        }
+    }
+
+    static class ExceptionEval extends ExceptionEvaluator {
+
+        @Inject
+        public ExceptionEval(ExceptionEvaluatorRegistry registry) {
+            super(registry);
+        }
+
+        @Override
+        public ErrorResponse evaluate(Throwable t, Acteur acteur, Page page, HttpEvent evt) {
+            if (t instanceof ConfigurationException) {
+                if (page instanceof Fails) {
+                    return Err.conflict("werg");
+                }
+            }
+            return null;
+        }
+    }
+
+    static class ExceptionRen extends ErrorRenderer {
+
+        @Override
+        public String render(ErrorResponse resp, HttpEvent evt) throws IOException {
+            Map<String, Object> m = (Map<String, Object>) resp.message();
+            String s = (String) m.get("error");
+            assertNotNull(s);
+            if ("werg".equals(s)) {
+                return "Hoober";
+            }
+            return null;
         }
 
     }
-    
+
+    static class NotBoundThing {
+
+        NotBoundThing(String foo) {
+
+        }
+    }
+
+    static class CannotCreateMe {
+
+        CannotCreateMe(NotBoundThing t) {
+
+        }
+    }
+
+    private static class Fails extends Page {
+
+        @Inject
+        Fails(ActeurFactory af) {
+            add(af.matchPath("^fail$"));
+            add(af.matchMethods(Method.GET));
+            add(Failer.class);
+        }
+
+        static class Failer extends Acteur {
+
+            @Inject
+            Failer(CannotCreateMe x) {
+                ok("Oh no!");
+            }
+        }
+    }
+
     private static final class Branch extends Page {
+
         @Inject
         Branch(ActeurFactory af) {
             add(af.matchMethods(Method.GET));
@@ -71,18 +147,21 @@ public class CompApp extends Application {
                     System.out.println("TEST");
                     return "true".equals(evt.getParameter("a"));
                 }
-                
+
             }));
         }
-        
+
         private static class ABranch extends Acteur {
+
             @Inject
             ABranch() {
                 System.out.println("abranch");
                 setState(new RespondWith(200, "A"));
             }
         }
+
         private static class BBranch extends Acteur {
+
             @Inject
             BBranch() {
                 System.out.println("bbranch");
@@ -262,16 +341,18 @@ public class CompApp extends Application {
             }
         }
     }
-    
+
     public static class NoContentPage extends Page {
+
         @Inject
         NoContentPage(ActeurFactory af) {
             add(af.matchMethods(Method.GET));
             add(af.matchPath("^nothing$"));
             add(NoActeur.class);
         }
-        
+
         static class NoActeur extends Acteur {
+
             @Inject
             NoActeur() {
                 setState(new RespondWith(HttpResponseStatus.PAYMENT_REQUIRED));

@@ -1,4 +1,4 @@
-/* 
+/*
  * The MIT License
  *
  * Copyright 2013 Tim Boudreau.
@@ -24,6 +24,9 @@
 package com.mastfrog.acteur;
 
 import com.google.common.net.MediaType;
+import com.mastfrog.acteur.errors.ErrorRenderer;
+import com.mastfrog.acteur.errors.ErrorResponse;
+import com.mastfrog.acteur.errors.ExceptionEvaluatorRegistry;
 import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.giulius.Dependencies;
@@ -170,8 +173,17 @@ public abstract class Acteur {
         return getResponse();
     }
 
-    static Acteur error(Page page, Throwable t) {
-        return new ErrorActeur(page, t);
+    static Acteur error(Acteur errSource, Page page, Throwable t, HttpEvent evt) {
+        try {
+            return new ErrorActeur(errSource, evt, page, t, true);
+        } catch (IOException ex) {
+            page.application.internalOnError(t);
+            try {
+                return new ErrorActeur(errSource, evt, page, t, true);
+            } catch (IOException ex1) {
+                return Exceptions.chuck(ex1);
+            }
+        }
     }
 
     public void describeYourself(Map<String, Object> into) {
@@ -207,7 +219,18 @@ public abstract class Acteur {
 
     static final class ErrorActeur extends Acteur {
 
-        ErrorActeur(Page page, Throwable t) {
+        ErrorActeur(Acteur errSource, HttpEvent evt, Page page, Throwable t, boolean tryErrResponse) throws IOException {
+            if (tryErrResponse) {
+                Dependencies deps = page.application.getDependencies();
+                ExceptionEvaluatorRegistry reg = deps.getInstance(ExceptionEvaluatorRegistry.class);
+                ErrorResponse resp = reg.evaluate(t, errSource, page, evt);
+                if (resp != null) {
+                    ErrorRenderer ren = deps.getInstance(ErrorRenderer.class);
+                    ren.render(resp, response(), evt);
+                    setState(new RespondWith(resp.status()));
+                    return;
+                }
+            }
             StringBuilder sb = new StringBuilder("Page " + page + " (" + page.getClass().getName() + " threw " + t.getMessage() + '\n');
             try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
                 t.printStackTrace(new PrintStream(out));
@@ -239,6 +262,22 @@ public abstract class Acteur {
             this(HttpResponseStatus.valueOf(status), msg);
         }
 
+        public RespondWith(ErrorResponse err) {
+            page = Page.get();
+            setResponseCode(err.status());
+            ErrorRenderer ren = getLockedPage().getApplication().getDependencies().getInstance(ErrorRenderer.class);
+            String s;
+            try {
+                s = ren.render(err, getLockedPage().getApplication().getDependencies().getInstance(HttpEvent.class));
+                if (s != null) {
+                    s = msgToString(err.message());
+                }
+                setMessage(s);
+            } catch (IOException ex) {
+                Exceptions.chuck(ex);
+            }
+        }
+
         /**
          * Response which uses JSON
          *
@@ -255,16 +294,22 @@ public abstract class Acteur {
                     throw new IllegalStateException("No page set");
                 }
                 Codec mapper = page.getApplication().getDependencies().getInstance(Codec.class);
-                try {
-                    String m = msg instanceof String ? msg.toString() : msg != null
-                            ? mapper.writeValueAsString(msg) + '\n' : null;
-                    setResponseCode(status);
-                    if (m != null) {
-                        setMessage(m);
-                    }
-                } catch (IOException ioe) {
-                    Exceptions.chuck(ioe);
+                setResponseCode(status);
+                setMessage(msgToString(msg));
+            }
+        }
+
+        private String msgToString(Object msg) {
+            try {
+                Codec mapper = page.getApplication().getDependencies().getInstance(Codec.class);
+                String m = msg instanceof String ? msg.toString() : msg != null
+                        ? mapper.writeValueAsString(msg) + '\n' : null;
+                if (m != null) {
+                    return m;
                 }
+                return null;
+            } catch (IOException ioe) {
+                return Exceptions.chuck(ioe);
             }
         }
 

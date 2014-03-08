@@ -25,6 +25,7 @@ package com.mastfrog.acteur;
 
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
+import com.mastfrog.acteur.errors.ExceptionEvaluatorRegistry;
 import com.mastfrog.acteur.server.ServerModule;
 import com.mastfrog.acteur.util.RequestID;
 import com.mastfrog.settings.Settings;
@@ -189,23 +190,7 @@ final class PagesImpl implements Pages {
                                     s.cancel(true);
                                 }
                             });
-
                         }
-//                        // Ensure we don't write to the channel before the
-//                        // headers are sent
-//                        fut.addListener(new ChannelFutureListener() {
-//                            volatile boolean first = true;
-//                            @Override
-//                            public void operationComplete(ChannelFuture fut) throws Exception {
-//                                if (first) {
-//                                    fut = fut.channel().flush();
-//                                    first = false;
-//                                    fut.addListener(this);
-//                                    // Send the response
-//                                } else {
-//                                }
-//                            }
-//                        });
                     } finally {
                         latch.countDown();
                     }
@@ -214,8 +199,10 @@ final class PagesImpl implements Pages {
                 } catch (Exception | Error e) {
                     e.printStackTrace();
                     application.internalOnError(e);
+
                     // Send an error message
-                    Acteur err = Acteur.error(state.getLockedPage(), e);
+                    Acteur err = Acteur.error(null, state.getLockedPage(), e, 
+                            application.getDependencies().getInstance(HttpEvent.class));
                     // XXX this might recurse badly
                     receive(err, err.getState(), err.getResponse());
                 }

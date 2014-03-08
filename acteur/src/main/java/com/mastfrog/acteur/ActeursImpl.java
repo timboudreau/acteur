@@ -222,7 +222,7 @@ final class ActeursImpl implements Acteurs {
                     if (acteur.creationStackTrace != null) {
                         npe.addSuppressed(acteur.creationStackTrace);
                     }
-                    state = Acteur.error(page, npe).getState();
+                    state = Acteur.error(acteur, page, npe, page.application.getDependencies().getInstance(HttpEvent.class)).getState();
                     npe.printStackTrace();
                     throw npe;
                 }
@@ -246,7 +246,7 @@ final class ActeursImpl implements Acteurs {
             } catch (Exception | Error e) {
                 page.getApplication().internalOnError(e);
                 try (QuietAutoCloseable ac = Page.set(page)) {
-                    State state = Acteur.error(page, e).getState();
+                    State state = Acteur.error(acteur, page, e, page.getApplication().getDependencies().getInstance(HttpEvent.class)).getState();
                     lastState.set(state);
                     response.merge(acteur.getResponse());
                 }

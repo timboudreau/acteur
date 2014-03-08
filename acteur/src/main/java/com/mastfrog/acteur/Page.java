@@ -192,12 +192,12 @@ public abstract class Page implements Iterable<Acteur> {
                     if (logErrors) {
                         app.internalOnError(t);
                     }
-                    return new Acteur.ErrorActeur(this, t);
+                    return Acteur.error(null, this, t, deps.getInstance(HttpEvent.class));
                 } catch (final Error t) {
                     if (logErrors) {
                         app.internalOnError(t);
                     }
-                    return new Acteur.ErrorActeur(this, t);
+                    return Acteur.error(null, this, t, deps.getInstance(HttpEvent.class));
                 }
             } else if (o instanceof Acteur) {
                 return (Acteur) o;
