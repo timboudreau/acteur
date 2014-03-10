@@ -23,6 +23,12 @@ public final class MongoModule extends AbstractModule implements MongoConfig<Mon
     public static final String DATABASE_NAME = "_dbName";
     public static final String SETTINGS_KEY_MONGO_USER = "mongo.user";
     public static final String SETTINGS_KEY_MONGO_PASSWORD = "mongo.password";
+    public static final String SETTINGS_KEY_MAX_WAIT_MILLIS = "mongo.max.wait.millis";
+    public static final int DEFAULT_MAX_WAIT_MILLIS = 20000;
+    public static final String SETTINGS_KEY_MAX_CONNECTIONS = "mongo.max.connections";
+    public static final int DEFAULT_MAX_CONNECTIONS = 1500;
+
+    
     private boolean configured;
     private final Map<String, String> collectionForName = new HashMap<>();
     private final String databaseName;
@@ -102,6 +108,7 @@ public final class MongoModule extends AbstractModule implements MongoConfig<Mon
         // database, so use eager singleton to ensure we'll be
         bind(MongoClient.class).toProvider(MongoClientProvider.class);
         bind(DB.class).toProvider(DatabaseProvider.class);
+        bind(MongoInitializer.Registry.class).toInstance(new MongoInitializer.Registry());
 
         for (Class<? extends MongoInitializer> c : initializers) {
             bind(c).asEagerSingleton();

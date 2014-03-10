@@ -5,6 +5,10 @@ import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import com.google.inject.name.Named;
 import static com.mastfrog.acteur.mongo.MongoModule.DATABASE_NAME;
+import static com.mastfrog.acteur.mongo.MongoModule.DEFAULT_MAX_CONNECTIONS;
+import static com.mastfrog.acteur.mongo.MongoModule.DEFAULT_MAX_WAIT_MILLIS;
+import static com.mastfrog.acteur.mongo.MongoModule.SETTINGS_KEY_MAX_CONNECTIONS;
+import static com.mastfrog.acteur.mongo.MongoModule.SETTINGS_KEY_MAX_WAIT_MILLIS;
 import static com.mastfrog.acteur.mongo.MongoModule.SETTINGS_KEY_MONGO_PASSWORD;
 import static com.mastfrog.acteur.mongo.MongoModule.SETTINGS_KEY_MONGO_USER;
 import com.mastfrog.giulius.ShutdownHookRegistry;
@@ -55,6 +59,15 @@ final class MongoClientProvider implements Provider<MongoClient>, Runnable {
         return port == 0 ? 27017 : port;
     }
 
+    private void clear() {
+        MongoClient client;
+        synchronized (this) {
+            client = this.client;
+            this.client = null;
+        }
+        client.close();
+    }
+
     @Override
     public MongoClient get() {
         if (client == null) {
@@ -64,17 +77,19 @@ final class MongoClientProvider implements Provider<MongoClient>, Runnable {
                         String host = mongoHost();
                         int port = mongoPort();
                         registry.onBeforeCreateMongoClient(host, port);
+                        int maxWait = settings.getInt(SETTINGS_KEY_MAX_WAIT_MILLIS, DEFAULT_MAX_WAIT_MILLIS);
+                        int maxConnections = settings.getInt(SETTINGS_KEY_MAX_CONNECTIONS, DEFAULT_MAX_CONNECTIONS);
                         MongoClientOptions opts = MongoClientOptions.builder()
-                                .autoConnectRetry(true).connectionsPerHost(1500)
+                                .autoConnectRetry(true).connectionsPerHost(maxConnections)
                                 .cursorFinalizerEnabled(true)
                                 .readPreference(ReadPreference.nearest())
-                                .maxWaitTime(20000).build();
+                                .maxWaitTime(maxWait).build();
                         List<MongoCredential> credentials = new ArrayList<>();
 
                         String un = settings.getString(SETTINGS_KEY_MONGO_USER);
                         String pw = settings.getString(SETTINGS_KEY_MONGO_PASSWORD);
                         if (un != null && pw != null) {
-                            MongoCredential cred = MongoCredential.createMongoCRCredential(un, 
+                            MongoCredential cred = MongoCredential.createMongoCRCredential(un,
                                     dbName, pw.toCharArray());
                             credentials.add(cred);
                         } else if (un != null) {
@@ -100,6 +115,13 @@ final class MongoClientProvider implements Provider<MongoClient>, Runnable {
 
     @Override
     public void run() {
-        client.close();
+        MongoClient client;
+        synchronized (this) {
+            client = this.client;
+            this.client = null;
+        }
+        if (client != null) {
+            client.close();
+        }
     }
 }

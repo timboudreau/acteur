@@ -6,7 +6,7 @@
     <parent>
         <artifactId>mastfrog-parent</artifactId>
         <groupId>com.mastfrog</groupId>
-        <version>1.4.12</version>
+        <version>1.4.13</version>
         <relativePath/>
     </parent>
 
