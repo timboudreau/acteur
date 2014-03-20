@@ -39,6 +39,7 @@ import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpRequestDecoder;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseEncoder;
+import java.util.List;
 
 //@Singleton
 //@Sharable
@@ -94,7 +95,7 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
         }
         pipeline.addLast("handler", handler.get());
     }
-
+    
     private static class MessageBufEncoder extends MessageToByteEncoder<ByteBuf> {
 
         @Override
