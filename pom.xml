@@ -21,5 +21,6 @@
         <module>acteur-mongo</module>
         <module>deprecated</module>
         <module>acteur-headers</module>
+        <module>acteur-jdbc</module>
     </modules>
 </project>

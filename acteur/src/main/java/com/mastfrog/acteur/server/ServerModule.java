@@ -28,23 +28,28 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 import com.google.inject.Module;
 import com.google.inject.Provider;
+import com.google.inject.Scopes;
 import com.google.inject.Singleton;
 import com.google.inject.TypeLiteral;
 import com.google.inject.name.Names;
-import com.mastfrog.guicy.annotations.Defaults;
-import com.mastfrog.settings.Settings;
-import com.mastfrog.settings.MutableSettings;
-import com.mastfrog.settings.SettingsBuilder;
-import com.mastfrog.giulius.Dependencies;
-import com.mastfrog.guicy.scope.ReentrantScope;
 import com.mastfrog.acteur.Application;
+import com.mastfrog.acteur.Closables;
 import com.mastfrog.acteur.Event;
 import com.mastfrog.acteur.HttpEvent;
 import com.mastfrog.acteur.ImplicitBindings;
 import com.mastfrog.acteur.Page;
-import com.mastfrog.acteur.util.BasicCredentials;
+import com.mastfrog.acteur.errors.ExceptionEvaluatorRegistry;
 import com.mastfrog.acteur.server.ServerModule.TF;
+import com.mastfrog.acteur.spi.ApplicationControl;
+import com.mastfrog.acteur.util.BasicCredentials;
 import com.mastfrog.acteur.util.Server;
+import com.mastfrog.giulius.Dependencies;
+import com.mastfrog.guicy.annotations.Defaults;
+import com.mastfrog.guicy.scope.ReentrantScope;
+import com.mastfrog.settings.MutableSettings;
+import com.mastfrog.settings.Settings;
+import com.mastfrog.settings.SettingsBuilder;
+import com.mastfrog.treadmill.Treadmill;
 import com.mastfrog.util.Codec;
 import com.mastfrog.util.ConfigurationError;
 import io.netty.bootstrap.ServerBootstrap;
@@ -63,6 +68,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.Thread.UncaughtExceptionHandler;
+import java.lang.reflect.InvocationTargetException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -82,31 +88,33 @@ import org.joda.time.Duration;
  */
 @Defaults("realm=Users")
 public class ServerModule<A extends Application> extends AbstractModule {
-    
+
     /**
-     * Name of the &#064;Named parameter that should be used in an annotation
-     * if you want Guice to inject the specific thread pool used for processing
+     * Name of the &#064;Named parameter that should be used in an annotation if
+     * you want Guice to inject the specific thread pool used for processing
      * requests.
      */
     public static final String BACKGROUND_THREAD_POOL_NAME = "background";
     /**
-     * Name of the &#064;Named parameter that should be used in an annotation
-     * if you want Guice to inject the specific thread pool used for processing
+     * Name of the &#064;Named parameter that should be used in an annotation if
+     * you want Guice to inject the specific thread pool used for processing
      * requests.
      */
     public static final String WORKER_THREAD_POOL_NAME = "workers";
     /**
-     * Name of the &#064;Named parameter that should be used in an annotation
-     * if you want Guice to inject the specific thread pool used for processing
-     * requests, but wrappered so that all runnables are run within the application's
-     * request scope and have whatever context they were submitted with.
+     * Name of the &#064;Named parameter that should be used in an annotation if
+     * you want Guice to inject the specific thread pool used for processing
+     * requests, but wrappered so that all runnables are run within the
+     * application's request scope and have whatever context they were submitted
+     * with.
      */
     public static final String SCOPED_WORKER_THREAD_POOL_NAME = "scopedWorkers";
     /**
-     * Name of the &#064;Named parameter that should be used in an annotation
-     * if you want Guice to inject the specific thread pool used for processing
-     * requests, but wrappered so that all runnables are run within the application's
-     * request scope and have whatever context they were submitted with.
+     * Name of the &#064;Named parameter that should be used in an annotation if
+     * you want Guice to inject the specific thread pool used for processing
+     * requests, but wrappered so that all runnables are run within the
+     * application's request scope and have whatever context they were submitted
+     * with.
      */
     public static final String SCOPED_BACKGROUND_THREAD_POOL_NAME = "scopedBackground";
 
@@ -140,7 +148,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
      */
     public static final String DEFAULT_ALLOCATOR = POOLED_ALLOCATOR;
     /**
-     * Settings key for the nnumber of worker threads to use.  
+     * Settings key for the nnumber of worker threads to use.
      */
     public static final String WORKER_THREADS = "workerThreads";
     /**
@@ -148,28 +156,34 @@ public class ServerModule<A extends Application> extends AbstractModule {
      */
     public static final String EVENT_THREADS = "eventThreads";
     /**
-     * Number of background thread pool threads.  The background thread pool
-     * is used by a few things which chunk responses.
+     * Number of background thread pool threads. The background thread pool is
+     * used by a few things which chunk responses.
      */
     public static final String BACKGROUND_THREADS = "backgroundThreads";
-    /** The port to run on */
+    /**
+     * The port to run on
+     */
     public static final String PORT = "port";
-    
+
     /**
      * If true, the return value of Event.getRemoteAddress() will prefer the
      * headers X-Forwarded-For or X-Real-IP if present, so that running an
      * acteur application behind a reverse proxy does not mask the actual IP
      * address.
      */
-    public static final String DECODE_REAL_IP = "decodeRealIP";
-    private final Class<A> appType;
-    private final ReentrantScope scope = new ReentrantScope();
+    public static final String SETTINGS_KEY_DECODE_REAL_IP = "decodeRealIP";
+    public static final String SETTINGS_KEY_CORS_ENABLED = "cors.enabled";
+    protected final Class<A> appType;
+    protected final ReentrantScope scope = new ReentrantScope();
     private final int eventThreads;
     private final int workerThreads;
     private final int backgroundThreads;
     private final List<Module> otherModules = new ArrayList<>();
 
     public ServerModule(Class<A> appType, int workerThreadCount, int eventThreadCount, int backgroundThreadCount) {
+        if (!Application.class.isAssignableFrom(appType)) {
+            throw new ClassCastException(appType.getName() + " is not a subclass of " + Application.class.getName());
+        }
         this.appType = appType;
         this.workerThreads = workerThreadCount;
         this.eventThreads = eventThreadCount;
@@ -186,27 +200,34 @@ public class ServerModule<A extends Application> extends AbstractModule {
 
     @Override
     protected void configure() {
-        bind(Server.class).to(ServerImpl.class).asEagerSingleton();
+        bind(Server.class).to(ServerImpl.class);
         bind(ReentrantScope.class).toInstance(scope);
         bind(Application.class).to(appType).asEagerSingleton();
         bind(ChannelHandler.class).to(UpstreamHandlerImpl.class);
         bind(new CISC()).to(PipelineFactoryImpl.class);
-        bind(ServerBootstrap.class).toProvider(new ServerBootstrapProvider(binder().getProvider(Settings.class), binder().getProvider(ByteBufAllocator.class)));
+        bind(ServerBootstrap.class).toProvider(new ServerBootstrapProvider(
+                binder().getProvider(Settings.class),
+                binder().getProvider(ByteBufAllocator.class)));
 
         scope.bindTypes(binder(), Event.class, HttpEvent.class,
-                Page.class, BasicCredentials.class);
+                Page.class, BasicCredentials.class, Closables.class);
 
         ImplicitBindings implicit = appType.getAnnotation(ImplicitBindings.class);
         if (implicit != null) {
             scope.bindTypes(binder(), implicit.value());
         }
+        // Acteurs can ask for a Deferral to pause execution while some
+        // other operation completes, such as making an external HTTP request
+        // to another server
+        scope.bindTypes(binder(), Treadmill.Deferral.class);
 
         Provider<Application> appProvider = binder().getProvider(Application.class);
+        Provider<ApplicationControl> appControlProvider = binder().getProvider(ApplicationControl.class);
         Provider<Settings> set = binder().getProvider(Settings.class);
 
-        TF eventThreadFactory = new TF(EVENT_THREADS, appProvider);
-        TF workerThreadFactory = new TF(WORKER_THREADS, appProvider);
-        TF backgroundThreadFactory = new TF(BACKGROUND_THREAD_POOL_NAME, appProvider);
+        TF eventThreadFactory = new TF(EVENT_THREADS, appControlProvider);
+        TF workerThreadFactory = new TF(WORKER_THREADS, appControlProvider);
+        TF backgroundThreadFactory = new TF(BACKGROUND_THREAD_POOL_NAME, appControlProvider);
 
         bind(ThreadGroup.class).annotatedWith(Names.named(BACKGROUND_THREAD_POOL_NAME)).toInstance(backgroundThreadFactory.tg);
         bind(ThreadGroup.class).annotatedWith(Names.named(WORKER_THREADS)).toInstance(workerThreadFactory.tg);
@@ -224,10 +245,10 @@ public class ServerModule<A extends Application> extends AbstractModule {
         bind(ThreadFactory.class).annotatedWith(Names.named(EVENT_THREADS)).toInstance(eventThreadFactory);
         bind(ThreadFactory.class).annotatedWith(Names.named(BACKGROUND_THREAD_POOL_NAME)).toInstance(backgroundThreadFactory);
 
-        Provider<ExecutorService> workerProvider =
-                new ExecutorServiceProvider(workerThreadFactory, workerThreadCount);
-        Provider<ExecutorService> backgroundProvider =
-                new ExecutorServiceProvider(backgroundThreadFactory, backgroundThreadCount);
+        Provider<ExecutorService> workerProvider
+                = new ExecutorServiceProvider(workerThreadFactory, workerThreadCount);
+        Provider<ExecutorService> backgroundProvider
+                = new ExecutorServiceProvider(backgroundThreadFactory, backgroundThreadCount);
 
         bind(ExecutorService.class).annotatedWith(Names.named(
                 WORKER_THREAD_POOL_NAME)).toProvider(workerProvider);
@@ -237,11 +258,11 @@ public class ServerModule<A extends Application> extends AbstractModule {
 
         bind(ExecutorService.class).annotatedWith(Names.named(
                 SCOPED_WORKER_THREAD_POOL_NAME)).toProvider(
-                new WrappedWorkerThreadPoolProvider(workerProvider, scope));
+                        new WrappedWorkerThreadPoolProvider(workerProvider, scope));
 
         bind(ExecutorService.class).annotatedWith(Names.named(
                 SCOPED_BACKGROUND_THREAD_POOL_NAME)).toProvider(
-                new WrappedWorkerThreadPoolProvider(backgroundProvider, scope));
+                        new WrappedWorkerThreadPoolProvider(backgroundProvider, scope));
 
         bind(DateTime.class).toInstance(DateTime.now());
         bind(Duration.class).toProvider(UptimeProvider.class);
@@ -258,8 +279,10 @@ public class ServerModule<A extends Application> extends AbstractModule {
         bind(ByteBufAllocator.class).toProvider(ByteBufAllocatorProvider.class);
         bind(new ETL()).toProvider(EventProvider.class).in(scope);
         bind(Codec.class).to(CodecImpl.class);
+        bind(ApplicationControl.class).toProvider(ApplicationControlProvider.class).in(Scopes.SINGLETON);
+        bind(ExceptionEvaluatorRegistry.class).asEagerSingleton();
     }
-    
+
     private static final class EventProvider implements Provider<Event<?>> {
 
         @SuppressWarnings("unchecked")
@@ -276,12 +299,34 @@ public class ServerModule<A extends Application> extends AbstractModule {
             return eventProvider.get();
         }
     }
-    
+
     private static final class ETL extends TypeLiteral<Event<?>> {
-        
+
     }
-    
+
+    static class ApplicationControlProvider implements Provider<ApplicationControl> {
+
+        private final ApplicationControl control;
+
+        @Inject
+        public ApplicationControlProvider(Provider<Application> app) throws NoSuchMethodException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
+            // In order to separate the API and SPI of Application, so Application
+            // is not polluted with methods a subclasser should never call,
+            // we do this:
+            Application a = app.get();
+            java.lang.reflect.Method method = Application.class.getDeclaredMethod("control");
+            method.setAccessible(true);
+            control = (ApplicationControl) method.invoke(a);
+        }
+
+        @Override
+        public ApplicationControl get() {
+            return control;
+        }
+    }
+
     static class CodecImpl implements Codec {
+
         private final Provider<ObjectMapper> mapper;
 
         @Inject
@@ -501,11 +546,11 @@ public class ServerModule<A extends Application> extends AbstractModule {
     static final class TF implements ThreadFactory, UncaughtExceptionHandler {
 
         private final String name;
-        private final Provider<Application> app;
+        private final Provider<ApplicationControl> app;
         private final AtomicInteger count = new AtomicInteger();
         private final ThreadGroup tg;
 
-        public TF(String name, Provider<Application> app) {
+        public TF(String name, Provider<ApplicationControl> app) {
             this.name = name;
             this.app = app;
             tg = new ThreadGroup(Thread.currentThread().getThreadGroup(), name + "s");

@@ -155,6 +155,9 @@ public final class URLBuilder extends AbstractBuilder<PathElement, URL> {
 
     public URLBuilder addQueryPair (ParametersElement element) {
         Checks.notNull("element", element);
+        if (queryElements == null) {
+            queryElements = new LinkedList<>();
+        }        
         queryElements.add (element);
         return this;
     }

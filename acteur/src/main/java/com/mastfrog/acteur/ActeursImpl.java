@@ -23,7 +23,6 @@
  */
 package com.mastfrog.acteur;
 
-import com.mastfrog.acteur.headers.Headers;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import com.mastfrog.acteur.server.ServerModule;
@@ -44,7 +43,7 @@ import java.util.concurrent.atomic.AtomicReference;
  *
  * @author Tim Boudreau
  */
-public class ActeursImpl implements Acteurs {
+final class ActeursImpl implements Acteurs {
 
     private final ReentrantScope scope;
     private final ExecutorService exe;
@@ -174,10 +173,6 @@ public class ActeursImpl implements Acteurs {
                 } else {
                     // Pass it into the receiver
                     try {
-                        if (debug) {
-                            response.add(Headers.stringHeader("X-Acteur"), state.getActeur().getClass().getName());
-                            response.add(Headers.stringHeader("X-Page"), state.getLockedPage().getClass().getName());
-                        }
                         try (AutoCloseable cl = Page.set(state.getLockedPage())) {
                             receiver.receive(state.getActeur(), state, response);
                         }
@@ -215,6 +210,9 @@ public class ActeursImpl implements Acteurs {
             // Set the Page ThreadLocal, for things that will call Page.get()
             try (QuietAutoCloseable ac = Page.set(page)){
                 // Get the state
+                if (Page.get() != page) {
+                    throw new AssertionError("Page not actually set");
+                }
                 State state = acteur.getState();
                 // Null is not permitted - broken Acteur implementation didn't
                 // call setState() in its constructor or didn't override getState(),
@@ -224,7 +222,7 @@ public class ActeursImpl implements Acteurs {
                     if (acteur.creationStackTrace != null) {
                         npe.addSuppressed(acteur.creationStackTrace);
                     }
-                    state = Acteur.error(page, npe).getState();
+                    state = Acteur.error(acteur, page, npe, page.application.getDependencies().getInstance(HttpEvent.class)).getState();
                     npe.printStackTrace();
                     throw npe;
                 }
@@ -239,7 +237,6 @@ public class ActeursImpl implements Acteurs {
 //                if (!done || isLast) {
                   response.merge(acteur.getResponse());
 //                }
-                System.out.println("DONE? " + done + " CODE " + acteur.getResponse().getResponseCode());
                 
                 // If the state is rejected, return null - we're done processing
                 // in this Treadmill
@@ -247,13 +244,14 @@ public class ActeursImpl implements Acteurs {
             } catch (ThreadDeath | OutOfMemoryError e) {
                 throw e;
             } catch (Exception | Error e) {
-//                page.getApplication().onError(e);
-//                throw e;
-                State state = Acteur.error(page, e).getState();
-                lastState.set(state);
-                response.merge(acteur.getResponse());
                 page.getApplication().internalOnError(e);
-                throw e;
+                try (QuietAutoCloseable ac = Page.set(page)) {
+                    State state = Acteur.error(acteur, page, e, page.getApplication().getDependencies().getInstance(HttpEvent.class)).getState();
+                    lastState.set(state);
+                    response.merge(acteur.getResponse());
+                }
+                return new Object[0];
+//                throw e;
             }
         }
     }

@@ -25,26 +25,28 @@ package com.mastfrog.acteur;
 
 import com.google.common.net.MediaType;
 import com.google.inject.Inject;
+import static com.mastfrog.acteur.Help.HELP_URL_PATTERN_SETTINGS_KEY;
 import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.acteur.headers.Method;
+import com.mastfrog.acteur.preconditions.Description;
 import com.mastfrog.acteur.util.CacheControlTypes;
+import com.mastfrog.acteur.util.Connection;
 import com.mastfrog.settings.Settings;
-import com.mastfrog.util.Codec;
-import java.io.IOException;
+import java.lang.reflect.Array;
 import java.nio.charset.Charset;
 import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import java.util.Objects;
 import org.joda.time.DateTime;
 
 /**
  *
  * @author Tim Boudreau
  */
+@Description("Provides a list of API calls this API supports")
 final class HelpPage extends Page {
-
-    public static final String HELP_URL_PATTERN_SETTINGS_KEY = "helpUrlPattern";
 
     @Inject
     HelpPage(ActeurFactory af, Settings settings, DateTime serverStartTime) {
@@ -59,21 +61,16 @@ final class HelpPage extends Page {
 
     private static class HelpActeur extends Acteur {
 
-        private final Application app;
         private final boolean html;
-        private final Codec mapper;
-        private final Charset charset;
 
         @Inject
-        HelpActeur(Application app, HttpEvent evt, Codec mapper, Charset charset) {
-            this.app = app;
-            this.charset = charset;
+        HelpActeur(Application app, HttpEvent evt, Charset charset) {
             this.html = "true".equals(evt.getParameter("html"));
             if (html) {
                 add(Headers.CONTENT_TYPE, MediaType.HTML_UTF_8.withCharset(charset));
             }
-            setResponseWriter(new HelpWriter(mapper, html, app));
-            this.mapper = mapper;   
+            setResponseWriter(new HelpWriter(html, app));
+            add(Headers.CONNECTION, Connection.close);
         }
 
         @Override
@@ -87,12 +84,12 @@ final class HelpPage extends Page {
         }
 
         public static final class HelpWriter extends ResponseWriter {
-            private final Codec mapper;
+
             private final boolean html;
             private final Application app;
+
             @Inject
-            HelpWriter (Codec mapper, boolean html, Application app) {
-                this.mapper = mapper;
+            HelpWriter(boolean html, Application app) {
                 this.html = html;
                 this.app = app;
             }
@@ -101,12 +98,20 @@ final class HelpPage extends Page {
             public Status write(Event<?> evt, Output out, int iteration) throws Exception {
                 Map<String, Object> help = app.describeYourself();
                 if (html) {
-                    StringBuilder sb = new StringBuilder("<html><head><title>")
+                    StringBuilder sb = new StringBuilder("<html><head><style>body { font-family: 'Helvetica';}</style><title>")
                             .append(app.getName())
-                            .append(" API Help</title></head>\n<body>\n<h1>").append(app.getName()).append("API Help</h1>\n\n"
-                            + "<p>Note that most URL paths are relative to the application base path");
-
-                    writeOut(null, help, sb);
+                            .append(" API Help</title></head>\n<body>\n<h1>").append(app.getName()).append(" API Help</h1>\n");
+                    Description des = app.getClass().getAnnotation(Description.class);
+                    if (des != null) {
+                        sb.append("<p>").append(des.value()).append("</p>\n");
+                    }
+                    sb.append("<p><i style='font-size: 0.85em;'>Note that "
+                            + "URL matching expressions are relative to the "
+                            + "application base path, which can be set by passing "
+                            + "<code>--basepath $PATH</code> on the command-line"
+                            + "or set in a properties file."
+                            + "<i></p>");
+                    writeOut(null, help, sb, null);
                     sb.append("</body></html>\n");
                     out.write(sb.toString());
                     return Status.DONE;
@@ -116,15 +121,51 @@ final class HelpPage extends Page {
                 }
             }
 
-            private StringBuilder writeOut(String key, Object object, StringBuilder sb) {
+            private String deBicapitalize(String s) {
+                if (s == null) {
+                    return null;
+                }
+                StringBuilder sb = new StringBuilder();
+                if (s.endsWith("Page")) {
+                    s = s.substring(0, s.length() - "Page".length());
+                }
+                if (s.endsWith("Resource")) {
+                    s = s.substring(0, s.length() - "Resource".length());
+                }
+                boolean lastWasCaps = true;
+                for (char c : s.toCharArray()) {
+                    if (Character.isUpperCase(c)) {
+                        if (!lastWasCaps) {
+                            sb.append(' ');
+                        }
+                        lastWasCaps = true;
+                    } else {
+                        lastWasCaps = false;
+                    }
+                    sb.append(c);
+                }
+                return sb.toString();
+            }
+
+            private StringBuilder writeOut(String key, Object object, StringBuilder sb, String parentKey) {
+                boolean code = ("PathRegex".equals(parentKey) || "Path".equals(parentKey) || "Methods".equals(parentKey))
+                        && "value".equals(key);
+                String codeOpen = code ? "<code>" : "";
+                String codeClose = code ? "</code>" : "";
+                String humanized = deBicapitalize(key);
                 if (key == null || object instanceof Map) {
                     Map<String, Object> m = Collections.checkedMap((Map) object, String.class, Object.class);
                     if (key != null) {
-                        sb.append("\n<tr><th valign=\"left\" bgcolor='#DDFFDD'>").append(key).append("</th><td>");
+                        sb.append("\n<tr><th valign=\"left\" bgcolor='#FFEECC'>").append(humanized).append("</th><td>");
                     }
                     sb.append("<table>\n");
-                    for (Map.Entry<String, Object> e : m.entrySet()) {
-                        writeOut(e.getKey(), e.getValue(), sb);
+                    List<String> sortedKeys = new LinkedList<>(m.keySet());
+                    Collections.sort(sortedKeys);
+                    for (String k : sortedKeys) {
+                        Object val = m.get(k);
+                        sb.append(codeOpen);;
+                        writeOut(k, val, sb, key);
+                        sb.append(codeClose);
                         if (key == null) {
                             sb.append("\n<tr><td colspan=2><hr/></td></tr>\n");
                         }
@@ -134,18 +175,41 @@ final class HelpPage extends Page {
                         sb.append("\n</td></tr>\n");
                     }
                 } else if (object instanceof CharSequence || object instanceof Boolean || object instanceof Number || object instanceof Enum) {
-                    sb.append("\n<tr><th bgcolor='#DDDDDD'>").append(key).append("</th><td>").append(object).append("</td></tr>\n");
-                } else if (object.getClass().isArray()) {
-                    try {
-                        String s = mapper.writeValueAsString(object);
-                        sb.append("\n<tr><th bgcolor='#DDDDDD'>").append(key).append("</th><td>").append(s).append("</td></tr>\n");
-                    } catch (IOException ex) {
-                        Logger.getLogger(HelpPage.class.getName()).log(Level.SEVERE, null, ex);
-                    }
+                    sb.append("\n<tr><th bgcolor='#DDDDDD'>").append(humanized).append("</th><td>")
+                            .append(codeOpen)
+                            .append(object)
+                            .append(codeClose)
+                            .append("</td></tr>\n");
+                } else if (object != null && object.getClass().isArray()) {
+                    String s = toString(object);;
+                    sb.append("\n<tr><th bgcolor='#DDDDDD'>").append(humanized).append("</th><td>")
+                            .append(codeOpen)
+                            .append(s)
+                            .append(codeClose)
+                            .append("</td></tr>\n");
                 } else {
-                    sb.append("\n<tr><th bgcolor='#DDDDDD'>").append(key).append("</th><td>").append(object).append("</td></tr>\n");
+                    sb.append("\n<tr><th bgcolor='#DDDDDD'>").append(humanized).append("</th><td>")
+                            .append(codeOpen)
+                            .append(object)
+                            .append(codeClose)
+                            .append("</td></tr>\n");
                 }
                 return sb;
+            }
+
+            private String toString(Object o) {
+                if (o.getClass().isArray()) {
+                    StringBuilder sb = new StringBuilder();
+                    for (int i = 0; i < Array.getLength(o); i++) {
+                        if (sb.length() > 0) {
+                            sb.append(", ");
+                        }
+                        sb.append(toString(Array.get(o, i)));
+                    }
+                    return sb.toString();
+                } else {
+                    return Objects.toString(o);
+                }
             }
 
         }

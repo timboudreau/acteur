@@ -1,4 +1,4 @@
-/* 
+/*
  * The MIT License
  *
  * Copyright 2013 Tim Boudreau.
@@ -24,6 +24,9 @@
 package com.mastfrog.acteur;
 
 import com.google.common.net.MediaType;
+import com.mastfrog.acteur.errors.ErrorRenderer;
+import com.mastfrog.acteur.errors.ErrorResponse;
+import com.mastfrog.acteur.errors.ExceptionEvaluatorRegistry;
 import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.giulius.Dependencies;
@@ -110,14 +113,16 @@ public abstract class Acteur {
     }
 
     /**
-     * If you write an acteur which delegates to another one, implement this
-     * so that that other one's changes to the response will be picked up.
-     * This pattern is sometimes used where a choice is made about which
-     * acteur to call next.
+     * If you write an acteur which delegates to another one, implement this so
+     * that that other one's changes to the response will be picked up. This
+     * pattern is sometimes used where a choice is made about which acteur to
+     * call next.
      */
     public interface Delegate {
+
         /**
          * Get the acteur being delegated to
+         *
          * @return An acteur
          */
         Acteur getDelegate();
@@ -168,8 +173,17 @@ public abstract class Acteur {
         return getResponse();
     }
 
-    static Acteur error(Page page, Throwable t) {
-        return new ErrorActeur(page, t);
+    static Acteur error(Acteur errSource, Page page, Throwable t, HttpEvent evt) {
+        try {
+            return new ErrorActeur(errSource, evt, page, t, true);
+        } catch (IOException ex) {
+            page.application.internalOnError(t);
+            try {
+                return new ErrorActeur(errSource, evt, page, t, true);
+            } catch (IOException ex1) {
+                return Exceptions.chuck(ex1);
+            }
+        }
     }
 
     public void describeYourself(Map<String, Object> into) {
@@ -205,7 +219,18 @@ public abstract class Acteur {
 
     static final class ErrorActeur extends Acteur {
 
-        ErrorActeur(Page page, Throwable t) {
+        ErrorActeur(Acteur errSource, HttpEvent evt, Page page, Throwable t, boolean tryErrResponse) throws IOException {
+            if (tryErrResponse) {
+                Dependencies deps = page.application.getDependencies();
+                ExceptionEvaluatorRegistry reg = deps.getInstance(ExceptionEvaluatorRegistry.class);
+                ErrorResponse resp = reg.evaluate(t, errSource, page, evt);
+                if (resp != null) {
+                    ErrorRenderer ren = deps.getInstance(ErrorRenderer.class);
+                    ren.render(resp, response(), evt);
+                    setState(new RespondWith(resp.status()));
+                    return;
+                }
+            }
             StringBuilder sb = new StringBuilder("Page " + page + " (" + page.getClass().getName() + " threw " + t.getMessage() + '\n');
             try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
                 t.printStackTrace(new PrintStream(out));
@@ -237,6 +262,22 @@ public abstract class Acteur {
             this(HttpResponseStatus.valueOf(status), msg);
         }
 
+        public RespondWith(ErrorResponse err) {
+            page = Page.get();
+            setResponseCode(err.status());
+            ErrorRenderer ren = getLockedPage().getApplication().getDependencies().getInstance(ErrorRenderer.class);
+            String s;
+            try {
+                s = ren.render(err, getLockedPage().getApplication().getDependencies().getInstance(HttpEvent.class));
+                if (s != null) {
+                    s = msgToString(err.message());
+                }
+                setMessage(s);
+            } catch (IOException ex) {
+                Exceptions.chuck(ex);
+            }
+        }
+
         /**
          * Response which uses JSON
          *
@@ -253,16 +294,22 @@ public abstract class Acteur {
                     throw new IllegalStateException("No page set");
                 }
                 Codec mapper = page.getApplication().getDependencies().getInstance(Codec.class);
-                try {
-                    String m = msg instanceof String ? msg.toString() : msg != null
-                            ? mapper.writeValueAsString(msg) + '\n' : null;
-                    setResponseCode(status);
-                    if (m != null) {
-                        setMessage(m);
-                    }
-                } catch (IOException ioe) {
-                    Exceptions.chuck(ioe);
+                setResponseCode(status);
+                setMessage(msgToString(msg));
+            }
+        }
+
+        private String msgToString(Object msg) {
+            try {
+                Codec mapper = page.getApplication().getDependencies().getInstance(Codec.class);
+                String m = msg instanceof String ? msg.toString() : msg != null
+                        ? mapper.writeValueAsString(msg) + '\n' : null;
+                if (m != null) {
+                    return m;
                 }
+                return null;
+            } catch (IOException ioe) {
+                return Exceptions.chuck(ioe);
             }
         }
 
@@ -464,11 +511,10 @@ public abstract class Acteur {
 
     /**
      * Set a ChannelFutureListener which will be called after headers are
-     * written and flushed to the socket; 
-     * prefer <code>setResponseWriter()</code> to this method unless
-     * you are not using chunked encoding and want to stream your response (in
-     * which case, be sure to setChunked(false) or you will have encoding
-     * errors).
+     * written and flushed to the socket; prefer
+     * <code>setResponseWriter()</code> to this method unless you are not using
+     * chunked encoding and want to stream your response (in which case, be sure
+     * to setChunked(false) or you will have encoding errors).
      * <p/>
      * This method will dynamically construct the passed listener type using
      * Guice, and including all of the contents of the scope in which this call
@@ -539,11 +585,10 @@ public abstract class Acteur {
 
     /**
      * Set a ChannelFutureListener which will be called after headers are
-     * written and flushed to the socket; 
-     * prefer <code>setResponseWriter()</code> to this method unless
-     * you are not using chunked encoding and want to stream your response (in
-     * which case, be sure to setChunked(false) or you will have encoding
-     * errors).
+     * written and flushed to the socket; prefer
+     * <code>setResponseWriter()</code> to this method unless you are not using
+     * chunked encoding and want to stream your response (in which case, be sure
+     * to setChunked(false) or you will have encoding errors).
      *
      * @param listener
      */
@@ -589,7 +634,7 @@ public abstract class Acteur {
         return new WrapperActeur(deps, charset, type);
     }
 
-    private static class WrapperActeur extends Acteur implements Delegate {
+    static class WrapperActeur extends Acteur implements Delegate {
 
         private final Dependencies deps;
         private final Charset charset;
@@ -601,6 +646,10 @@ public abstract class Acteur {
             this.type = type;
         }
         Acteur acteur;
+
+        public Class<? extends Acteur> type() {
+            return type;
+        }
 
         @Override
         public void describeYourself(Map<String, Object> into) {
@@ -619,14 +668,24 @@ public abstract class Acteur {
             return super.getResponse();
         }
 
+        boolean inOnError;
+
         protected void onError(Throwable t) throws UnsupportedEncodingException {
-            if (!Dependencies.isProductionMode(deps.getInstance(Settings.class))) {
-                ByteArrayOutputStream out = new ByteArrayOutputStream();
-                t.printStackTrace(new PrintStream(out));
-                add(Headers.CONTENT_TYPE, MediaType.PLAIN_TEXT_UTF_8.withCharset(charset));
-                this.setMessage(new String(out.toByteArray(), charset));
+            if (inOnError) {
+                Exceptions.chuck(t);
             }
-            this.setResponseCode(HttpResponseStatus.INTERNAL_SERVER_ERROR);
+            inOnError = true;
+            try {
+                if (!Dependencies.isProductionMode(deps.getInstance(Settings.class))) {
+                    ByteArrayOutputStream out = new ByteArrayOutputStream();
+                    t.printStackTrace(new PrintStream(out));
+                    add(Headers.CONTENT_TYPE, MediaType.PLAIN_TEXT_UTF_8.withCharset(charset));
+                    this.setMessage(new String(out.toByteArray(), charset));
+                }
+                this.setResponseCode(HttpResponseStatus.INTERNAL_SERVER_ERROR);
+            } finally {
+                inOnError = false;
+            }
         }
         private State cachedState;
 
@@ -653,7 +712,7 @@ public abstract class Acteur {
 
         @Override
         public String toString() {
-            return "Wrapper [" + (acteur == null ? type + " (type)" : acteur) 
+            return "Wrapper [" + (acteur == null ? type + " (type)" : acteur)
                     + " lastState=" + cachedState + "]";
         }
 

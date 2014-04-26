@@ -65,11 +65,17 @@ public class PutTest {
     
     @Test
     public void testPuts() throws IOException, InterruptedException {
+        System.err.println("enter test");
         ServerModule m = new ServerModule(EchoServer.class, 2, 2, 2);
+        System.out.println("start server");
         m.start(8193);
+        System.out.println("server started");
+        
         DefaultHttpClient client = new DefaultHttpClient();
+        System.out.println("send first request");
         HttpGet get = new HttpGet("http://localhost:8193/foo/bar/baz");
         HttpResponse res = client.execute(get);
+        System.out.println("first request done");
         for (Header h : res.getAllHeaders()) {
             System.out.println(h.getName() + ": " + h.getValue());
         }

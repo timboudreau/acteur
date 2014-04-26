@@ -25,12 +25,14 @@ package com.mastfrog.acteur;
 
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
+import com.mastfrog.acteur.errors.ExceptionEvaluatorRegistry;
 import com.mastfrog.acteur.server.ServerModule;
 import com.mastfrog.acteur.util.RequestID;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.util.Exceptions;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import java.nio.charset.Charset;
@@ -39,6 +41,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
@@ -51,20 +54,26 @@ import java.util.concurrent.TimeUnit;
 final class PagesImpl implements Pages {
 
     private final Application application;
-    private static boolean debug;
-    
+
     private final ScheduledExecutorService scheduler;
+
+    public static final String SETTINGS_KEY_DELAY_THREAD_POOL_THREADS = "delay.response.threads";
+    private static final int DEFAULT_DELAY_THREADS = 2;
 
     @Inject
     PagesImpl(Application application, Settings settings, @Named(ServerModule.WORKER_THREADS) ThreadFactory workerThreadFactory) {
         this.application = application;
-        debug = settings.getBoolean("acteur.debug", true);
-        scheduler = Executors.newSingleThreadScheduledExecutor(workerThreadFactory);
+        int count = settings.getInt(SETTINGS_KEY_DELAY_THREAD_POOL_THREADS, DEFAULT_DELAY_THREADS);
+        scheduler = Executors.newScheduledThreadPool(count, workerThreadFactory);
     }
 
     /**
      * Returns a CountDownLatch which can be used in tests to wait until a
-     * request has been fully processed
+     * request has been fully processed.  Note that the latch will be called
+     * when the <i>headers have been flushed</i> - it is entirely possible
+     * that a listener has been attached which will write a body after that.
+     * Add a close listener to the channel to detect that the channel has been
+     * completely written to.
      *
      * @param id The request unique id
      * @param event The event - the request itself
@@ -75,7 +84,8 @@ final class PagesImpl implements Pages {
     public final CountDownLatch onEvent(final RequestID id, final Event<?> event, final Channel channel) {
         Iterator<Page> it = application.iterator();
         CountDownLatch latch = new CountDownLatch(1);
-        PageRunner pageRunner = new PageRunner(application, it, latch, id, event, channel, scheduler);
+        Closables closables = new Closables(channel, application.control());
+        PageRunner pageRunner = new PageRunner(application, it, latch, id, event, channel, scheduler, closables);
         application.getWorkerThreadPool().submit(pageRunner);
         return latch;
     }
@@ -89,8 +99,9 @@ final class PagesImpl implements Pages {
         private final Event<?> event;
         private final Channel channel;
         private final ScheduledExecutorService scheduler;
+        private final Closables close;
 
-        public PageRunner(Application application, Iterator<Page> pages, CountDownLatch latch, RequestID id, Event<?> event, Channel channel, ScheduledExecutorService scheduler) {
+        public PageRunner(Application application, Iterator<Page> pages, CountDownLatch latch, RequestID id, Event<?> event, Channel channel, ScheduledExecutorService scheduler, Closables close) {
             this.application = application;
             this.pages = pages;
             this.latch = latch;
@@ -98,18 +109,19 @@ final class PagesImpl implements Pages {
             this.event = event;
             this.channel = channel;
             this.scheduler = scheduler;
+            this.close = close;
         }
 
         @Override
         public Void call() throws Exception {
             // See if any pages are left
             if (pages.hasNext()) {
-                try (AutoCloseable a1 = application.getRequestScope().enter(event, id, channel)) {
+                try (AutoCloseable a1 = application.getRequestScope().enter(event, id, channel, close)) {
                     Page page = pages.next();
                     page.setApplication(application);
     //                if (debug) {
-    //                    System.out.println("PAGE " + page);
-    //                }
+                    //                    System.out.println("PAGE " + page);
+                    //                }
                     Page.set(page);
                     try (AutoCloseable ac = application.getRequestScope().enter(page)) {
                         // if so, grab its acteur runner
@@ -146,7 +158,7 @@ final class PagesImpl implements Pages {
                     // Create a netty response
                     HttpResponse httpResponse = response.toResponse(event, charset);
                     // Allow the application to add headers
-                    httpResponse = application.decorateResponse(event, state.getLockedPage(), acteur, httpResponse);
+                    httpResponse = application._decorateResponse(event, state.getLockedPage(), acteur, httpResponse);
 
                     // Allow the page to add headers
                     state.getLockedPage().decorateResponse(event, acteur, httpResponse);
@@ -157,7 +169,7 @@ final class PagesImpl implements Pages {
                     }
                     final HttpResponse resp = httpResponse;
                     try {
-                        
+
                         Callable<ChannelFuture> c = new Callable<ChannelFuture>() {
                             public ChannelFuture call() throws Exception {
                                 // Give the application a last chance to do something
@@ -175,23 +187,14 @@ final class PagesImpl implements Pages {
                         if (response.getDelay() == null) {
                             c.call();
                         } else {
-                            scheduler.schedule(c, response.getDelay().getMillis(), TimeUnit.MILLISECONDS);
+                            final ScheduledFuture<?> s = scheduler.schedule(c, response.getDelay().getMillis(), TimeUnit.MILLISECONDS);
+                            channel.closeFuture().addListener(new ChannelFutureListener() {
+                                @Override
+                                public void operationComplete(ChannelFuture f) throws Exception {
+                                    s.cancel(true);
+                                }
+                            });
                         }
-//                        // Ensure we don't write to the channel before the
-//                        // headers are sent
-//                        fut.addListener(new ChannelFutureListener() {
-//                            volatile boolean first = true;
-//                            @Override
-//                            public void operationComplete(ChannelFuture fut) throws Exception {
-//                                if (first) {
-//                                    fut = fut.channel().flush();
-//                                    first = false;
-//                                    fut.addListener(this);
-//                                    // Send the response
-//                                } else {
-//                                }
-//                            }
-//                        });
                     } finally {
                         latch.countDown();
                     }
@@ -200,8 +203,10 @@ final class PagesImpl implements Pages {
                 } catch (Exception | Error e) {
                     e.printStackTrace();
                     application.internalOnError(e);
+
                     // Send an error message
-                    Acteur err = Acteur.error(state.getLockedPage(), e);
+                    Acteur err = Acteur.error(null, state.getLockedPage(), e, 
+                            application.getDependencies().getInstance(HttpEvent.class));
                     // XXX this might recurse badly
                     receive(err, err.getState(), err.getResponse());
                 }

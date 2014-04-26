@@ -1,4 +1,4 @@
-/* 
+/*
  * The MIT License
  *
  * Copyright 2013 Tim Boudreau.
@@ -26,19 +26,24 @@ package com.mastfrog.acteur.server;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.name.Named;
-import com.mastfrog.acteur.Application;
+import com.mastfrog.acteur.spi.ApplicationControl;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.codec.MessageToByteEncoder;
+import io.netty.handler.codec.http.DefaultFullHttpResponse;
 import io.netty.handler.codec.http.HttpContentCompressor;
-import io.netty.handler.codec.http.HttpObjectAggregator;
+import io.netty.handler.codec.http.HttpMessage;
+//import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpRequestDecoder;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseEncoder;
+import io.netty.handler.codec.http.HttpResponseStatus;
+import java.util.List;
 
 //@Singleton
 //@Sharable
@@ -55,10 +60,10 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
     int maxContentLength = 1048576;
     @Named("httpCompression")
     boolean httpCompression = false;
-    private final Provider<Application> app;
+    private final Provider<ApplicationControl> app;
 
     @Inject
-    PipelineFactoryImpl(Provider<ChannelHandler> handler, Provider<Application> app) {
+    PipelineFactoryImpl(Provider<ChannelHandler> handler, Provider<ApplicationControl> app) {
         this.handler = handler;
         this.app = app;
     }
@@ -76,17 +81,27 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
         // Create a default pipeline implementation.
         ChannelPipeline pipeline = ch.pipeline();
 
-        pipeline.addLast("decoder", new HttpRequestDecoder());
+//        SSLEngine engine = SecureChatSslContextFactory.getServerContext().createSSLEngine();
+//        engine.setUseClientMode(false);
+//        pipeline.addLast("ssl", new SslHandler(engine));
+
+        ChannelHandler decoder = (ChannelHandler) new HttpRequestDecoder();
+
+        pipeline.addLast("decoder", decoder);
         // Uncomment the following line if you don't want to handle HttpChunks.
         if (aggregateChunks) {
-            pipeline.addLast("aggregator", new HttpObjectAggregator(maxContentLength));
+            ChannelHandler aggregator = (ChannelHandler) new HttpObjectAggregator(maxContentLength);
+            pipeline.addLast("aggregator", aggregator);
         }
+        
         pipeline.addLast("bytes", new MessageBufEncoder());
-        pipeline.addLast("encoder", new HttpResponseEncoder());
+        ChannelHandler encoder = (ChannelHandler) new HttpResponseEncoder();
+        pipeline.addLast("encoder", encoder);
 
         // Remove the following line if you don't want automatic content compression.
         if (httpCompression) {
-            pipeline.addLast("deflater", new SelectiveCompressor());
+            ChannelHandler compressor = (ChannelHandler) new SelectiveCompressor();
+            pipeline.addLast("deflater", compressor);
         }
         pipeline.addLast("handler", handler.get());
     }
@@ -98,8 +113,9 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
             out.writeBytes(msg);
         }
     }
-    
+
     private static class SelectiveCompressor extends HttpContentCompressor {
+
         protected Result beginEncode(HttpResponse headers, String acceptEncoding) throws Exception {
             if (headers.headers().contains("X-Internal-Compress")) {
                 return null;

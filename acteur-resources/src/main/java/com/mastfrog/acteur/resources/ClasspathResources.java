@@ -35,10 +35,12 @@ import com.mastfrog.acteur.ResponseHeaders.ContentLengthProvider;
 import com.mastfrog.acteur.ResponseWriter;
 import com.mastfrog.acteur.util.CacheControlTypes;
 import com.mastfrog.acteur.headers.Headers;
+import static com.mastfrog.acteur.resources.FileResources.RESOURCES_BASE_PATH;
 import com.mastfrog.giulius.DeploymentMode;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.util.Checks;
 import com.mastfrog.util.Streams;
+import com.mastfrog.util.Strings;
 import com.mastfrog.util.streams.HashingOutputStream;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
@@ -95,9 +97,11 @@ public final class ClasspathResources implements StaticResources {
         this.mode = mode;
         this.relativeTo = info.relativeTo();
         List<String> l = new ArrayList<>();
+        String resourcesBasePath = settings.getString(RESOURCES_BASE_PATH, "");
+
         for (String nm : info.names()) {
             this.names.put(nm, new ClasspathResource(nm));
-            String pat = nm;
+            String pat = Strings.join(resourcesBasePath, nm);
             l.add(pat);
         }
         patterns = l.toArray(new String[0]);

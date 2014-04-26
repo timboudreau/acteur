@@ -25,13 +25,16 @@ package com.mastfrog.acteur.server;
 
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
-import com.mastfrog.acteur.Application;
-import static com.mastfrog.acteur.server.ServerModule.DECODE_REAL_IP;
+import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_DECODE_REAL_IP;
+import com.mastfrog.acteur.spi.ApplicationControl;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.util.Codec;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.handler.codec.http.DefaultHttpResponse;
+import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponse;
@@ -49,7 +52,7 @@ import java.net.SocketAddress;
 //@Singleton
 final class UpstreamHandlerImpl extends ChannelInboundHandlerAdapter {
 
-    private final Application application;
+    private final ApplicationControl application;
     private final PathFactory paths;
     @Inject(optional = true)
     @Named("neverKeepAlive")
@@ -58,16 +61,18 @@ final class UpstreamHandlerImpl extends ChannelInboundHandlerAdapter {
     @Named("aggregateChunks")
     boolean aggregateChunks = PipelineFactoryImpl.DEFAULT_AGGREGATE_CHUNKS;
     private final Codec mapper;
-    private final boolean decodeRealIP;
     @Inject
     private UnknownNetworkEventHandler uneh;
 
+    @Inject(optional = true)
+    @Named(SETTINGS_KEY_DECODE_REAL_IP)
+    private boolean decodeRealIP = true;
+
     @Inject
-    UpstreamHandlerImpl(Application application, PathFactory paths, Codec mapper, Settings settings) {
+    UpstreamHandlerImpl(ApplicationControl application, PathFactory paths, Codec mapper, Settings settings) {
         this.application = application;
         this.paths = paths;
         this.mapper = mapper;
-        decodeRealIP = settings.getBoolean(DECODE_REAL_IP, true);
     }
 
     @Override
@@ -78,7 +83,6 @@ final class UpstreamHandlerImpl extends ChannelInboundHandlerAdapter {
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
         if (msg instanceof HttpRequest) {
             final HttpRequest request = (HttpRequest) msg;
-
             if (!aggregateChunks && HttpHeaders.is100ContinueExpected(request)) {
                 send100Continue(ctx);
             }
@@ -92,6 +96,16 @@ final class UpstreamHandlerImpl extends ChannelInboundHandlerAdapter {
                     addr = new InetSocketAddress(hdr, addr instanceof InetSocketAddress ? ((InetSocketAddress) addr).getPort() : 80);
                 }
             }
+//            ctx.channel().closeFuture().addListener(new ChannelFutureListener(){
+//
+//                @Override
+//                public void operationComplete(ChannelFuture f) throws Exception {
+//                    if (request instanceof FullHttpRequest) {
+//                        ((FullHttpRequest) request).content().release();
+//                    }
+//                }
+//                
+//            });
             EventImpl evt = new EventImpl(request, addr, ctx.channel(), paths, mapper);
             evt.setNeverKeepAlive(neverKeepAlive);
             application.onEvent(evt, ctx.channel());
@@ -100,7 +114,7 @@ final class UpstreamHandlerImpl extends ChannelInboundHandlerAdapter {
             SocketAddress addr = (SocketAddress) ctx.channel().remoteAddress();
             // XXX - any way to decode real IP?
             WebSocketEvent wsEvent = new WebSocketEvent(frame, ctx.channel(), addr, mapper);
-            
+
             application.onEvent(wsEvent, ctx.channel());
         } else {
             if (uneh != null) {
@@ -111,6 +125,6 @@ final class UpstreamHandlerImpl extends ChannelInboundHandlerAdapter {
 
     private static void send100Continue(ChannelHandlerContext ctx) {
         HttpResponse response = new DefaultHttpResponse(HTTP_1_1, CONTINUE);
-        ctx.write(response);
+        ctx.writeAndFlush(response);
     }
 }

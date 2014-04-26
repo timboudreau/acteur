@@ -10,8 +10,10 @@ import com.mastfrog.util.Checks;
 import com.mastfrog.util.Exceptions;
 import java.io.File;
 import java.io.IOException;
+import java.net.ConnectException;
 import java.net.DatagramSocket;
 import java.net.ServerSocket;
+import java.net.Socket;
 import java.util.Random;
 
 /**
@@ -20,9 +22,8 @@ import java.util.Random;
  * use MongoHarness.Module, to have the db started for you and automatically
  * cleaned up.
  * <p/>
- * Test
- * <code>failed()</code> if you want to detect if you're running on a machine
- * where mongodb is not installed.
+ * Test <code>failed()</code> if you want to detect if you're running on a
+ * machine where mongodb is not installed.
  *
  * @author Tim Boudreau
  */
@@ -70,34 +71,34 @@ public class MongoHarness {
                 pb.redirectError(ProcessBuilder.Redirect.INHERIT);
                 pb.redirectOutput(ProcessBuilder.Redirect.INHERIT);
                 try {
-                    System.out.println("Try graceful shutdown " + pb);
+                    System.out.println("Try graceful mongodb shutdown " + pb);
                     Process shutdown = pb.start();
                     boolean exited = false;
-                    for (int i = 0; i < 1000; i++) {
+                    for (int i = 0; i < 19000; i++) {
                         try {
                             int exit = shutdown.exitValue();
-                            System.out.println("Shutdown call exited with " + exit);
+                            System.out.println("Shutdown mongodb call exited with " + exit);
                             break;
                         } catch (IllegalThreadStateException ex) {
-                            System.out.println("no exit code yet, sleeping");
+//                            System.out.println("no exit code yet, sleeping");
                             try {
-                                Thread.sleep(100);
+                                Thread.sleep(10);
                             } catch (InterruptedException ex1) {
                                 org.openide.util.Exceptions.printStackTrace(ex1);
                             }
                         }
                     }
                     System.out.println("Wait for mongodb exit");
-                    for (int i = 0; i < 1000; i++) {
+                    for (int i = 0; i < 10000; i++) {
                         try {
                             int code = mongo.exitValue();
                             System.out.println("Exit code " + code);
                             exited = true;
                             break;
                         } catch (IllegalThreadStateException ex) {
-                            System.out.println("Not exited yet; sleep 100ms");
+//                            System.out.println("Not exited yet; sleep 100ms");
                             try {
-                                Thread.sleep(100);
+                                Thread.sleep(10);
                             } catch (InterruptedException ex1) {
                                 Exceptions.printStackTrace(ex1);
                             }
@@ -114,8 +115,6 @@ public class MongoHarness {
                     mongo = null;
                 }
                 mongo = null;
-            } else {
-                System.out.println("mongo is null, do nothing");
             }
         }
 
@@ -158,22 +157,31 @@ public class MongoHarness {
             System.out.println("Starting mongodb on port " + port + " with data dir " + mongoDir);
             ProcessBuilder pb = new ProcessBuilder().command("mongod", "--dbpath",
                     mongoDir.getAbsolutePath(), "--nojournal", "--smallfiles", "-nssize", "1",
-                    "--noprealloc", "--nohttpinterface", "--slowms", "5", "--port", "" + port);
-
+                    "--noprealloc", "--slowms", "5", "--port", "" + port,
+                    "--maxConns", "50", "--nohttpinterface", "--syncdelay", "0", "--oplogSize", "1",
+                    "--diaglog", "0");
+            System.out.println(pb.command());
             pb.redirectError(ProcessBuilder.Redirect.INHERIT);
             pb.redirectOutput(ProcessBuilder.Redirect.INHERIT);
 
+            // XXX instead of sleep, loop trying to connect?
             Process result = pb.start();
-            Thread.sleep(2000);
-            try {
-                int code = result.exitValue();
-                failed = true;
-                System.out.println("MongoDB process exited with " + code);
-                return null;
-            } catch (IllegalThreadStateException ex) {
-                System.out.println("Started MongoDB");
-                return result;
+            Thread.sleep(150);
+            for (int i = 0;; i++) {
+                try {
+                    Socket s = new Socket("localhost", port);
+                    s.close();
+                    Thread.sleep(50);
+                    break;
+                } catch (ConnectException e) {
+                    if (i > 750) {
+                        throw new IOException("Could not connect to mongodb "
+                                + "after " + i + " attempts.  Assuming it's dead.");
+                    }
+                    Thread.yield();
+                }
             }
+            return result;
         }
     }
 
@@ -243,7 +251,6 @@ public class MongoHarness {
         }
 
         private int findPort() {
-            System.out.println("findPort");
             Random r = new Random(System.currentTimeMillis());
             int port;
             do {
@@ -251,7 +258,6 @@ public class MongoHarness {
                 // both the mongo port and the http port
                 int startPort = 28002;
                 port = r.nextInt(65536 - startPort) + startPort;
-                System.out.println("Try port " + port);
             } while (!available(port));
             return port;
         }
@@ -259,7 +265,6 @@ public class MongoHarness {
         private boolean available(int port) {
             try (ServerSocket ss = new ServerSocket(port)) {
                 ss.setReuseAddress(true);
-                System.out.println("ss " + ss);
                 try (DatagramSocket ds = new DatagramSocket(port)) {
                     ds.setReuseAddress(true);
                     return true;
@@ -267,7 +272,6 @@ public class MongoHarness {
                     return false;
                 }
             } catch (IOException e) {
-                System.out.println("FAIL " + e);
                 return false;
             }
         }

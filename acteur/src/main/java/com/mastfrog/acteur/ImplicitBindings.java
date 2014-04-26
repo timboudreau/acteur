@@ -34,6 +34,9 @@ import java.lang.annotation.Target;
  * objects for injection into subsequent acteurs in the chain, you need
  * to annotation your Application subclass with this annotation and specify
  * what types will be injected.
+ * <p/>
+ * <b>Note:</b> If you are using the &#064;HttpCall annotation, you can 
+ * specify these classes there.
  *
  * @author Tim Boudreau
  */

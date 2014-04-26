@@ -4,13 +4,12 @@ import com.google.inject.ImplementedBy;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.util.Providers;
+import com.mastfrog.acteur.Closables;
 import com.mastfrog.acteur.Event;
 import com.mastfrog.acteur.HttpEvent;
 import com.mastfrog.acteur.ResponseWriter;
 import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelFutureListener;
 import java.util.Map;
 import org.bson.types.ObjectId;
 
@@ -25,19 +24,13 @@ public class CursorWriter extends ResponseWriter {
     private final MapFilter filter;
 
     @Inject
-    public CursorWriter(final DBCursor cursor, HttpEvent evt, Provider<? extends MapFilter> filter) {
+    public CursorWriter(final DBCursor cursor, Closables clos, HttpEvent evt, Provider<? extends MapFilter> filter) {
         this(cursor, !evt.isKeepAlive(), filter);
-        evt.getChannel().closeFuture().addListener(new ChannelFutureListener() {
-
-            @Override
-            public void operationComplete(ChannelFuture f) throws Exception {
-                cursor.close();
-            }
-        });
+        clos.add(cursor);
     }
 
-    public CursorWriter(DBCursor cursor, HttpEvent evt) {
-        this(cursor, evt, Providers.of(NO_FILTER));
+    public CursorWriter(DBCursor cursor, HttpEvent evt, Closables closables) {
+        this(cursor, closables, evt, Providers.of(NO_FILTER));
     }
 
     public CursorWriter(DBCursor cursor, boolean closeConnection, Provider<? extends MapFilter> filter) {

@@ -28,6 +28,10 @@ import com.mastfrog.acteur.headers.Headers;
 import com.google.common.net.MediaType;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
+import com.mastfrog.acteur.Acteur.WrapperActeur;
+import com.mastfrog.acteur.annotations.HttpCall;
+import com.mastfrog.acteur.annotations.Precursors;
+import com.mastfrog.acteur.preconditions.Description;
 import com.mastfrog.settings.SettingsBuilder;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.guicy.scope.ReentrantScope;
@@ -37,13 +41,14 @@ import com.mastfrog.acteur.server.ServerModule;
 import com.mastfrog.acteur.util.ErrorInterceptor;
 import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.acteur.headers.Method;
+import com.mastfrog.acteur.spi.ApplicationControl;
 import com.mastfrog.acteur.util.RequestID;
 import com.mastfrog.url.Path;
 import com.mastfrog.util.ConfigurationError;
 import com.mastfrog.util.Checks;
 import com.mastfrog.util.Invokable;
-import com.mastfrog.util.Streams;
-import com.mastfrog.util.thread.QuietAutoCloseable;
+import com.mastfrog.util.perf.Benchmark;
+import com.mastfrog.util.perf.Benchmark.Kind;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
@@ -54,11 +59,14 @@ import io.netty.handler.codec.http.DefaultHttpRequest;
 import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponse;
+import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpVersion;
 import java.io.IOException;
+import java.lang.annotation.Annotation;
 import java.io.OutputStream;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Modifier;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
@@ -75,6 +83,8 @@ import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import org.joda.time.DateTime;
+import org.joda.time.Duration;
+import org.openide.util.Exceptions;
 
 /**
  * A web application. Principally, the application is a collection of Page
@@ -104,6 +114,13 @@ public class Application implements Iterable<Page> {
     private ErrorInterceptor errorHandler;
     @Inject
     private Charset charset;
+    @Inject(optional = true)
+    @Named(CORSResource.SETTINGS_KEY_CORS_ALLOW_ORIGIN)
+    String corsAllowOrigin = "*";
+
+    @Inject(optional = true)
+    @Named(CORSResource.SETTINGS_KEY_CORS_MAX_AGE_MINUTES)
+    long corsMaxAgeMinutes = 5;
 
     @Inject(optional = true)
     @Named("acteur.debug")
@@ -116,8 +133,16 @@ public class Application implements Iterable<Page> {
      * @param types
      */
     protected Application(Class<?>... types) {
+        this();
         for (Class<?> type : types) {
             add((Class<? extends Page>) type);
+        }
+    }
+
+    protected Application() {
+        Help help = getClass().getAnnotation(Help.class);
+        if (help != null) {
+            add(helpPageType());
         }
     }
 
@@ -130,6 +155,41 @@ public class Application implements Iterable<Page> {
      */
     public static Class<? extends Page> helpPageType() {
         return HelpPage.class;
+    }
+
+    private boolean corsEnabled;
+
+    public final boolean isDefaultCorsHandlingEnabled() {
+        return corsEnabled;
+    }
+
+    final void enableDefaultCorsHandling() {
+        if (!corsEnabled) {
+            corsEnabled = true;
+            pages.add(0, CORSResource.class);
+        }
+    }
+
+    private final ApplicationControl control = new ApplicationControl() {
+        @Override
+        public void enableDefaultCorsHandling() {
+            Application.this.enableDefaultCorsHandling();
+        }
+
+        @Override
+        public CountDownLatch onEvent(Event<?> event, Channel channel) {
+            return Application.this.onEvent(event, channel);
+        }
+
+        @Override
+        public void internalOnError(Throwable err) {
+            Application.this.internalOnError(err);
+        }
+
+    };
+
+    ApplicationControl control() {
+        return control;
     }
 
     /**
@@ -155,108 +215,109 @@ public class Application implements Iterable<Page> {
         return exe;
     }
 
+    private void introspectAnnotation(Annotation a, Map<String, Object> into) throws IllegalAccessException, IllegalArgumentException, InvocationTargetException {
+        if (a instanceof HttpCall) {
+            return;
+        }
+        if (a instanceof Precursors) {
+            Precursors p = (Precursors) a;
+            for (Class<?> t : p.value()) {
+                for (Annotation anno : t.getAnnotations()) {
+                    introspectAnnotation(anno, into);
+                }
+            }
+        } else {
+            Class<? extends Annotation> type = a.annotationType();
+            for (java.lang.reflect.Method m : type.getMethods()) {
+                switch (m.getName()) {
+                    case "annotationType":
+                    case "toString":
+                    case "hashCode":
+                        break;
+                    default:
+                        if (m.getParameterTypes().length == 0 && m.getReturnType() != null) {
+                            into.put(m.getName(), m.invoke(a));
+                        }
+                }
+            }
+            if (type.getAnnotation(Description.class) != null) {
+                Description d = type.getAnnotation(Description.class);
+                into.put("Description", d.value());
+            }
+        }
+    }
+
     Map<String, Object> describeYourself() {
         Map<String, Object> m = new HashMap<>();
-
-        try (QuietAutoCloseable c = this.scope.enter(new FakeHttpEventForHelp())) {
-            Page old = Page.get();
-            try {
-                for (Page page : this) {
-                    Page.set(page);
-                    try (QuietAutoCloseable c1 = this.scope.enter(page)) {
-                        page.describeYourself(m);
+        for (Object o : this.pages) {
+            if (o instanceof Class<?>) {
+                Class<?> type = (Class<?>) o;
+                Map<String, Object> pageDescription = new HashMap<>();
+                String typeName = type.getName();
+                if (typeName.endsWith(HttpCall.GENERATED_SOURCE_SUFFIX)) {
+                    typeName = typeName.substring(0, typeName.length() - HttpCall.GENERATED_SOURCE_SUFFIX.length());
+                }
+                pageDescription.put("type", type.getName());
+                String className = type.getSimpleName();
+                if (className.endsWith(HttpCall.GENERATED_SOURCE_SUFFIX)) {
+                    className = className.substring(0, className.length() - HttpCall.GENERATED_SOURCE_SUFFIX.length());
+                }
+                m.put(className, pageDescription);
+                Annotation[] l = type.getAnnotations();
+                for (Annotation a : l) {
+                    if (a instanceof HttpCall) {
+                        continue;
+                    }
+                    Map<String, Object> annoDescription = new HashMap<>();
+                    pageDescription.put(a.annotationType().getSimpleName(), annoDescription);
+                    try {
+                        introspectAnnotation(a, annoDescription);
+                    } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
+                        Exceptions.printStackTrace(ex);
+                    }
+                    if (annoDescription.size() == 1 && "value".equals(annoDescription.keySet().iterator().next())) {
+                        pageDescription.put(a.annotationType().getSimpleName(), annoDescription.values().iterator().next());
                     }
                 }
-            } finally {
-                Page.set(old);
+                try {
+                    Page p = (Page) deps.getInstance(type);
+                    for (Object acteur : p.contents()) {
+                        Class<?> at = null;
+                        if (acteur instanceof Acteur.WrapperActeur) {
+                            at = ((WrapperActeur) acteur).type();
+                        } else if (acteur instanceof Class<?>) {
+                            at = (Class<?>) acteur;
+                        }
+                        if (at != null) {
+                            Map<String, Object> callFlow = new HashMap<>();
+                            for (Annotation a1 : at.getAnnotations()) {
+                                introspectAnnotation(a1, callFlow);
+                            }
+                            if (!className.equals(at.getSimpleName())) {
+                                if (!callFlow.isEmpty()) {
+                                    pageDescription.put(at.getSimpleName(), callFlow);
+                                }
+                            }
+                        } else if (acteur instanceof Acteur) {
+                            Map<String, Object> callFlow = new HashMap<>();
+                            for (Annotation a1 : acteur.getClass().getAnnotations()) {
+                                introspectAnnotation(a1, callFlow);
+                            }
+                            ((Acteur) acteur).describeYourself(callFlow);
+                            if (!callFlow.isEmpty()) {
+                                pageDescription.put(acteur.toString(), callFlow);
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    // A page may legitiimately be uninstantiable
+                }
+            } else if (o instanceof Page) {
+                ((Page) o).describeYourself(m);
             }
         }
         return m;
     }
-
-    private static class FakeHttpEventForHelp implements HttpEvent {
-
-        @Override
-        public Method getMethod() {
-            return Method.GET;
-        }
-
-        @Override
-        public String getHeader(CharSequence nm) {
-            return null;
-        }
-
-        @Override
-        public String getParameter(String param) {
-            return null;
-        }
-
-        @Override
-        public Path getPath() {
-            return Path.parse("help");
-        }
-
-        @Override
-        public <T> T getHeader(HeaderValueType<T> value) {
-            return null;
-        }
-
-        @Override
-        public Map<String, String> getParametersAsMap() {
-            return new HashMap<>();
-        }
-
-        @Override
-        public <T> T getParametersAs(Class<T> type) {
-            return null;
-        }
-
-        @Override
-        public Optional<Integer> getIntParameter(String name) {
-            return Optional.absent();
-        }
-
-        @Override
-        public Optional<Long> getLongParameter(String name) {
-            return Optional.absent();
-        }
-
-        @Override
-        public boolean isKeepAlive() {
-            return false;
-        }
-
-        @Override
-        public Channel getChannel() {
-            return null;
-        }
-
-        @Override
-        public HttpRequest getRequest() {
-            return new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/help");
-        }
-
-        @Override
-        public SocketAddress getRemoteAddress() {
-            return new InetSocketAddress("0.0.0.0", 0);
-        }
-
-        @Override
-        public <T> T getContentAsJSON(Class<T> type) throws IOException {
-            return null;
-        }
-
-        @Override
-        public ByteBuf getContent() throws IOException {
-            return Unpooled.buffer();
-        }
-
-        @Override
-        public OutputStream getContentAsStream() throws IOException {
-            return Streams.nullOutputStream();
-        }
-    }
-
     /**
      * Add a subtype of Page which should be instantiated on demand when
      * responding to requests
@@ -276,7 +337,7 @@ public class Application implements Iterable<Page> {
         assert checkConstructor(page);
         pages.add(page);
     }
-    
+
     protected final void add(Page page) {
         pages.add(page);
     }
@@ -319,13 +380,25 @@ public class Application implements Iterable<Page> {
      * @return
      */
     protected HttpResponse decorateResponse(Event<?> event, Page page, Acteur action, HttpResponse response) {
+        return response;
+    }
+
+    HttpResponse _decorateResponse(Event<?> event, Page page, Acteur action, HttpResponse response) {
         Headers.write(Headers.SERVER, getName(), response);
         Headers.write(Headers.DATE, new DateTime(), response);
         if (debug) {
             String pth = event instanceof HttpEvent ? ((HttpEvent) event).getPath().toString() : "";
-            Headers.write(Headers.custom("X-Req-Path"), pth, response);
+            Headers.write(Headers.stringHeader("X-Req-Path"), pth, response);
+            Headers.write(Headers.stringHeader("X-Acteur"), action.getClass().getName(), response);
+            Headers.write(Headers.stringHeader("X-Page"), page.getClass().getName(), response);
         }
-        return response;
+        if (corsEnabled && !response.headers().contains(HttpHeaders.Names.ACCESS_CONTROL_ALLOW_ORIGIN)) {
+            Headers.write(Headers.ACCESS_CONTROL_ALLOW_ORIGIN, corsAllowOrigin, response);
+            if (!response.headers().contains(HttpHeaders.Names.ACCESS_CONTROL_MAX_AGE)) {
+                Headers.write(Headers.ACCESS_CONTROL_MAX_AGE, new Duration(corsMaxAgeMinutes), response);
+            }
+        }
+        return decorateResponse(event, page, action, response);
     }
 
     /**
@@ -392,7 +465,8 @@ public class Application implements Iterable<Page> {
      *
      * @param err
      */
-    public final void internalOnError(Throwable err) {
+    @Benchmark(value = "uncaughtExceptions", publish = Kind.CALL_COUNT)
+    final void internalOnError(Throwable err) {
         try {
             if (errorHandler != null) {
                 errorHandler.onError(err);
@@ -418,11 +492,13 @@ public class Application implements Iterable<Page> {
      * @param channel
      * @return
      */
-    public CountDownLatch onEvent(final Event<?> event, final Channel channel) {
+    @Benchmark(value = "httpEvents", publish = Kind.CALL_COUNT)
+    private CountDownLatch onEvent(final Event<?> event, final Channel channel) {
         //XXX get rid of channel param?
         // Create a new incremented id for this request
         final RequestID id = new RequestID();
         // Enter request scope with the id and the event
+        // XXX is the scope entry here actually needed anymore?
         return scope.run(new Invokable<Event<?>, CountDownLatch, RuntimeException>() {
             @Override
             public CountDownLatch run(Event<?> argument) {
@@ -439,7 +515,7 @@ public class Application implements Iterable<Page> {
         }, event, id);
     }
 
-    @SuppressWarnings({"unchecked"})
+    @SuppressWarnings({"unchecked", "ThrowableInstanceNotThrown", "ThrowableInstanceNeverThrown"})
     Dependencies getDependencies() {
         if (deps == null) {
             try {

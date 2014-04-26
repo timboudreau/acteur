@@ -23,27 +23,40 @@
  */
 package com.mastfrog.acteur;
 
-import com.google.common.net.MediaType;
 import com.google.inject.ImplementedBy;
-import com.mastfrog.acteur.util.CacheControl;
+import com.mastfrog.acteur.auth.AuthenticationActeur;
 import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.acteur.headers.Headers;
+import com.mastfrog.acteur.preconditions.BannedUrlParameters;
+import com.mastfrog.acteur.preconditions.BasicAuth;
+import com.mastfrog.acteur.preconditions.Description;
+import com.mastfrog.acteur.preconditions.InjectRequestBodyAs;
+import com.mastfrog.acteur.preconditions.MaximumPathLength;
+import com.mastfrog.acteur.preconditions.Methods;
+import com.mastfrog.acteur.preconditions.PageAnnotationHandler;
+import com.mastfrog.acteur.preconditions.ParametersMustBeNumbersIfPresent;
+import com.mastfrog.acteur.preconditions.Path;
+import com.mastfrog.acteur.preconditions.PathRegex;
+import com.mastfrog.acteur.preconditions.RequireAtLeastOneUrlParameterFrom;
+import com.mastfrog.acteur.preconditions.RequireParametersIfMethodMatches;
+import com.mastfrog.acteur.preconditions.RequiredUrlParameters;
+import com.mastfrog.acteur.util.CacheControl;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.guicy.scope.ReentrantScope;
 import com.mastfrog.settings.Settings;
+import com.mastfrog.util.Checks;
 import com.mastfrog.util.Exceptions;
+import com.mastfrog.util.collections.CollectionUtils;
+import com.mastfrog.util.thread.AutoCloseThreadLocal;
 import com.mastfrog.util.thread.QuietAutoCloseable;
-import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpResponse;
 import java.lang.reflect.Modifier;
-import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import org.joda.time.DateTime;
@@ -63,9 +76,8 @@ import org.joda.time.Duration;
  * <li>Accept responsibility for this page responding to the request (other
  * pages will not be tried)</li>
  * <li>Respond to the request, ending processing of it, by setting the response
- * code and optionally adding a
- * <code>ChannelFutureListener</code> which can start writing the response body
- * once the headers are sent</li>
+ * code and optionally adding a <code>ChannelFutureListener</code> which can
+ * start writing the response body once the headers are sent</li>
  * </ul>
  * The point is to break the logic of responding to requests into small,
  * reusable chunks implemented as Acteurs.
@@ -74,9 +86,9 @@ import org.joda.time.Duration;
  */
 public abstract class Page implements Iterable<Acteur> {
 
-    private static final ThreadLocal<Page> CURRENT_PAGE = new ThreadLocal<>();
+    private static final AutoCloseThreadLocal<Page> CURRENT_PAGE = new AutoCloseThreadLocal<>();
     protected final ResponseHeaders responseHeaders = new ResponseHeaders();
-    private final List<Object> acteurs = Collections.synchronizedList(new ArrayList<>());
+    private final List<Object> acteurs = new ArrayList<>(15);
     volatile Application application;
 
     protected Page() {
@@ -93,9 +105,16 @@ public abstract class Page implements Iterable<Acteur> {
     protected String getDescription() {
         return getClass().getSimpleName();
     }
+    
+    Iterable<Object> contents() {
+        return CollectionUtils.toIterable(this.acteurs.iterator());
+    }
 
-    void describeYourself(Map<String,Object> into) {
-        Map<String,Object> m = new HashMap<>();
+    void describeYourself(Map<String, Object> into) {
+        Map<String, Object> m = new HashMap<>();
+        if (getClass().getAnnotation(Description.class) != null) {
+            m.put("description", getClass().getAnnotation(Description.class).value());
+        }
         int count = countActeurs();
         for (int i = 0; i < count; i++) {
             try {
@@ -111,21 +130,10 @@ public abstract class Page implements Iterable<Acteur> {
     }
 
     static QuietAutoCloseable set(Page page) {
-        PageReset result = new PageReset();
-        CURRENT_PAGE.set(page);
+        Checks.notNull("page", page);
+        QuietAutoCloseable result = CURRENT_PAGE.set(page);
+        assert CURRENT_PAGE.get() != null;
         return result;
-    }
-
-    static final class PageReset extends QuietAutoCloseable {
-        private final Page old = CURRENT_PAGE.get();
-        @Override
-        public void close() {
-            if (old != null) {
-                CURRENT_PAGE.set(old);
-            } else {
-                CURRENT_PAGE.remove();
-            }
-        }
     }
 
     static Page get() {
@@ -149,7 +157,7 @@ public abstract class Page implements Iterable<Acteur> {
         acteurs.add(action);
     }
 
-    public final Application getApplication() {
+    final Application getApplication() {
         return application;
     }
 
@@ -187,12 +195,12 @@ public abstract class Page implements Iterable<Acteur> {
                     if (logErrors) {
                         app.internalOnError(t);
                     }
-                    return new Acteur.ErrorActeur(this, t);
+                    return Acteur.error(null, this, t, deps.getInstance(HttpEvent.class));
                 } catch (final Error t) {
                     if (logErrors) {
                         app.internalOnError(t);
                     }
-                    return new Acteur.ErrorActeur(this, t);
+                    return Acteur.error(null, this, t, deps.getInstance(HttpEvent.class));
                 }
             } else if (o instanceof Acteur) {
                 return (Acteur) o;
@@ -235,10 +243,93 @@ public abstract class Page implements Iterable<Acteur> {
         Headers.writeIfNotNull(Headers.CONTENT_LENGTH, properties.getContentLength(), response);
     }
 
+    @SuppressWarnings("deprecation")
+    private Iterator<Acteur> annotationActeurs() {
+        List<Acteur> acteurs = new LinkedList<>();
+        Class<?> c = getClass();
+        PathRegex regex = c.getAnnotation(PathRegex.class);
+        ActeurFactory a = null;
+        if (regex != null) {
+            ActeurFactory af = a = getApplication().getDependencies().getInstance(ActeurFactory.class);
+            acteurs.add(af.matchPath(regex.value()));
+        }
+        Path path = c.getAnnotation(Path.class);
+        if (path != null) {
+            ActeurFactory af = a != null ? a : (a = getApplication().getDependencies().getInstance(ActeurFactory.class));
+            acteurs.add(af.globPathMatch(path.value()));
+        }
+        Methods m = c.getAnnotation(Methods.class);
+        if (m != null) {
+            ActeurFactory af = a != null ? a : (a = getApplication().getDependencies().getInstance(ActeurFactory.class));
+            acteurs.add(af.matchMethods(m.value()));
+        }
+        MaximumPathLength len = c.getAnnotation(MaximumPathLength.class);
+        if (len != null) {
+            ActeurFactory af = a != null ? a : (a = getApplication().getDependencies().getInstance(ActeurFactory.class));
+            acteurs.add(af.maximumPathLength(len.value()));
+        }
+        BannedUrlParameters banned = c.getAnnotation(BannedUrlParameters.class);
+        if (banned != null) {
+            ActeurFactory af = a != null ? a : (a = getApplication().getDependencies().getInstance(ActeurFactory.class));
+            acteurs.add(af.banParameters(banned.value()));
+        }
+        RequireAtLeastOneUrlParameterFrom atLeastOneOf = c.getAnnotation(RequireAtLeastOneUrlParameterFrom.class);
+        if (atLeastOneOf != null) {
+            ActeurFactory af = a != null ? a : (a = getApplication().getDependencies().getInstance(ActeurFactory.class));
+            acteurs.add(af.requireAtLeastOneParameter(banned.value()));
+        }
+        RequiredUrlParameters params = c.getAnnotation(RequiredUrlParameters.class);
+        if (params != null) {
+            ActeurFactory af = a != null ? a : (a = getApplication().getDependencies().getInstance(ActeurFactory.class));
+            switch (params.combination()) {
+                case ALL:
+                    acteurs.add(af.requireParameters(params.value()));
+                    break;
+                case AT_LEAST_ONE:
+                    acteurs.add(af.requireAtLeastOneParameter(params.value()));
+                    break;
+                default:
+                    throw new AssertionError(params.combination());
+            }
+        }
+        RequireParametersIfMethodMatches methodParams = c.getAnnotation(RequireParametersIfMethodMatches.class);
+        if (methodParams != null) {
+            ActeurFactory af = a != null ? a : (a = getApplication().getDependencies().getInstance(ActeurFactory.class));
+            acteurs.add(af.requireParametersIfMethodMatches(methodParams.method(), methodParams.value()));
+        }
+        ParametersMustBeNumbersIfPresent nums = c.getAnnotation(ParametersMustBeNumbersIfPresent.class);
+        if (nums != null) {
+            ActeurFactory af = a != null ? a : (a = getApplication().getDependencies().getInstance(ActeurFactory.class));
+            acteurs.add(af.parametersMustBeNumbersIfTheyArePresent(nums.allowDecimal(), nums.allowNegative(), nums.value()));
+        }
+        BasicAuth auth = c.getAnnotation(BasicAuth.class);
+        if (auth != null) {
+            acteurs.add(Acteur.wrap(AuthenticationActeur.class, application.getDependencies()));
+        }
+        PageAnnotationHandler handler = getApplication().getDependencies().getInstance(PageAnnotationHandler.class);
+        handler.processAnnotations(this, acteurs);
+        InjectRequestBodyAs as = c.getAnnotation(InjectRequestBodyAs.class);
+        if (as != null) {
+            ActeurFactory af = a != null ? a : (a = getApplication().getDependencies().getInstance(ActeurFactory.class));
+            acteurs.add(af.injectRequestBodyAsJSON(as.value()));
+        }
+        return acteurs.iterator();
+    }
+
+    private boolean hasAnnotations() {
+        Class<?> c = getClass();
+        return c.getAnnotation(Methods.class) != null || c.getAnnotation(PathRegex.class) != null
+                || c.getAnnotation(RequiredUrlParameters.class) != null;
+    }
+
     @Override
     public Iterator<Acteur> iterator() {
         assert getApplication() != null : "Application is null - called outside request?";
-        return new I();
+        if (hasAnnotations()) {
+            return CollectionUtils.combine(annotationActeurs(), new I());
+        } else {
+            return new I();
+        }
     }
 
     /**

@@ -5,10 +5,16 @@ import com.google.inject.Singleton;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DBCollection;
 import com.mongodb.MongoClient;
+import java.lang.ref.Reference;
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Intercepts MongoClient and collection creation calls. Note: This class
@@ -59,9 +65,39 @@ public abstract class MongoInitializer {
     protected static final class Registry implements Iterable<MongoInitializer> {
 
         private final List<MongoInitializer> initializers = Collections.synchronizedList(new ArrayList<MongoInitializer>());
+        private Reference<MongoClient> client = null;
+        private final ScheduledExecutorService tp = Executors.newScheduledThreadPool(1);
 
         void register(MongoInitializer init) {
             initializers.add(init);
+            MongoClient client = null;
+            synchronized (this) {
+                if (this.client != null) {
+                    client = this.client.get();
+                }
+            }
+            if (client != null) {
+                // XXX this is so the wrong way to get out of a chicken-and-the-egg situation
+                tp.schedule(new RunInit(client, init), 200, TimeUnit.MILLISECONDS);
+            }
+        }
+
+        static class RunInit implements Runnable {
+
+            private final MongoClient client;
+            private final MongoInitializer init;
+
+            public RunInit(MongoClient client, MongoInitializer init) {
+                this.client = client;
+                this.init = init;
+            }
+
+            @Override
+            public void run() {
+                synchronized (init) {
+                    init.onMongoClientCreated(client);
+                }
+            }
         }
 
         protected void onBeforeCreateMongoClient(String host, int port) {
@@ -87,9 +123,12 @@ public abstract class MongoInitializer {
             }
         }
 
-        void onMongoClientCreated(MongoClient client) {
+        synchronized void onMongoClientCreated(MongoClient client) {
+            this.client = new WeakReference<>(client);
             for (MongoInitializer mi : initializers) {
-                mi.onMongoClientCreated(client);
+                synchronized (mi) {
+                    mi.onMongoClientCreated(client);
+                }
             }
         }
     }

@@ -4,9 +4,8 @@ import com.google.common.collect.Maps;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.mastfrog.acteur.HttpEvent;
+import com.mastfrog.giulius.ShutdownHookRegistry;
 import com.mastfrog.settings.Settings;
-import java.net.InetSocketAddress;
-import java.net.SocketAddress;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -25,33 +24,45 @@ import org.joda.time.Duration;
 @Singleton
 final class TarpitImpl implements Tarpit {
 
-    private Map<String, Entry> map = Maps.newConcurrentMap();
-    private Duration timeToExpiration;
+    private final Map<String, Entry> map = Maps.newConcurrentMap();
+    private final Duration timeToExpiration;
     private final TarpitCacheKeyFactory keyFactory;
+    private final GarbageCollect gc = new GarbageCollect();
 
+    
     @Inject
-    TarpitImpl(Settings settings, TarpitCacheKeyFactory keyFactory) {
-        timeToExpiration = Duration.standardMinutes(settings.getLong("tarpit.default.duration.minutes", 5));
+    TarpitImpl(Settings settings, TarpitCacheKeyFactory keyFactory, ShutdownHookRegistry reg) {
+        timeToExpiration = Duration.standardMinutes(settings.getLong(SETTINGS_KEY_TARPIT_EXPIRATION_TIME_MINUTES, 5));
         Timer timer = new Timer(true);
-        timer.scheduleAtFixedRate(new TimerTask() {
+        timer.scheduleAtFixedRate(gc, DateTime.now().plus(timeToExpiration).toDate(), timeToExpiration.getMillis() / 2);
+        reg.add(new Runnable() {
+
             @Override
             public void run() {
-                garbageCollect();
+                gc.cancel();
             }
-        }, DateTime.now().plus(timeToExpiration).toDate(), timeToExpiration.getMillis() / 2);
+
+        });
         this.keyFactory = keyFactory;
+    }
+
+    private class GarbageCollect extends TimerTask {
+
+        @Override
+        public void run() {
+            garbageCollect();
+        }
     }
 
     @Override
     public int count(HttpEvent evt) {
         Entry e = map.get(keyFactory.createKey(evt));
         int result = e == null ? 0 : e.size();
-        System.out.println("Count " + result);
         return result;
     }
 
     int garbageCollect() {
-        Map<String, Entry> copy = new HashMap<String, Entry>(map);
+        Map<String, Entry> copy = new HashMap<>(map);
         int result = 0;
         for (Map.Entry<String, Entry> e : copy.entrySet()) {
             if (e.getValue().isExpired()) {
@@ -66,11 +77,9 @@ final class TarpitImpl implements Tarpit {
     public int add(HttpEvent evt) {
         String remoteAddress = keyFactory.createKey(evt);
         Entry entry = map.get(remoteAddress);
-        System.out.println("Add entry " + remoteAddress + " cache " + map);
         if (entry == null) {
             // still need atomicity for adding
             synchronized (map) {
-                System.out.println("Add " + remoteAddress);
                 entry = map.get(remoteAddress);
                 if (entry == null) {
                     entry = new Entry();
@@ -92,7 +101,7 @@ final class TarpitImpl implements Tarpit {
 
     private class Entry {
 
-        ConcurrentLinkedDeque<Long> accesses = new ConcurrentLinkedDeque<Long>();
+        ConcurrentLinkedDeque<Long> accesses = new ConcurrentLinkedDeque<>();
 
         int touch() {
             accesses.offerLast(System.currentTimeMillis());
@@ -114,7 +123,8 @@ final class TarpitImpl implements Tarpit {
             }
             return accesses.isEmpty();
         }
-        
+
+        @Override
         public String toString() {
             return accesses.toString() + " expired " + isExpired();
         }

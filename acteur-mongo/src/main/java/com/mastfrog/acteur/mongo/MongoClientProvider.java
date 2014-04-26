@@ -4,15 +4,24 @@ import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import com.google.inject.name.Named;
-import com.mastfrog.giulius.Dependencies;
+import static com.mastfrog.acteur.mongo.MongoModule.DATABASE_NAME;
+import static com.mastfrog.acteur.mongo.MongoModule.DEFAULT_MAX_CONNECTIONS;
+import static com.mastfrog.acteur.mongo.MongoModule.DEFAULT_MAX_WAIT_MILLIS;
+import static com.mastfrog.acteur.mongo.MongoModule.SETTINGS_KEY_MAX_CONNECTIONS;
+import static com.mastfrog.acteur.mongo.MongoModule.SETTINGS_KEY_MAX_WAIT_MILLIS;
+import static com.mastfrog.acteur.mongo.MongoModule.SETTINGS_KEY_MONGO_PASSWORD;
+import static com.mastfrog.acteur.mongo.MongoModule.SETTINGS_KEY_MONGO_USER;
 import com.mastfrog.giulius.ShutdownHookRegistry;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.util.Exceptions;
 import com.mongodb.MongoClient;
 import com.mongodb.MongoClientOptions;
+import com.mongodb.MongoCredential;
 import com.mongodb.ReadPreference;
 import com.mongodb.ServerAddress;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  *
@@ -22,7 +31,7 @@ import java.net.UnknownHostException;
 final class MongoClientProvider implements Provider<MongoClient>, Runnable {
 
     private volatile MongoClient client;
-    private final Dependencies deps;
+    private final String dbName;
     private final Settings settings;
     private final ShutdownHookRegistry hooks;
     private volatile boolean added;
@@ -35,8 +44,8 @@ final class MongoClientProvider implements Provider<MongoClient>, Runnable {
     private int port;
 
     @Inject
-    public MongoClientProvider(Dependencies deps, Settings settings, ShutdownHookRegistry hooks, MongoInitializer.Registry registry) {
-        this.deps = deps;
+    public MongoClientProvider(@Named(DATABASE_NAME) String dbName, Settings settings, ShutdownHookRegistry hooks, MongoInitializer.Registry registry) {
+        this.dbName = dbName;
         this.settings = settings;
         this.hooks = hooks;
         this.registry = registry;
@@ -50,6 +59,15 @@ final class MongoClientProvider implements Provider<MongoClient>, Runnable {
         return port == 0 ? 27017 : port;
     }
 
+    private void clear() {
+        MongoClient client;
+        synchronized (this) {
+            client = this.client;
+            this.client = null;
+        }
+        client.close();
+    }
+
     @Override
     public MongoClient get() {
         if (client == null) {
@@ -59,13 +77,28 @@ final class MongoClientProvider implements Provider<MongoClient>, Runnable {
                         String host = mongoHost();
                         int port = mongoPort();
                         registry.onBeforeCreateMongoClient(host, port);
+                        int maxWait = settings.getInt(SETTINGS_KEY_MAX_WAIT_MILLIS, DEFAULT_MAX_WAIT_MILLIS);
+                        int maxConnections = settings.getInt(SETTINGS_KEY_MAX_CONNECTIONS, DEFAULT_MAX_CONNECTIONS);
                         MongoClientOptions opts = MongoClientOptions.builder()
-                                .autoConnectRetry(true).connectionsPerHost(1500)
+                                .autoConnectRetry(true).connectionsPerHost(maxConnections)
                                 .cursorFinalizerEnabled(true)
                                 .readPreference(ReadPreference.nearest())
-                                .maxWaitTime(20000).build();
+                                .maxWaitTime(maxWait).build();
+                        List<MongoCredential> credentials = new ArrayList<>();
+
+                        String un = settings.getString(SETTINGS_KEY_MONGO_USER);
+                        String pw = settings.getString(SETTINGS_KEY_MONGO_PASSWORD);
+                        if (un != null && pw != null) {
+                            MongoCredential cred = MongoCredential.createMongoCRCredential(un,
+                                    dbName, pw.toCharArray());
+                            credentials.add(cred);
+                        } else if (un != null) {
+                            MongoCredential cred = MongoCredential.createGSSAPICredential(un);
+                            credentials.add(cred);
+                        }
                         ServerAddress addr = new ServerAddress(host, port);
-                        client = new MongoClient(addr, opts);
+                        client = credentials.isEmpty() ? new MongoClient(addr, opts)
+                                : new MongoClient(addr, credentials, opts);
                         registry.onMongoClientCreated(client);
                         if (!added) {
                             hooks.add(this);
@@ -82,6 +115,13 @@ final class MongoClientProvider implements Provider<MongoClient>, Runnable {
 
     @Override
     public void run() {
-        client.close();
+        MongoClient client;
+        synchronized (this) {
+            client = this.client;
+            this.client = null;
+        }
+        if (client != null) {
+            client.close();
+        }
     }
 }

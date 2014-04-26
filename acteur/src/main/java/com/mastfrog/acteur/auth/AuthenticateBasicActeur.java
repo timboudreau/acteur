@@ -23,20 +23,21 @@
  */
 package com.mastfrog.acteur.auth;
 
-import com.mastfrog.acteur.util.Realm;
-import com.mastfrog.acteur.util.BasicCredentials;
+import com.google.inject.ImplementedBy;
 import com.google.inject.Inject;
-import com.mastfrog.acteur.Acteur;
 import com.mastfrog.acteur.HttpEvent;
+import com.mastfrog.acteur.Page;
+import com.mastfrog.acteur.Response;
 import com.mastfrog.acteur.headers.Headers;
+import com.mastfrog.acteur.util.BasicCredentials;
+import com.mastfrog.acteur.util.Realm;
 import com.mastfrog.settings.Settings;
+import com.mastfrog.util.perf.Benchmark;
+import com.mastfrog.util.perf.Benchmark.Kind;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import static io.netty.handler.codec.http.HttpResponseStatus.SERVICE_UNAVAILABLE;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 import java.util.Map;
 import org.joda.time.Duration;
 import org.joda.time.format.PeriodFormatter;
@@ -51,8 +52,11 @@ import org.joda.time.format.PeriodFormatterBuilder;
  * </ul>
  *
  * @author Tim Boudreau
+ * @deprecated Do not use directly - bind AuthenticationActeur instead, so that
+ * authentication strategies are pluggable
  */
-public class AuthenticateBasicActeur extends Acteur {
+@Deprecated
+public class AuthenticateBasicActeur extends AuthenticationActeur {
 
     public static final String SETTINGS_KEY_TARPIT_BAD_LOGIN_ATTEMPT_COUNT = "max.allowed.failed.login.attempts";
     public static final String SETTINGS_KEY_TARPIT_DELAY_RESPONSE_AFTER = "delay.failed.login.attempts.after";
@@ -63,7 +67,7 @@ public class AuthenticateBasicActeur extends Acteur {
     public static final int DEFAULT_FAILED_LOGIN_DELAY_SECONDS_MULTIPLIER = 1;
 
     @Inject
-    AuthenticateBasicActeur(HttpEvent event, Authenticator authenticator, Realm r, Tarpit tarpit, Settings settings) throws IOException {
+    AuthenticateBasicActeur(HttpEvent event, Authenticator authenticator, Realm r, Tarpit tarpit, Settings settings, AuthenticationDecorator decorator, Page page) throws IOException {
         int badRequestCount = tarpit.count(event);
         if (badRequestCount > 0 && badRequestCount > settings.getInt(SETTINGS_KEY_TARPIT_BAD_LOGIN_ATTEMPT_COUNT, DEFAULT_FAILED_LOGIN_ATTEMPT_LIMIT)) {
             setState(new RespondWith(SERVICE_UNAVAILABLE, "Too many bad password attempts"));
@@ -71,32 +75,36 @@ public class AuthenticateBasicActeur extends Acteur {
         }
         BasicCredentials credentials = event.getHeader(Headers.AUTHORIZATION);
         if (credentials == null) {
-//            System.out.println("Credentials null send unauthorized");
-            unauthorized(r);
+            unauthorized(r, event, decorator, page, response());
         } else {
             Object[] stuff = authenticator.authenticate(r.toString(), credentials);
             if (stuff == null) {
                 int badCount = tarpit.add(event);
-//                System.out.println("Bad credentials " + credentials + " count " + badCount);
                 if (badCount > settings.getInt(SETTINGS_KEY_TARPIT_DELAY_RESPONSE_AFTER, DEFAULT_FAILED_LOGIN_ATTEMPT_DELAY_THRESHOLD)) {
-                    Duration delayResponse = Duration.standardSeconds(badCount * settings.getInt(SETTINGS_KEY_TARPIT_DELAY_SECONDS, 1));
-//                    System.out.println("DELAYING RESPONSE " + FORMAT.print(delayResponse.toPeriod()));
-                    response().setDelay(delayResponse);
+                    delayResponse(badCount, settings);
                 }
-                unauthorized(r);
+                unauthorized(r, event, decorator, page, response());
             } else {
-//                System.out.println("Good credentials, send login");
+                decorator.onAuthenticationSucceeded(event, page, response(), stuff);
                 setState(new ConsumedLockedState(stuff));
             }
         }
     }
+
+    @Benchmark(value = "tarpittedClients", publish = Kind.CALL_COUNT)
+    void delayResponse(int badCount, Settings settings) {
+        Duration delayResponse = Duration.standardSeconds(badCount * settings.getInt(SETTINGS_KEY_TARPIT_DELAY_SECONDS, 1));
+        response().setDelay(delayResponse);
+    }
+
     private static final PeriodFormatter FORMAT
             = new PeriodFormatterBuilder().appendMinutes()
             .appendSeparatorIfFieldsBefore(":")
             .appendSecondsWithMillis().toFormatter();
 
-    private void unauthorized(Realm realm) {
-//        System.out.println("Send unauthorized with WWW-Authenticate for " + realm);
+    @Benchmark(value = "failedAuthentication", publish = Kind.CALL_COUNT)
+    private void unauthorized(Realm realm, HttpEvent evt, AuthenticationDecorator decorator, Page page, Response response) {
+        decorator.onAuthenticationFailed(null, page, response);
         add(Headers.WWW_AUTHENTICATE, realm);
         setState(new RespondWith(HttpResponseStatus.UNAUTHORIZED));
         setResponseBodyWriter(ChannelFutureListener.CLOSE);
@@ -105,5 +113,47 @@ public class AuthenticateBasicActeur extends Acteur {
     @Override
     public void describeYourself(Map<String, Object> into) {
         into.put("Basic Authentication Required", true);
+    }
+
+    /**
+     * Decorator which can do things to the response on authentication
+     * succeess/failure, such as setting/clearing cookies
+     */
+    @ImplementedBy(NoOpDecorator.class)
+    public interface AuthenticationDecorator {
+
+        /**
+         * Called when authentication succeeds. This may be called on every
+         * request with basic auth. In particular, if you are going to set a
+         * cookie, ensure it is not already there and valid.
+         *
+         * @param evt The event/request
+         * @param page The page in question
+         * @param response The response
+         * @param stuff Objects returned by Authenticator.authenticate()
+         */
+        void onAuthenticationSucceeded(HttpEvent evt, Page page, Response response, Object[] stuff);
+
+        /**
+         * Called when authetication failse
+         *
+         * @param evt The event
+         * @param page The page
+         * @param response The response
+         */
+        void onAuthenticationFailed(HttpEvent evt, Page page, Response response);
+    }
+
+    private static class NoOpDecorator implements AuthenticationDecorator {
+
+        @Override
+        public void onAuthenticationSucceeded(HttpEvent evt, Page page, Response response, Object[] stuff) {
+            //do nothing
+        }
+
+        @Override
+        public void onAuthenticationFailed(HttpEvent evt, Page page, Response response) {
+            //do nothing
+        }
     }
 }

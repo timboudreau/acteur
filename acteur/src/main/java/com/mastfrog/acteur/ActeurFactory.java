@@ -29,13 +29,13 @@ import com.mastfrog.acteur.Acteur.Delegate;
 import com.mastfrog.acteur.ResponseHeaders.ETagProvider;
 import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.acteur.headers.Method;
+import com.mastfrog.acteur.preconditions.Description;
 import com.mastfrog.acteur.server.PathFactory;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.url.Path;
 import com.mastfrog.util.Checks;
 import com.mastfrog.util.Exceptions;
 import com.mastfrog.util.Strings;
-import io.netty.channel.ChannelFutureListener;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import static io.netty.handler.codec.http.HttpResponseStatus.BAD_REQUEST;
 import static io.netty.handler.codec.http.HttpResponseStatus.SEE_OTHER;
@@ -51,7 +51,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
-import org.joda.time.DateTime;
 
 /**
  * Factory for standard Acteur implementations, mainly used to determine if a
@@ -75,14 +74,16 @@ public class ActeurFactory {
      *
      * @param methods Methods
      * @return An Acteur that can be used in a page
+     * @deprecated Use &#064Methods instead - it is self-documenting
      */
+    @Deprecated
     public Acteur matchMethods(final Method... methods) {
-        boolean asserts = false;
-        assert asserts = true;
+//        boolean asserts = false;
+//        assert asserts = true;
         String type = "";
-        if (asserts) {
-            type = "(" + new Exception().getStackTrace()[1].getClassName() + ")";
-        }
+//        if (asserts) {
+//            type = "(" + new Exception().getStackTrace()[1].getClassName() + ")";
+//        }
         return matchMethods(false, type, methods);
     }
 
@@ -288,6 +289,7 @@ public class ActeurFactory {
      * exactly to the parameter names desired.
      */
     public <T> Acteur injectRequestParametersAs(final Class<T> type) {
+        @Description("Inject request parameters as a type")
         class InjectParams extends Acteur {
 
             @Override
@@ -310,17 +312,19 @@ public class ActeurFactory {
      * @return An acteur
      */
     public Acteur responseCode(final HttpResponseStatus status) {
-        return new Acteur() {
+        @Description("Send a response code")
+        class SendResponseCode extends Acteur {
             @Override
             public State getState() {
-                return new RespondWith(status);
+                return new Acteur.RespondWith(status);
             }
 
             @Override
             public void describeYourself(Map<String, Object> into) {
                 into.put("Responds With", status);
             }
-        };
+        }
+        return new SendResponseCode();
     }
 
     /**
@@ -330,6 +334,7 @@ public class ActeurFactory {
      * @return An acteur
      */
     public Acteur requireParameters(final String... names) {
+        @Description("Requires specific parameters")
         class RequireParameters extends Acteur {
 
             @Override
@@ -359,7 +364,8 @@ public class ActeurFactory {
     }
 
     public Acteur parametersMayNotBeCombined(final String... names) {
-        class RequireParameters extends Acteur {
+        @Description("Requires that parameters not appear together in the URL")
+        class RequireParametersNotBeCombined extends Acteur {
 
             @Override
             public State getState() {
@@ -392,10 +398,11 @@ public class ActeurFactory {
                 into.put("requiredParameters", names);
             }
         }
-        return new RequireParameters();
+        return new RequireParametersNotBeCombined();
     }
 
     public Acteur parametersMustBeNumbersIfTheyArePresent(final boolean allowDecimal, final boolean allowNegative, final String... names) {
+        @Description("Requires that parameters be numbers if they are present")
         class NumberParameters extends Acteur {
 
             @Override
@@ -427,14 +434,16 @@ public class ActeurFactory {
                                     if (i == 0 && allowNegative) {
                                         break;
                                     }
+                                //fall thru
                                 case '.':
                                     if (!decimalSeen && allowDecimal) {
                                         decimalSeen = true;
                                         break;
                                     }
+                                //fall thru
                                 default:
                                     return new RespondWith(HttpResponseStatus.BAD_REQUEST,
-                                            "Parameter " + name + " is not a number: '" + p + "'\n");
+                                            "Parameter " + name + " is not a legal number here: '" + p + "'\n");
                             }
                         }
                     }
@@ -453,6 +462,7 @@ public class ActeurFactory {
      */
     public Acteur banParameters(final String... names) {
         Arrays.sort(names);
+        @Description("Requires that parameters not be present")
         class BanParameters extends Acteur {
 
             public State getState() {
@@ -481,6 +491,7 @@ public class ActeurFactory {
      * @return
      */
     public Acteur requireAtLeastOneParameter(final String... names) {
+        @Description("Requires that at least one specified parameter be present")
         class RequireAtLeastOneParameter extends Acteur {
 
             @Override
@@ -531,7 +542,9 @@ public class ActeurFactory {
      *
      * @param regexen Regexen
      * @return An acteur
+     * @deprecated Use &#064PathRegex instead - it is self-documenting
      */
+    @Deprecated
     public Acteur matchPath(final String... regexen) {
         class MatchPath extends Acteur {
 
@@ -574,6 +587,47 @@ public class ActeurFactory {
 
     public Class<? extends Acteur> sendNotModifiedIfETagHeaderMatchesType() {
         return CheckIfNoneMatchHeader.class;
+    }
+
+    static String patternFromGlob(String pattern) {
+        if (pattern.length() > 0 && pattern.charAt(0) == '/') {
+            pattern = pattern.substring(1);
+        }
+        StringBuilder match = new StringBuilder("^\\/?");
+        for (char c : pattern.toCharArray()) {
+            switch (c) {
+                case '$':
+                case '.':
+                case '{':
+                case '}':
+                case '[':
+                case ']':
+                case ')':
+                case '(':
+                case '^':
+                case '/':
+                    match.append("\\" + c);
+                    break;
+                case '*':
+                    match.append("[^\\/]*?");
+                    break;
+                case '?':
+                    match.append("[^\\/]?");
+                    break;
+                default:
+                    match.append(c);
+            }
+        }
+        match.append("$");
+        return match.toString();
+    }
+
+    public Acteur globPathMatch(String... patterns) {
+        String[] rexen = new String[patterns.length];
+        for (int i = 0; i < rexen.length; i++) {
+            rexen[i] = patternFromGlob(patterns[i]);
+        }
+        return matchPath(rexen);
     }
 
     /**
@@ -654,86 +708,6 @@ public class ActeurFactory {
         }
     }
 
-    private static class CheckIfNoneMatchHeader extends Acteur {
-
-        @Inject
-        CheckIfNoneMatchHeader(HttpEvent event, Page page) throws Exception {
-            Checks.notNull("event", event);
-            Checks.notNull("page", page);
-            String etag = event.getHeader(Headers.IF_NONE_MATCH);
-            String pageEtag = page.getResponseHeaders().getETag();
-            if (etag != null && pageEtag != null) {
-                if (etag.equals(pageEtag)) {
-                    setState(new RespondWith(HttpResponseStatus.NOT_MODIFIED));
-                // XXX workaround for peculiar problem with FileResource =
-                    // not modified responses are leaving a hanging connection
-                    setResponseBodyWriter(ChannelFutureListener.CLOSE);
-                    return;
-                }
-            }
-            setState(new ConsumedState());
-        }
-
-        @Override
-        public void describeYourself(Map<String, Object> into) {
-            into.put("Supports If-None-Match header", true);
-        }
-    }
-
-    private static class CheckIfUnmodifiedSinceHeader extends Acteur {
-
-        @Inject
-        CheckIfUnmodifiedSinceHeader(HttpEvent event, Page page) {
-            DateTime dt = event.getHeader(Headers.IF_UNMODIFIED_SINCE);
-            if (dt != null) {
-                DateTime pageLastModified = page.getResponseHeaders().getLastModified();
-                if (pageLastModified != null) {
-                    boolean modSince = pageLastModified.getMillis() > dt.getMillis();
-                    if (modSince) {
-                        setState(new RespondWith(HttpResponseStatus.PRECONDITION_FAILED));
-                        return;
-                    }
-                }
-            }
-            setState(new ConsumedState());
-        }
-
-        @Override
-        public void describeYourself(Map<String, Object> into) {
-            into.put("Supports If-Unmodified-Since", true);
-        }
-    }
-
-    private static class CheckIfModifiedSinceHeader extends Acteur {
-
-        @Inject
-        CheckIfModifiedSinceHeader(HttpEvent event, Page page) {
-            DateTime lastModifiedMustBeNewerThan = event.getHeader(Headers.IF_MODIFIED_SINCE);
-            DateTime pageLastModified = page.getResponseHeaders().getLastModified();
-
-            boolean notModified = lastModifiedMustBeNewerThan != null && pageLastModified != null;
-            if (notModified) {
-                pageLastModified = pageLastModified.withMillisOfSecond(0);
-                notModified = pageLastModified.getMillis() <= lastModifiedMustBeNewerThan.getMillis();
-            }
-
-            if (notModified) {
-                setResponseCode(HttpResponseStatus.NOT_MODIFIED);
-                setState(new RespondWith(HttpResponseStatus.NOT_MODIFIED));
-                // XXX workaround for peculiar problem with FileResource =
-                // not modified responses are leaving a hanging connection
-                setResponseBodyWriter(ChannelFutureListener.CLOSE);
-                return;
-            }
-            setState(new ConsumedState());
-        }
-
-        @Override
-        public void describeYourself(Map<String, Object> into) {
-            into.put("Supports If-Modified-Since header", true);
-        }
-    }
-
     /**
      * Compute the etag on demand, and send a not modified header if the one in
      * the request matches the one provided by the passed ETagComputer.
@@ -776,6 +750,7 @@ public class ActeurFactory {
         Checks.notNull("params", params);
         Checks.notEmpty("params", Arrays.asList(params));
         class RequireParametersIfMethodMatches extends Acteur {
+
             public State getState() {
                 HttpEvent evt = deps.getInstance(HttpEvent.class);
                 if (method.equals(evt.getMethod())) {
@@ -797,6 +772,7 @@ public class ActeurFactory {
     public Acteur redirectEmptyPath(final Path to) throws URISyntaxException {
         Checks.notNull("to", to);
         class MatchNothing extends Acteur {
+
             public State getState() {
                 HttpEvent evt = deps.getInstance(HttpEvent.class);
                 if (evt.getPath().toString().isEmpty()) {
@@ -813,7 +789,9 @@ public class ActeurFactory {
 
     public Acteur branch(final Class<? extends Acteur> ifTrue, final Class<? extends Acteur> ifFalse, final Test test) {
         class Brancher extends Acteur implements Delegate {
+
             private Acteur delegate;
+
             @Override
             public State getState() {
                 return getDelegate().getState();
@@ -845,8 +823,10 @@ public class ActeurFactory {
      * branching
      */
     public interface Test {
+
         /**
          * Perform the test
+         *
          * @param evt The request
          * @return The result of the test
          */
