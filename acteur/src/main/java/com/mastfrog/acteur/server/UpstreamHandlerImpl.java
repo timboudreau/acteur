@@ -96,16 +96,16 @@ final class UpstreamHandlerImpl extends ChannelInboundHandlerAdapter {
                     addr = new InetSocketAddress(hdr, addr instanceof InetSocketAddress ? ((InetSocketAddress) addr).getPort() : 80);
                 }
             }
-            ctx.channel().closeFuture().addListener(new ChannelFutureListener(){
-
-                @Override
-                public void operationComplete(ChannelFuture f) throws Exception {
-                    if (request instanceof FullHttpRequest) {
-                        ((FullHttpRequest) request).content().release();
-                    }
-                }
-                
-            });
+//            ctx.channel().closeFuture().addListener(new ChannelFutureListener(){
+//
+//                @Override
+//                public void operationComplete(ChannelFuture f) throws Exception {
+//                    if (request instanceof FullHttpRequest) {
+//                        ((FullHttpRequest) request).content().release();
+//                    }
+//                }
+//                
+//            });
             EventImpl evt = new EventImpl(request, addr, ctx.channel(), paths, mapper);
             evt.setNeverKeepAlive(neverKeepAlive);
             application.onEvent(evt, ctx.channel());
@@ -125,6 +125,6 @@ final class UpstreamHandlerImpl extends ChannelInboundHandlerAdapter {
 
     private static void send100Continue(ChannelHandlerContext ctx) {
         HttpResponse response = new DefaultHttpResponse(HTTP_1_1, CONTINUE);
-        ctx.write(response);
+        ctx.writeAndFlush(response);
     }
 }

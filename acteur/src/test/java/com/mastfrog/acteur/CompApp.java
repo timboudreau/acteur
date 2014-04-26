@@ -3,6 +3,7 @@ package com.mastfrog.acteur;
 import com.google.inject.AbstractModule;
 import com.google.inject.ConfigurationException;
 import com.google.inject.Inject;
+import com.google.inject.name.Named;
 import com.mastfrog.acteur.Acteur.RespondWith;
 import com.mastfrog.acteur.ActeurFactory.Test;
 import com.mastfrog.acteur.errors.Err;
@@ -22,6 +23,9 @@ import static io.netty.handler.codec.http.HttpResponseStatus.OK;
 import io.netty.util.CharsetUtil;
 import java.io.IOException;
 import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotNull;
 import org.openide.util.Exceptions;
 
@@ -183,11 +187,13 @@ public class CompApp extends Application {
 
             @Inject
             EchoActeur(Event<?> evt) throws IOException {
-                if (!evt.getContent().isReadable()) {
-                    setState(new RespondWith(400, "Content not readable"));
-                } else if (evt.getContent().readableBytes() <= 0) {
-                    setState(new RespondWith(HttpResponseStatus.EXPECTATION_FAILED, "Zero byte content"));
-                }
+//                if (!evt.getContent().isReadable()) {
+//                    setState(new RespondWith(400, "Content not readable"));
+//                    return;
+//                } else if (evt.getContent().readableBytes() <= 0) {
+//                    setState(new RespondWith(HttpResponseStatus.EXPECTATION_FAILED, "Zero byte content"));
+//                    return;
+//                }
                 String content = evt.getContentAsJSON(String.class);
                 System.out.println("SEND MESSAGE '" + content + "'");
                 setState(new RespondWith(200, content));
@@ -208,6 +214,7 @@ public class CompApp extends Application {
 
             @Inject
             DeferActeur(HttpEvent evt) {
+                System.out.println("DEFER ACTEUR RUN");
                 setResponseWriter(DeferredOutputWriter.class);
                 setState(new RespondWith(200));
             }
@@ -260,9 +267,11 @@ public class CompApp extends Application {
 
             private String msg;
             private Integer max;
+            private final ExecutorService svc;
 
             @Inject
-            OldStyleActeur(HttpEvent evt) {
+            OldStyleActeur(HttpEvent evt, @Named(ServerModule.BACKGROUND_THREAD_POOL_NAME) ExecutorService svc) {
+                this.svc = svc;
                 max = evt.getIntParameter("iters").get();
                 if (max == null) {
                     max = 5;
@@ -279,16 +288,35 @@ public class CompApp extends Application {
 
             int iteration = 0;
 
+            volatile int entryCount = 0;
+
             @Override
-            public void operationComplete(ChannelFuture future) throws Exception {
-                System.out.println("Iteration " + iteration + "\n");
-                future = future.channel().write(Unpooled.copiedBuffer(msg + iteration + "\n", CharsetUtil.UTF_8));
-                if (iteration++ < max) {
-                    future.addListener(this);
-                } else {
-                    System.out.println("Close channel");
-//                    future.addListener(CLOSE);
-                    future.channel().close();
+            public void operationComplete(final ChannelFuture future) throws Exception {
+                if (entryCount > 0) {
+                    svc.submit(new Callable<Void>(){
+
+                        @Override
+                        public Void call() throws Exception {
+                            operationComplete(future);
+                            return null;
+                        }
+                    });
+                    return;
+                }
+                ChannelFuture f = future;
+                entryCount++;
+                try {
+                    System.out.println("Iteration " + iteration + "\n");
+                    f = f.channel().writeAndFlush(Unpooled.copiedBuffer(msg + iteration + "\n", CharsetUtil.UTF_8));
+                    if (iteration++ < max) {
+                        f.addListener(this);
+                    } else {
+                        System.out.println("Close channel");
+//                        future.addListener(CLOSE);
+                        f.channel().close();
+                    }
+                } finally {
+                    entryCount--;
                 }
             }
         }

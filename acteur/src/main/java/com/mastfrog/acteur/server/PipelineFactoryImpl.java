@@ -1,4 +1,4 @@
-/* 
+/*
  * The MIT License
  *
  * Copyright 2013 Tim Boudreau.
@@ -28,17 +28,21 @@ import com.google.inject.Provider;
 import com.google.inject.name.Named;
 import com.mastfrog.acteur.spi.ApplicationControl;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.codec.MessageToByteEncoder;
+import io.netty.handler.codec.http.DefaultFullHttpResponse;
 import io.netty.handler.codec.http.HttpContentCompressor;
-import io.netty.handler.codec.http.HttpObjectAggregator;
+import io.netty.handler.codec.http.HttpMessage;
+//import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpRequestDecoder;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseEncoder;
+import io.netty.handler.codec.http.HttpResponseStatus;
 import java.util.List;
 
 //@Singleton
@@ -76,26 +80,32 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
         }
         // Create a default pipeline implementation.
         ChannelPipeline pipeline = ch.pipeline();
-        
+
 //        SSLEngine engine = SecureChatSslContextFactory.getServerContext().createSSLEngine();
 //        engine.setUseClientMode(false);
 //        pipeline.addLast("ssl", new SslHandler(engine));
 
-        pipeline.addLast("decoder", new HttpRequestDecoder());
+        ChannelHandler decoder = (ChannelHandler) new HttpRequestDecoder();
+
+        pipeline.addLast("decoder", decoder);
         // Uncomment the following line if you don't want to handle HttpChunks.
         if (aggregateChunks) {
-            pipeline.addLast("aggregator", new HttpObjectAggregator(maxContentLength));
+            ChannelHandler aggregator = (ChannelHandler) new HttpObjectAggregator(maxContentLength);
+            pipeline.addLast("aggregator", aggregator);
         }
+        
         pipeline.addLast("bytes", new MessageBufEncoder());
-        pipeline.addLast("encoder", new HttpResponseEncoder());
+        ChannelHandler encoder = (ChannelHandler) new HttpResponseEncoder();
+        pipeline.addLast("encoder", encoder);
 
         // Remove the following line if you don't want automatic content compression.
         if (httpCompression) {
-            pipeline.addLast("deflater", new SelectiveCompressor());
+            ChannelHandler compressor = (ChannelHandler) new SelectiveCompressor();
+            pipeline.addLast("deflater", compressor);
         }
         pipeline.addLast("handler", handler.get());
     }
-    
+
     private static class MessageBufEncoder extends MessageToByteEncoder<ByteBuf> {
 
         @Override

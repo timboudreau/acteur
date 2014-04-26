@@ -27,14 +27,17 @@ import com.google.inject.ImplementedBy;
 import com.mastfrog.acteur.auth.AuthenticationActeur;
 import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.acteur.headers.Headers;
+import com.mastfrog.acteur.preconditions.BannedUrlParameters;
 import com.mastfrog.acteur.preconditions.BasicAuth;
 import com.mastfrog.acteur.preconditions.Description;
 import com.mastfrog.acteur.preconditions.InjectRequestBodyAs;
+import com.mastfrog.acteur.preconditions.MaximumPathLength;
 import com.mastfrog.acteur.preconditions.Methods;
 import com.mastfrog.acteur.preconditions.PageAnnotationHandler;
 import com.mastfrog.acteur.preconditions.ParametersMustBeNumbersIfPresent;
 import com.mastfrog.acteur.preconditions.Path;
 import com.mastfrog.acteur.preconditions.PathRegex;
+import com.mastfrog.acteur.preconditions.RequireAtLeastOneUrlParameterFrom;
 import com.mastfrog.acteur.preconditions.RequireParametersIfMethodMatches;
 import com.mastfrog.acteur.preconditions.RequiredUrlParameters;
 import com.mastfrog.acteur.util.CacheControl;
@@ -85,7 +88,7 @@ public abstract class Page implements Iterable<Acteur> {
 
     private static final AutoCloseThreadLocal<Page> CURRENT_PAGE = new AutoCloseThreadLocal<>();
     protected final ResponseHeaders responseHeaders = new ResponseHeaders();
-    private final List<Object> acteurs = Collections.synchronizedList(new ArrayList<>());
+    private final List<Object> acteurs = new ArrayList<>(15);
     volatile Application application;
 
     protected Page() {
@@ -240,6 +243,7 @@ public abstract class Page implements Iterable<Acteur> {
         Headers.writeIfNotNull(Headers.CONTENT_LENGTH, properties.getContentLength(), response);
     }
 
+    @SuppressWarnings("deprecation")
     private Iterator<Acteur> annotationActeurs() {
         List<Acteur> acteurs = new LinkedList<>();
         Class<?> c = getClass();
@@ -254,11 +258,25 @@ public abstract class Page implements Iterable<Acteur> {
             ActeurFactory af = a != null ? a : (a = getApplication().getDependencies().getInstance(ActeurFactory.class));
             acteurs.add(af.globPathMatch(path.value()));
         }
-
         Methods m = c.getAnnotation(Methods.class);
         if (m != null) {
             ActeurFactory af = a != null ? a : (a = getApplication().getDependencies().getInstance(ActeurFactory.class));
             acteurs.add(af.matchMethods(m.value()));
+        }
+        MaximumPathLength len = c.getAnnotation(MaximumPathLength.class);
+        if (len != null) {
+            ActeurFactory af = a != null ? a : (a = getApplication().getDependencies().getInstance(ActeurFactory.class));
+            acteurs.add(af.maximumPathLength(len.value()));
+        }
+        BannedUrlParameters banned = c.getAnnotation(BannedUrlParameters.class);
+        if (banned != null) {
+            ActeurFactory af = a != null ? a : (a = getApplication().getDependencies().getInstance(ActeurFactory.class));
+            acteurs.add(af.banParameters(banned.value()));
+        }
+        RequireAtLeastOneUrlParameterFrom atLeastOneOf = c.getAnnotation(RequireAtLeastOneUrlParameterFrom.class);
+        if (atLeastOneOf != null) {
+            ActeurFactory af = a != null ? a : (a = getApplication().getDependencies().getInstance(ActeurFactory.class));
+            acteurs.add(af.requireAtLeastOneParameter(banned.value()));
         }
         RequiredUrlParameters params = c.getAnnotation(RequiredUrlParameters.class);
         if (params != null) {

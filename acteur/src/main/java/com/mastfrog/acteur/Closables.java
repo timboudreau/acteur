@@ -1,5 +1,6 @@
 package com.mastfrog.acteur;
 
+import com.mastfrog.acteur.spi.ApplicationControl;
 import com.mastfrog.util.Checks;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
@@ -21,21 +22,31 @@ public final class Closables {
 
     private final List<AutoCloseable> closeables = new CopyOnWriteArrayList<>();
     private final CloseWhenChannelCloses closeListener = new CloseWhenChannelCloses();
-    private final Application application;
+    private final ApplicationControl application;
 
-    Closables(Channel channel, Application application) {
+    Closables(Channel channel, ApplicationControl application) {
         channel.closeFuture().addListener(closeListener);
         this.application = application;
     }
 
     public final <T extends AutoCloseable> T add(T closable) {
         Checks.notNull("closeable", closable);
-        closeables.add(closable);
+        if (!closeables.contains(closable)) {
+            closeables.add(closable);
+        }
         return closable;
     }
 
     public final Closables add(Runnable run) {
         Checks.notNull("run", run);
+        for (AutoCloseable clos : closeables) {
+            if (clos instanceof RunnableWrapper) {
+                RunnableWrapper w = (RunnableWrapper) clos;
+                if (w.run == w.run) {
+                    return this;
+                }
+            }
+        }
         add(new RunnableWrapper(run));
         return this;
     }

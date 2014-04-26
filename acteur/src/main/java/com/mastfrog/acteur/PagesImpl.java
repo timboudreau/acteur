@@ -69,7 +69,11 @@ final class PagesImpl implements Pages {
 
     /**
      * Returns a CountDownLatch which can be used in tests to wait until a
-     * request has been fully processed
+     * request has been fully processed.  Note that the latch will be called
+     * when the <i>headers have been flushed</i> - it is entirely possible
+     * that a listener has been attached which will write a body after that.
+     * Add a close listener to the channel to detect that the channel has been
+     * completely written to.
      *
      * @param id The request unique id
      * @param event The event - the request itself
@@ -80,7 +84,7 @@ final class PagesImpl implements Pages {
     public final CountDownLatch onEvent(final RequestID id, final Event<?> event, final Channel channel) {
         Iterator<Page> it = application.iterator();
         CountDownLatch latch = new CountDownLatch(1);
-        Closables closables = new Closables(channel, application);
+        Closables closables = new Closables(channel, application.control());
         PageRunner pageRunner = new PageRunner(application, it, latch, id, event, channel, scheduler, closables);
         application.getWorkerThreadPool().submit(pageRunner);
         return latch;

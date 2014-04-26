@@ -36,6 +36,7 @@ import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.guicy.scope.ReentrantScope;
 import com.mastfrog.util.Checks;
 import com.mastfrog.util.Codec;
+import com.mastfrog.util.Exceptions;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.Unpooled;
@@ -420,8 +421,8 @@ final class ResponseImpl extends Response {
         private final Event<?> evt;
         private final ExecutorService svc;
 
-        public ResponseWriterListener(Event<?> evt, ResponseWriter writer, Charset charset, 
-                ByteBufAllocator allocator, Codec mapper, boolean chunked, 
+        public ResponseWriterListener(Event<?> evt, ResponseWriter writer, Charset charset,
+                ByteBufAllocator allocator, Codec mapper, boolean chunked,
                 boolean shouldClose, ExecutorService svc) {
             super(charset, allocator, mapper);
             this.chunked = chunked;
@@ -450,36 +451,56 @@ final class ResponseImpl extends Response {
         }
 
         volatile boolean inOperationComplete;
+        volatile int entryCount = 0;
 
         @Override
         public void operationComplete(final ChannelFuture future) throws Exception {
-            Callable<Void> c = new Callable<Void>() {
-                @Override
-                public Void call() throws Exception {
-                    inOperationComplete = true;
-                    try {
-                        ResponseWriterListener.this.future = future;
-                        ResponseWriter.Status status = writer.write(evt, ResponseWriterListener.this, callCount++);
-                        if (status.isCallback()) {
-                            ResponseWriterListener.this.future = ResponseWriterListener.this.future.addListener(ResponseWriterListener.this);
-                        } else if (status == Status.DONE) {
-                            if (chunked) {
-                                ResponseWriterListener.this.future = ResponseWriterListener.this.future.channel().writeAndFlush(LastHttpContent.EMPTY_LAST_CONTENT);
-                            }
-                            if (shouldClose) {
-                                ResponseWriterListener.this.future = ResponseWriterListener.this.future.addListener(CLOSE);
+            try {
+                // See https://github.com/netty/netty/issues/2415 for why this is needed
+                if (entryCount > 0) {
+                    svc.submit(new Runnable() {
+                        @Override
+                        public void run() {
+                            try {
+                                operationComplete(future);
+                            } catch (Exception ex) {
+                                Exceptions.chuck(ex);
                             }
                         }
-                    } finally {
-                        inOperationComplete = false;
-                    }
-                    return null;
+                    });
+                    return;
                 }
-            };
-            if (!inOperationComplete) {
-                c.call();
-            } else {
-                svc.submit(c);
+                entryCount++;
+                Callable<Void> c = new Callable<Void>() {
+                    @Override
+                    public Void call() throws Exception {
+                        inOperationComplete = true;
+                        try {
+                            ResponseWriterListener.this.future = future;
+                            ResponseWriter.Status status = writer.write(evt, ResponseWriterListener.this, callCount++);
+                            if (status.isCallback()) {
+                                ResponseWriterListener.this.future = ResponseWriterListener.this.future.addListener(ResponseWriterListener.this);
+                            } else if (status == Status.DONE) {
+                                if (chunked) {
+                                    ResponseWriterListener.this.future = ResponseWriterListener.this.future.channel().writeAndFlush(LastHttpContent.EMPTY_LAST_CONTENT);
+                                }
+                                if (shouldClose) {
+                                    ResponseWriterListener.this.future = ResponseWriterListener.this.future.addListener(CLOSE);
+                                }
+                            }
+                        } finally {
+                            inOperationComplete = false;
+                        }
+                        return null;
+                    }
+                };
+                if (!inOperationComplete) {
+                    c.call();
+                } else {
+                    svc.submit(c);
+                }
+            } finally {
+                entryCount--;
             }
         }
 
@@ -491,11 +512,10 @@ final class ResponseImpl extends Response {
 
     /**
      * Set a ChannelFutureListener which will be called after headers are
-     * written and flushed to the socket;
-     * prefer <code>setResponseWriter()</code> to this method unless
-     * you are not using chunked encoding and want to stream your response (in
-     * which case, be sure to setChunked(false) or you will have encoding
-     * errors).
+     * written and flushed to the socket; prefer
+     * <code>setResponseWriter()</code> to this method unless you are not using
+     * chunked encoding and want to stream your response (in which case, be sure
+     * to setChunked(false) or you will have encoding errors).
      *
      * @param listener
      */
@@ -525,9 +545,9 @@ final class ResponseImpl extends Response {
         if (!canHaveBody(getResponseCode()) && (message != null || listener != null)) {
             if (listener != ChannelFutureListener.CLOSE) {
                 System.err.println(evt
-                    + " attempts to attach a body to " + getResponseCode()
-                    + " which cannot have one: " + message
-                    + " - " + listener);
+                        + " attempts to attach a body to " + getResponseCode()
+                        + " which cannot have one: " + message
+                        + " - " + listener);
             }
         }
         String msg = getMessage();
@@ -568,7 +588,7 @@ final class ResponseImpl extends Response {
         }
         return future;
     }
-
+    
     @Override
     public String toString() {
         return "Response{" + "modified=" + modified + ", status=" + status + ", headers=" + headers + ", message=" + message + ", listener=" + listener + ", chunked=" + chunked + " has listener " + (this.listener != null) + '}';

@@ -78,12 +78,12 @@ public class ActeurFactory {
      */
     @Deprecated
     public Acteur matchMethods(final Method... methods) {
-        boolean asserts = false;
-        assert asserts = true;
+//        boolean asserts = false;
+//        assert asserts = true;
         String type = "";
-        if (asserts) {
-            type = "(" + new Exception().getStackTrace()[1].getClassName() + ")";
-        }
+//        if (asserts) {
+//            type = "(" + new Exception().getStackTrace()[1].getClassName() + ")";
+//        }
         return matchMethods(false, type, methods);
     }
 
