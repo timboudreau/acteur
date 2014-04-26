@@ -30,9 +30,12 @@ import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.acteur.preconditions.BannedUrlParameters;
 import com.mastfrog.acteur.preconditions.BasicAuth;
 import com.mastfrog.acteur.preconditions.Description;
+import com.mastfrog.acteur.preconditions.InjectParametersAsInterface;
 import com.mastfrog.acteur.preconditions.InjectRequestBodyAs;
 import com.mastfrog.acteur.preconditions.MaximumPathLength;
+import com.mastfrog.acteur.preconditions.MaximumRequestBodyLength;
 import com.mastfrog.acteur.preconditions.Methods;
+import com.mastfrog.acteur.preconditions.MinimumRequestBodyLength;
 import com.mastfrog.acteur.preconditions.PageAnnotationHandler;
 import com.mastfrog.acteur.preconditions.ParametersMustBeNumbersIfPresent;
 import com.mastfrog.acteur.preconditions.Path;
@@ -40,6 +43,8 @@ import com.mastfrog.acteur.preconditions.PathRegex;
 import com.mastfrog.acteur.preconditions.RequireAtLeastOneUrlParameterFrom;
 import com.mastfrog.acteur.preconditions.RequireParametersIfMethodMatches;
 import com.mastfrog.acteur.preconditions.RequiredUrlParameters;
+import com.mastfrog.acteur.preconditions.UrlParametersMayNotBeCombined;
+import com.mastfrog.acteur.preconditions.UrlParametersMayNotBeCombinedSets;
 import com.mastfrog.acteur.util.CacheControl;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.guicy.scope.ReentrantScope;
@@ -105,7 +110,7 @@ public abstract class Page implements Iterable<Acteur> {
     protected String getDescription() {
         return getClass().getSimpleName();
     }
-    
+
     Iterable<Object> contents() {
         return CollectionUtils.toIterable(this.acteurs.iterator());
     }
@@ -301,6 +306,37 @@ public abstract class Page implements Iterable<Acteur> {
         if (nums != null) {
             ActeurFactory af = a != null ? a : (a = getApplication().getDependencies().getInstance(ActeurFactory.class));
             acteurs.add(af.parametersMustBeNumbersIfTheyArePresent(nums.allowDecimal(), nums.allowNegative(), nums.value()));
+        }
+        MinimumRequestBodyLength minLength = c.getAnnotation(MinimumRequestBodyLength.class);
+        if (minLength != null) {
+            ActeurFactory af = a != null ? a : (a = getApplication().getDependencies().getInstance(ActeurFactory.class));
+            acteurs.add(af.minimumBodyLength(minLength.value()));
+        }
+        MaximumRequestBodyLength maxLength = c.getAnnotation(MaximumRequestBodyLength.class);
+        if (maxLength != null) {
+            ActeurFactory af = a != null ? a : (a = getApplication().getDependencies().getInstance(ActeurFactory.class));
+            acteurs.add(af.maximumBodyLength(maxLength.value()));
+        }
+        UrlParametersMayNotBeCombined combos = c.getAnnotation(UrlParametersMayNotBeCombined.class);
+        if (combos != null) {
+            ActeurFactory af = a != null ? a : (a = getApplication().getDependencies().getInstance(ActeurFactory.class));
+            acteurs.add(af.parametersMayNotBeCombined(combos.value()));
+        }
+        UrlParametersMayNotBeCombinedSets comboSet = c.getAnnotation(UrlParametersMayNotBeCombinedSets.class);
+        if (comboSet != null) {
+            ActeurFactory af = a != null ? a : (a = getApplication().getDependencies().getInstance(ActeurFactory.class));
+            for (UrlParametersMayNotBeCombined c1 : comboSet.value()) {
+                acteurs.add(af.parametersMayNotBeCombined(c1.value()));
+            }
+        }
+        InjectParametersAsInterface paramsIface = c.getAnnotation(InjectParametersAsInterface.class);
+        if (paramsIface != null) {
+            Class<?> type = paramsIface.value();
+            if (!type.isInterface()) {
+                throw new IllegalArgumentException("Not an interface: " + type);
+            }
+            ActeurFactory af = a != null ? a : (a = getApplication().getDependencies().getInstance(ActeurFactory.class));
+            acteurs.add(af.injectRequestParametersAs(type));
         }
         BasicAuth auth = c.getAnnotation(BasicAuth.class);
         if (auth != null) {

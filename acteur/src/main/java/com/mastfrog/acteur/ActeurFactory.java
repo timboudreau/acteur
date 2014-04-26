@@ -708,6 +708,43 @@ public class ActeurFactory {
         }
     }
 
+    public Acteur minimumBodyLength(final int length) {
+        return new Acteur() {
+
+            @Override
+            public State getState() {
+                try {
+                    int val = deps.getInstance(HttpEvent.class).getContent().readableBytes();
+                    if (val < length) {
+                        return new RespondWith(BAD_REQUEST, "Request body must be > " + length + " characters");
+                    }
+                    return new ConsumedState();
+                } catch (IOException ex) {
+                    return Exceptions.chuck(ex);
+                }
+            }
+        };
+    }
+
+    public Acteur maximumBodyLength(final int length) {
+        return new Acteur() {
+
+            @Override
+            public State getState() {
+                try {
+                    int val = deps.getInstance(HttpEvent.class).getContent().readableBytes();
+                    if (val > length) {
+                        return new Acteur.RespondWith(HttpResponseStatus.REQUEST_ENTITY_TOO_LARGE, 
+                                "Request body must be < " + length + " characters");
+                    }
+                    return new Acteur.ConsumedState();
+                } catch (IOException ex) {
+                    return Exceptions.chuck(ex);
+                }
+            }
+        };
+    }
+
     /**
      * Compute the etag on demand, and send a not modified header if the one in
      * the request matches the one provided by the passed ETagComputer.
@@ -755,8 +792,8 @@ public class ActeurFactory {
                 HttpEvent evt = deps.getInstance(HttpEvent.class);
                 if (method.equals(evt.getMethod())) {
                     if (!evt.getParametersAsMap().keySet().containsAll(Arrays.asList(params))) {
-                        setState(new RespondWith(BAD_REQUEST, "Required parameters: "
-                                + Arrays.asList(params)));
+                        return new RespondWith(BAD_REQUEST, "Required parameters: "
+                                + Arrays.asList(params));
                     }
                 }
                 return new ConsumedState();
