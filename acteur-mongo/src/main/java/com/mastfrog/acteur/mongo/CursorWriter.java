@@ -100,4 +100,24 @@ public class CursorWriter extends ResponseWriter {
             return m;
         }
     }
+
+    public static class Factory {
+
+        private final Provider<Closables> clos;
+        private final Provider<HttpEvent> evt;
+
+        @Inject
+        Factory(Provider<Closables> clos, Provider<HttpEvent> evt) {
+            this.clos = clos;
+            this.evt = evt;
+        }
+
+        public CursorWriter create(DBCursor cursor, MapFilter filter) {
+            return new CursorWriter(cursor, clos.get(), evt.get(), Providers.of(filter));
+        }
+
+        public CursorWriter create(DBCursor cursor) {
+            return new CursorWriter(cursor, clos.get(), evt.get(), Providers.of(NO_FILTER));
+        }
+    }
 }
