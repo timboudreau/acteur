@@ -7,6 +7,8 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
+ * Annotation which can appear on an Acteur with the &#064;HttpCall annotation
+ * or on a Page with that annotation.
  *
  * @author Tim Boudreau
  */

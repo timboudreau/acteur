@@ -30,12 +30,14 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
+ * Annotation which can appear on an Acteur with the &#064;HttpCall annotation
+ * or on a Page with that annotation.
  *
- * @author tim
+ * @author Tim Boudreau
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
-@Description("Parameters must be numbers if present")
+@Description("Groups of URL parameters which may not appear in combination")
 public @interface UrlParametersMayNotBeCombinedSets {
     UrlParametersMayNotBeCombined[] value();
 }

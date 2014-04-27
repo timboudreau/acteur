@@ -30,9 +30,13 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
+ * Specifies a maximum <i>number of / separated elements</i> in the URL path,
+ * for use Acteurs which use the tail of the URL path as an open-ended list
+ * of something.
+ * Annotation which can appear on an Acteur with the &#064;HttpCall annotation
+ * or on a Page with that annotation.
  *
- * @author tim
- */
+ * @author Tim Boudreau */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
 @Description("Maximum number of path elements in URL path")

@@ -31,7 +31,11 @@ import java.lang.annotation.Target;
 
 /**
  *
- * @author tim
+ * Annotation which can appear on an Acteur with the &#064;HttpCall annotation
+ * or on a Page with that annotation.  Specifies a maximum length for the
+ * request body, which is computed without necessarily parsing that body.
+ *
+ * @author Tim Boudreau
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)

@@ -5,6 +5,8 @@ import com.mastfrog.acteur.Page;
 import java.util.List;
 
 /**
+ * Dummy implementation so all applications are not required to bind
+ * PageAnnotationHandler
  *
  * @author Tim Boudreau
  */

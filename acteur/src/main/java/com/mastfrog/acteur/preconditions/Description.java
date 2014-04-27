@@ -6,7 +6,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Provide a description for a page which will be used by 
+ * Provide a description for a page or acteur which will be used by 
  * Application.getHelpPageType() to provide an API-level help call.
  *
  * @author Tim Boudreau

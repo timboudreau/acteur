@@ -30,8 +30,12 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
+ * Annotation which can appear on an Acteur with the &#064;HttpCall annotation
+ * or on a Page with that annotation.  If the request body - the body of a
+ * POST or PUT operation - is less than the specified number of characters,
+ * the request will be rejected with BAD REQUEST.
  *
- * @author tim
+ * @author Tim Boudreau
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
