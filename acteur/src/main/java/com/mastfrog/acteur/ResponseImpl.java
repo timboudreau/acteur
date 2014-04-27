@@ -601,7 +601,7 @@ final class ResponseImpl extends Response {
 
         Entry(HeaderValueType<T> decorator, T value) {
             Checks.notNull("decorator", decorator);
-            Checks.notNull(decorator.name(), value);
+            Checks.notNull(decorator.name().toString(), value);
 //            assert value == null || decorator.type().isInstance(value) :
 //                    value + " of type " + value.getClass() + " is not a " + decorator.type();
             this.decorator = decorator;

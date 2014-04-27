@@ -25,7 +25,6 @@ package com.mastfrog.acteur;
 
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
-import com.mastfrog.acteur.errors.ExceptionEvaluatorRegistry;
 import com.mastfrog.acteur.server.ServerModule;
 import com.mastfrog.acteur.util.RequestID;
 import com.mastfrog.settings.Settings;
@@ -155,6 +154,8 @@ final class PagesImpl implements Pages {
                     }
 
                     Charset charset = application.getDependencies().getInstance(Charset.class);
+                    
+                    application.onBeforeSendResponse(response.status, event, response, state.getActeur(), state.getLockedPage());
                     // Create a netty response
                     HttpResponse httpResponse = response.toResponse(event, charset);
                     // Allow the application to add headers

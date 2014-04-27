@@ -368,8 +368,10 @@ public class Application implements Iterable<Page> {
      * @param page
      * @param action
      * @param response
+     * @deprecated Use onBeforeSendResponse instead
      * @return
      */
+    @Deprecated
     protected HttpResponse decorateResponse(Event<?> event, Page page, Acteur action, HttpResponse response) {
         return response;
     }
@@ -540,5 +542,9 @@ public class Application implements Iterable<Page> {
         if (closer != null) {
             fut.addListener(closer);
         }
+    }
+
+    protected void onBeforeSendResponse(HttpResponseStatus status, Event<?> event, Response response, Acteur acteur, Page page) {
+        // do nothing
     }
 }

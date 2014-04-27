@@ -23,6 +23,8 @@
  */
 package com.mastfrog.acteur;
 
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Sets;
 import com.google.inject.ImplementedBy;
 import com.mastfrog.acteur.auth.AuthenticationActeur;
 import com.mastfrog.acteur.headers.HeaderValueType;
@@ -55,14 +57,17 @@ import com.mastfrog.util.collections.CollectionUtils;
 import com.mastfrog.util.thread.AutoCloseThreadLocal;
 import com.mastfrog.util.thread.QuietAutoCloseable;
 import io.netty.handler.codec.http.HttpResponse;
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import org.joda.time.DateTime;
 import org.joda.time.Duration;
@@ -352,10 +357,42 @@ public abstract class Page implements Iterable<Acteur> {
         return acteurs.iterator();
     }
 
+    private static final Set<Class<? extends Annotation>> annotationTypes;
+    private static final Set<Class<? super Page>> annotatedPages = Sets.newConcurrentHashSet();
+    static {
+        Set<Class<? extends Annotation>> set = new HashSet<>();
+        annotationTypes = ImmutableSet.<Class<? extends Annotation>>builder()
+                .add(Path.class)
+                .add(PathRegex.class)
+                .add(Methods.class)
+                .add(BannedUrlParameters.class)
+                .add(InjectRequestBodyAs.class)
+                .add(InjectParametersAsInterface.class)
+                .add(MaximumRequestBodyLength.class)
+                .add(MaximumPathLength.class)
+                .add(MinimumRequestBodyLength.class)
+                .add(ParametersMustBeNumbersIfPresent.class)
+                .add(RequireParametersIfMethodMatches.class)
+                .add(RequireAtLeastOneUrlParameterFrom.class)
+                .add(UrlParametersMayNotBeCombined.class)
+                .add(UrlParametersMayNotBeCombinedSets.class)
+                .build();
+        
+    }
+
+    @SuppressWarnings("element-type-mismatch")
     private boolean hasAnnotations() {
+        if (annotatedPages.contains(getClass())) {
+            return true;
+        }
         Class<?> c = getClass();
-        return c.getAnnotation(Methods.class) != null || c.getAnnotation(PathRegex.class) != null
-                || c.getAnnotation(RequiredUrlParameters.class) != null;
+        for (Class<? extends Annotation> type : annotationTypes) {
+            if (c.getAnnotation(type) != null) {
+                annotatedPages.add((Class<? super Page>) getClass());
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override

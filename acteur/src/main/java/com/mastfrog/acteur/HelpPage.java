@@ -108,7 +108,7 @@ final class HelpPage extends Page {
                     sb.append("<p><i style='font-size: 0.85em;'>Note that "
                             + "URL matching expressions are relative to the "
                             + "application base path, which can be set by passing "
-                            + "<code>--basepath $PATH</code> on the command-line"
+                            + "<code>--basepath $PATH</code> on the command-line "
                             + "or set in a properties file."
                             + "<i></p>");
                     writeOut(null, help, sb, null);

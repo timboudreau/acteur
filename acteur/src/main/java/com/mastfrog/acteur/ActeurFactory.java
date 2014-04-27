@@ -27,6 +27,7 @@ import com.google.common.net.MediaType;
 import com.google.inject.Inject;
 import com.mastfrog.acteur.Acteur.Delegate;
 import com.mastfrog.acteur.ResponseHeaders.ETagProvider;
+import com.mastfrog.acteur.errors.Err;
 import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.acteur.headers.Method;
 import com.mastfrog.acteur.preconditions.Description;
@@ -98,12 +99,12 @@ public class ActeurFactory {
      * @return An Acteur
      */
     public Acteur matchMethods(final boolean notSupp, final Method... methods) {
-        boolean asserts = false;
-        assert asserts = true;
+//        boolean asserts = false;
+//        assert asserts = true;
         String type = "";
-        if (asserts) {
-            type = "(" + new Exception().getStackTrace()[1].getClassName() + ")";
-        }
+//        if (asserts) {
+//            type = "(" + new Exception().getStackTrace()[1].getClassName() + ")";
+//        }
         return matchMethods(notSupp, type, methods);
     }
 
@@ -117,9 +118,9 @@ public class ActeurFactory {
                 add(Headers.ALLOW, methods);
                 if (notSupp && !hasMethod) {
                     add(Headers.CONTENT_TYPE, MediaType.PLAIN_TEXT_UTF_8.withCharset(charset));
-                    return new RespondWith(HttpResponseStatus.METHOD_NOT_ALLOWED, "405 Method "
+                    return new RespondWith(new Err(HttpResponseStatus.METHOD_NOT_ALLOWED, "405 Method "
                             + event.getMethod() + " not allowed.  Accepted methods are "
-                            + Headers.ALLOW.toString(methods) + " " + typeName + "\n");
+                            + Headers.ALLOW.toString(methods) + " " + typeName + "\n"));
                 }
                 State result = hasMethod ? new ConsumedState() : new RejectedState();
                 return result;
@@ -257,7 +258,7 @@ public class ActeurFactory {
                     return new ConsumedLockedState(obj);
                 } catch (IOException ex) {
                     Logger.getLogger(ActeurFactory.class.getName()).log(Level.SEVERE, null, ex);
-                    return new RespondWith(400, "Bad or no JSON\n" + stackTrace(ex));
+                    return new RespondWith(Err.badRequest("Bad or no JSON\n" + stackTrace(ex)));
                 }
             }
 
@@ -344,7 +345,7 @@ public class ActeurFactory {
                     String val = event.getParameter(nm);
                     if (val == null) {
                         add(Headers.CONTENT_TYPE, MediaType.PLAIN_TEXT_UTF_8.withCharset(charset));
-                        return new RespondWith(HttpResponseStatus.BAD_REQUEST, "Missing URL parameter '" + nm + "'\n");
+                        return new RespondWith(Err.badRequest("Missing URL parameter '" + nm + "'\n"));
                     }
                 }
                 return new ConsumedState();
@@ -378,9 +379,9 @@ public class ActeurFactory {
                             first = nm;
                         } else {
                             add(Headers.CONTENT_TYPE, MediaType.PLAIN_TEXT_UTF_8.withCharset(charset));
-                            return new Acteur.RespondWith(HttpResponseStatus.BAD_REQUEST,
+                            return new Acteur.RespondWith(Err.badRequest(
                                     "Parameters may not contain both '"
-                                    + first + "' and '" + nm + "'\n");
+                                    + first + "' and '" + nm + "'\n"));
                         }
                     }
                 }
@@ -442,8 +443,8 @@ public class ActeurFactory {
                                     }
                                 //fall thru
                                 default:
-                                    return new RespondWith(HttpResponseStatus.BAD_REQUEST,
-                                            "Parameter " + name + " is not a legal number here: '" + p + "'\n");
+                                    return new RespondWith(Err.badRequest(
+                                            "Parameter " + name + " is not a legal number here: '" + p + "'\n"));
                             }
                         }
                     }
@@ -469,8 +470,8 @@ public class ActeurFactory {
                 HttpEvent evt = deps.getInstance(HttpEvent.class);
                 for (Map.Entry<String, String> e : evt.getParametersAsMap().entrySet()) {
                     if (Arrays.binarySearch(names, e.getKey()) >= 0) {
-                        return new RespondWith(HttpResponseStatus.BAD_REQUEST,
-                                e.getKey() + " not allowed in parameters\n");
+                        return new RespondWith(Err.badRequest(
+                                e.getKey() + " not allowed in parameters\n"));
                     }
                 }
                 return new ConsumedState();
@@ -510,7 +511,7 @@ public class ActeurFactory {
                         sb.append(", ");
                     }
                 }
-                return new RespondWith(HttpResponseStatus.BAD_REQUEST, "Must have at least one of " + sb + " as parameters\n");
+                return new RespondWith(Err.badRequest("Must have at least one of " + sb + " as parameters\n"));
             }
 
             @Override
@@ -716,7 +717,7 @@ public class ActeurFactory {
                 try {
                     int val = deps.getInstance(HttpEvent.class).getContent().readableBytes();
                     if (val < length) {
-                        return new RespondWith(BAD_REQUEST, "Request body must be > " + length + " characters");
+                        return new RespondWith(Err.badRequest("Request body must be > " + length + " characters"));
                     }
                     return new ConsumedState();
                 } catch (IOException ex) {
@@ -734,8 +735,8 @@ public class ActeurFactory {
                 try {
                     int val = deps.getInstance(HttpEvent.class).getContent().readableBytes();
                     if (val > length) {
-                        return new Acteur.RespondWith(HttpResponseStatus.REQUEST_ENTITY_TOO_LARGE, 
-                                "Request body must be < " + length + " characters");
+                        return new Acteur.RespondWith(new Err(HttpResponseStatus.REQUEST_ENTITY_TOO_LARGE, 
+                                "Request body must be < " + length + " characters"));
                     }
                     return new Acteur.ConsumedState();
                 } catch (IOException ex) {
@@ -792,8 +793,8 @@ public class ActeurFactory {
                 HttpEvent evt = deps.getInstance(HttpEvent.class);
                 if (method.equals(evt.getMethod())) {
                     if (!evt.getParametersAsMap().keySet().containsAll(Arrays.asList(params))) {
-                        return new RespondWith(BAD_REQUEST, "Required parameters: "
-                                + Arrays.asList(params));
+                        return new RespondWith(Err.badRequest("Required parameters: "
+                                + Arrays.asList(params)));
                     }
                 }
                 return new ConsumedState();
