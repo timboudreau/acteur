@@ -32,6 +32,7 @@ public class MongoHarness {
 
     private final int port;
     private final Init mongo;
+    private static int count = 1;
 
     @Inject
     MongoHarness(@Named("mongoPort") int port, Init mongo) throws IOException, InterruptedException {
@@ -130,7 +131,7 @@ public class MongoHarness {
             try {
                 stop();
             } finally {
-                if (mongoDir.exists()) {
+                if (mongoDir != null && mongoDir.exists()) {
                     cleanup(mongoDir);
                 }
             }
@@ -138,7 +139,7 @@ public class MongoHarness {
 
         private File createMongoDir() {
             File tmp = new File(System.getProperty("java.io.tmpdir"));
-            File mongoDir = new File(tmp, "mongo-" + System.currentTimeMillis());
+            File mongoDir = new File(tmp, "mongo-" + System.currentTimeMillis() + "-" + count++);
             if (!mongoDir.mkdirs()) {
                 throw new AssertionError("Could not create " + mongoDir);
             }

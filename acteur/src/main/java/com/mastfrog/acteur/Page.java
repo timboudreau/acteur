@@ -202,15 +202,9 @@ public abstract class Page implements Iterable<Acteur> {
                 } catch (ThreadDeath | OutOfMemoryError e) {
                     return Exceptions.chuck(e);
                 } catch (final Exception t) {
-                    if (logErrors) {
-                        app.internalOnError(t);
-                    }
-                    return Acteur.error(null, this, t, deps.getInstance(HttpEvent.class));
+                    return Acteur.error(null, this, t, deps.getInstance(HttpEvent.class), logErrors);
                 } catch (final Error t) {
-                    if (logErrors) {
-                        app.internalOnError(t);
-                    }
-                    return Acteur.error(null, this, t, deps.getInstance(HttpEvent.class));
+                    return Acteur.error(null, this, t, deps.getInstance(HttpEvent.class), logErrors);
                 }
             } else if (o instanceof Acteur) {
                 return (Acteur) o;

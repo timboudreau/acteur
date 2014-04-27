@@ -2,6 +2,7 @@ package com.mastfrog.acteur.mongo;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.name.Names;
+import com.mastfrog.acteur.mongo.util.InvalidParameterException;
 import com.mastfrog.util.ConfigurationError;
 import com.mongodb.DB;
 import com.mongodb.DBCollection;
@@ -119,5 +120,6 @@ public final class MongoModule extends AbstractModule implements MongoConfig<Mon
                     new CollectionProvider(binder().getProvider(DB.class),
                     e.getValue(), binder().getProvider(MongoInitializer.Registry.class)));
         }
+        bind(InvalidParameterException.Evaluator.class).asEagerSingleton();
     }
 }

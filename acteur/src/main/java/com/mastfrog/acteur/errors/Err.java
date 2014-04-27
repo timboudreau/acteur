@@ -37,7 +37,13 @@ public final class Err implements ErrorResponse {
 
     public final HttpResponseStatus status;
     public final Map<String, Object> message;
+    public boolean unhandled;
 
+    public Err(Throwable t, boolean unhandled) {
+        this(t);
+        this.unhandled = unhandled;
+    }
+    
     public Err(Throwable t) {
         this(unwind(t, true));
     }

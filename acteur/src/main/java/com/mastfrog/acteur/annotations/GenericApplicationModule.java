@@ -25,7 +25,7 @@ import java.util.Set;
  *
  * @author Tim Boudreau
  */
-public final class GenericApplicationModule extends ServerModule {
+public class GenericApplicationModule extends ServerModule { // non final for unit tests that need to hide arguments
 
     private final Settings settings;
     private final Class<?>[] exclude;

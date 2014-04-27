@@ -207,7 +207,7 @@ final class PagesImpl implements Pages {
 
                     // Send an error message
                     Acteur err = Acteur.error(null, state.getLockedPage(), e, 
-                            application.getDependencies().getInstance(HttpEvent.class));
+                            application.getDependencies().getInstance(HttpEvent.class), true);
                     // XXX this might recurse badly
                     receive(err, err.getState(), err.getResponse());
                 }

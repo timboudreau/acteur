@@ -1,7 +1,7 @@
-/* 
+/*
  * The MIT License
  *
- * Copyright 2014 Tim Boudreau.
+ * Copyright 2014 tim.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,52 +21,48 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.mastfrog.acteur.errors;
 
+package com.mastfrog.acteur.mongo.util;
+
+import com.google.inject.Inject;
 import com.mastfrog.acteur.Acteur;
 import com.mastfrog.acteur.HttpEvent;
 import com.mastfrog.acteur.Page;
-import javax.inject.Singleton;
+import com.mastfrog.acteur.errors.Err;
+import com.mastfrog.acteur.errors.ErrorResponse;
+import com.mastfrog.acteur.errors.ExceptionEvaluator;
+import com.mastfrog.acteur.errors.ExceptionEvaluatorRegistry;
 
 /**
  *
- * @author Tim Boudreau
+ * @author tim
  */
-@Singleton
-public abstract class ExceptionEvaluator implements Comparable<ExceptionEvaluator> {
+public class InvalidParameterException extends IllegalArgumentException {
 
-    @SuppressWarnings("LeakingThisInConstructor")
-    protected ExceptionEvaluator(ExceptionEvaluatorRegistry registry) {
-        registry.register(this);
+    InvalidParameterException() {
+    }
+
+    InvalidParameterException(String string) {
+        super(string);
+    }
+
+    InvalidParameterException(String string, Throwable thrwbl) {
+        super(string, thrwbl);
+    }
+
+    InvalidParameterException(Throwable thrwbl) {
+        super(thrwbl);
     }
     
-    protected final Throwable unwind(Throwable t) {
-        while (t.getCause() != null) {
-            t = t.getCause();
+    public static class Evaluator extends ExceptionEvaluator {
+        @Inject
+        Evaluator(ExceptionEvaluatorRegistry registry) {
+            super(registry);
         }
-        return t;
-    }
 
-    protected int ordinal() {
-        return 1;
+        @Override
+        public ErrorResponse evaluate(Throwable t, Acteur acteur, Page page, HttpEvent evt) {
+            return Err.badRequest(t.getMessage());
+        }
     }
-
-    @Override
-    public final int hashCode() {
-        return getClass().hashCode();
-    }
-
-    @Override
-    public final boolean equals(Object o) {
-        return o != null && o.getClass() == getClass();
-    }
-
-    @Override
-    public final int compareTo(ExceptionEvaluator o) {
-        Integer mine = ordinal();
-        Integer theirs = o.ordinal();
-        return theirs.compareTo(mine);
-    }
-
-    public abstract ErrorResponse evaluate(Throwable t, Acteur acteur, Page page, HttpEvent evt);
 }

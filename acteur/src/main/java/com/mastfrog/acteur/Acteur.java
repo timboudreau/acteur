@@ -24,6 +24,8 @@
 package com.mastfrog.acteur;
 
 import com.google.common.net.MediaType;
+import com.google.inject.ProvisionException;
+import com.mastfrog.acteur.errors.Err;
 import com.mastfrog.acteur.errors.ErrorRenderer;
 import com.mastfrog.acteur.errors.ErrorResponse;
 import com.mastfrog.acteur.errors.ExceptionEvaluatorRegistry;
@@ -173,13 +175,13 @@ public abstract class Acteur {
         return getResponse();
     }
 
-    static Acteur error(Acteur errSource, Page page, Throwable t, HttpEvent evt) {
+    static Acteur error(Acteur errSource, Page page, Throwable t, HttpEvent evt, boolean log) {
         try {
-            return new ErrorActeur(errSource, evt, page, t, true);
+            return new ErrorActeur(errSource, evt, page, t, true, log);
         } catch (IOException ex) {
             page.application.internalOnError(t);
             try {
-                return new ErrorActeur(errSource, evt, page, t, true);
+                return new ErrorActeur(errSource, evt, page, t, true, log);
             } catch (IOException ex1) {
                 return Exceptions.chuck(ex1);
             }
@@ -219,11 +221,17 @@ public abstract class Acteur {
 
     static final class ErrorActeur extends Acteur {
 
-        ErrorActeur(Acteur errSource, HttpEvent evt, Page page, Throwable t, boolean tryErrResponse) throws IOException {
+        ErrorActeur(Acteur errSource, HttpEvent evt, Page page, Throwable t, boolean tryErrResponse, boolean log) throws IOException {
             if (tryErrResponse) {
                 Dependencies deps = page.application.getDependencies();
+                if (t instanceof ProvisionException) {
+                    t = t.getCause();
+                }
                 ExceptionEvaluatorRegistry reg = deps.getInstance(ExceptionEvaluatorRegistry.class);
                 ErrorResponse resp = reg.evaluate(t, errSource, page, evt);
+                if (log && resp instanceof Err && ((Err) resp).unhandled) {
+                    page.application.control().internalOnError(t);
+                }
                 if (resp != null) {
                     ErrorRenderer ren = deps.getInstance(ErrorRenderer.class);
                     ren.render(resp, response(), evt);

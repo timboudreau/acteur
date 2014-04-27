@@ -24,17 +24,16 @@
 package com.mastfrog.acteur.server;
 
 import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import com.google.inject.name.Named;
 import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_DECODE_REAL_IP;
 import com.mastfrog.acteur.spi.ApplicationControl;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.util.Codec;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelFutureListener;
+import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.handler.codec.http.DefaultHttpResponse;
-import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponse;
@@ -48,15 +47,15 @@ import java.net.SocketAddress;
  *
  * @author Tim Boudreau
  */
-//@ChannelHandler.Sharable
-//@Singleton
+@ChannelHandler.Sharable
+@Singleton
 final class UpstreamHandlerImpl extends ChannelInboundHandlerAdapter {
 
     private final ApplicationControl application;
     private final PathFactory paths;
     @Inject(optional = true)
     @Named("neverKeepAlive")
-    private boolean neverKeepAlive;
+    private boolean neverKeepAlive = true;
     private @Inject(optional = true)
     @Named("aggregateChunks")
     boolean aggregateChunks = PipelineFactoryImpl.DEFAULT_AGGREGATE_CHUNKS;
@@ -96,16 +95,6 @@ final class UpstreamHandlerImpl extends ChannelInboundHandlerAdapter {
                     addr = new InetSocketAddress(hdr, addr instanceof InetSocketAddress ? ((InetSocketAddress) addr).getPort() : 80);
                 }
             }
-//            ctx.channel().closeFuture().addListener(new ChannelFutureListener(){
-//
-//                @Override
-//                public void operationComplete(ChannelFuture f) throws Exception {
-//                    if (request instanceof FullHttpRequest) {
-//                        ((FullHttpRequest) request).content().release();
-//                    }
-//                }
-//                
-//            });
             EventImpl evt = new EventImpl(request, addr, ctx.channel(), paths, mapper);
             evt.setNeverKeepAlive(neverKeepAlive);
             application.onEvent(evt, ctx.channel());

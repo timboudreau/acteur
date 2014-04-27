@@ -60,7 +60,7 @@ public final class ExceptionEvaluatorRegistry {
         
         @Override
         public ErrorResponse evaluate(Throwable t, Acteur acteur, Page page, HttpEvent evt) {
-            return Err.of(t);
+            return new Err(t, true);
         }
     }
 
@@ -69,9 +69,7 @@ public final class ExceptionEvaluatorRegistry {
     }
 
     public ErrorResponse evaluate(Throwable t, Acteur acteur, Page page, HttpEvent evt) {
-        System.out.println("EE evaluate with " + evaluators.size() + " - " + evaluators);
         for (ExceptionEvaluator e : evaluators) {
-            System.out.println("TRY " + e);
             ErrorResponse response = e.evaluate(t, acteur, page, evt);
             if (response != null) {
                 return response;
