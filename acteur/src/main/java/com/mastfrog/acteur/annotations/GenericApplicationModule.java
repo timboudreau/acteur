@@ -67,7 +67,7 @@ public class GenericApplicationModule extends ServerModule { // non final for un
         this.exclude = exclude;
     }
 
-    private <T extends Module> T instantiateModule(Class<T> m) throws NoSuchMethodException, InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
+    public static <T extends Module> T instantiateModule(Class<T> m, Settings settings, ReentrantScope scope) throws NoSuchMethodException, InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
         try {
             try {
                 Constructor<T> c = m.getDeclaredConstructor();
@@ -109,7 +109,7 @@ public class GenericApplicationModule extends ServerModule { // non final for un
             scope.bindTypes(binder(), bindTypes.toArray(new Class<?>[0]));
             for (Class<? extends Module> module : ldr.modules()) {
                 if (!toExclude.contains(module)) {
-                    install(instantiateModule(module));
+                    install(instantiateModule(module, settings, scope));
                 }
             }
         } catch (IOException | ClassNotFoundException | NoSuchMethodException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
