@@ -340,13 +340,18 @@ public class ServerModule<A extends Application> extends AbstractModule {
         }
 
         @Override
-        public <T> byte[] writeValueAsBytes(T object, OutputStream out) throws IOException {
-            return mapper.get().writeValueAsBytes(out);
+        public <T> void writeValue(T object, OutputStream out) throws IOException {
+            mapper.get().writeValue(out, object);
         }
 
         @Override
         public <T> T readValue(InputStream byteBufInputStream, Class<T> type) throws IOException {
             return mapper.get().readValue(byteBufInputStream, type);
+        }
+
+        @Override
+        public <T> byte[] writeValueAsBytes(T object) throws IOException {
+            return mapper.get().writeValueAsBytes(object);
         }
     }
 
