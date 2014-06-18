@@ -36,7 +36,9 @@ import static io.netty.handler.codec.http.HttpResponseStatus.OK;
 
 /**
  * Use for HTTP requests that get a text/event-stream response which remains
- * open indefinitely
+ * open indefinitely. Use this with the &#064;Concluders annotation to have it
+ * handle everything related to publishing server-sent events in the response to
+ * this request.
  *
  * @author Tim Boudreau
  */
@@ -64,6 +66,8 @@ public final class SseActeur extends Acteur {
 
         @Override
         public void operationComplete(ChannelFuture future) throws Exception {
+            // At this point we know the headers have been sent, so it is
+            // safe to start sending events
             sink.register(future.channel());
         }
     }

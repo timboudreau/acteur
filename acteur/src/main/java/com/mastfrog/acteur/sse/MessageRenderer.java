@@ -27,16 +27,20 @@ package com.mastfrog.acteur.sse;
 import com.google.inject.ImplementedBy;
 
 /**
- * Renders a message into a server-sent event.
+ * Renders a message into a server-sent event. The default implementation
+ * renders strings as plain text and other types as JSON. Implement and bind
+ * this type if you want some other sort of behavior.
  *
  * @author Tim Boudreau
  */
 @ImplementedBy(DefaultMessageRenderer.class)
 public interface MessageRenderer {
+
     /**
      * Converts a message object to a string
+     *
      * @param msg The message
      * @return A string representation
      */
-    public String toString(Object msg);
+    String toString(Object msg);
 }

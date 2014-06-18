@@ -70,6 +70,18 @@ public class EventSink {
     private final Runner runner = new Runner();
     private final Shutdown shutdownRun = new Shutdown();
 
+    /**
+     * Normally you will just ask for an instance to be injected into your
+     * constructor.
+     *
+     * @param ren A message renderer
+     * @param svc The executor service that messages are dequeued on and sent to
+     * all open registered channels
+     * @param alloc An allocator for byte buffers, bound by the framework
+     * @param ctrl Used to handle any exceptions
+     * @param reg Shutdown hook registry that allows this sink to mark itself as
+     * shut down, cease sending messages and clean up after itself
+     */
     @Inject
     protected EventSink(MessageRenderer ren, @Named(ServerModule.BACKGROUND_THREAD_POOL_NAME) ExecutorService svc, ByteBufAllocator alloc, ApplicationControl ctrl, ShutdownHookRegistry reg) {
         this.ren = ren;
@@ -79,8 +91,17 @@ public class EventSink {
         svc.submit(runner);
     }
 
+    /**
+     * Publish an event
+     *
+     * @param eventType The event type, which will be on the first line of the
+     * event, e.g. <code>event: foo</code>.
+     * @param message The message. If non-string, it will be encoded as JSON by
+     * default
+     * @return this
+     */
     public EventSink publish(String eventType, Object message) {
-        if (channels.isEmpty()) {
+        if (shutdown || channels.isEmpty()) {
             return this;
         }
         Message msg = new Message(eventType, count.getAndIncrement(), message);
@@ -88,8 +109,15 @@ public class EventSink {
         return this;
     }
 
+    /**
+     * Publish an event
+     *
+     * @param message The message. If non-string, it will be encoded as JSON by
+     * default
+     * @return this
+     */
     public EventSink publish(Object message) {
-        if (channels.isEmpty()) {
+        if (shutdown || channels.isEmpty()) {
             return this;
         }
         Checks.notNull("message", message);
@@ -98,11 +126,22 @@ public class EventSink {
         return this;
     }
 
+    /**
+     * Register a channel which will receive events from this event sink.
+     *
+     * @param channel A channel
+     * @return this
+     */
     public EventSink register(Channel channel) {
-        if (channel.isOpen()) {
+        if (!shutdown && channel.isOpen()) {
             channels.add(channel);
         }
         return this;
+    }
+
+    public void clear() {
+        channels.clear();
+        messages.clear();
     }
 
     private ByteBuf toByteBuf(Message msg) {
