@@ -39,15 +39,26 @@ import static io.netty.handler.codec.http.HttpResponseStatus.OK;
  * open indefinitely. Use this with the &#064;Concluders annotation to have it
  * handle everything related to publishing server-sent events in the response to
  * this request.
+ * <p/>
+ * To feed events to be streamed to all open responses, simply ask for an EventSink
+ * to be injected and use its <code>publish()</code> method.  By default,
+ * EventSink is bound as a singleton;  for per-URL or per-user or something else
+ * event sinks, you can
+ * <ul>
+ * <li>Precede this with an Acteur that locates the correct EventSink instance
+ * and puts it in its state, so it is the instance that is found</li>
+ * <li>Subclass this and used &#064;Named to look up a specific EventSource 
+ * (make sure to bind it in Scopes.SINGLETON)</li>
+ * </ul>
  *
  * @author Tim Boudreau
  */
-public final class SseActeur extends Acteur {
+public class SseActeur extends Acteur {
 
     private static final MediaType TYPE = MediaType.parse("text/event-stream; charset=UTF-8");
 
     @Inject
-    SseActeur(EventSink sink) {
+    public SseActeur(EventSink sink) {
         add(Headers.CONTENT_TYPE, TYPE);
         add(Headers.CACHE_CONTROL, CacheControl.PRIVATE_NO_CACHE_NO_STORE);
         add(Headers.CONNECTION, Connection.keep_alive);
