@@ -83,7 +83,11 @@ public class SseTest {
                 }
             }
         }).setTimeout(Duration.standardSeconds(60)).go();
-        res[0].await();
+        try {
+            res[0].await();
+        } catch (InterruptedException ex) {
+            ex.printStackTrace();
+        }
         List<String> ids = new ArrayList<>();
         List<String> items = new ArrayList<>();
         for (String line : content.toString().split("\n")) {
