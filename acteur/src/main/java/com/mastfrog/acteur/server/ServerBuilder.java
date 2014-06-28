@@ -166,7 +166,7 @@ public final class ServerBuilder {
 
     private ScopeProvider appModule(Settings settings) {
         if (appType == null) {
-            return new GS(settings);
+            return new GS(settings, types);
         } else {
             return new TS(appType, types);
         }
@@ -194,10 +194,19 @@ public final class ServerBuilder {
     }
 
     private static final class GS extends GenericApplicationModule implements ScopeProvider {
+        private final Set<Class<?>> toBind;
 
-        public GS(Settings settings) {
+        public GS(Settings settings, Set<Class<?>> toBind) {
             super(settings);
+            this.toBind = toBind;
         }
+        
+        @Override
+        protected void configure() {
+            super.configure(); //To change body of generated methods, choose Tools | Templates.
+            Class<?>[] types = toBind.toArray(new Class<?>[toBind.size()]);
+            scope.bindTypes(binder(), types);
+        }        
 
         public ReentrantScope scope() {
             return scope;

@@ -80,6 +80,9 @@ public final class Err implements ErrorResponse {
             t = t.getCause();
         } while (t != null);
         if (lastMessage == null) {
+            if (t == null) {
+                t = orig;
+            }
             Throwable[] others = t.getSuppressed();
             if (others != null && others.length > 0) {
                 for (Throwable other : others) {
