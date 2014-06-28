@@ -54,12 +54,12 @@ import org.junit.runner.RunWith;
 @TestWith(SseApp.Module.class)
 public class SseTest {
 
-    @Test
+    @Test(timeout = 90000)
     public void test(TestHarness harn) throws Throwable {
         long when = System.currentTimeMillis();
         System.err.println("PORT " + harn.getPort());
         System.err.flush();
-        harn.get("/foo").log().go().assertStatus(NOT_FOUND);
+        harn.get("/foo").setTimeout(Duration.standardSeconds(60)).log().go().assertStatus(NOT_FOUND);
         final StringBuilder content = new StringBuilder();
         final CallResult[] res = new CallResult[1];
         final AtomicInteger count = new AtomicInteger();
@@ -82,7 +82,7 @@ public class SseTest {
                     res[0].cancel();
                 }
             }
-        }).setTimeout(Duration.standardSeconds(20)).go();
+        }).setTimeout(Duration.standardSeconds(60)).go();
         res[0].await();
         List<String> ids = new ArrayList<>();
         List<String> items = new ArrayList<>();
