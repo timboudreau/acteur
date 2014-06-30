@@ -87,7 +87,7 @@ final class EventImpl implements HttpEvent {
 
     @Override
     public String toString() {
-        return req.getUri();
+        return req.getMethod() + "\t" + req.getUri();
     }
 
     public void setNeverKeepAlive(boolean val) {

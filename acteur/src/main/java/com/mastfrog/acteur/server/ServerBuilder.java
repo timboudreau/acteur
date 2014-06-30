@@ -23,6 +23,7 @@
  */
 package com.mastfrog.acteur.server;
 
+import com.google.inject.AbstractModule;
 import com.google.inject.Module;
 import com.mastfrog.acteur.Application;
 import com.mastfrog.acteur.annotations.GenericApplicationModule;
@@ -163,7 +164,7 @@ public final class ServerBuilder {
         }
         return db.build().getInstance(Server.class);
     }
-
+    
     private ScopeProvider appModule(Settings settings) {
         if (appType == null) {
             return new GS(settings, types);
