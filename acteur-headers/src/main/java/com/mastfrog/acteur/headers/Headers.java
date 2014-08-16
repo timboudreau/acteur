@@ -70,6 +70,7 @@ public final class Headers {
     public static final HeaderValueType<MediaType> CONTENT_TYPE = new MediaTypeHeader();
     public static final HeaderValueType<String> SERVER = new StringHeader(HttpHeaders.Names.SERVER.toString());
     public static final HeaderValueType<HeaderValueType[]> VARY = new VaryHeader();
+    public static final HeaderValueType<String> ACCEPT = new StringHeader(HttpHeaders.Names.ACCEPT.toString());
     public static final HeaderValueType<String> ACCEPT_ENCODING = new StringHeader(HttpHeaders.Names.ACCEPT_ENCODING.toString());
     public static final HeaderValueType<String> CONTENT_ENCODING = new StringHeader(HttpHeaders.Names.CONTENT_ENCODING.toString());
     public static final HeaderValueType<String> USER_AGENT = new StringHeader(HttpHeaders.Names.USER_AGENT.toString());
