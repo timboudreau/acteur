@@ -63,7 +63,7 @@ public class PutTest {
         }
     }    
     
-    @Test
+    @Test(timeout = 20000L)
     public void testPuts() throws IOException, InterruptedException {
         System.err.println("enter test");
         ServerModule m = new ServerModule(EchoServer.class, 2, 2, 2);
