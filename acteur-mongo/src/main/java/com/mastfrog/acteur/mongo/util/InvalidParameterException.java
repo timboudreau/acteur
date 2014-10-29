@@ -62,7 +62,8 @@ public class InvalidParameterException extends IllegalArgumentException {
 
         @Override
         public ErrorResponse evaluate(Throwable t, Acteur acteur, Page page, HttpEvent evt) {
-            return Err.badRequest(t.getMessage());
+            String msg = t.getMessage() == null ? t.getClass().getSimpleName() : t.getMessage();
+            return Err.badRequest(msg);
         }
     }
 }
