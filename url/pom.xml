@@ -17,6 +17,12 @@
             <groupId>com.kenai</groupId>
             <artifactId>simplevalidation</artifactId>
             <type>jar</type>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.kenai</groupId>
+                    <artifactId>nbstubs</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.netbeans.api</groupId>
