@@ -26,6 +26,7 @@ package com.mastfrog.acteur.server;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.google.inject.name.Named;
+import com.mastfrog.acteur.ContentConverter;
 import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_DECODE_REAL_IP;
 import com.mastfrog.acteur.spi.ApplicationControl;
 import com.mastfrog.settings.Settings;
@@ -66,12 +67,14 @@ final class UpstreamHandlerImpl extends ChannelInboundHandlerAdapter {
     @Inject(optional = true)
     @Named(SETTINGS_KEY_DECODE_REAL_IP)
     private boolean decodeRealIP = true;
+    private final ContentConverter converter;
 
     @Inject
-    UpstreamHandlerImpl(ApplicationControl application, PathFactory paths, Codec mapper, Settings settings) {
+    UpstreamHandlerImpl(ApplicationControl application, PathFactory paths, Codec mapper, Settings settings, ContentConverter converter) {
         this.application = application;
         this.paths = paths;
         this.mapper = mapper;
+        this.converter = converter;
     }
 
     @Override
@@ -95,7 +98,7 @@ final class UpstreamHandlerImpl extends ChannelInboundHandlerAdapter {
                     addr = new InetSocketAddress(hdr, addr instanceof InetSocketAddress ? ((InetSocketAddress) addr).getPort() : 80);
                 }
             }
-            EventImpl evt = new EventImpl(request, addr, ctx.channel(), paths, mapper);
+            EventImpl evt = new EventImpl(request, addr, ctx.channel(), paths, converter);
             evt.setNeverKeepAlive(neverKeepAlive);
             application.onEvent(evt, ctx.channel());
         } else if (msg instanceof WebSocketFrame) {

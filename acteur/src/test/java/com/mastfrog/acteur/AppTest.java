@@ -158,9 +158,8 @@ public class AppTest {
     static class ConvertBodyAction extends Acteur {
 
         @Inject
-        ConvertBodyAction(Event<?> event) throws IOException {
-            System.err.println("Convert body ");
-            Thing thing = event.getContentAsJSON(Thing.class);
+        ConvertBodyAction(HttpEvent event, ContentConverter cvt) throws IOException {
+            Thing thing = cvt.readObject(event.getContent(), event.getHeader(Headers.CONTENT_TYPE), Thing.class);
             if (thing == null) {
                 setState(new RejectedState());
             } else {

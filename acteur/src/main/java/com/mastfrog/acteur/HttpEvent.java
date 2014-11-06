@@ -28,6 +28,7 @@ import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.acteur.headers.Method;
 import com.mastfrog.url.Path;
 import io.netty.handler.codec.http.HttpRequest;
+import java.io.IOException;
 import java.util.Map;
 
 /**
@@ -115,4 +116,6 @@ public interface HttpEvent extends Event<HttpRequest> {
     Optional<Long> getLongParameter(String name);
 
     boolean isKeepAlive();
+    
+    String getContentAsString() throws IOException;
 }

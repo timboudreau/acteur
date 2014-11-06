@@ -33,7 +33,10 @@ import io.netty.handler.codec.http.HttpRequest;
  */
 public enum Method implements com.mastfrog.acteur.util.HttpMethod {
 
-    GET, PUT, POST, OPTIONS, HEAD, DELETE, TRACE, UNKNOWN;
+    GET, PUT, POST, OPTIONS, HEAD, DELETE, TRACE, CONNECT,
+    // WEBDAV
+    PROPFIND, PROPPATCH, MKCOL, COPY, MOVE, LOCK, UNLOCK,
+    UNKNOWN;
 
     public static Method get(HttpRequest req) {
         HttpMethod m = req.getMethod();

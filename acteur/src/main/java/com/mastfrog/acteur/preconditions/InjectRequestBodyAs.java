@@ -16,6 +16,7 @@ import java.lang.annotation.Target;
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
+@Description("Inject the request body as a specific type")
 public @interface InjectRequestBodyAs {
     Class<?> value();
 }

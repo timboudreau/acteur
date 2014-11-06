@@ -38,6 +38,26 @@ public final class HttpCallRegistryLoader implements Iterable<Class<? extends Pa
         for (Entry e : entries()) {
             types.addAll(e.bindings);
         }
+        // Load META-INF/http/numble.list - technically we should have
+        // pluggable loaders in ServiceLoader for this, but this will do for now
+        ClassLoader cl = type.getClassLoader();
+        try {
+            for (URL url : CollectionUtils.toIterable(cl.getResources("META-INF/http/numble.list"))) {
+                try (final InputStream in = url.openStream()) {
+                    String[] lines = Streams.readString(in, "UTF-8").split("\n");
+                    for (String line : lines) {
+                        if (line.isEmpty() || line.startsWith("#")) {
+                            continue;
+                        }
+                        types.add(Class.forName(line));
+                    }
+                } catch (ClassNotFoundException ex) {
+                    return Exceptions.chuck(ex);
+                }
+            }
+        } catch (IOException ex) {
+            return Exceptions.chuck(ex);
+        }
         return types;
     }
 

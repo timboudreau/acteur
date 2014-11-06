@@ -24,9 +24,12 @@
 package com.mastfrog.acteur.annotations;
 
 import static com.mastfrog.acteur.annotations.HttpCall.GENERATED_SOURCE_SUFFIX;
+import com.mastfrog.acteur.preconditions.InjectParametersAsInterface;
+import com.mastfrog.acteur.preconditions.InjectRequestBodyAs;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -72,7 +75,10 @@ import org.openide.util.lookup.ServiceProvider;
  * @author Tim Boudreau
  */
 @ServiceProvider(service = Processor.class)
-@SupportedAnnotationTypes("com.mastfrog.acteur.annotations.HttpCall")
+@SupportedAnnotationTypes({"com.mastfrog.acteur.annotations.HttpCall",
+    "com.mastfrog.acteur.preconditions.InjectRequestBodyAs",
+    "com.mastfrog.acteur.preconditions.InjectParametersAsInterface"
+})
 @SupportedSourceVersion(SourceVersion.RELEASE_6)
 public class HttpCallAnnotationProcessor extends AbstractProcessor {
 
@@ -103,10 +109,10 @@ public class HttpCallAnnotationProcessor extends AbstractProcessor {
         return types.isSubtype(e.asType(), pageType.asType());
     }
 
-    private AnnotationMirror findMirror(Element el) {
+    private AnnotationMirror findMirror(Element el, Class<? extends Annotation> annoType) {
         for (AnnotationMirror mir : el.getAnnotationMirrors()) {
             TypeMirror type = mir.getAnnotationType().asElement().asType();
-            if (HttpCall.class.getName().equals(type.toString())) {
+            if (annoType.getName().equals(type.toString())) {
                 return mir;
             }
         }
@@ -160,6 +166,7 @@ public class HttpCallAnnotationProcessor extends AbstractProcessor {
                                     DeclaredType dt = (DeclaredType) av.getValue();
                                     // Convert e.g. mypackage.Foo.Bar.Baz to mypackage.Foo$Bar$Baz
                                     String canonical = canonicalize(dt.asElement().asType(), env.getTypeUtils());
+                                    System.out.println("FOUND " + canonical + " on " + mirror);
                                     result.add(canonical);
                                 } else {
                                     env.getMessager().printMessage(Diagnostic.Kind.WARNING,
@@ -167,22 +174,37 @@ public class HttpCallAnnotationProcessor extends AbstractProcessor {
                                 }
                             } else {
                                 env.getMessager().printMessage(Diagnostic.Kind.WARNING,
-                                        "Annotation value for scopeTypes is not an AnnotationValue ");
+                                        "Annotation value for scopeTypes is not an AnnotationValue " + types(o));
                             }
                         }
+                    } else if (x.getValue().getValue() instanceof DeclaredType) {
+                        DeclaredType dt = (DeclaredType) x.getValue().getValue();
+                        // Convert e.g. mypackage.Foo.Bar.Baz to mypackage.Foo$Bar$Baz
+                        String canonical = canonicalize(dt.asElement().asType(), env.getTypeUtils());
+                        System.out.println("FOUND " + canonical + " on " + mirror);
+                        result.add(canonical);
+
                     } else {
+                        System.out.println("Not a List value " + mirror + " - " + types(x.getValue().getValue()));
                         env.getMessager().printMessage(Diagnostic.Kind.WARNING,
-                                "Annotation value for scopeTypes is not a list on ");
+                                "Annotation value for scopeTypes is not a list on " + mirror + " - " + types(x.getValue().getValue()));
                     }
                 }
             }
         }
+
+        System.out.println("TYPES FOR " + param + ": " + result);
         return result;
     }
 
     private List<String> bindingTypes(Element el) {
-        AnnotationMirror mirror = findMirror(el);
-        return typeList(mirror, "scopeTypes");
+        AnnotationMirror mirror = findMirror(el, HttpCall.class);
+        List<String> result = typeList(mirror, "scopeTypes");
+        mirror = findMirror(el, InjectParametersAsInterface.class);
+        result.addAll(typeList(mirror, "value"));
+        mirror = findMirror(el, InjectRequestBodyAs.class);
+        result.addAll(typeList(mirror, "value"));
+        return result;
     }
 
     StringBuilder lines = new StringBuilder();
@@ -192,10 +214,16 @@ public class HttpCallAnnotationProcessor extends AbstractProcessor {
 
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
-        Set<? extends Element> all = roundEnv.getElementsAnnotatedWith(HttpCall.class);
+        Set<Element> all = new HashSet<>(roundEnv.getElementsAnnotatedWith(HttpCall.class));
+        all.addAll(roundEnv.getElementsAnnotatedWith(InjectParametersAsInterface.class));
+        all.addAll(roundEnv.getElementsAnnotatedWith(InjectRequestBodyAs.class));
         try {
             for (Element e : all) {
-                HttpCall anno = e.getAnnotation(HttpCall.class);
+                Annotation anno = e.getAnnotation(HttpCall.class);
+                int order = 0;
+                if (anno instanceof HttpCall) {
+                    order = ((HttpCall) anno).order();
+                }
                 if (anno == null) {
                     continue;
                 }
@@ -205,14 +233,14 @@ public class HttpCallAnnotationProcessor extends AbstractProcessor {
                     continue;
                 }
                 elements.add(e);
-                if (isActeurSubtype(e)) {
+                if (acteur) {
                     String className = generatePageSource((TypeElement) e);
                     env.getMessager().printMessage(Diagnostic.Kind.NOTE, "Generated " + className + " for " + e.asType(), e);
                 } else {
                     if (lines.length() > 0) {
                         lines.append('\n');
                     }
-                    lines.append(canonicalize(e.asType(), env.getTypeUtils())).append(":").append(anno.order());
+                    lines.append(canonicalize(e.asType(), env.getTypeUtils())).append(":").append(order);
                     List<String> bindingTypes = bindingTypes(e);
                     if (!bindingTypes.isEmpty()) {
                         lines.append('{');
@@ -231,7 +259,7 @@ public class HttpCallAnnotationProcessor extends AbstractProcessor {
                 if (!elements.isEmpty()) {
                     String path = HttpCall.META_INF_PATH;
                     try {
-                        env.getMessager().printMessage(Diagnostic.Kind.NOTE, 
+                        env.getMessager().printMessage(Diagnostic.Kind.NOTE,
                                 "Found the following Page classes annotated with @HttpCall:\n" + lines);
                         FileObject fo = env.getFiler().createResource(StandardLocation.CLASS_OUTPUT,
                                 "", path, elements.toArray(new Element[0]));
@@ -299,7 +327,7 @@ public class HttpCallAnnotationProcessor extends AbstractProcessor {
                         }
                         continue;
                     }
-                }                
+                }
                 ps.print("@" + am.getAnnotationType());
                 boolean first = true;
                 Iterator it = am.getElementValues().entrySet().iterator();

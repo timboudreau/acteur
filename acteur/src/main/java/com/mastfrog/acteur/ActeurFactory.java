@@ -248,20 +248,26 @@ public class ActeurFactory {
      * @return An acteur
      */
     public <T> Acteur injectRequestBodyAsJSON(final Class<T> type) {
+        @Description("Injects the body as a specific type")
         class InjectBody extends Acteur {
 
             @Override
             public State getState() {
+                final ContentConverter converter = deps.getInstance(ContentConverter.class);
+                
                 HttpEvent evt = deps.getInstance(HttpEvent.class);
                 try {
-                    T obj = evt.getContentAsJSON(type);
+                    MediaType mt = evt.getHeader(Headers.CONTENT_TYPE);
+                    if (mt == null) {
+                        mt = MediaType.ANY_TYPE;
+                    }
+                    T obj = converter.readObject(evt.getContent(), mt, type);
                     return new ConsumedLockedState(obj);
                 } catch (IOException ex) {
                     Logger.getLogger(ActeurFactory.class.getName()).log(Level.SEVERE, null, ex);
                     return new RespondWith(Err.badRequest("Bad or no JSON\n" + stackTrace(ex)));
                 }
             }
-
             @Override
             public void describeYourself(Map<String, Object> into) {
                 into.put("Expects JSON Request Body", true);
@@ -296,7 +302,8 @@ public class ActeurFactory {
             @Override
             public State getState() {
                 HttpEvent evt = deps.getInstance(HttpEvent.class);
-                T obj = evt.getParametersAs(type);
+                ContentConverter converter = deps.getInstance(ContentConverter.class);
+                T obj = converter.createObjectFor(evt.getParametersAsMap(), type);
                 if (obj != null) {
                     return new ConsumedLockedState(obj);
                 }

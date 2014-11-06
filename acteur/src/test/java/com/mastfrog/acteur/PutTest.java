@@ -91,7 +91,7 @@ public class PutTest {
         System.out.println("GOT BODY '" + body + "'");
         assertEquals("Hello world", body);
         List<Integer> s = new ArrayList<>();
-        for (int i = 0; i < 1000; i++) {
+        for (int i = 0; i < 20; i++) {
             HttpPut put = new HttpPut("http://localhost:8193");
             put.addHeader("X-Iteration", "" + i);
             System.out.println("ITER " + i);

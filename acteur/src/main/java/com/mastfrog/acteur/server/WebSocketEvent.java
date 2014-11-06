@@ -6,9 +6,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;
 import io.netty.channel.Channel;
 import io.netty.handler.codec.http.websocketx.WebSocketFrame;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.net.SocketAddress;
 
 /**
@@ -52,19 +50,5 @@ final class WebSocketEvent implements Event<WebSocketFrame> {
     @Override
     public ByteBuf getContent() throws IOException {
         return frame.content();
-    }
-
-    public OutputStream getContentAsStream() throws IOException {
-        ByteArrayOutputStream out = new ByteArrayOutputStream(40);
-        getChannel().read();
-        ByteBuf inbound = getContent();
-        int count;
-        do {
-            count = inbound.readableBytes();
-            if (count > 0) {
-                inbound.readBytes(out, count);
-            }
-        } while (count > 0);
-        return out;
     }
 }
