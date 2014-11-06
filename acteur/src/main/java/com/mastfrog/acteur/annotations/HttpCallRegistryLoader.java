@@ -66,7 +66,6 @@ public final class HttpCallRegistryLoader implements Iterable<Class<? extends Pa
         Set<Class<? extends Module>> types = new HashSet();
         ClassLoader cl = type.getClassLoader();
         for (URL url : CollectionUtils.toIterable(cl.getResources(GuiceModule.META_INF_PATH))) {
-            System.out.println("LOAD " + url);
             try (final InputStream in = url.openStream()) {
                 // Split into lines
                 String[] lines = Streams.readString(in, "UTF-8").split("\n");

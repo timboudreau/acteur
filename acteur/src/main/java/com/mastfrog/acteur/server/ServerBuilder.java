@@ -26,6 +26,7 @@ package com.mastfrog.acteur.server;
 import com.google.inject.AbstractModule;
 import com.google.inject.Module;
 import com.mastfrog.acteur.Application;
+import com.mastfrog.acteur.annotations.GenericApplication;
 import com.mastfrog.acteur.annotations.GenericApplicationModule;
 import com.mastfrog.acteur.util.Server;
 import com.mastfrog.giulius.DependenciesBuilder;
@@ -166,7 +167,7 @@ public final class ServerBuilder {
     }
     
     private ScopeProvider appModule(Settings settings) {
-        if (appType == null) {
+        if (appType == null || GenericApplication.class.isAssignableFrom(appType)) {
             return new GS(settings, types);
         } else {
             return new TS(appType, types);
@@ -184,7 +185,7 @@ public final class ServerBuilder {
 
         @Override
         protected void configure() {
-            super.configure(); //To change body of generated methods, choose Tools | Templates.
+            super.configure();
             Class<?>[] types = toBind.toArray(new Class<?>[toBind.size()]);
             scope.bindTypes(binder(), types);
         }
@@ -204,7 +205,7 @@ public final class ServerBuilder {
         
         @Override
         protected void configure() {
-            super.configure(); //To change body of generated methods, choose Tools | Templates.
+            super.configure();
             Class<?>[] types = toBind.toArray(new Class<?>[toBind.size()]);
             scope.bindTypes(binder(), types);
         }        

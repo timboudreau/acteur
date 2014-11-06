@@ -25,6 +25,10 @@ package com.mastfrog.acteur;
 
 import com.google.common.net.MediaType;
 import com.google.inject.Provider;
+import com.mastfrog.giulius.Dependencies;
+import com.mastfrog.parameters.KeysValues;
+import com.mastfrog.parameters.gen.Origin;
+import com.mastfrog.parameters.validation.ParamChecker;
 import com.mastfrog.util.Codec;
 import com.mastfrog.util.Streams;
 import io.netty.buffer.ByteBuf;
@@ -40,6 +44,7 @@ import javax.inject.Inject;
 import org.joda.time.DateTime;
 import org.joda.time.Duration;
 import org.netbeans.validation.api.InvalidInputException;
+import org.netbeans.validation.api.Problems;
 
 /**
  * Converts byte buffers and maps to objects
@@ -50,11 +55,15 @@ public class ContentConverter {
 
     protected final Codec codec;
     private final Provider<Charset> charset;
+    private final ParamChecker checker;
+    private final Dependencies deps;
 
     @Inject
-    public ContentConverter(Codec codec, Provider<Charset> charset) {
+    public ContentConverter(Codec codec, Provider<Charset> charset, ParamChecker checker, Dependencies deps) {
         this.codec = codec;
         this.charset = charset;
+        this.checker = checker;
+        this.deps = deps;
     }
 
     public String toString(ByteBuf content, Charset encoding) throws IOException {
@@ -72,7 +81,7 @@ public class ContentConverter {
         }
         return result;
     }
-    
+
     private Charset findCharset(MediaType mt) {
         if (mt == null) {
             return charset.get();
@@ -106,11 +115,27 @@ public class ContentConverter {
         if (type == String.class || type == CharSequence.class) {
             return type.cast(toString(buf, findCharset(mimeType)));
         }
+        Origin origin = type.getAnnotation(Origin.class);
+        if (origin != null) {
+            Map map;
+            try (InputStream in = new ByteBufInputStream(buf)) {
+                map = codec.readValue(in, Map.class);
+            } finally {
+                buf.resetReaderIndex();
+            }
+            validate(origin, map).throwIfFatalPresent();
+        }
         try (InputStream in = new ByteBufInputStream(buf)) {
             return codec.readValue(in, type);
         } finally {
             buf.resetReaderIndex();
         }
+    }
+    
+    private Problems validate(Origin origin, Map map) {
+            Problems problems = new Problems();
+            checker.check(origin.value(), new KeysValues.MapAdapter(map), problems);
+            return problems;
     }
 
     public <T> T toObject(Map<String, ?> m, Class<T> type) throws InvalidInputException {
@@ -122,7 +147,11 @@ public class ContentConverter {
     }
 
     protected <T> T createObjectFor(Map<String, ?> m, Class<T> type) {
-        throw new UnsupportedOperationException("No support for instantiating objects from maps");
+        Origin origin = type.getAnnotation(Origin.class);
+        if (origin != null) {
+            validate(origin, m).throwIfFatalPresent();
+        }
+        return deps.getInstance(type);
     }
 
     protected <T> T createProxyFor(Map<String, ?> m, Class<T> type) {

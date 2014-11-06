@@ -104,9 +104,11 @@ public class GenericApplicationModule extends ServerModule { // non final for un
             bind(Class[].class).annotatedWith(Names.named(EXCLUDED_CLASSES)).toInstance(exclude);
             bind(new GenericArrayOfClasses()).annotatedWith(Names.named(EXCLUDED_CLASSES)).toInstance(exclude);
             bind(new SetOfClasses()).annotatedWith(Names.named(EXCLUDED_CLASSES)).toInstance(toExclude);
-            Set<Class<?>> bindTypes = ldr.implicitBindings();
-            bindTypes.removeAll(toExclude);
-            scope.bindTypes(binder(), bindTypes.toArray(new Class<?>[0]));
+            for (Class<?> c : ldr.implicitBindings()) {
+                if (!toExclude.contains(c)) {
+                    scope.bindTypes(binder(), c);
+                }
+            }
             for (Class<? extends Module> module : ldr.modules()) {
                 if (!toExclude.contains(module)) {
                     install(instantiateModule(module, settings, scope));

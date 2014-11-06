@@ -32,12 +32,16 @@ import com.google.inject.Scopes;
 import com.google.inject.Singleton;
 import com.google.inject.TypeLiteral;
 import com.google.inject.name.Names;
+import com.mastfrog.acteur.Acteur;
 import com.mastfrog.acteur.Application;
 import com.mastfrog.acteur.Closables;
 import com.mastfrog.acteur.Event;
 import com.mastfrog.acteur.HttpEvent;
 import com.mastfrog.acteur.ImplicitBindings;
 import com.mastfrog.acteur.Page;
+import com.mastfrog.acteur.errors.Err;
+import com.mastfrog.acteur.errors.ErrorResponse;
+import com.mastfrog.acteur.errors.ExceptionEvaluator;
 import com.mastfrog.acteur.errors.ExceptionEvaluatorRegistry;
 import com.mastfrog.acteur.server.ServerModule.TF;
 import com.mastfrog.acteur.spi.ApplicationControl;
@@ -46,6 +50,7 @@ import com.mastfrog.acteur.util.Server;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.guicy.annotations.Defaults;
 import com.mastfrog.guicy.scope.ReentrantScope;
+import com.mastfrog.parameters.KeysValues;
 import com.mastfrog.settings.MutableSettings;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.settings.SettingsBuilder;
@@ -81,6 +86,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 import org.joda.time.DateTime;
 import org.joda.time.Duration;
+import org.netbeans.validation.api.InvalidInputException;
 
 /**
  *
@@ -281,6 +287,40 @@ public class ServerModule<A extends Application> extends AbstractModule {
         bind(Codec.class).to(CodecImpl.class);
         bind(ApplicationControl.class).toProvider(ApplicationControlProvider.class).in(Scopes.SINGLETON);
         bind(ExceptionEvaluatorRegistry.class).asEagerSingleton();
+        bind(KeysValues.class).toProvider(KeysValuesProvider.class);
+        bind(InvalidInputExceptionEvaluator.class).asEagerSingleton();
+    }
+
+    private static final class KeysValuesProvider implements Provider<KeysValues> {
+
+        private final Provider<HttpEvent> evt;
+
+        @Inject
+        public KeysValuesProvider(Provider<HttpEvent> evt) {
+            this.evt = evt;
+        }
+
+        @Override
+        public KeysValues get() {
+            return new KeysValues.MapAdapter(evt.get().getParametersAsMap());
+        }
+    }
+
+    private static final class InvalidInputExceptionEvaluator extends ExceptionEvaluator {
+
+        @Inject
+        public InvalidInputExceptionEvaluator(ExceptionEvaluatorRegistry registry) {
+            super(registry);
+        }
+
+        @Override
+        public ErrorResponse evaluate(Throwable t, Acteur acteur, Page page, HttpEvent evt) {
+            if (t instanceof InvalidInputException) {
+                InvalidInputException iie = (InvalidInputException) t;
+                return Err.badRequest(iie.getProblems().toString());
+            }
+            return null;
+        }
     }
 
     private static final class EventProvider implements Provider<Event<?>> {

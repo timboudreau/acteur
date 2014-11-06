@@ -23,11 +23,14 @@
  */
 package com.mastfrog.acteur.errors;
 
+import com.google.common.collect.Lists;
 import com.google.inject.Inject;
 import com.mastfrog.acteur.Acteur;
 import com.mastfrog.acteur.HttpEvent;
 import com.mastfrog.acteur.Page;
 import com.mastfrog.settings.Settings;
+import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 import javax.inject.Singleton;
@@ -38,7 +41,7 @@ import javax.inject.Singleton;
  */
 @Singleton
 public final class ExceptionEvaluatorRegistry {
-    private final Set<ExceptionEvaluator> evaluators = new TreeSet<>();
+    private final List<ExceptionEvaluator> evaluators = Lists.newCopyOnWriteArrayList();
     public static final String SETTINGS_KEY_DEFAULT_EXCEPTION_HANDLING = "default.exception.handling";
     @Inject
     ExceptionEvaluatorRegistry(Settings settings) {
@@ -66,6 +69,7 @@ public final class ExceptionEvaluatorRegistry {
 
     void register(ExceptionEvaluator eval) {
         evaluators.add(eval);
+        Collections.sort(evaluators);
     }
 
     public ErrorResponse evaluate(Throwable t, Acteur acteur, Page page, HttpEvent evt) {

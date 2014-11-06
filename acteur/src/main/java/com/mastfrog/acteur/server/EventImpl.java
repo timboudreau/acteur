@@ -34,6 +34,7 @@ import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.acteur.headers.Method;
 import com.mastfrog.acteur.util.Connection;
+import com.mastfrog.parameters.validation.ParamChecker;
 import com.mastfrog.url.Path;
 import com.mastfrog.util.Codec;
 import com.mastfrog.util.Streams;
@@ -78,7 +79,7 @@ final class EventImpl implements HttpEvent {
         address = new InetSocketAddress("timboudreau.com", 8985); //XXX for tests
         this.channel = null;
         Codec codec = new ServerModule.CodecImpl(Providers.of(new ObjectMapper()));
-        this.converter = new ContentConverter(codec, Providers.of(Charset.defaultCharset()));
+        this.converter = new ContentConverter(codec, Providers.of(Charset.defaultCharset()), null, null);
     }
 
     public EventImpl(HttpRequest req, SocketAddress addr, Channel channel, PathFactory paths, ContentConverter converter) {
