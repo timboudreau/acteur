@@ -38,7 +38,8 @@ import org.junit.runner.RunWith;
 public class GenericApplicationTest {
 
     public static void main(String[] args) throws IOException, InterruptedException {
-        new ServerBuilder().build().start(8080).await();
+        Settings s = new SettingsBuilder().add("acteur.debug", "true").build();
+        new ServerBuilder().add(s).build().start(8080).await();
     }
 
     static class M extends AbstractModule {

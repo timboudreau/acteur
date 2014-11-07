@@ -28,6 +28,7 @@ import com.google.inject.name.Named;
 import com.mastfrog.acteur.server.ServerModule;
 import com.mastfrog.guicy.scope.ReentrantScope;
 import com.mastfrog.settings.Settings;
+import com.mastfrog.treadmill.SynchronousTreadmill;
 import com.mastfrog.treadmill.Treadmill;
 import com.mastfrog.util.Checks;
 import com.mastfrog.util.collections.CollectionUtils;
@@ -50,6 +51,7 @@ final class ActeursImpl implements Acteurs {
     private final Page page;
     private final Settings settings;
     private static boolean debug;
+    private final boolean sync;
 
     @Inject
     ActeursImpl(@Named(ServerModule.BACKGROUND_THREAD_POOL_NAME) ExecutorService exe, ReentrantScope scope, Page page, Settings settings) {
@@ -63,6 +65,7 @@ final class ActeursImpl implements Acteurs {
         assert check(page.getActeurs());
         this.settings = settings;
         debug = settings.getBoolean("acteur.debug", true);
+        sync = settings.getBoolean("acteur.synchronous", false);
     }
 
     private boolean check(List<Object> actionsOrTypes) {
@@ -102,9 +105,15 @@ final class ActeursImpl implements Acteurs {
         Iterator<Callable<Object[]>> it = CollectionUtils.convertedIterator(converter, acteurs);
         // The nifty thing that will run each Callable in succession and 
         // inject its output into the next callable's scope
-        Treadmill t = new Treadmill(exe, scope, it, receiver);
-        // Launch the response
-        t.start(finish, event, page);
+        if (sync) {
+            Treadmill t = new Treadmill(exe, scope, it, receiver);
+            // Launch the response
+            t.start(finish, event, page);
+        } else {
+            SynchronousTreadmill t = new SynchronousTreadmill(scope, it, receiver);
+            // Launch the response
+            t.start(finish, event, page);
+        }
     }
 
     @Override

@@ -30,9 +30,9 @@ import java.nio.charset.Charset;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
+import java.util.Base64;
 import javax.inject.Inject;
 import javax.inject.Singleton;
-import org.apache.commons.codec.binary.Base64;
 
 /**
  * Hashes passwords into hashes which can be tested for matching but which
@@ -74,7 +74,7 @@ public final class PasswordHasher {
     public boolean checkPassword(String unhashed, String hashed) {
         try {
             byte[] bytes = hash(unhashed);
-            byte[] check = Base64.decodeBase64(hashed);
+            byte[] check = Base64.getDecoder().decode(hashed);
             return Arrays.equals(bytes, check);
         } catch (NoSuchAlgorithmException ex) {
             return Exceptions.chuck(ex);
@@ -83,7 +83,7 @@ public final class PasswordHasher {
 
     public String encryptPassword(String password) {
         try {
-            return Base64.encodeBase64String(hash(password));
+            return Base64.getEncoder().encodeToString(hash(password));
         } catch (NoSuchAlgorithmException ex) {
             return Exceptions.chuck(ex);
         }

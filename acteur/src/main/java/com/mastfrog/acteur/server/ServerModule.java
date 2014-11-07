@@ -43,6 +43,7 @@ import com.mastfrog.acteur.errors.Err;
 import com.mastfrog.acteur.errors.ErrorResponse;
 import com.mastfrog.acteur.errors.ExceptionEvaluator;
 import com.mastfrog.acteur.errors.ExceptionEvaluatorRegistry;
+import com.mastfrog.acteur.headers.Method;
 import com.mastfrog.acteur.server.ServerModule.TF;
 import com.mastfrog.acteur.spi.ApplicationControl;
 import com.mastfrog.acteur.util.BasicCredentials;
@@ -55,12 +56,14 @@ import com.mastfrog.settings.MutableSettings;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.settings.SettingsBuilder;
 import com.mastfrog.treadmill.Treadmill;
+import com.mastfrog.url.Path;
 import com.mastfrog.util.Codec;
 import com.mastfrog.util.ConfigurationError;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.buffer.UnpooledByteBufAllocator;
+import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
@@ -289,6 +292,55 @@ public class ServerModule<A extends Application> extends AbstractModule {
         bind(ExceptionEvaluatorRegistry.class).asEagerSingleton();
         bind(KeysValues.class).toProvider(KeysValuesProvider.class);
         bind(InvalidInputExceptionEvaluator.class).asEagerSingleton();
+        bind(Channel.class).toProvider(ChannelProvider.class);
+        bind(Method.class).toProvider(MethodProvider.class);
+        bind(Path.class).toProvider(PathProvider.class);
+    }
+
+    private static final class PathProvider implements Provider<Path> {
+
+        private final Provider<HttpEvent> evt;
+
+        @Inject
+        PathProvider(Provider<HttpEvent> evt) {
+            this.evt = evt;
+        }
+
+        @Override
+        public Path get() {
+            return evt.get().getPath();
+        }
+    }
+
+    private static final class MethodProvider implements Provider<Method> {
+
+        private final Provider<HttpEvent> evt;
+
+        @Inject
+        MethodProvider(Provider<HttpEvent> evt) {
+            this.evt = evt;
+        }
+
+        @Override
+        public Method get() {
+            return evt.get().getMethod();
+        }
+
+    }
+
+    private static final class ChannelProvider implements Provider<Channel> {
+
+        private final Provider<HttpEvent> evt;
+
+        @Inject
+        ChannelProvider(Provider<HttpEvent> evt) {
+            this.evt = evt;
+        }
+
+        @Override
+        public Channel get() {
+            return evt.get().getChannel();
+        }
     }
 
     private static final class KeysValuesProvider implements Provider<KeysValues> {

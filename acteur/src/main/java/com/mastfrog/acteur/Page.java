@@ -32,7 +32,7 @@ import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.acteur.preconditions.BannedUrlParameters;
 import com.mastfrog.acteur.preconditions.BasicAuth;
 import com.mastfrog.acteur.preconditions.Description;
-import com.mastfrog.acteur.preconditions.InjectParametersAsInterface;
+import com.mastfrog.acteur.preconditions.InjectUrlParametersAs;
 import com.mastfrog.acteur.preconditions.InjectRequestBodyAs;
 import com.mastfrog.acteur.preconditions.MaximumPathLength;
 import com.mastfrog.acteur.preconditions.MaximumRequestBodyLength;
@@ -328,12 +328,9 @@ public abstract class Page implements Iterable<Acteur> {
                 acteurs.add(af.parametersMayNotBeCombined(c1.value()));
             }
         }
-        InjectParametersAsInterface paramsIface = c.getAnnotation(InjectParametersAsInterface.class);
+        InjectUrlParametersAs paramsIface = c.getAnnotation(InjectUrlParametersAs.class);
         if (paramsIface != null) {
             Class<?> type = paramsIface.value();
-            if (!type.isInterface()) {
-                throw new IllegalArgumentException("Not an interface: " + type);
-            }
             ActeurFactory af = a != null ? a : (a = getApplication().getDependencies().getInstance(ActeurFactory.class));
             acteurs.add(af.injectRequestParametersAs(type));
         }
@@ -361,7 +358,7 @@ public abstract class Page implements Iterable<Acteur> {
                 .add(Methods.class)
                 .add(BannedUrlParameters.class)
                 .add(InjectRequestBodyAs.class)
-                .add(InjectParametersAsInterface.class)
+                .add(InjectUrlParametersAs.class)
                 .add(MaximumRequestBodyLength.class)
                 .add(MaximumPathLength.class)
                 .add(MinimumRequestBodyLength.class)

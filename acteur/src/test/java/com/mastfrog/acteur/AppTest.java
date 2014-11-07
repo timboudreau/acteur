@@ -25,12 +25,15 @@ import com.mastfrog.acteur.server.PathFactory;
 import com.mastfrog.acteur.server.ServerModule;
 import com.mastfrog.acteur.util.RequestID;
 import com.mastfrog.util.Checks;
+import com.mastfrog.util.Codec;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
 import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.http.DefaultFullHttpRequest;
 import io.netty.util.CharsetUtil;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.charset.Charset;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -59,7 +62,28 @@ public class AppTest {
             ExecutorService exe = Executors.newSingleThreadExecutor();
             bind(ExecutorService.class).annotatedWith(Names.named(ServerModule.BACKGROUND_THREAD_POOL_NAME)).toInstance(exe);
             bind(RequestID.class).toInstance(new RequestID());
-            
+            bind(Codec.class).toInstance(new Codec() {
+                final ObjectMapper mapper = new ObjectMapper();
+                @Override
+                public <T> String writeValueAsString(T object) throws IOException {
+                    return mapper.writeValueAsString(object);
+                }
+
+                @Override
+                public <T> void writeValue(T object, OutputStream out) throws IOException {
+                    mapper.writeValue(out, object);
+                }
+
+                @Override
+                public <T> byte[] writeValueAsBytes(T object) throws IOException {
+                    return mapper.writeValueAsBytes(object);
+                }
+
+                @Override
+                public <T> T readValue(InputStream byteBufInputStream, Class<T> type) throws IOException {
+                    return mapper.readValue(byteBufInputStream, type);
+                }
+            });
             //Generic madness - Event != Event<?>
             final Provider<Event> e = binder().getProvider(Event.class);
             bind(new TypeLiteral<Event<?>>(){}).toProvider(new Provider<Event<?>>() {

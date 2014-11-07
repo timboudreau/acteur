@@ -24,7 +24,7 @@
 package com.mastfrog.acteur.annotations;
 
 import static com.mastfrog.acteur.annotations.HttpCall.GENERATED_SOURCE_SUFFIX;
-import com.mastfrog.acteur.preconditions.InjectParametersAsInterface;
+import com.mastfrog.acteur.preconditions.InjectUrlParametersAs;
 import com.mastfrog.acteur.preconditions.InjectRequestBodyAs;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -198,7 +198,7 @@ public class HttpCallAnnotationProcessor extends AbstractProcessor {
     private List<String> bindingTypes(Element el) {
         AnnotationMirror mirror = findMirror(el, HttpCall.class);
         List<String> result = typeList(mirror, "scopeTypes");
-        mirror = findMirror(el, InjectParametersAsInterface.class);
+        mirror = findMirror(el, InjectUrlParametersAs.class);
         result.addAll(typeList(mirror, "value"));
         mirror = findMirror(el, InjectRequestBodyAs.class);
         result.addAll(typeList(mirror, "value"));
@@ -215,7 +215,7 @@ public class HttpCallAnnotationProcessor extends AbstractProcessor {
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
         Set<Element> all = new HashSet<>(roundEnv.getElementsAnnotatedWith(HttpCall.class));
-        all.addAll(roundEnv.getElementsAnnotatedWith(InjectParametersAsInterface.class));
+        all.addAll(roundEnv.getElementsAnnotatedWith(InjectUrlParametersAs.class));
         all.addAll(roundEnv.getElementsAnnotatedWith(InjectRequestBodyAs.class));
         List<String> failed = new LinkedList<>();
         

@@ -115,7 +115,7 @@ final class PagesImpl implements Pages {
         public Void call() throws Exception {
             // See if any pages are left
             if (pages.hasNext()) {
-                try (AutoCloseable a1 = application.getRequestScope().enter(event, id, channel, close)) {
+                try (AutoCloseable a1 = application.getRequestScope().enter(event, id, close)) {
                     Page page = pages.next();
                     page.setApplication(application);
     //                if (debug) {

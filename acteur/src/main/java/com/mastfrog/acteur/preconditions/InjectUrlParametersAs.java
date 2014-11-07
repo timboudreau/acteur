@@ -1,7 +1,7 @@
-/* 
+/*
  * The MIT License
  *
- * Copyright 2013 Tim Boudreau.
+ * Copyright 2014 tim.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,12 +21,29 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.mastfrog.acteur.auth.file;
+
+package com.mastfrog.acteur.preconditions;
+
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
 /**
+* Make the request parameters available as the passed type.  Note that this type
+ * must also be in the application's &#064;ImplicitBindings to be available to
+ * Guice.  The passed type <i>must be an interface</i> with method names that
+ * match the exact name and type of the expected URL parameters.
+ * Annotation which can appear on an Acteur with the &#064;HttpCall annotation
+ * or on a Page with that annotation.
  *
- * @author Tim Boudreau
- */
-public interface Role {
-    public String getName();
+ * @author Tim Boudreau 
+  */
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.TYPE)
+@Description("Inject the URL's parameters as the passed interface - the interface "
+        + "should have methods named after the desired parameters which return"
+        + "the desired type")
+public @interface InjectUrlParametersAs {
+    Class<?> value();
 }

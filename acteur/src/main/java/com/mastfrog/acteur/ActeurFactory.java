@@ -52,6 +52,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
+import org.netbeans.validation.api.InvalidInputException;
 
 /**
  * Factory for standard Acteur implementations, mainly used to determine if a
@@ -254,7 +255,7 @@ public class ActeurFactory {
             @Override
             public State getState() {
                 final ContentConverter converter = deps.getInstance(ContentConverter.class);
-                
+
                 HttpEvent evt = deps.getInstance(HttpEvent.class);
                 try {
                     MediaType mt = evt.getHeader(Headers.CONTENT_TYPE);
@@ -268,6 +269,7 @@ public class ActeurFactory {
                     return new RespondWith(Err.badRequest("Bad or no JSON\n" + stackTrace(ex)));
                 }
             }
+
             @Override
             public void describeYourself(Map<String, Object> into) {
                 into.put("Expects JSON Request Body", true);
@@ -303,9 +305,13 @@ public class ActeurFactory {
             public State getState() {
                 HttpEvent evt = deps.getInstance(HttpEvent.class);
                 ContentConverter converter = deps.getInstance(ContentConverter.class);
-                T obj = converter.createObjectFor(evt.getParametersAsMap(), type);
-                if (obj != null) {
-                    return new ConsumedLockedState(obj);
+                try {
+                    T obj = converter.createObjectFor(evt.getParametersAsMap(), type);
+                    if (obj != null) {
+                        return new ConsumedLockedState(obj);
+                    }
+                } catch (InvalidInputException ex) {
+                    setState(new RespondWith(Err.badRequest(ex.getProblems().toString())));
                 }
                 return new RejectedState();
             }
@@ -322,6 +328,7 @@ public class ActeurFactory {
     public Acteur responseCode(final HttpResponseStatus status) {
         @Description("Send a response code")
         class SendResponseCode extends Acteur {
+
             @Override
             public State getState() {
                 return new Acteur.RespondWith(status);
@@ -742,7 +749,7 @@ public class ActeurFactory {
                 try {
                     int val = deps.getInstance(HttpEvent.class).getContent().readableBytes();
                     if (val > length) {
-                        return new Acteur.RespondWith(new Err(HttpResponseStatus.REQUEST_ENTITY_TOO_LARGE, 
+                        return new Acteur.RespondWith(new Err(HttpResponseStatus.REQUEST_ENTITY_TOO_LARGE,
                                 "Request body must be < " + length + " characters"));
                     }
                     return new Acteur.ConsumedState();

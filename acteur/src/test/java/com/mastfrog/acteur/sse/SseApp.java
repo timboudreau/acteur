@@ -62,7 +62,7 @@ public class SseApp extends Application implements Runnable {
         int ix = 0;
         try {
             for (;;) {
-                Thread.sleep(200);
+                Thread.sleep(30);
                 events.get().publish("hello " + ix++);
             }
         } catch (InterruptedException ex) {

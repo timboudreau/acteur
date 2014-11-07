@@ -36,7 +36,6 @@ import static io.netty.handler.codec.http.HttpResponseStatus.NOT_FOUND;
 import io.netty.util.CharsetUtil;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -68,21 +67,19 @@ public class SseTest {
             @Override
             public void receive(HttpContent c) {
                 if (c == null) {
-                    System.out.println("GOT NULL BUF");
                     return;
                 }
                 ByteBuf buf = c.content();
                 byte[] bytes = new byte[buf.readableBytes()];
                 buf.readBytes(bytes);
                 String s = new String(bytes, CharsetUtil.UTF_8);
-                System.out.println("READ " + s);
                 content.append(s);
                 int ct = count.incrementAndGet();
                 if (ct > 5) {
                     res[0].cancel();
                 }
             }
-        }).setTimeout(Duration.standardSeconds(60)).go();
+        }).setTimeout(Duration.standardSeconds(10)).go();
         try {
             res[0].await();
         } catch (InterruptedException ex) {

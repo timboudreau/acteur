@@ -27,7 +27,6 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNotNull;
 import org.openide.util.Exceptions;
 
 /**

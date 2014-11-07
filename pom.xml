@@ -15,7 +15,6 @@
         <module>url</module>
         <module>acteur</module>
         <module>acteur-util</module>
-        <module>acteur-folder-auth</module>
         <module>acteur-resources</module>
         <module>acteur-mongo</module>
         <module>deprecated</module>
