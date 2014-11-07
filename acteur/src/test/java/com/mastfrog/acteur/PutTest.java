@@ -37,6 +37,11 @@ public class PutTest {
         SM() {
             super (EchoServer.class, 2, 2, 3);
         }
+
+        @Override
+        protected void configure() {
+            super.configure();
+        }
     }
 
     @Test(timeout = 20000L)
