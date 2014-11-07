@@ -23,9 +23,7 @@
  */
 package com.mastfrog.acteur.server;
 
-import com.google.inject.Inject;
 import com.google.inject.Singleton;
-import com.google.inject.name.Named;
 import com.mastfrog.acteur.ContentConverter;
 import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_DECODE_REAL_IP;
 import com.mastfrog.acteur.spi.ApplicationControl;
@@ -43,6 +41,7 @@ import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
 import io.netty.handler.codec.http.websocketx.WebSocketFrame;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import javax.inject.Inject;
 
 /**
  *
@@ -54,19 +53,13 @@ final class UpstreamHandlerImpl extends ChannelInboundHandlerAdapter {
 
     private final ApplicationControl application;
     private final PathFactory paths;
-    @Inject(optional = true)
-    @Named("neverKeepAlive")
-    private boolean neverKeepAlive = true;
-    private @Inject(optional = true)
-    @Named("aggregateChunks")
-    boolean aggregateChunks = PipelineFactoryImpl.DEFAULT_AGGREGATE_CHUNKS;
+    private final boolean neverKeepAlive;
+    private final boolean aggregateChunks;
     private final Codec mapper;
     @Inject
     private UnknownNetworkEventHandler uneh;
 
-    @Inject(optional = true)
-    @Named(SETTINGS_KEY_DECODE_REAL_IP)
-    private boolean decodeRealIP = true;
+    private final boolean decodeRealIP;
     private final ContentConverter converter;
 
     @Inject
@@ -75,6 +68,9 @@ final class UpstreamHandlerImpl extends ChannelInboundHandlerAdapter {
         this.paths = paths;
         this.mapper = mapper;
         this.converter = converter;
+        aggregateChunks = settings.getBoolean("aggregateChunks", PipelineFactoryImpl.DEFAULT_AGGREGATE_CHUNKS);
+        neverKeepAlive = settings.getBoolean("neverKeepAlive", true);
+        decodeRealIP = settings.getBoolean(SETTINGS_KEY_DECODE_REAL_IP, true);
     }
 
     @Override
@@ -103,7 +99,7 @@ final class UpstreamHandlerImpl extends ChannelInboundHandlerAdapter {
             application.onEvent(evt, ctx.channel());
         } else if (msg instanceof WebSocketFrame) {
             WebSocketFrame frame = (WebSocketFrame) msg;
-            SocketAddress addr = (SocketAddress) ctx.channel().remoteAddress();
+            SocketAddress addr = ctx.channel().remoteAddress();
             // XXX - any way to decode real IP?
             WebSocketEvent wsEvent = new WebSocketEvent(frame, ctx.channel(), addr, mapper);
 

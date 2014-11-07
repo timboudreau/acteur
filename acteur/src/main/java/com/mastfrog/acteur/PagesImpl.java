@@ -23,7 +23,6 @@
  */
 package com.mastfrog.acteur;
 
-import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import com.mastfrog.acteur.server.ServerModule;
 import com.mastfrog.acteur.util.RequestID;
@@ -43,6 +42,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
+import javax.inject.Inject;
 
 /**
  * Thing which takes an event and runs it against all of the pages of the
@@ -58,10 +58,12 @@ final class PagesImpl implements Pages {
 
     public static final String SETTINGS_KEY_DELAY_THREAD_POOL_THREADS = "delay.response.threads";
     private static final int DEFAULT_DELAY_THREADS = 2;
+    private final Settings settings;
 
     @Inject
     PagesImpl(Application application, Settings settings, @Named(ServerModule.WORKER_THREADS) ThreadFactory workerThreadFactory) {
         this.application = application;
+        this.settings = settings;
         int count = settings.getInt(SETTINGS_KEY_DELAY_THREAD_POOL_THREADS, DEFAULT_DELAY_THREADS);
         scheduler = Executors.newScheduledThreadPool(count, workerThreadFactory);
     }
@@ -84,7 +86,7 @@ final class PagesImpl implements Pages {
         Iterator<Page> it = application.iterator();
         CountDownLatch latch = new CountDownLatch(1);
         Closables closables = new Closables(channel, application.control());
-        PageRunner pageRunner = new PageRunner(application, it, latch, id, event, channel, scheduler, closables);
+        PageRunner pageRunner = new PageRunner(application, settings, it, latch, id, event, channel, scheduler, closables);
         application.getWorkerThreadPool().submit(pageRunner);
         return latch;
     }
@@ -92,6 +94,7 @@ final class PagesImpl implements Pages {
     private static final class PageRunner implements Callable<Void>, ResponseSender {
 
         private final Application application;
+        private final Settings settings;
         private final Iterator<Page> pages;
         private final CountDownLatch latch;
         private final RequestID id;
@@ -100,8 +103,9 @@ final class PagesImpl implements Pages {
         private final ScheduledExecutorService scheduler;
         private final Closables close;
 
-        public PageRunner(Application application, Iterator<Page> pages, CountDownLatch latch, RequestID id, Event<?> event, Channel channel, ScheduledExecutorService scheduler, Closables close) {
+        public PageRunner(Application application, Settings settings, Iterator<Page> pages, CountDownLatch latch, RequestID id, Event<?> event, Channel channel, ScheduledExecutorService scheduler, Closables close) {
             this.application = application;
+            this.settings = settings;
             this.pages = pages;
             this.latch = latch;
             this.id = id;
@@ -115,7 +119,7 @@ final class PagesImpl implements Pages {
         public Void call() throws Exception {
             // See if any pages are left
             if (pages.hasNext()) {
-                try (AutoCloseable a1 = application.getRequestScope().enter(event, id, close)) {
+                try (AutoCloseable a1 = application.getRequestScope().enter(close)) {
                     Page page = pages.next();
                     page.setApplication(application);
     //                if (debug) {
@@ -124,7 +128,8 @@ final class PagesImpl implements Pages {
                     Page.set(page);
                     try (AutoCloseable ac = application.getRequestScope().enter(page)) {
                         // if so, grab its acteur runner
-                        Acteurs a = page.getActeurs(application.getWorkerThreadPool(), application.getRequestScope());
+//                        Acteurs a = page.getActeurs(application.getWorkerThreadPool(), application.getRequestScope());
+                        Acteurs a = new ActeursImpl(application.getWorkerThreadPool(), application.getRequestScope(), page, settings);
                         // forward the event.  receive() will be called with the final
                         // state, which will either send the response or re-submit this
                         // object to call the next page (if any)

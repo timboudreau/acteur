@@ -24,6 +24,7 @@ import com.mastfrog.acteur.server.EventImplFactory;
 import com.mastfrog.acteur.server.PathFactory;
 import com.mastfrog.acteur.server.ServerModule;
 import com.mastfrog.acteur.util.RequestID;
+import com.mastfrog.settings.Settings;
 import com.mastfrog.util.Checks;
 import com.mastfrog.util.Codec;
 import io.netty.buffer.ByteBuf;
@@ -61,7 +62,7 @@ public class AppTest {
             bind(ReentrantScope.class).toInstance(scope);
             ExecutorService exe = Executors.newSingleThreadExecutor();
             bind(ExecutorService.class).annotatedWith(Names.named(ServerModule.BACKGROUND_THREAD_POOL_NAME)).toInstance(exe);
-            bind(RequestID.class).toInstance(new RequestID());
+            bind(RequestID.class).toInstance(new RequestID.Factory().next());
             bind(Codec.class).toInstance(new Codec() {
                 final ObjectMapper mapper = new ObjectMapper();
                 @Override
@@ -109,14 +110,15 @@ public class AppTest {
     }
 
     @Test
-    public void testApp(Application app, PathFactory paths, ReentrantScope scope) throws IOException, InterruptedException, Exception {
+    public void testApp(Application app, PathFactory paths, ReentrantScope scope, Settings settings) throws IOException, InterruptedException, Exception {
         assertTrue(app instanceof App);
         assertTrue("App has no pages", app.iterator().hasNext());
         Page page = app.iterator().next();
         assertNotNull(page);
         try (AutoCloseable cl = app.getRequestScope().enter(page)) {
             page.setApplication(app);
-            ActeursImpl ai = (ActeursImpl) page.getActeurs(Executors.newSingleThreadExecutor(), scope);
+            
+            ActeursImpl ai = new ActeursImpl(Executors.newSingleThreadExecutor(), scope, page, settings);
 
             Event event = createEvent(paths);
 

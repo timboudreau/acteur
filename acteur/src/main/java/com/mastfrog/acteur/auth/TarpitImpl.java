@@ -1,7 +1,6 @@
 package com.mastfrog.acteur.auth;
 
 import com.google.common.collect.Maps;
-import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.mastfrog.acteur.HttpEvent;
 import com.mastfrog.giulius.ShutdownHookRegistry;
@@ -12,6 +11,7 @@ import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ConcurrentLinkedDeque;
+import javax.inject.Inject;
 import org.joda.time.DateTime;
 import org.joda.time.Duration;
 

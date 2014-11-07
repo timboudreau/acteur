@@ -25,9 +25,9 @@
 package com.mastfrog.acteur.sse;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.inject.Inject;
 import com.mastfrog.acteur.spi.ApplicationControl;
 import java.io.IOException;
+import javax.inject.Inject;
 
 /**
  * Default implementation which just uses Jackson to convert messages to JSON.

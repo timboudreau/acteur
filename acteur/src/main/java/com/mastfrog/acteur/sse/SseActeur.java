@@ -25,7 +25,6 @@
 package com.mastfrog.acteur.sse;
 
 import com.google.common.net.MediaType;
-import com.google.inject.Inject;
 import com.mastfrog.acteur.Acteur;
 import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.acteur.util.CacheControl;
@@ -33,6 +32,7 @@ import com.mastfrog.acteur.util.Connection;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import static io.netty.handler.codec.http.HttpResponseStatus.OK;
+import javax.inject.Inject;
 
 /**
  * Use for HTTP requests that get a text/event-stream response which remains

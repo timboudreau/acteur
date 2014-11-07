@@ -39,6 +39,7 @@ import com.mastfrog.url.Path;
 import com.mastfrog.util.Codec;
 import com.mastfrog.util.Streams;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufHolder;
 import io.netty.buffer.ByteBufInputStream;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
@@ -106,7 +107,7 @@ final class EventImpl implements HttpEvent {
 
     @Override
     public ByteBuf getContent() {
-        return req instanceof FullHttpRequest ? ((FullHttpRequest) req).content()
+        return req instanceof ByteBufHolder ? ((ByteBufHolder) req).content()
                 : Unpooled.EMPTY_BUFFER;
     }
 

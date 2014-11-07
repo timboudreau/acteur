@@ -25,7 +25,6 @@
 package com.mastfrog.acteur.sse;
 
 import com.google.common.collect.Sets;
-import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.google.inject.name.Named;
 import com.mastfrog.acteur.server.ServerModule;
@@ -44,6 +43,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicLong;
+import javax.inject.Inject;
 import org.joda.time.DateTimeUtils;
 
 /**

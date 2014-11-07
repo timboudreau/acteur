@@ -24,7 +24,6 @@
 package com.mastfrog.acteur;
 
 import com.google.common.net.MediaType;
-import com.google.inject.Inject;
 import static com.mastfrog.acteur.Help.HELP_URL_PATTERN_SETTINGS_KEY;
 import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.acteur.headers.Method;
@@ -39,6 +38,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import javax.inject.Inject;
 import org.joda.time.DateTime;
 
 /**

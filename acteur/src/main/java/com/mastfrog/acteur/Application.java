@@ -116,6 +116,7 @@ public class Application implements Iterable<Page> {
     @Named("acteur.debug")
     private boolean debug = true;
 
+    private final RequestID.Factory ids = new RequestID.Factory();
     /**
      * Create an application, optionally passing in an array of page types (you
      * can also call <code>add()</code> to add them).
@@ -308,7 +309,6 @@ public class Application implements Iterable<Page> {
         }
         return m;
     }
-
     /**
      * Add a subtype of Page which should be instantiated on demand when
      * responding to requests
@@ -434,7 +434,7 @@ public class Application implements Iterable<Page> {
 
     /**
      * Called before the response is sent
-     *
+     *RequestID
      * @param id
      * @param event
      * @param status
@@ -489,7 +489,7 @@ public class Application implements Iterable<Page> {
     private CountDownLatch onEvent(final Event<?> event, final Channel channel) {
         //XXX get rid of channel param?
         // Create a new incremented id for this request
-        final RequestID id = new RequestID();
+        final RequestID id = ids.next();
         // Enter request scope with the id and the event
         // XXX is the scope entry here actually needed anymore?
         return scope.run(new Invokable<Event<?>, CountDownLatch, RuntimeException>() {

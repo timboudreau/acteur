@@ -1,10 +1,10 @@
 package com.mastfrog.acteur;
 
-import com.google.inject.Inject;
 import com.mastfrog.acteur.headers.Headers;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import java.util.Map;
+import javax.inject.Inject;
 import org.joda.time.DateTime;
 
 /**

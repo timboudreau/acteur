@@ -25,7 +25,6 @@ package com.mastfrog.acteur.server;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.inject.AbstractModule;
-import com.google.inject.Inject;
 import com.google.inject.Module;
 import com.google.inject.Provider;
 import com.google.inject.Scopes;
@@ -34,6 +33,7 @@ import com.google.inject.TypeLiteral;
 import com.google.inject.name.Names;
 import com.mastfrog.acteur.Acteur;
 import com.mastfrog.acteur.Application;
+import com.mastfrog.acteur.BuiltInPageAnnotationHandler;
 import com.mastfrog.acteur.Closables;
 import com.mastfrog.acteur.Event;
 import com.mastfrog.acteur.HttpEvent;
@@ -87,6 +87,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
+import javax.inject.Inject;
 import org.joda.time.DateTime;
 import org.joda.time.Duration;
 import org.netbeans.validation.api.InvalidInputException;
@@ -295,6 +296,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
         bind(Channel.class).toProvider(ChannelProvider.class);
         bind(Method.class).toProvider(MethodProvider.class);
         bind(Path.class).toProvider(PathProvider.class);
+        bind(BuiltInPageAnnotationHandler.class).asEagerSingleton();
     }
 
     private static final class PathProvider implements Provider<Path> {
@@ -726,7 +728,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
         Server server = dependencies.getInstance(Server.class);
         onBeforeStart(server, dependencies);
 
-        Condition result = server.start();
+        Condition result = server.start(pt);
         onAfterStart(server, dependencies);
         return result;
     }

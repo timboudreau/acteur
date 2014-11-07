@@ -73,8 +73,12 @@ import org.joda.time.DateTime;
 import org.joda.time.Duration;
 
 /**
- * Really an aggregation of Acteurs and a place to set header values. To
- * implement, simply subclass and add zero or more
+ * Really an aggregation of Acteurs and a place to set header values;  in recent
+ * versions of Acteur it is rarely necessary to implement this - instead, simply
+ * annotate your entry-point Acteur with &#064;HttpCall and one will be generated
+ * for you under-the-hood.
+ * 
+ * To implement, simply subclass and add zero or more
  * <code><a href="Acteur.html">Acteur</a></code> classes or instances using the
  * <code>add()</code> method. Each Acteur is called in succession and can do one
  * or more of:
@@ -113,7 +117,8 @@ public abstract class Page implements Iterable<Acteur> {
     }
 
     protected String getDescription() {
-        return getClass().getSimpleName();
+        Description desc = getClass().getAnnotation(Description.class);
+        return desc != null ? desc.value() : getClass().getSimpleName();
     }
 
     Iterable<Object> contents() {
@@ -135,7 +140,7 @@ public abstract class Page implements Iterable<Acteur> {
             }
         }
         if (!m.isEmpty()) {
-            into.put(getDescription(), m);
+            into.put(getClass().getSimpleName(), m);
         }
     }
 
@@ -214,10 +219,6 @@ public abstract class Page implements Iterable<Acteur> {
         }
     }
 
-    Acteurs getActeurs(ExecutorService exe, ReentrantScope scope) {
-        return new ActeursImpl(exe, scope, this, getApplication().getDependencies().getInstance(Settings.class));
-    }
-
     protected void decorateResponse(Event<?> event, Acteur acteur, HttpResponse response) {
         final ResponseHeaders properties = getResponseHeaders();
 
@@ -249,147 +250,19 @@ public abstract class Page implements Iterable<Acteur> {
 
     @SuppressWarnings("deprecation")
     private Iterator<Acteur> annotationActeurs() {
-        List<Acteur> acteurs = new LinkedList<>();
-        Class<?> c = getClass();
-        PathRegex regex = c.getAnnotation(PathRegex.class);
-        ActeurFactory a = null;
-        if (regex != null) {
-            ActeurFactory af = a = getApplication().getDependencies().getInstance(ActeurFactory.class);
-            acteurs.add(af.matchPath(regex.value()));
-        }
-        Path path = c.getAnnotation(Path.class);
-        if (path != null) {
-            ActeurFactory af = a != null ? a : (a = getApplication().getDependencies().getInstance(ActeurFactory.class));
-            acteurs.add(af.globPathMatch(path.value()));
-        }
-        Methods m = c.getAnnotation(Methods.class);
-        if (m != null) {
-            ActeurFactory af = a != null ? a : (a = getApplication().getDependencies().getInstance(ActeurFactory.class));
-            acteurs.add(af.matchMethods(m.value()));
-        }
-        MaximumPathLength len = c.getAnnotation(MaximumPathLength.class);
-        if (len != null) {
-            ActeurFactory af = a != null ? a : (a = getApplication().getDependencies().getInstance(ActeurFactory.class));
-            acteurs.add(af.maximumPathLength(len.value()));
-        }
-        BannedUrlParameters banned = c.getAnnotation(BannedUrlParameters.class);
-        if (banned != null) {
-            ActeurFactory af = a != null ? a : (a = getApplication().getDependencies().getInstance(ActeurFactory.class));
-            acteurs.add(af.banParameters(banned.value()));
-        }
-        RequireAtLeastOneUrlParameterFrom atLeastOneOf = c.getAnnotation(RequireAtLeastOneUrlParameterFrom.class);
-        if (atLeastOneOf != null) {
-            ActeurFactory af = a != null ? a : (a = getApplication().getDependencies().getInstance(ActeurFactory.class));
-            acteurs.add(af.requireAtLeastOneParameter(banned.value()));
-        }
-        RequiredUrlParameters params = c.getAnnotation(RequiredUrlParameters.class);
-        if (params != null) {
-            ActeurFactory af = a != null ? a : (a = getApplication().getDependencies().getInstance(ActeurFactory.class));
-            switch (params.combination()) {
-                case ALL:
-                    acteurs.add(af.requireParameters(params.value()));
-                    break;
-                case AT_LEAST_ONE:
-                    acteurs.add(af.requireAtLeastOneParameter(params.value()));
-                    break;
-                default:
-                    throw new AssertionError(params.combination());
-            }
-        }
-        RequireParametersIfMethodMatches methodParams = c.getAnnotation(RequireParametersIfMethodMatches.class);
-        if (methodParams != null) {
-            ActeurFactory af = a != null ? a : (a = getApplication().getDependencies().getInstance(ActeurFactory.class));
-            acteurs.add(af.requireParametersIfMethodMatches(methodParams.method(), methodParams.value()));
-        }
-        ParametersMustBeNumbersIfPresent nums = c.getAnnotation(ParametersMustBeNumbersIfPresent.class);
-        if (nums != null) {
-            ActeurFactory af = a != null ? a : (a = getApplication().getDependencies().getInstance(ActeurFactory.class));
-            acteurs.add(af.parametersMustBeNumbersIfTheyArePresent(nums.allowDecimal(), nums.allowNegative(), nums.value()));
-        }
-        MinimumRequestBodyLength minLength = c.getAnnotation(MinimumRequestBodyLength.class);
-        if (minLength != null) {
-            ActeurFactory af = a != null ? a : (a = getApplication().getDependencies().getInstance(ActeurFactory.class));
-            acteurs.add(af.minimumBodyLength(minLength.value()));
-        }
-        MaximumRequestBodyLength maxLength = c.getAnnotation(MaximumRequestBodyLength.class);
-        if (maxLength != null) {
-            ActeurFactory af = a != null ? a : (a = getApplication().getDependencies().getInstance(ActeurFactory.class));
-            acteurs.add(af.maximumBodyLength(maxLength.value()));
-        }
-        UrlParametersMayNotBeCombined combos = c.getAnnotation(UrlParametersMayNotBeCombined.class);
-        if (combos != null) {
-            ActeurFactory af = a != null ? a : (a = getApplication().getDependencies().getInstance(ActeurFactory.class));
-            acteurs.add(af.parametersMayNotBeCombined(combos.value()));
-        }
-        UrlParametersMayNotBeCombinedSets comboSet = c.getAnnotation(UrlParametersMayNotBeCombinedSets.class);
-        if (comboSet != null) {
-            ActeurFactory af = a != null ? a : (a = getApplication().getDependencies().getInstance(ActeurFactory.class));
-            for (UrlParametersMayNotBeCombined c1 : comboSet.value()) {
-                acteurs.add(af.parametersMayNotBeCombined(c1.value()));
-            }
-        }
-        InjectUrlParametersAs paramsIface = c.getAnnotation(InjectUrlParametersAs.class);
-        if (paramsIface != null) {
-            Class<?> type = paramsIface.value();
-            ActeurFactory af = a != null ? a : (a = getApplication().getDependencies().getInstance(ActeurFactory.class));
-            acteurs.add(af.injectRequestParametersAs(type));
-        }
-        BasicAuth auth = c.getAnnotation(BasicAuth.class);
-        if (auth != null) {
-            acteurs.add(Acteur.wrap(AuthenticationActeur.class, application.getDependencies()));
-        }
-        PageAnnotationHandler handler = getApplication().getDependencies().getInstance(PageAnnotationHandler.class);
-        handler.processAnnotations(this, acteurs);
-        InjectRequestBodyAs as = c.getAnnotation(InjectRequestBodyAs.class);
-        if (as != null) {
-            ActeurFactory af = a != null ? a : (a = getApplication().getDependencies().getInstance(ActeurFactory.class));
-            acteurs.add(af.injectRequestBodyAsJSON(as.value()));
-        }
-        return acteurs.iterator();
-    }
-
-    private static final Set<Class<? extends Annotation>> annotationTypes;
-    private static final Set<Class<? super Page>> annotatedPages = Sets.newConcurrentHashSet();
-    static {
-        Set<Class<? extends Annotation>> set = new HashSet<>();
-        annotationTypes = ImmutableSet.<Class<? extends Annotation>>builder()
-                .add(Path.class)
-                .add(PathRegex.class)
-                .add(Methods.class)
-                .add(BannedUrlParameters.class)
-                .add(InjectRequestBodyAs.class)
-                .add(InjectUrlParametersAs.class)
-                .add(MaximumRequestBodyLength.class)
-                .add(MaximumPathLength.class)
-                .add(MinimumRequestBodyLength.class)
-                .add(ParametersMustBeNumbersIfPresent.class)
-                .add(RequireParametersIfMethodMatches.class)
-                .add(RequireAtLeastOneUrlParameterFrom.class)
-                .add(UrlParametersMayNotBeCombined.class)
-                .add(UrlParametersMayNotBeCombinedSets.class)
-                .build();
-        
-    }
-
-    @SuppressWarnings("element-type-mismatch")
-    private boolean hasAnnotations() {
-        if (annotatedPages.contains(getClass())) {
-            return true;
-        }
-        Class<?> c = getClass();
-        for (Class<? extends Annotation> type : annotationTypes) {
-            if (c.getAnnotation(type) != null) {
-                annotatedPages.add((Class<? super Page>) getClass());
-                return true;
-            }
-        }
-        return false;
+        PageAnnotationHandler.Registry handler = getApplication().getDependencies().getInstance(PageAnnotationHandler.Registry.class);
+        List<Acteur> results = new LinkedList<>();
+        handler.processAnnotations(this, results);
+        return results.iterator();
     }
 
     @Override
     public Iterator<Acteur> iterator() {
         assert getApplication() != null : "Application is null - called outside request?";
-        if (hasAnnotations()) {
+        PageAnnotationHandler.Registry registry = 
+                getApplication().getDependencies().getInstance(
+                        PageAnnotationHandler.Registry.class);
+        if (registry.hasAnnotations(this)) {
             return CollectionUtils.combine(annotationActeurs(), new I());
         } else {
             return new I();

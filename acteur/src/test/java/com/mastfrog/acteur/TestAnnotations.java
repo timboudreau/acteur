@@ -17,6 +17,10 @@ import static io.netty.handler.codec.http.HttpResponseStatus.NOT_FOUND;
 import static io.netty.handler.codec.http.HttpResponseStatus.NO_CONTENT;
 import static io.netty.handler.codec.http.HttpResponseStatus.OK;
 import java.io.IOException;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import static java.lang.annotation.RetentionPolicy.RUNTIME;
+import java.lang.annotation.Target;
 import java.util.List;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
@@ -47,6 +51,7 @@ public class TestAnnotations {
 
     @Methods
     @PathRegex("^one$")
+    @Foo
     @RequiredUrlParameters(value = {"foo", "bar"}, combination = RequiredUrlParameters.Combination.ALL)
     static class One extends Page {
 
@@ -77,15 +82,26 @@ public class TestAnnotations {
         }
     }
 
+    @Target(ElementType.TYPE)
+    @Retention(RUNTIME)
+    public @interface Foo {
+
+    }
+
     static boolean annotationHandlerCalled;
-    static class PAH implements PageAnnotationHandler {
+
+    static class PAH extends PageAnnotationHandler {
+        @Inject
+        PAH(PageAnnotationHandler.Registry reg) {
+            super(reg, Foo.class);
+        }
 
         @Override
         public <T extends Page> boolean processAnnotations(T page, List<? super Acteur> addTo) {
             annotationHandlerCalled = true;
             return true;
         }
-        
+
     }
 
     static class A extends Application {
@@ -106,7 +122,7 @@ public class TestAnnotations {
         @Override
         protected void configure() {
             super.configure();
-            bind(PageAnnotationHandler.class).to(PAH.class);
+            bind(PAH.class).asEagerSingleton();
         }
     }
 }

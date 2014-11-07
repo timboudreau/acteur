@@ -24,7 +24,6 @@
 package com.mastfrog.acteur;
 
 import com.google.common.net.MediaType;
-import com.google.inject.Inject;
 import com.mastfrog.acteur.Acteur.Delegate;
 import com.mastfrog.acteur.ResponseHeaders.ETagProvider;
 import com.mastfrog.acteur.errors.Err;
@@ -52,6 +51,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
+import javax.inject.Inject;
 import org.netbeans.validation.api.InvalidInputException;
 
 /**

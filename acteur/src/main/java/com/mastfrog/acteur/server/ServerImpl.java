@@ -23,7 +23,6 @@
  */
 package com.mastfrog.acteur.server;
 
-import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.name.Named;
 import static com.mastfrog.acteur.server.ServerModule.EVENT_THREADS;
@@ -51,10 +50,11 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.inject.Inject;
 
 /**
  *
- * @author Tim Boudreau
+ * @author Tim BoudreauUpstreamHandlerImpl
  */
 final class ServerImpl implements Server {
 

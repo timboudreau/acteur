@@ -24,7 +24,6 @@
 package com.mastfrog.acteur.auth;
 
 import com.google.inject.ImplementedBy;
-import com.google.inject.Inject;
 import com.mastfrog.acteur.HttpEvent;
 import com.mastfrog.acteur.Page;
 import com.mastfrog.acteur.Response;
@@ -39,6 +38,7 @@ import io.netty.handler.codec.http.HttpResponseStatus;
 import static io.netty.handler.codec.http.HttpResponseStatus.SERVICE_UNAVAILABLE;
 import java.io.IOException;
 import java.util.Map;
+import javax.inject.Inject;
 import org.joda.time.Duration;
 import org.joda.time.format.PeriodFormatter;
 import org.joda.time.format.PeriodFormatterBuilder;

@@ -23,7 +23,6 @@
  */
 package com.mastfrog.acteur;
 
-import com.google.inject.Inject;
 import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.acteur.headers.Method;
@@ -35,6 +34,7 @@ import com.mastfrog.acteur.util.CacheControlTypes;
 import com.mastfrog.settings.Settings;
 import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpResponseStatus;
+import javax.inject.Inject;
 import org.joda.time.Duration;
 
 /**
