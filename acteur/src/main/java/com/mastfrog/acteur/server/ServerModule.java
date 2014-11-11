@@ -48,6 +48,7 @@ import com.mastfrog.acteur.server.ServerModule.TF;
 import com.mastfrog.acteur.spi.ApplicationControl;
 import com.mastfrog.acteur.util.BasicCredentials;
 import com.mastfrog.acteur.util.Server;
+import com.mastfrog.acteur.util.ServerControl;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.guicy.annotations.Defaults;
 import com.mastfrog.guicy.scope.ReentrantScope;
@@ -93,6 +94,8 @@ import org.joda.time.Duration;
 import org.netbeans.validation.api.InvalidInputException;
 
 /**
+ * Guice module for creating a server;  also defines settings keys which can
+ * affect behavior.
  *
  * @author Tim Boudreau
  */
@@ -174,6 +177,16 @@ public class ServerModule<A extends Application> extends AbstractModule {
      * The port to run on
      */
     public static final String PORT = "port";
+    
+    /**
+     * Settings key for enabling HTTP compression.
+     */
+    public static final String HTTP_COMPRESSION = "httpCompression";
+    
+    /**
+     * Settings key for the maximum content length.
+     */
+    public static final String MAX_CONTENT_LENGTH = "maxContentLength";
 
     /**
      * If true, the return value of Event.getRemoteAddress() will prefer the
@@ -708,11 +721,32 @@ public class ServerModule<A extends Application> extends AbstractModule {
     protected void onAfterStart(Server server, Dependencies deps) {
     }
 
-    public Condition start() throws IOException, InterruptedException {
+    /**
+     * Start a server
+     * 
+     * @return an object to wait on, which can be used to shut down
+     * the server
+     * @throws IOException if something goes wrong
+     * @throws InterruptedException if something goes wrong
+     * @deprecated Use ServerBuilder instead
+     */
+    @Deprecated
+    public ServerControl start() throws IOException, InterruptedException {
         return start(null);
     }
 
-    public Condition start(Integer port) throws IOException, InterruptedException {
+    /**
+     * Start a server
+     * 
+     * @param port The port to start on
+     * @return an object to wait on, which can be used to shut down
+     * the server
+     * @throws IOException if something goes wrong
+     * @throws InterruptedException if something goes wrong
+     * @deprecated Use ServerBuilder instead
+     */
+    @Deprecated
+    public ServerControl start(Integer port) throws IOException, InterruptedException {
         MutableSettings settings = SettingsBuilder.createDefault().buildMutableSettings();
         if (port != null) {
             settings.setInt("port", port);
@@ -728,7 +762,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
         Server server = dependencies.getInstance(Server.class);
         onBeforeStart(server, dependencies);
 
-        Condition result = server.start(pt);
+        ServerControl result = server.start(pt);
         onAfterStart(server, dependencies);
         return result;
     }

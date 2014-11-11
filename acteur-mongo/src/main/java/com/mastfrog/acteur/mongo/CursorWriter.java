@@ -24,7 +24,7 @@ public class CursorWriter extends ResponseWriter {
     private final MapFilter filter;
 
     @Inject
-    public CursorWriter(final DBCursor cursor, Closables clos, HttpEvent evt, Provider<? extends MapFilter> filter) {
+    public CursorWriter(final DBCursor cursor, Closables clos, HttpEvent evt, Provider<MapFilter> filter) {
         this(cursor, !evt.isKeepAlive(), filter);
         clos.add(cursor);
     }
@@ -33,7 +33,7 @@ public class CursorWriter extends ResponseWriter {
         this(cursor, closables, evt, Providers.of(NO_FILTER));
     }
 
-    public CursorWriter(DBCursor cursor, boolean closeConnection, Provider<? extends MapFilter> filter) {
+    public CursorWriter(DBCursor cursor, boolean closeConnection, Provider<MapFilter> filter) {
         this.cursor = cursor;
         this.closeConnection = closeConnection;
         MapFilter mf;

@@ -24,10 +24,13 @@
 package com.mastfrog.acteur.server;
 
 import com.google.inject.Provider;
+import static com.mastfrog.acteur.server.ServerModule.HTTP_COMPRESSION;
+import static com.mastfrog.acteur.server.ServerModule.MAX_CONTENT_LENGTH;
 import com.mastfrog.acteur.spi.ApplicationControl;
 import com.mastfrog.settings.Settings;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandler;
+import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
@@ -38,9 +41,10 @@ import io.netty.handler.codec.http.HttpRequestDecoder;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseEncoder;
 import javax.inject.Inject;
+import javax.inject.Singleton;
 
-//@Singleton
-//@Sharable
+@Singleton
+@Sharable
 class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
 
     static final boolean DEFAULT_AGGREGATE_CHUNKS = true;
@@ -56,8 +60,8 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
         this.handler = handler;
         this.app = app;
         aggregateChunks = settings.getBoolean("aggregateChunks", DEFAULT_AGGREGATE_CHUNKS);
-        maxContentLength = settings.getInt("maxContentLength", 1048576);
-        httpCompression = settings.getBoolean("httpCompression", false);
+        httpCompression = settings.getBoolean(HTTP_COMPRESSION, true);
+        maxContentLength = settings.getInt(MAX_CONTENT_LENGTH, 1048576);
     }
 
     @Override
@@ -69,11 +73,11 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
     public void initChannel(SocketChannel ch) throws Exception {
         // Create a default pipeline implementation.
         ChannelPipeline pipeline = ch.pipeline();
-
+        ChannelHandler decoder = new HttpRequestDecoder();
+        ChannelHandler encoder = new HttpResponseEncoder();
 //        SSLEngine engine = SecureChatSslContextFactory.getServerContext().createSSLEngine();
 //        engine.setUseClientMode(false);
 //        pipeline.addLast("ssl", new SslHandler(engine));
-        ChannelHandler decoder = new HttpRequestDecoder();
 
         pipeline.addLast("decoder", decoder);
         // Uncomment the following line if you don't want to handle HttpChunks.
@@ -83,7 +87,6 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
         }
 
         pipeline.addLast("bytes", new MessageBufEncoder());
-        ChannelHandler encoder = new HttpResponseEncoder();
         pipeline.addLast("encoder", encoder);
 
         // Remove the following line if you don't want automatic content compression.
@@ -107,6 +110,7 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
         @Override
         protected Result beginEncode(HttpResponse headers, String acceptEncoding) throws Exception {
             if (headers.headers().contains("X-Internal-Compress")) {
+                headers.headers().remove("X-Internal-Compress");
                 return null;
             }
             return super.beginEncode(headers, acceptEncoding);
