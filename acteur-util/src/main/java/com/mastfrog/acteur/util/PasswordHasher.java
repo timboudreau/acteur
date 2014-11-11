@@ -110,11 +110,23 @@ public final class PasswordHasher {
                 return false;
             }
             String enc = encryptPassword(unhashed, saltAndPassAndAlgorithm[1], decodeAlgorithm(saltAndPassAndAlgorithm[0]));
-            System.out.println(unhashed + "->" + enc);
-            return enc.equals(hashed);
+            return slowEquals(enc, hashed);
         } catch (NoSuchAlgorithmException ex) {
             return Exceptions.chuck(ex);
         }
+    }
+    
+    private boolean slowEquals(String a, String b) {
+        // Compare all the characters of the string, so that
+        // the comparison time is the same whether equal or not
+        boolean result = true;
+        int max = Math.min(a.length(), b.length());
+        for (int i = 0; i < max; i++) {
+            char ca = a.charAt(i);
+            char cb = b.charAt(i);
+            result &= ca == cb;
+        }
+        return result && a.length() == b.length();
     }
 
     private String encryptPassword(String password, String randomSalt, String algorithm) throws NoSuchAlgorithmException {
