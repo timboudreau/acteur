@@ -12,6 +12,8 @@ A further description of the framework's aims can be found in
 Read the [acteur tutorial](../../../acteur-tutorial) for a step-by-step
 description of building a web API.
 
+Or read the [FAQ](blob/master/FAQ.md).
+
 It's goal is to make it easy to write small, fast, scalable HTTP servers
 while ending up with reusable code as a natural side effect of using
 the framework.
