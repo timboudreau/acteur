@@ -24,6 +24,7 @@
 package com.mastfrog.acteur;
 
 import com.mastfrog.acteur.auth.AuthenticationActeur;
+import com.mastfrog.acteur.preconditions.Authenticated;
 import com.mastfrog.acteur.preconditions.BannedUrlParameters;
 import com.mastfrog.acteur.preconditions.BasicAuth;
 import com.mastfrog.acteur.preconditions.InjectRequestBodyAs;
@@ -58,7 +59,7 @@ public class BuiltInPageAnnotationHandler extends PageAnnotationHandler {
     private final Dependencies deps;
     private final ActeurFactory af;
 
-    private static Class<?>[] TYPES = new Class<?>[]{
+    private static Class<?>[] TYPES = new Class<?>[]{Authenticated.class,
         Path.class, Methods.class, MaximumPathLength.class, BannedUrlParameters.class,
         RequireAtLeastOneUrlParameterFrom.class, RequiredUrlParameters.class,
         RequireParametersIfMethodMatches.class, ParametersMustBeNumbersIfPresent.class,
@@ -149,6 +150,10 @@ public class BuiltInPageAnnotationHandler extends PageAnnotationHandler {
         }
         BasicAuth auth = c.getAnnotation(BasicAuth.class);
         if (auth != null) {
+            acteurs.add(Acteur.wrap(AuthenticationActeur.class, deps));
+        }
+        Authenticated auth2 = c.getAnnotation(Authenticated.class);
+        if (auth2 != null) {
             acteurs.add(Acteur.wrap(AuthenticationActeur.class, deps));
         }
         InjectRequestBodyAs as = c.getAnnotation(InjectRequestBodyAs.class);

@@ -101,7 +101,6 @@ public class TestAnnotations {
             annotationHandlerCalled = true;
             return true;
         }
-
     }
 
     static class A extends Application {

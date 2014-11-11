@@ -636,7 +636,7 @@ public abstract class Acteur {
         return state;
     }
 
-    static Acteur wrap(final Class<? extends Acteur> type, final Dependencies deps) {
+    public static Acteur wrap(final Class<? extends Acteur> type, final Dependencies deps) {
         Checks.notNull("type", type);
         final Charset charset = deps.getInstance(Charset.class);
         return new WrapperActeur(deps, charset, type);

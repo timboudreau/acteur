@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright 2014 tim.
+ * Copyright 2014 Tim Boudreau.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,17 +29,22 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Indicates that a page requires authentication.  The name is a misnomer, since
- * it can indicate any authentication scheme.
- * 
- * @deprecated Use &#064;Authenticated instead
+ * Indicates that this endpoint requires authentication using whatever 
+ * mechanism is configured (by default, HTTP Basic Auth - you should implement
+ * and bind Authenticator to use it).
  *
  * @author Tim Boudreau
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
 @Description("Requires authentication")
-@Deprecated
-public @interface BasicAuth {
+public @interface Authenticated {
 
+    /**
+     * Unused for basic auth, but may be by other authentication schemes
+     *
+     * @return Some parameter describing who can access this resource or
+     * other information usefully passed to the authentication code
+     */
+    String value() default "default";
 }
