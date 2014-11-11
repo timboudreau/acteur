@@ -33,12 +33,10 @@ The `ok()` method is a shorthand for `setState(new RespondWith(OK, "hello world"
 
 This is kind of the wrong question, but it gets asked.
 
-Acteur is about building up the graph of objects you'll *need* to write a response, whatever that response happens to be and however you chose to write it.  It's about streaming HTTP responses so you can return a billion row result set as JSON without needing a billion rows worth of memory on your server.  It's about being able to answer with a `304 NOT MODIFIED` without having to do all the work to generate a response just to find out you don't need to send it.  It's about being absurdly scalable and efficient, with an elegant API that keeps your code focuse on your objects, not the framework's.
+Acteur is about building up the graph of objects you'll *need* to write a response, whatever that response happens to be and however you chose to write it.  It's about streaming HTTP responses so you can return a billion row result set as JSON without needing a billion rows worth of memory on your server.  It's about being able to answer with a `304 NOT MODIFIED` without having to do all the work to generate a response just to find out you don't need to send it.  It's about being absurdly scalable and efficient, with an elegant API that keeps your code focused on your objects, not the framework's.
 
 What responses look like is entirely up to you, and you can use whatever kind of output generation, template engine or whatever you want - MVC or not.  Acteur doesn't impose anything on you in that department.
-
-Really it is a framework for the modern web, where you'll do your dynamic content in the browser.
-
+s
 
 ####Start the server?
 
@@ -53,6 +51,14 @@ used with Guice's `@Named` and start the server.
 	ServerControl ctrl = .start(port);
 	ctrl.await();
 ```
+
+That does the following:
+
+ - Add a Guice module called TodoListApp
+ - Tell the framework that `User` and `DBCursor` will be produced by Acteurs for injection into other Acteurs
+ - Build an instance of `Server`
+ - Start it, getting back an object that can stop it or wait for it to exit
+ - Wait for the server to exit, blocking the main application thread
 
 Note that the call to `await()` is important - all threads spawned by the server will be daemon threads, so if this is your
 main thread, it will exit.
@@ -84,6 +90,7 @@ The simplest method is to annotate your Acteur with `@InjectRequestBodyAs(MyType
 class SignUpActeur {
 	SignUpActeur(SignupRequest request) { ... }
 }
+```
 
 If you are not using annotations, you can use e.g. `HttpEvent.getContentAs(SignupRequest.class)`.
 
@@ -112,6 +119,7 @@ MyActeur(...) {
 	add(Headers.LAST_MODIFIED, DateTime.now());
 	add(Headers.MAX_AGE, Duration.standardMinutes(3));
 }
+```
 
 
 ####Specify a response code other than 200 OK?
@@ -138,6 +146,8 @@ class MyEval extends ExceptionEvaluator {
 	}
 ```
 and in your Guice module `bind(MyEval.class).asEagerSingleton()` (eager singleton binding ensures it is instantiated and registers itself on server startup).
+
+Acteurs are allowed to throw exceptions from their constructors - it is not the preferred way of doing things, but since it can happen, the framework accepts that it does.  `ExceptionEvaluator` exists to handle those cleanly.
 
 
 ####Stream a response
@@ -212,9 +222,9 @@ final class AuthenticatorImpl implements Authenticator {
 }
 ```
 
-You can also use other authentication mechanisms, and still use the `@Authenticated` annotation.
+You can also use other authentication mechanisms, and still use the `@Authenticated` annotation.  Just implement and bind `AuthenticationActeur` to your authentication Acteur and it will be used wherever the `@Authenticated` message appears.
 
-The above example uses `PasswordHasher` to store hashed versions of passwords rather than cleartext.  The algorithm and salt used by PasswordHasher are configurable.
+The above example uses `PasswordHasher` to store hashed versions of passwords rather than cleartext.  The algorithm used by PasswordHasher are configurable.
 
 
 ####Chain together multiple Acteurs
@@ -248,11 +258,11 @@ public class DoSomething extends Acteur {
 ```
 
 So, the DoSomething acteur specifies that before it comes the LookupTheUser Acteur.  It, in turn, looks up the user, and if one is found,
-constructs a MyUser object and makes that available for injection into subsequent Acteurs by passing it as part of its `ConsumedLockedState`.
+constructs a `MyUser` object and makes that available for injection into subsequent Acteurs by passing it as part of its `ConsumedLockedState`.
 
 That is the magic trick in chaining together Acteurs - an earlier Acteur can provide objects for injection into later ones by passing them in a `ConsumedLockedState` it sets for its state.  The meaning of that state is "I recognize this request, so don't pass it to other chains of acteurs - I've got this.  Here are some objects later Acteurs may want."
 
-Then, any Acteur that needs to know the user specified in the URL can simply set LookupTheUser as a precursor and ask for a MyUser to be injected as a constructor argument.
+Then, any Acteur that needs to know the user specified in the URL can simply set `LookupTheUser` as a precursor and ask for a `MyUser` to be injected as a constructor argument.
 
 One thing to note here is the `scopeTypes` parameter to the annotation.  This is necessary so the the framework knows that `MyUser` is a class that should be available for injection.  Without that, Guice will try to use the default constructor, which will either fail or have surprising results.
 
@@ -303,7 +313,7 @@ To do that, implement `PageAnnotationHandler` and bind it as an eager singleton.
         @Override
         public <T extends Page> boolean processAnnotations(T page, List<? super Acteur> addTo) {
             if (page.getClass().getAnnotation(InjectUserFromURL.class) != null) {
-		addTo.add(Acteur.wrap(LookupTheUser.class, injector));
+                 addTo.add(Acteur.wrap(LookupTheUser.class, injector));
             }
             return true;
         }
