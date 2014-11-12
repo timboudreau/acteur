@@ -8,6 +8,21 @@ these things as well.
 How do I...
 
 
+####Use Acteur in my application?
+
+If you are using Maven, very simply:
+
+ - Add [the Maven repository described here](http://timboudreau.com/builds) to your `&lt;repositories&gt;` in your Maven pom.xml
+ - Set the following dependency (check the website above for what is the latest version):
+
+```xml
+        <dependency>
+            <artifactId>acteur</artifactId>
+            <groupId>com.mastfrog</groupId>
+            <version>1.5.1</version>
+        </dependency>
+```
+
 ####Handle an HTTP request to a specific URL?
 
 Assuming you're using ServerBuilder/GenericApplication, simply write an Acteur and annotate it with @HttpCall, @Methods and @Path or @PathRegex:
@@ -33,12 +48,12 @@ The `ok()` method is a shorthand for `setState(new RespondWith(OK, "hello world"
 
 This is kind of the wrong question, but it gets asked.
 
-Acteur is about building up the graph of objects you'll *need* to write a response, whatever that response happens to be and however you chose to write it.  It's about streaming HTTP responses so you can return a billion row result set as JSON without needing a billion rows worth of memory on your server.  It's about being able to answer with a `304 NOT MODIFIED` without having to do all the work to generate a response just to find out you don't need to send it.  It's about being absurdly scalable and efficient, with an elegant API that keeps your code focused on your objects, not the framework's.
+Acteur is about building up the graph of objects you'll *need* to write a response, whatever that response happens to be and however you chose to write it.  It's about streaming HTTP responses so you can return a billion row result set as JSON without needing a billion rows worth of memory on your server.  It's about being able to answer with a `304 NOT MODIFIED` without having to do all the work to generate a response just to find out you don't need to send it.  It's about factoring the decision tree about how to respond to a request - which usually becomes spaghetti - into focused, reusable chunks of logic you can combine cleanly, and any of which can bail out without doing unnecessary work.  It's about being absurdly scalable and efficient, with an elegant API that keeps your code focused on your objects, not the framework's.
 
 What responses look like is entirely up to you, and you can use whatever kind of output generation, template engine or whatever you want - MVC or not.  Acteur doesn't impose anything on you in that department.
-s
 
-####Start the server?
+
+####Start a server?
 
 The simplest way is to use `ServerBuilder`, which lets you add Guice modules, properties-based settings
 used with Guice's `@Named` and start the server.
@@ -82,6 +97,44 @@ public class HelloActeur extends Acteur {
         new ServerBuilder().build().start().await();
     }
 }
+```
+
+
+####Build an server as a single JAR file you can run with `java -jar`
+
+There are some complicated incantations of the Maven shade plugin and others that would probably let you do this, but Acteur comes with a Maven plugin specifically for this.  In particular, Acteur uses annotation processors to write some metadata into `META-INF/http` and `META-INF/settings`, and this plugin knows how to concatinate this data correctly.
+
+Here is an example - just add this to your build process, and add [this Maven repository](http://timboudreau.com/builds) as a *plugin* repository in your `&lt;pluginRepositories&gt;` section of your pom.xml:
+
+```xml
+            <plugin>
+                <groupId>com.mastfrog</groupId>
+                <artifactId>maven-merge-configuration</artifactId>
+                <version>${project.version}</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <id>compile</id>
+                        <goals>
+                            <goal>merge-configuration</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <mainClass>com.timboudreau.trackerapi.Timetracker</mainClass>
+                    <jarName>tracker-standalone</jarName>
+                </configuration>
+            </plugin>
+```
+
+and the plugin repository:
+
+```xml
+        <pluginRepository>
+            <id>timboudreau-plugins</id>
+            <name>timboudreau.com plugins</name>
+            <url>http://timboudreau.com/builds/plugin/repository/everything/</url>
+        </pluginRepository>
 ```
 
 
