@@ -31,7 +31,7 @@ import org.junit.runner.RunWith;
 @RunWith(GuiceRunner.class) // Use the Guice-Tests JUnit runner
 public class PutTest {
 
-    // Just subclasses ServerModule to provide tests
+    // Just subclasses ServerModule to provide the application class
     static class SM extends ServerModule {
         SM() {
             super(EchoServer.class, 2, 2, 3);
