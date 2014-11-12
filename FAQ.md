@@ -44,6 +44,8 @@ public class HelloActeur extends Acteur {
 
 The `ok()` method is a shorthand for `setState(new RespondWith(OK, "hello world"))`.  Replace OK with whatever constant on Netty's `HttpResponseStatus` you want.
 
+The `@HttpCall` annotation indicates that this Acteur is an *http endpoint* - if you're using GenericApplication (if you're using ServerBuilder you are by default) it causes a `Page` subclass to be generated under the hood and be added to the application.
+
 
 #### Is Acteur MVC?
 
@@ -111,7 +113,7 @@ Here is an example - just add this to your build process, and add [this Maven re
             <plugin>
                 <groupId>com.mastfrog</groupId>
                 <artifactId>maven-merge-configuration</artifactId>
-                <version>${project.version}</version>
+                <version>1.5.1</version>
                 <executions>
                     <execution>
                         <phase>package</phase>
@@ -128,7 +130,7 @@ Here is an example - just add this to your build process, and add [this Maven re
             </plugin>
 ```
 
-and the plugin repository:
+replacing `jarName` and `mainClass` appropriately, and add the plugin repository:
 
 ```xml
         <pluginRepository>
@@ -239,7 +241,7 @@ If you do this, pass no response message when you call `ok()` or `setState(new R
 
 ####Write a single Acteur that handles all URLs
 
-Unlike most frameworks, Acteur imposes no semantics on the meaning of URL paths.  Acteurs process requests in the order they're added to the application, until one accepts it by setting a state of `ConsumedLockedState` or setting an HTTP status.
+Unlike most frameworks, Acteur imposes no semantics on the meaning of URL paths - it doesn't even care about / characters unless you want it to.  Acteurs process requests in the order they're added to the application, until one accepts it by setting a state of `ConsumedLockedState` or setting an HTTP status.  The `@Path` or `@PathRegex` annotations are optional, and you can also write your own URL-path interpreting code instead.
 
 So, by default, an Acteur receives all requests an earlier one didn't claim.  If you don't set a `@Path` or `@PathRegex` it will receive all URL paths;  if you don't set `@Methods` it will receive all HTTP methods.  You can always do this stuff programmatically, e.g.
 
@@ -250,6 +252,8 @@ public MyActeur(HttpEvent evt) {
 		setState(new RejectedState());
 		return;
 	}
+        ...
+}
 ```
 
 which is functionally identical to annotating your Acteur with `@Methods(GET)`.
@@ -537,5 +541,22 @@ Yes - you can start as many as you want, on different ports or whatever, and the
 Additionally, `Dependencies` - the Giulius wrapper for the Guice injector - has a `shutdown()` method, which will shut down everything that uses it (i.e. closing thread pools and database connections).
 
 There is an experimental subproject of Giulius called `signalreload` which will allow you to shut down, reload and restart an Acteur server when the unix signal `HUP` is sent (similar to what NginX or Apache do), which works on Linux but not on Solaris/Illumos.
+
+
+#### What files are generated from annotations?
+
+Code and metadata is generated liberally from annotations - that is why Acteur needs little explicit configuration or setup code.
+
+ - Giulius
+    - The `@Defaults` annotation causes properties files to be generated into `META-INF/settings`, which are loaded by `SettingsBuilder.addDefaultLocations()` or `SettingsBuilder.addDefaultsFromClasspath()`
+    - A `/META-INF/settings/namespaaces.list` file may be generated if you use the `@Namespace` annotation to name settings files (namespacing is experimental)
+ - Numble
+    - The `@Params` annotation causes `/META-INF/http/numble.list` to be generated listing all generated classes so they can be bound for injection
+    - It also causes a class named `$CLASS_WITH_ANNOTATIONParams` to be generated
+ - Acteur - `@HttpCall`
+     - Generates a page class named `$ACTEUR_CLASS_NAME__GenPage`
+     - Generates `/META-INF/http/pages.list` which lists page classes which are to be loaded by GenericApplication
+ - `@GuiceModule` can specify Guice modules which should be automatically added by GenericApplication if they're on the classpath
+ - `@ServiceProvider` - lists classes in `/META-INF/services` that should be available to ServiceLoader/Lookup
 
 
