@@ -26,7 +26,7 @@ If you are using Maven, very simply:
 
 ####Handle an HTTP request to a specific URL?
 
-Assuming you're using ServerBuilder/GenericApplication, simply write an Acteur and annotate it with @HttpCall, @Methods and @Path or @PathRegex:
+Assuming you're using ServerBuilder/GenericApplication, simply write an Acteur and annotate it with `@HttpCall`, `@Methods` and `@Path` or `@PathRegex`:
 
 ```java
 
@@ -105,7 +105,7 @@ public class HelloActeur extends Acteur {
 
 There are some complicated incantations of the Maven shade plugin and others that would probably let you do this, but Acteur comes with a Maven plugin specifically for this.  In particular, Acteur uses annotation processors to write some metadata into `META-INF/http` and `META-INF/settings`, and this plugin knows how to concatinate this data correctly.
 
-Here is an example - just add this to your build process, and add [this Maven repository](http://timboudreau.com/builds) as a *plugin* repository in your `&lt;pluginRepositories&gt;` section of your pom.xml:
+Here is an example - just add this to your build process, and add [this Maven repository](http://timboudreau.com/builds) as a *plugin* repository in your `<pluginRepositories>` section of your pom.xml:
 
 ```xml
             <plugin>
@@ -497,7 +497,7 @@ Here is an example from the [acteur-timetracker](https://github.com/timboudreau/
                 .add(settings).build();
                 
         server.start().await();
-```java
+```
 
 What this does:
 
