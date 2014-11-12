@@ -103,7 +103,7 @@ public class HelloActeur extends Acteur {
 
 ####Build an server as a single JAR file you can run with `java -jar`
 
-There are some complicated incantations of the Maven shade plugin and others that would probably let you do this, but Acteur comes with a Maven plugin specifically for this.  In particular, Acteur uses annotation processors to write some metadata into `META-INF/http` and `META-INF/settings`, and this plugin knows how to concatinate this data correctly.
+There are some complicated incantations of the Maven shade plugin and others that would probably let you do this, but Acteur comes with a Maven plugin specifically for this.  In particular, Acteur uses annotation processors to write some metadata into `META-INF/http` and `META-INF/settings`, and this plugin knows how to merge this data correctly.
 
 Here is an example - just add this to your build process, and add [this Maven repository](http://timboudreau.com/builds) as a *plugin* repository in your `<pluginRepositories>` section of your pom.xml:
 
@@ -528,5 +528,14 @@ Just include `TestHarnessModule` and some subclass of `ServerModule` and whateve
 In your test method, take an argument of `TestHarness`.  `TestHarness` detects the instance of `Server` available, starts it on an available port and allows you to make requests to the server, do assertions about the results, etc.  So test code is very clean and boilerplate-free.
 
 [Here is one of Acteur's own tests as an example.](https://github.com/timboudreau/acteur/blob/master/acteur/src/test/java/com/mastfrog/acteur/PutTest.java)
+
+
+#### Can I have more than one Server in a VM?
+
+Yes - you can start as many as you want, on different ports or whatever, and they will not interfere with each other.  Assuming you don't use static variables in your code (Guice exists so that you don't need to), they will be completely independent of each other.
+
+Additionally, `Dependencies` - the Giulius wrapper for the Guice injector - has a `shutdown()` method, which will shut down everything that uses it (i.e. closing thread pools and database connections).
+
+There is an experimental subproject of Giulius called `signalreload` which will allow you to shut down, reload and restart an Acteur server when the unix signal `HUP` is sent (similar to what NginX or Apache do), which works on Linux but not on Solaris/Illumos.
 
 
