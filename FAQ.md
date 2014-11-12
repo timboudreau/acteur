@@ -46,6 +46,8 @@ The `ok()` method is a shorthand for `setState(new RespondWith(OK, "hello world"
 
 The `@HttpCall` annotation indicates that this Acteur is an *http endpoint* - if you're using GenericApplication (if you're using ServerBuilder you are by default) it causes a `Page` subclass to be generated under the hood and be added to the application.
 
+Some Acteurs you'll write will be endpoints;  others will be used just to handle *part* of processing a request.  Annotations such as `@Methods` are only meaningful when applied to an endpoint.
+
 
 #### Is Acteur MVC?
 
@@ -260,6 +262,13 @@ which is functionally identical to annotating your Acteur with `@Methods(GET)`.
 
 If you're using annotations and you want to write a failover Acteur that handles requests nothing else has handled, annotate it with `@HttpCall(Integer.MAX_VALUE)`.
 
+####Find Example Applications
+
+Most of the uses of Acteur have been in commercial applications;  two good sources of examples on GitHub are:
+
+ - [Acteur Timetracker](https://github.com/timboudreau/acteur-timetracker) - a generic web api for creating and modifying events that have durations, which can have ad-hoc metadata associated with them (the author of the framework uses it to track consulting hours)
+ - [Meta Update Server](https://github.com/timboudreau/meta-update-center) - a server for NetBeans plugins - a live instance on the web can [be found here](http://timboudreau.com/modules)
+
 
 ####Do Basic Authentication
 
@@ -451,6 +460,35 @@ Each Acteur is dispatched separately to a thread-pool.  This has several effects
  - It is not guaranteed that all processing of a request happens on the same thread (though it is likely to)
 
 Acteurs are stateful - each one has a response object, which it can write things like header values to.  Only after an acteur succeeds in returning its state are those merged into the response belonging to the Page object, which will only be used if that Page answers the request (so setting headers in an Acteur where a later one will reject processing does not leave behind stray headers).
+
+
+#### How do I carve up processing a request into Acteurs?
+
+Think through the steps that it takes to answer the request.  Ask yourself:
+
+ - What things are orthagonal? I.e. stuff you need to do, but that doesn't really have much to do with each other
+ - What of those things will be needed in more than one request?  You can reuse intermediate Acteurs in multiple endpoints - they are reusable chunks of logic that do one thing and make the results available to subsequent acteurs.
+ - Which of those things may enable you to bail out of processing a request early (say, sending 400 BAD REQUEST in response to bad input, or sending 304 NOT MODIFIED because the `If-Modified-Since` header matches?)
+
+So, if you have a sequence like
+
+ - Look up the calling user
+ - Look up the user whose data is to be modified
+ - Check if the data-user has authorized the calling user to modify their data
+ - Check that the `If-Unmodified-Since` header shows that the data hasn't changed since the last time the caller saw it
+ - Do a modification
+
+then each one of those can be a reusable Acteur that you can use in any endpoint that needs any of those things.  For example, here is an example from the [acteur-timetracker demo application](https://github.com/timboudreau/acteur-timetracker)
+
+```java
+@Precursors({AuthorizedChecker.class, CreateCollectionPolicy.CreatePolicy.class, TimeCollectionFinder.class})
+```
+
+This defines a bunch of steps done as a lead up to answering the request:
+
+ - Check that the user is authorized to perform the modification
+ - Inject a policy for whether the requested MongoDB collection should be created if it doesn't exist
+ - Look up or create the DBCollection and make it available to the final endpoint Acteur as a constructor argument
 
 
 #### Document my web api
