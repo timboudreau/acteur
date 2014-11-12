@@ -7,21 +7,19 @@ import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.giulius.tests.TestWith;
 import com.mastfrog.acteur.util.CacheControlTypes;
 import com.mastfrog.acteur.headers.Method;
+import static com.mastfrog.acteur.headers.Method.GET;
+import static com.mastfrog.acteur.headers.Method.PUT;
+import com.mastfrog.acteur.preconditions.Methods;
 import com.mastfrog.acteur.server.ServerModule;
+import com.mastfrog.acteur.util.CacheControl;
 import com.mastfrog.giulius.tests.GuiceRunner;
 import com.mastfrog.netty.http.test.harness.TestHarness;
 import com.mastfrog.netty.http.test.harness.TestHarnessModule;
 import com.mastfrog.util.Types;
 import io.netty.buffer.ByteBuf;
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelFutureListener;
-import static io.netty.channel.ChannelFutureListener.CLOSE;
 import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import static io.netty.handler.codec.http.HttpResponseStatus.OK;
-import java.util.ArrayList;
-import java.util.List;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -29,35 +27,26 @@ import org.junit.runner.RunWith;
  *
  * @author Tim Boudreau
  */
-@TestWith({TestHarnessModule.class, SM.class})
-@RunWith(GuiceRunner.class)
+@TestWith({TestHarnessModule.class, SM.class}) // Use these Guice modules
+@RunWith(GuiceRunner.class) // Use the Guice-Tests JUnit runner
 public class PutTest {
-    
+
+    // Just subclasses ServerModule to provide tests
     static class SM extends ServerModule {
         SM() {
-            super (EchoServer.class, 2, 2, 3);
-        }
-
-        @Override
-        protected void configure() {
-            super.configure();
+            super(EchoServer.class, 2, 2, 3);
         }
     }
 
     @Test(timeout = 20000L)
     public void testPuts(TestHarness harn) throws Throwable {
-        
         harn.get("foo/bar/baz").go().assertStatus(OK).assertContent("Hello world");
-        
         harn.get("/").go().assertStatus(OK).assertContent("Hello world");
-        
-        
-        List<Integer> s = new ArrayList<>();
+
         for (int i = 0; i < 20; i++) {
             harn.put("/").addHeader(Headers.stringHeader("X-Iteration"), "" + i)
-                    .setBody("Poodle hoover " + i + " iter", MediaType.PLAIN_TEXT_UTF_8).go()
-                    .assertStatus(OK).assertContent("Poodle hoover " + i + " iter");
-            
+                    .setBody("Test " + i + " iter", MediaType.PLAIN_TEXT_UTF_8).go()
+                    .assertStatus(OK).assertContent("Test " + i + " iter");
         }
         harn.get(veryLongUrl(3500)).go().assertStatus(OK);
     }
@@ -71,37 +60,34 @@ public class PutTest {
     }
 
     static class EchoServer extends Application {
-
         EchoServer() {
             add(EchoPage.class);
         }
 
+        @Methods({PUT, GET})
         private static final class EchoPage extends Page {
 
             @Inject
             EchoPage(ActeurFactory af) {
                 getResponseHeaders().addCacheControl(CacheControlTypes.Public);
-                add(af.matchMethods(Method.PUT, Method.GET));
                 add(EchoActeur.class);
             }
         }
     }
 
     static class EchoActeur extends Acteur {
-
         @Inject
         EchoActeur(HttpEvent evt) {
-            setChunked(true);
+            add(Headers.CACHE_CONTROL, CacheControl.$(CacheControlTypes.Public));
             if (evt.getMethod() == Method.GET) {
                 setState(new RespondWith(HttpResponseStatus.OK, "Hello world"));
             } else {
                 setState(new RespondWith(HttpResponseStatus.OK));
-                setResponseBodyWriter(EchoWriter.class);
-//                setResponseWriter(RWriter.class);
+                setResponseWriter(RWriter.class);
             }
         }
     }
-    
+
     private static class RWriter extends ResponseWriter {
         @Override
         public ResponseWriter.Status write(Event<?> evt, Output out) throws Exception {
@@ -114,31 +100,6 @@ public class PutTest {
                 throw new AssertionError("Not a FullHttpRequest: " + evt.getRequest() + " " + Types.list(evt.getRequest().getClass()));
             }
             return ResponseWriter.Status.DONE;
-        }
-    }
-
-    private static class EchoWriter implements ChannelFutureListener {
-
-        private final HttpEvent evt;
-
-        @Inject
-        EchoWriter(HttpEvent evt) {
-            this.evt = evt;
-        }
-
-        @Override
-        public void operationComplete(ChannelFuture future) throws Exception {
-//            Channel ch = evt.getChannel();
-            Channel ch = future.channel();
-            FullHttpRequest req = evt.getRequest() instanceof FullHttpRequest
-                    ? (FullHttpRequest) evt.getRequest() : null;
-            if (req != null) {
-                ByteBuf buf = req.content();
-                future = ch.writeAndFlush(buf);
-                future.addListener(CLOSE);
-            } else {
-                throw new AssertionError("Not a FullHttpRequest: " + evt.getRequest() + " " + Types.list(evt.getRequest().getClass()));
-            }
         }
     }
 }

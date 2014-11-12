@@ -23,6 +23,7 @@ If you are using Maven, very simply:
         </dependency>
 ```
 
+
 ####Handle an HTTP request to a specific URL?
 
 Assuming you're using ServerBuilder/GenericApplication, simply write an Acteur and annotate it with @HttpCall, @Methods and @Path or @PathRegex:
@@ -460,4 +461,72 @@ Annotate your Acteurs and custom annotations with the `@Description` annotation 
 Acteur uses [Numble](https://github.com/timboudreau/numble) for parameter validation.  So you can annotate your Acteur with `@Params`, define some parameters describing how they are to be validated, and the result will be a generated Java class you can inject into your Acteur with `@InjectUrlParamsAs` or `@InjectRequestBodyAs` and the validation code will be run before your Acteur is instantiated, and errors handled by the error processing framework.
 
 The importance of this approach can't be overstated - typically web code winds up being a tangled mixture of validation code and create-the-response code, and that leads to unmaintainability.  By factoring your validation out and making it declarative, code that handles requests can simply assume the incoming data is good, and stay focused on the logic of the application.
+
+
+#### Allow my application to be configured?
+
+Acteur uses the [Giulius](https://github.com/timboudreau/giulius) framework for loading settings.  You can provide those settings to your `ServerBuilder`.  A `Settings` is like a `Properties` object, minus the setters/mutators.
+
+With Giulius you can:
+
+ - Provide a name for properties files that will be loaded
+ - Define default values using the `@Defaults` annotation, on the class that uses them, so default values are visible in code
+ - Layer up properties files, overriding each other - by default, looking in `/etc`, `/opt/local/etc`, `~/` and `./` in that order
+ - Parse command-line arguments into settings which override others
+ - Request strings, ints, booleans to be injected by annotating them with Guice's `@Named` annotation
+
+Acteur itself can be configured in various ways using `Settings`.  Constants for settings keys that can affect its behavior can be found as static fields on [ServerModule](http://timboudreau.com/builds/job/mastfrog-parent/lastSuccessfulBuild/artifact/acteur-modules/acteur-parent/acteur/target/apidocs/com/mastfrog/acteur/server/ServerModule.html).
+
+Here is an example from the [acteur-timetracker](https://github.com/timboudreau/acteur-timetracker) demo application:
+
+```java
+        Settings settings = SettingsBuilder.forNamespace(TIMETRACKER)
+                .add("port", "7739")
+                .addDefaultLocations()
+                .add(PathFactory.BASE_PATH_SETTINGS_KEY, "time")
+                .parseCommandLineArguments(args)
+                .add(loadVersionProperties())
+                .build();
+
+        // Set up the Guice injector with our settings and modules.  Dependencies
+        // will bind our settings as @Named
+        Server server = new ServerBuilder()
+                .add(new JacksonModule())
+                .add(new ResetPasswordModule())
+                .applicationClass(Timetracker.class)
+                .add(settings).build();
+                
+        server.start().await();
+```java
+
+What this does:
+
+ - Create a SettingsBuilder that will look for files named timetracker.properties
+ - Set a default value for "port" - the port the server will open when it starts
+ - Add any properties files in `/etc`, `/opt/local/etc`, `~/` and `./` named timetracker.properties if they exist
+ - Set a default for "basePath" (base URL for the application)
+ - Override any already set properties with the command-line arguments (so, say, the value of "port" could be overridden by passing `--port 80` on the command-line)
+ - Add a Properties object loaded from the Maven version, so the application knows its version
+ - Build the Settings
+ - Create a ServerBuilder
+ - Add the `JacksonModule` that will look for `JacksonConfigurer`s and use them to configure the `ObjectMapper` available for injection
+ - Add an internal module for resetting passwords from the command-line
+ - Set the application class to Timetracker's subclass of `GenericApplication`
+ - Include the settings
+ - Create an instance of Server
+ - Start it
+
+That's a lot of functionality, tersely but readably coded.
+
+
+#### Test an Acteur application?
+
+A sibling project is the Netty-based HTTP client and [test harness](https://github.com/timboudreau/netty-http-client#test-harness-netty-http-test-harness).  It integrates with [giulius-tests](https://github.com/timboudreau/giulius-tests) to enable you to write tests with almost no setup code, since you define your modules in an annotation, and your test methods can take arguments.  
+
+Just include `TestHarnessModule` and some subclass of `ServerModule` and whatever else your application needs in your test class's `@TestWith` annotation (frequently your test needs a custom subclass of `ServerModule` that passes your application class the the superclass constructor), and add `@RunWith(GuiceRunner.class)` to tell JUnit to use the guice test runner.
+
+In your test method, take an argument of `TestHarness`.  `TestHarness` detects the instance of `Server` available, starts it on an available port and allows you to make requests to the server, do assertions about the results, etc.  So test code is very clean and boilerplate-free.
+
+[Here is one of Acteur's own tests as an example.](https://github.com/timboudreau/acteur/blob/master/acteur/src/test/java/com/mastfrog/acteur/PutTest.java)
+
 
