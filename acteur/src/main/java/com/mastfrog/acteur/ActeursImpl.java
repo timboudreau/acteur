@@ -96,7 +96,7 @@ final class ActeursImpl implements Acteurs {
         Iterator<Acteur> acteurs = page.iterator();
         // Convert Acteurs to Callable<Object[]> which return the state's context
         // for injection into the request scope for the next Acteur
-        ActeurToCallable converter = new ActeurToCallable(page, response, lastState, acteurs);
+        ActeurToCallable converter = new ActeurToCallable(page, response, lastState);
         
         if (!acteurs.hasNext()) {
             throw new IllegalStateException("No acteurs at all from " + page);
@@ -131,13 +131,11 @@ final class ActeursImpl implements Acteurs {
         private final Page page;
         private final ResponseImpl response;
         private final AtomicReference<State> lastState;
-        private final Iterator<Acteur> acteurs;
 
-        ActeurToCallable(Page page, ResponseImpl response, AtomicReference<State> lastState, Iterator<Acteur> acteurs) {
+        ActeurToCallable(Page page, ResponseImpl response, AtomicReference<State> lastState) {
             this.page = page;
             this.response = response;
             this.lastState = lastState;
-            this.acteurs = acteurs;
         }
 
         @Override
@@ -145,7 +143,7 @@ final class ActeursImpl implements Acteurs {
             Checks.notNull("Null acteur", acteur);
 //            System.out.println("Run acteur " + acteur + " for " + page);
 //            try (QuietAutoCloseable ac = Page.set(page)){
-                return new ActeurCallable(page, acteur, response, lastState, !acteurs.hasNext());
+                return new ActeurCallable(page, acteur, response, lastState);
 //            }
         }
 
@@ -177,7 +175,6 @@ final class ActeursImpl implements Acteurs {
                 State state = lastState.get();
                 // Null means a broken Acteur implementation - bail out
                 if (state == null) {
-                    lastState.lazySet(null);
                     receiver.uncaughtException(Thread.currentThread(), new NullPointerException("Last state is null"));
                 } else {
                     // Pass it into the receiver
@@ -201,14 +198,12 @@ final class ActeursImpl implements Acteurs {
         final Acteur acteur;
         private final ResponseImpl response;
         private final AtomicReference<State> lastState;
-        private final boolean isLast;
 
-        public ActeurCallable(Page page, Acteur acteur, ResponseImpl response, AtomicReference<State> lastState, boolean isLast) {
+        public ActeurCallable(Page page, Acteur acteur, ResponseImpl response, AtomicReference<State> lastState) {
             this.page = page;
             this.acteur = acteur;
             this.response = response;
             this.lastState = lastState;
-            this.isLast = isLast;
         }
 
         @Override
