@@ -30,6 +30,7 @@ import com.google.inject.Provider;
 import com.google.inject.Scopes;
 import com.google.inject.Singleton;
 import com.google.inject.TypeLiteral;
+import com.google.inject.name.Named;
 import com.google.inject.name.Names;
 import com.mastfrog.acteur.Acteur;
 import com.mastfrog.acteur.Application;
@@ -86,6 +87,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
@@ -95,7 +97,7 @@ import org.joda.time.Duration;
 import org.netbeans.validation.api.InvalidInputException;
 
 /**
- * Guice module for creating a server;  also defines settings keys which can
+ * Guice module for creating a server; also defines settings keys which can
  * affect behavior.
  *
  * @author Tim Boudreau
@@ -178,12 +180,12 @@ public class ServerModule<A extends Application> extends AbstractModule {
      * The port to run on
      */
     public static final String PORT = "port";
-    
+
     /**
      * Settings key for enabling HTTP compression.
      */
     public static final String HTTP_COMPRESSION = "httpCompression";
-    
+
     /**
      * Settings key for the maximum content length.
      */
@@ -312,17 +314,49 @@ public class ServerModule<A extends Application> extends AbstractModule {
         bind(Path.class).toProvider(PathProvider.class);
         bind(BuiltInPageAnnotationHandler.class).asEagerSingleton();
         bind(ResponseHeaders.class).toProvider(ResponseHeadersProvider.class);
+        bind(ScheduledExecutorService.class).annotatedWith(Names.named(DELAY_EXECUTOR)).toProvider(DelayExecutorProvider.class);
     }
-    
+
+    public static final String DELAY_EXECUTOR = "delayExecutor";
+    public static final String SETTINGS_KEY_DELAY_THREAD_POOL_THREADS = "delay.response.threads";
+    private static final int DEFAULT_DELAY_THREADS = 2;
+
+    @Singleton
+    private static final class DelayExecutorProvider implements Provider<ScheduledExecutorService> {
+
+        private final ThreadFactory workerThreadFactory;
+        private final int count;
+        private volatile ScheduledExecutorService exe;
+
+        @Inject
+        DelayExecutorProvider(@Named(ServerModule.WORKER_THREADS) ThreadFactory workerThreadFactory, Settings settings) {
+            this.workerThreadFactory = workerThreadFactory;
+            count = settings.getInt(SETTINGS_KEY_DELAY_THREAD_POOL_THREADS, DEFAULT_DELAY_THREADS);
+        }
+
+        @Override
+        public ScheduledExecutorService get() {
+            if (exe == null) {
+                synchronized (this) {
+                    if (exe == null) {
+                        exe = Executors.newScheduledThreadPool(count, workerThreadFactory);
+                    }
+                }
+            }
+            return exe;
+        }
+    }
+
     @Singleton
     private static final class ResponseHeadersProvider implements Provider<ResponseHeaders> {
+
         private final Provider<Page> page;
 
         @Inject
         public ResponseHeadersProvider(Provider<Page> page) {
             this.page = page;
         }
-        
+
         @Override
         public ResponseHeaders get() {
             return page.get().getResponseHeaders();
@@ -495,6 +529,9 @@ public class ServerModule<A extends Application> extends AbstractModule {
         }
 
         @Override
+        public boolean hasNext() {
+        }
+
         public Charset get() {
             return charset;
         }
@@ -740,9 +777,8 @@ public class ServerModule<A extends Application> extends AbstractModule {
 
     /**
      * Start a server
-     * 
-     * @return an object to wait on, which can be used to shut down
-     * the server
+     *
+     * @return an object to wait on, which can be used to shut down the server
      * @throws IOException if something goes wrong
      * @throws InterruptedException if something goes wrong
      * @deprecated Use ServerBuilder instead
@@ -754,10 +790,9 @@ public class ServerModule<A extends Application> extends AbstractModule {
 
     /**
      * Start a server
-     * 
+     *
      * @param port The port to start on
-     * @return an object to wait on, which can be used to shut down
-     * the server
+     * @return an object to wait on, which can be used to shut down the server
      * @throws IOException if something goes wrong
      * @throws InterruptedException if something goes wrong
      * @deprecated Use ServerBuilder instead

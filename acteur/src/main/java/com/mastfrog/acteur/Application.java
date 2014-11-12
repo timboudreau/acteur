@@ -26,10 +26,12 @@ package com.mastfrog.acteur;
 import com.mastfrog.acteur.headers.Headers;
 import com.google.common.net.MediaType;
 import com.google.inject.Inject;
+import com.google.inject.Injector;
 import com.google.inject.name.Named;
 import com.mastfrog.acteur.Acteur.WrapperActeur;
 import com.mastfrog.acteur.annotations.HttpCall;
 import com.mastfrog.acteur.annotations.Precursors;
+import com.mastfrog.acteur.base.Chain;
 import com.mastfrog.acteur.preconditions.Description;
 import com.mastfrog.settings.SettingsBuilder;
 import com.mastfrog.giulius.Dependencies;
@@ -84,7 +86,7 @@ import org.openide.util.Exceptions;
  *
  * @author Tim Boudreau
  */
-public class Application implements Iterable<Page> {
+public class Application extends Chain<Page> {
 
     private static final Set<String> checkedTypes = Collections.synchronizedSet(new HashSet<String>());
     private final List<Object> pages = new ArrayList<>();
@@ -124,13 +126,24 @@ public class Application implements Iterable<Page> {
      * @param types
      */
     protected Application(Class<?>... types) {
-        this();
+        super(Page.class);
         for (Class<?> type : types) {
             add((Class<? extends Page>) type);
         }
+        init();
     }
 
     protected Application() {
+        super(Page.class);
+        init();
+    }
+
+    @Override
+    protected Injector injector() {
+        return deps.getInjector();
+    }
+    
+    private void init() {
         Help help = getClass().getAnnotation(Help.class);
         if (help != null) {
             add(helpPageType());
@@ -157,7 +170,7 @@ public class Application implements Iterable<Page> {
     final void enableDefaultCorsHandling() {
         if (!corsEnabled) {
             corsEnabled = true;
-            pages.add(0, CORSResource.class);
+            add(CORSResource.class);
         }
     }
 
@@ -309,30 +322,12 @@ public class Application implements Iterable<Page> {
         }
         return m;
     }
-    /**
-     * Add a subtype of Page which should be instantiated on demand when
-     * responding to requests
-     *
-     * @param page A page
-     */
-    protected final void add(Class<? extends Page> page) {
-        if ((page.getModifiers() & Modifier.ABSTRACT) != 0) {
-            throw new ConfigurationError(page + " is abstract");
-        }
-        if (page.isLocalClass()) {
-            throw new ConfigurationError(page + " is not a top-level class");
-        }
-        if (!Page.class.isAssignableFrom(page)) {
-            throw new ConfigurationError(page + " is not a subclass of " + Page.class.getName());
-        }
-        assert checkConstructor(page);
-        pages.add(page);
-    }
 
-    protected final void add(Page page) {
-        pages.add(page);
+    @Override
+    protected void onBeforeAdd(Class<? extends Page> itemType) {
+        assert checkConstructor(itemType);
     }
-
+    
     static boolean checkConstructor(Class<?> type) {
         Checks.notNull("type", type);
         if (checkedTypes.contains(type.getName())) {
@@ -520,18 +515,6 @@ public class Application implements Iterable<Page> {
             }
         }
         return deps;
-    }
-
-    /**
-     * Get the set of page instances, constructing them dynamically. Note that
-     * this should be called inside the application scope, with any objects
-     * which need to be available for injection available in the scope.
-     *
-     * @return An iterator
-     */
-    @Override
-    public Iterator<Page> iterator() {
-        return new InstantiatingIterators(deps).iterable(pages, Page.class).iterator();
     }
 
     protected void send404(RequestID id, Event<?> event, Channel channel) {

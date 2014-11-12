@@ -25,6 +25,7 @@ package com.mastfrog.acteur;
 
 import com.google.common.net.MediaType;
 import com.google.inject.ProvisionException;
+import com.mastfrog.acteur.base.ActeurBase;
 import com.mastfrog.acteur.errors.Err;
 import com.mastfrog.acteur.errors.ErrorRenderer;
 import com.mastfrog.acteur.errors.ErrorResponse;
@@ -95,7 +96,7 @@ import java.util.concurrent.atomic.AtomicReference;
  *
  * @author Tim Boudreau
  */
-public abstract class Acteur {
+public abstract class Acteur implements ActeurBase {
 
     private State state;
     Throwable creationStackTrace;

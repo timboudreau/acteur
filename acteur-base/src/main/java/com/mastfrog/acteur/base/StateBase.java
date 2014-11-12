@@ -1,7 +1,7 @@
-/* 
+/*
  * The MIT License
  *
- * Copyright 2013 Tim Boudreau.
+ * Copyright 2014 Tim Boudreau.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,40 +21,52 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.mastfrog.acteur;
-
-import com.mastfrog.acteur.base.StateBase;
+package com.mastfrog.acteur.base;
 
 /**
- * Represents a state of event processing.
+ *
+ * @author Tim Boudreau
  */
-public abstract class State extends StateBase {
+public abstract class StateBase {
+
+    public boolean isRejected() {
+        return !isLockedInChain() && !isConsumed();
+    }
+
     Object[] getContext() {
         return new Object[0];
     }
 
-    State() {
+    protected StateBase() {
     }
 
     /**
-     * Returns whether (and by which "page") the next event has to be
-     * processed prior to regular processing.
+     * Returns whether the event processing has to be stopped after the
+     * processing by the chain the acteur producing this state belongs to - the
+     * request will not be processed by other "page" chains if this one rejects
+     * it.
      *
-     * @return the locked widget; if null, then there is no prior widget
+     * @return true if locked in chain
      */
-    protected abstract Page getLockedPage();
+    protected abstract boolean isLockedInChain();
 
     /**
-     * Returns whether (and by which action) the next event has to be
-     * processed prior to regular processing.
+     * Returns whether the event is consumed.
+     *
+     * @return true if the event is consumed
+     */
+    protected abstract boolean isConsumed();
+
+    /**
+     * Returns whether (and by which action) the next event has to be processed
+     * prior to regular processing.
      *
      * @return the locked action; if null, then there is no prior action
      */
-    @Override
-    protected abstract Acteur getActeur();
-    
+    protected abstract ActeurBase getActeur();
+
     @Override
     public String toString() {
-        return getClass().getName() + ": " + (isConsumed() ? "consumed" : "not-consumed") + " " + (isLockedInChain() ? "locked" : "not-locked") + " action=" + getActeur() + " page=" + getLockedPage();
+        return getClass().getName() + ": " + (isConsumed() ? "consumed" : "not-consumed") + " " + (isLockedInChain() ? "locked" : "not-locked") + " action=" + getActeur();
     }
 }

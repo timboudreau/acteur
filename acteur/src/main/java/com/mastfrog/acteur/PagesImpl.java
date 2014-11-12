@@ -25,6 +25,7 @@ package com.mastfrog.acteur;
 
 import com.google.inject.name.Named;
 import com.mastfrog.acteur.server.ServerModule;
+import static com.mastfrog.acteur.server.ServerModule.DELAY_EXECUTOR;
 import com.mastfrog.acteur.util.RequestID;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.util.Exceptions;
@@ -56,16 +57,13 @@ final class PagesImpl implements Pages {
 
     private final ScheduledExecutorService scheduler;
 
-    public static final String SETTINGS_KEY_DELAY_THREAD_POOL_THREADS = "delay.response.threads";
-    private static final int DEFAULT_DELAY_THREADS = 2;
     private final Settings settings;
 
     @Inject
-    PagesImpl(Application application, Settings settings, @Named(ServerModule.WORKER_THREADS) ThreadFactory workerThreadFactory) {
+    PagesImpl(Application application, Settings settings, @Named(DELAY_EXECUTOR) ScheduledExecutorService scheduler) {
         this.application = application;
         this.settings = settings;
-        int count = settings.getInt(SETTINGS_KEY_DELAY_THREAD_POOL_THREADS, DEFAULT_DELAY_THREADS);
-        scheduler = Executors.newScheduledThreadPool(count, workerThreadFactory);
+        this.scheduler = scheduler;
     }
 
     /**

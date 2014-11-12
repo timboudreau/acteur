@@ -20,5 +20,6 @@
         <module>deprecated</module>
         <module>acteur-headers</module>
         <module>acteur-jdbc</module>
+        <module>acteur-base</module>
     </modules>
 </project>
