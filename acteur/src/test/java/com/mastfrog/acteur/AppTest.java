@@ -23,6 +23,7 @@ import com.mastfrog.acteur.headers.Method;
 import com.mastfrog.acteur.server.EventImplFactory;
 import com.mastfrog.acteur.server.PathFactory;
 import com.mastfrog.acteur.server.ServerModule;
+import static com.mastfrog.acteur.server.ServerModule.DELAY_EXECUTOR;
 import com.mastfrog.acteur.util.RequestID;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.util.Checks;
@@ -38,6 +39,7 @@ import java.io.OutputStream;
 import java.nio.charset.Charset;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
 import org.joda.time.DateTime;
 import org.joda.time.Duration;
@@ -63,6 +65,7 @@ public class AppTest {
             ExecutorService exe = Executors.newSingleThreadExecutor();
             bind(ExecutorService.class).annotatedWith(Names.named(ServerModule.BACKGROUND_THREAD_POOL_NAME)).toInstance(exe);
             bind(RequestID.class).toInstance(new RequestID.Factory().next());
+            bind(ScheduledExecutorService.class).annotatedWith(Names.named(DELAY_EXECUTOR)).toInstance(Executors.newScheduledThreadPool(2));
             bind(Codec.class).toInstance(new Codec() {
                 final ObjectMapper mapper = new ObjectMapper();
                 @Override

@@ -114,7 +114,7 @@ public class Application implements Iterable<Page> {
 
     @Inject(optional = true)
     @Named("acteur.debug")
-    private boolean debug = true;
+    private boolean debug = false;
 
     private final RequestID.Factory ids = new RequestID.Factory();
     /**
