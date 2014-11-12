@@ -12,7 +12,7 @@ How do I...
 
 If you are using Maven, very simply:
 
- - Add [the Maven repository described here](http://timboudreau.com/builds) to your `&lt;repositories&gt;` in your Maven pom.xml
+ - Add [the Maven repository described here](http://timboudreau.com/builds) to your `<repositories>` in your Maven pom.xml
  - Set the following dependency (check the website above for what is the latest version):
 
 ```xml

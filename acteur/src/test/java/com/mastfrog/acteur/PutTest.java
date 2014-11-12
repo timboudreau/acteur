@@ -52,7 +52,7 @@ public class PutTest {
     }
 
     private String veryLongUrl(int amt) {
-        StringBuilder sb = new StringBuilder("");
+        StringBuilder sb = new StringBuilder();
         for (int i = 0; i < amt; i++) {
             sb.append("/0123456789");
         }
