@@ -64,6 +64,27 @@ Note that the call to `await()` is important - all threads spawned by the server
 main thread, it will exit.
 
 
+####Create an application
+
+Here is the about the simplest possible Acteur web application:
+
+```java
+@HttpCall
+@Path("/hello")
+@Methods(GET)
+public class HelloActeur extends Acteur {
+
+    HelloActeur() {
+        ok("Hello world\n");
+    }
+
+    public static void main(String[] args) throws IOException, InterruptedException {
+        new ServerBuilder().build().start().await();
+    }
+}
+```
+
+
 ####Send a JSON Response
 
 Assuming Jackson knows how to serialize your object, simply pass it as the message in your `RespondWith` state:
@@ -373,4 +394,17 @@ Each Acteur is dispatched separately to a thread-pool.  This has several effects
 
 Acteurs are stateful - each one has a response object, which it can write things like header values to.  Only after an acteur succeeds in returning its state are those merged into the response belonging to the Page object, which will only be used if that Page answers the request (so setting headers in an Acteur where a later one will reject processing does not leave behind stray headers).
 
+
+#### Document my web api
+
+Since you are using annotations, your web api is somewhat self documenting.  If you subclass `Application` or `GenericApplication` and annotate it with `@Help`, HTML documentation will be available at the URL `/help?html=true` and JSON documentation at `/help`.
+
+Annotate your Acteurs and custom annotations with the `@Description` annotation to include a description of the call.
+
+
+#### Validate URL parameters or JSON data
+
+Acteur uses [Numble](https://github.com/timboudreau/numble) for parameter validation.  So you can annotate your Acteur with `@Params`, define some parameters describing how they are to be validated, and the result will be a generated Java class you can inject into your Acteur with `@InjectUrlParamsAs` or `@InjectRequestBodyAs` and the validation code will be run before your Acteur is instantiated, and errors handled by the error processing framework.
+
+The importance of this approach can't be overstated - typically web code winds up being a tangled mixture of validation code and create-the-response code, and that leads to unmaintainability.  By factoring your validation out and making it declarative, code that handles requests can simply assume the incoming data is good, and stay focused on the logic of the application.
 
