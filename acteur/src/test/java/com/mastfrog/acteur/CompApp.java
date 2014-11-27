@@ -66,7 +66,7 @@ public class CompApp extends Application {
 
         @Override
         protected void configure() {
-            install(new ServerModule(CompApp.class));
+            install(new ServerModule<CompApp>(CompApp.class));
             bind(ErrorInterceptor.class).to(TestHarness.class);
             bind(ExceptionEval.class).asEagerSingleton();
             bind(ErrorRenderer.class).to(ExceptionRen.class);
@@ -94,6 +94,7 @@ public class CompApp extends Application {
     static class ExceptionRen extends ErrorRenderer {
 
         @Override
+        @SuppressWarnings("unchecked")
         public String render(ErrorResponse resp, HttpEvent evt) throws IOException {
             Map<String, Object> m = (Map<String, Object>) resp.message();
             String s = (String) m.get("error");

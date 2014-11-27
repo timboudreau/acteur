@@ -180,7 +180,7 @@ final class ServerImpl implements Server {
         private final Reference<Runnable> delegate;
 
         WeakRunnable(Runnable real) {
-            this.delegate = new WeakReference(real);
+            this.delegate = new WeakReference<>(real);
         }
 
         @Override

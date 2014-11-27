@@ -302,6 +302,7 @@ final class ResponseImpl extends Response {
         }
     }
 
+    @SuppressWarnings("unchecked")
     public <T> void add(HeaderValueType<T> decorator, T value) {
         List<Entry<?>> old = new LinkedList<>();
         // XXX set cookie!

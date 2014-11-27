@@ -25,7 +25,7 @@ import java.util.Set;
  *
  * @author Tim Boudreau
  */
-public class GenericApplicationModule extends ServerModule { // non final for unit tests that need to hide arguments
+public class GenericApplicationModule<T extends GenericApplication> extends ServerModule<T> { // non final for unit tests that need to hide arguments
 
     private final Settings settings;
     private final Class<?>[] exclude;
@@ -36,8 +36,9 @@ public class GenericApplicationModule extends ServerModule { // non final for un
      *
      * @param settings
      */
+    @SuppressWarnings("unchecked")
     public GenericApplicationModule(Settings settings) {
-        this(settings, GenericApplication.class, new Class<?>[0]);
+        this(settings, (Class<T>)GenericApplication.class, new Class<?>[0]);
     }
 
     /**
@@ -48,8 +49,9 @@ public class GenericApplicationModule extends ServerModule { // non final for un
      * @param exclude A list of Page, Module or implicit binding classes which
      * should be ignored
      */
+    @SuppressWarnings("unchecked")
     public GenericApplicationModule(Settings settings, Class<?>... exclude) {
-        this(settings, GenericApplication.class, exclude);
+        this(settings, (Class<T>)GenericApplication.class, exclude);
     }
 
     /**
@@ -61,7 +63,7 @@ public class GenericApplicationModule extends ServerModule { // non final for un
      * @param exclude A list of Page, Module or implicit binding classes which
      * should be ignored
      */
-    public GenericApplicationModule(Settings settings, Class<? extends GenericApplication> appType, Class<?>... exclude) {
+    public GenericApplicationModule(Settings settings, Class<T> appType, Class<?>... exclude) {
         super(appType);
         this.settings = settings;
         this.exclude = exclude;

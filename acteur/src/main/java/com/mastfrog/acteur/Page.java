@@ -167,6 +167,7 @@ public abstract class Page implements Iterable<Acteur> {
         return getActeur(ix, true);
     }
 
+    @SuppressWarnings("unchecked")
     final Acteur getActeur(int ix, boolean logErrors) {
         try (QuietAutoCloseable ac = Page.set(this)) {
             Application app = getApplication();

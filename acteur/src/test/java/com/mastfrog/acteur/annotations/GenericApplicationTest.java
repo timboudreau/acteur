@@ -59,6 +59,7 @@ public class GenericApplicationTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     public void testNumble(TestHarness harn, ObjectMapper mapper) throws IOException, Throwable {
         Map<String, Object> m = new MapBuilder().put("host", "timboudreau.com")
                 .put("port", 8080).put("bool", false).build();

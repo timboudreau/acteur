@@ -92,6 +92,7 @@ public class ContentConverter {
         return charset.get();
     }
 
+    @SuppressWarnings("unchecked")
     public <T> T toObject(ByteBuf content, MediaType mimeType, Class<T> type) throws IOException {
         if (mimeType == null) {
             mimeType = MediaType.ANY_TYPE;
@@ -131,7 +132,8 @@ public class ContentConverter {
             buf.resetReaderIndex();
         }
     }
-    
+
+    @SuppressWarnings("unchecked")
     private Problems validate(Origin origin, Map map) {
             Problems problems = new Problems();
             checker.check(origin.value(), new KeysValues.MapAdapter(map), problems);
@@ -154,6 +156,7 @@ public class ContentConverter {
         return deps.getInstance(type);
     }
 
+    @SuppressWarnings("unchecked")
     protected <T> T createProxyFor(Map<String, ?> m, Class<T> type) {
         if (!type.isInterface()) {
             throw new IllegalArgumentException("Not an interface: " + type);

@@ -123,6 +123,7 @@ public class Application implements Iterable<Page> {
      *
      * @param types
      */
+    @SuppressWarnings("unchecked")
     protected Application(Class<?>... types) {
         this();
         for (Class<?> type : types) {

@@ -80,7 +80,7 @@ public class TarpitTest {
 
     }
 
-    static class MM extends ServerModule {
+    static class MM extends ServerModule<App> {
 
         MM() {
             super(App.class);

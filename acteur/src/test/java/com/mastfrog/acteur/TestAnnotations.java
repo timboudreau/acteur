@@ -112,7 +112,7 @@ public class TestAnnotations {
         }
     }
 
-    static class M extends ServerModule {
+    static class M extends ServerModule<A> {
 
         M() {
             super(A.class);

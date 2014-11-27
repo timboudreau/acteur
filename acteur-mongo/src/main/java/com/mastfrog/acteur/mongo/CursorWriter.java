@@ -46,6 +46,7 @@ public class CursorWriter extends ResponseWriter {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public Status write(Event<?> evt, Output out, int iter) throws Exception {
         try {
             if (iter == 0) {

@@ -74,7 +74,7 @@ public class SseApp extends Application implements Runnable {
 
         @Override
         protected void configure() {
-            install(new ServerModule(SseApp.class));
+            install(new ServerModule<SseApp>(SseApp.class));
             bind(ErrorInterceptor.class).to(TestHarness.class);
         }
     }

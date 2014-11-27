@@ -34,7 +34,7 @@ public final class HttpCallRegistryLoader implements Iterable<Class<? extends Pa
     }
 
     public Set<Class<?>> implicitBindings() {
-        Set<Class<?>> types = new LinkedHashSet();
+        Set<Class<?>> types = new LinkedHashSet<>();
         for (Entry e : entries()) {
             types.addAll(e.bindings);
         }

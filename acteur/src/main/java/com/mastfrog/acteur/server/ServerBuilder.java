@@ -170,15 +170,19 @@ public final class ServerBuilder {
         if (appType == null || GenericApplication.class.isAssignableFrom(appType)) {
             return new GS(settings, types);
         } else {
-            return new TS(appType, types);
+            return createModule(appType, types);
         }
     }
+    
+    private static <T extends Application> TS<T> createModule(Class<T> appType, Set<Class<?>> toBind) {
+        return new TS<T>(appType, toBind);
+    }
 
-    private static final class TS extends ServerModule implements ScopeProvider {
+    private static final class TS<T extends Application> extends ServerModule<T> implements ScopeProvider {
 
         private final Set<Class<?>> toBind;
 
-        TS(Class<? extends Application> appType, Set<Class<?>> toBind) {
+        TS(Class<T> appType, Set<Class<?>> toBind) {
             super(appType);
             this.toBind = toBind;
         }

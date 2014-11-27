@@ -316,6 +316,7 @@ public class HttpCallAnnotationProcessor extends AbstractProcessor {
         return (PackageElement) el;
     }
 
+    @SuppressWarnings("unchecked")
     private String generatePageSource(TypeElement typeElement, AtomicBoolean error) throws IOException {
         PackageElement pkg = findPackage(typeElement);
         String className = typeElement.getSimpleName() + GENERATED_SOURCE_SUFFIX;
@@ -353,7 +354,7 @@ public class HttpCallAnnotationProcessor extends AbstractProcessor {
                 }
                 ps.print("@" + am.getAnnotationType());
                 boolean first = true;
-                Iterator it = am.getElementValues().entrySet().iterator();
+                Iterator<?> it = am.getElementValues().entrySet().iterator();
                 if (it.hasNext()) {
                     while (it.hasNext()) {
                         Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> el = (Map.Entry<? extends ExecutableElement, ? extends AnnotationValue>) it.next();

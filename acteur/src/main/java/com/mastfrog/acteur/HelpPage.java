@@ -147,14 +147,15 @@ final class HelpPage extends Page {
                 return sb.toString();
             }
 
+            @SuppressWarnings("unchecked")
             private StringBuilder writeOut(String key, Object object, StringBuilder sb, String parentKey) {
                 boolean code = ("PathRegex".equals(parentKey) || "Path".equals(parentKey) || "Methods".equals(parentKey))
                         && "value".equals(key);
                 String codeOpen = code ? "<code>" : "";
                 String codeClose = code ? "</code>" : "";
                 String humanized = deBicapitalize(key);
-                if (key == null || object instanceof Map) {
-                    Map<String, Object> m = Collections.checkedMap((Map) object, String.class, Object.class);
+                if (key == null || object instanceof Map<?,?>) {
+                    Map<String, Object> m = Collections.checkedMap((Map<String,Object>) object, String.class, Object.class);
                     if (key != null) {
                         sb.append("\n<tr><th valign=\"left\" bgcolor='#FFEECC'>").append(humanized).append("</th><td>");
                     }

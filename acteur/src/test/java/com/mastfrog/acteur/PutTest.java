@@ -32,7 +32,7 @@ import org.junit.runner.RunWith;
 public class PutTest {
 
     // Just subclasses ServerModule to provide the application class
-    static class SM extends ServerModule {
+    static class SM extends ServerModule<EchoServer> {
         SM() {
             super(EchoServer.class, 2, 2, 3);
         }
