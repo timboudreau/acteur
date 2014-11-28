@@ -59,8 +59,8 @@ public final class ServerBuilder {
     private final Set<Class<?>> types = new HashSet<>();
 
     /**
-     * Create a ServerBuilder with Namespace.DEFAULT as its namespace.
-     * That means settings will be read from /etc/defaults.properties,
+     * Create a ServerBuilder with Namespace.DEFAULT as its namespace. That
+     * means settings will be read from /etc/defaults.properties,
      * ~/defaults.properties and ./defaults.properties
      */
     public ServerBuilder() {
@@ -68,10 +68,12 @@ public final class ServerBuilder {
     }
 
     /**
-     * Create a ServerBuilder with the passed namespace as its namespace.
-     * That means settings will be read from /etc/$NAMESPACE.properties,
+     * Create a ServerBuilder with the passed namespace as its namespace. That
+     * means settings will be read from /etc/$NAMESPACE.properties,
      * ~/$NAMESPACE.properties and ./$NAMESPACE.properties
-     * @param namespace A namespace - must be a legal file name, no path separators
+     *
+     * @param namespace A namespace - must be a legal file name, no path
+     * separators
      */
     public ServerBuilder(String namespace) {
         this.namespace = namespace;
@@ -116,9 +118,10 @@ public final class ServerBuilder {
     }
 
     /**
-     * Add a module type which will be instantiated.  The constructor may be
-     * a default constructor, or may take a Settings object, or a Settings and a
+     * Add a module type which will be instantiated. The constructor may be a
+     * default constructor, or may take a Settings object, or a Settings and a
      * ReentrantScope.
+     *
      * @param module The module type
      * @return this
      */
@@ -128,10 +131,11 @@ public final class ServerBuilder {
     }
 
     /**
-     * Add a type which will be bound.  Use this to add your classes to the Guice
-     * injector if they will be passed between Acteurs.  The rule is:  If you 
+     * Add a type which will be bound. Use this to add your classes to the Guice
+     * injector if they will be passed between Acteurs. The rule is: If you
      * accept it in an Acteur constructor and it is not part of the framework,
      * you need to pass it here.
+     *
      * @param types Some classes
      * @return this
      */
@@ -143,6 +147,7 @@ public final class ServerBuilder {
     /**
      * Build a Server object which can be started with its start() method (call
      * await() on the resulting ServerControl object to keep it running).
+     *
      * @return A server, not yet started
      * @throws IOException if something goes wrong
      */
@@ -165,17 +170,18 @@ public final class ServerBuilder {
         }
         return db.build().getInstance(Server.class);
     }
-    
+
+    @SuppressWarnings("unchecked")
     private ScopeProvider appModule(Settings settings) {
         if (appType == null || GenericApplication.class.isAssignableFrom(appType)) {
-            return new GS(settings, types);
+            return createGenericApplicationModule(settings, types);
         } else {
             return createModule(appType, types);
         }
     }
-    
+
     private static <T extends Application> TS<T> createModule(Class<T> appType, Set<Class<?>> toBind) {
-        return new TS<T>(appType, toBind);
+        return new TS<>(appType, toBind);
     }
 
     private static final class TS<T extends Application> extends ServerModule<T> implements ScopeProvider {
@@ -199,20 +205,36 @@ public final class ServerBuilder {
         }
     }
 
-    private static final class GS extends GenericApplicationModule implements ScopeProvider {
+    @SuppressWarnings("unchecked")
+    private GS<?> createGenericApplicationModule(Settings settings, Set<Class<?>> toBind) {
+        Class<? extends GenericApplication> c = appType == null ? GenericApplication.class : (Class<? extends GenericApplication>) appType;
+        return createGenericApplicationModule(c, settings, toBind);
+    }
+
+    private static <T extends GenericApplication> GS<T> createGenericApplicationModule(Class<T> type, Settings settings, Set<Class<?>> toBind) {
+        return new GS<>(type, settings, toBind);
+    }
+
+    private static final class GS<T extends GenericApplication> extends GenericApplicationModule<T> implements ScopeProvider {
+
         private final Set<Class<?>> toBind;
+
+        public GS(Class<T> appType, Settings settings, Set<Class<?>> toBind) {
+            super(settings, appType, new Class<?>[0]);
+            this.toBind = toBind;
+        }
 
         public GS(Settings settings, Set<Class<?>> toBind) {
             super(settings);
             this.toBind = toBind;
         }
-        
+
         @Override
         protected void configure() {
             super.configure();
             Class<?>[] types = toBind.toArray(new Class<?>[toBind.size()]);
             scope.bindTypes(binder(), types);
-        }        
+        }
 
         public ReentrantScope scope() {
             return scope;
