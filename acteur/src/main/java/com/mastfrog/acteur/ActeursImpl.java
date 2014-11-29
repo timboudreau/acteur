@@ -105,7 +105,7 @@ final class ActeursImpl implements Acteurs {
         Iterator<Callable<Object[]>> it = CollectionUtils.convertedIterator(converter, acteurs);
         // The nifty thing that will run each Callable in succession and 
         // inject its output into the next callable's scope
-        if (sync) {
+        if (!sync) {
             Treadmill t = new Treadmill(exe, scope, it, receiver);
             // Launch the response
             t.start(finish, event, page);

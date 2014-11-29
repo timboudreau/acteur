@@ -45,6 +45,7 @@ import static com.mastfrog.acteur.preconditions.RequiredUrlParameters.Combinatio
 import com.mastfrog.acteur.preconditions.UrlParametersMayNotBeCombined;
 import com.mastfrog.acteur.preconditions.UrlParametersMayNotBeCombinedSets;
 import com.mastfrog.giulius.Dependencies;
+import com.mastfrog.giulius.Ordered;
 import java.util.List;
 import javax.inject.Inject;
 
@@ -54,6 +55,7 @@ import javax.inject.Inject;
  *
  * @author Tim Boudreau
  */
+@Ordered(0)
 public class BuiltInPageAnnotationHandler extends PageAnnotationHandler {
 
     private final Dependencies deps;

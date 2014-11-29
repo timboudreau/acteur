@@ -5,10 +5,12 @@ import com.google.common.collect.Sets;
 import com.google.inject.Singleton;
 import com.mastfrog.acteur.Acteur;
 import com.mastfrog.acteur.Page;
+import com.mastfrog.giulius.Ordered;
 import com.mastfrog.util.ConfigurationError;
 import java.lang.annotation.Annotation;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -18,13 +20,17 @@ import java.util.Set;
  * Mechanism for pluggable handling of annotations - this way an application can
  * create its own annotations which imply that some acteurs are to be added to a
  * page, and actually add them.
- *
+ * <p>
  * To use, implement your PageAnnotationHandler, and bind it as an eager
- * singleton so it is instantiated and registered on startup
+ * singleton so it is instantiated and registered on startup.
+ * <p>
+ * Note:  If you need to guarantee your handlers run *after* the built in ones
+ * (for example, your code assumes authentication has already happened and a User
+ * object is available for injectio), annotate your implementation with &064;Ordered
+ * with a value greater than 0.
  *
  * @author Tim Boudreau
  */
-//@ImplementedBy(DefaultPageAnnotationHandler.class)
 public abstract class PageAnnotationHandler {
 
     private final Set<Class<? extends Annotation>> types;
@@ -99,6 +105,7 @@ public abstract class PageAnnotationHandler {
 
         public void register(PageAnnotationHandler handler) {
             handlers.add(handler);
+            Collections.sort(handlers, new Ordered.OrderedObjectComparator());
         }
 
         private volatile Set<Class<? extends Annotation>> types;
