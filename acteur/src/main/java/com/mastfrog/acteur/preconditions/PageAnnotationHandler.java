@@ -46,6 +46,9 @@ public abstract class PageAnnotationHandler {
                 throw new ConfigurationError("Not an annotation type: " + type.getName());
             }
             Retention retention = type.getAnnotation(Retention.class);
+            if (retention == null) {
+                throw new ConfigurationError("Not annotated with @Retention: " + type.getName());
+            }
             if (retention.value() != RetentionPolicy.RUNTIME) {
                 throw new ConfigurationError("Attempting to use " + type.getName()
                         + " as a page annotation, but it does not have @Retention(RUNTIME)");

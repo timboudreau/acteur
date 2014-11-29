@@ -49,6 +49,13 @@ public final class Err implements ErrorResponse {
     }
     
     public static Err of(Throwable t) {
+        while (t.getCause() != null) {
+            t = t.getCause();
+        }
+        if (t instanceof ResponseException) {
+            ResponseException ex = (ResponseException) t;
+            return new Err(ex.status(), ex.getMessage());
+        }
         return new Err(t);
     }
     

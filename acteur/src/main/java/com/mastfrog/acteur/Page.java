@@ -24,6 +24,7 @@
 package com.mastfrog.acteur;
 
 import com.google.inject.ImplementedBy;
+import com.mastfrog.acteur.errors.ResponseException;
 import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.acteur.preconditions.Description;
@@ -183,7 +184,7 @@ public abstract class Page implements Iterable<Acteur> {
                 } catch (ThreadDeath | OutOfMemoryError e) {
                     return Exceptions.chuck(e);
                 } catch (final Exception t) {
-                    return Acteur.error(null, this, t, deps.getInstance(HttpEvent.class), logErrors);
+                    return Acteur.error(null, this, t, deps.getInstance(HttpEvent.class), logErrors && !(t instanceof ResponseException));
                 } catch (final Error t) {
                     return Acteur.error(null, this, t, deps.getInstance(HttpEvent.class), logErrors);
                 }

@@ -121,13 +121,21 @@ public class ContentConverter {
             Map map;
             try (InputStream in = new ByteBufInputStream(buf)) {
                 map = codec.readValue(in, Map.class);
+                validate(origin, map).throwIfFatalPresent();
+            } catch (IOException ioe) {
+                ioe.printStackTrace();
+                throw ioe;
             } finally {
                 buf.resetReaderIndex();
             }
-            validate(origin, map).throwIfFatalPresent();
         }
+        buf.resetReaderIndex();
         try (InputStream in = new ByteBufInputStream(buf)) {
-            return codec.readValue(in, type);
+            T result = codec.readValue(in, type);
+            return result;
+        } catch (IOException ioe) {
+            ioe.printStackTrace();
+            throw ioe;
         } finally {
             buf.resetReaderIndex();
         }
@@ -135,9 +143,9 @@ public class ContentConverter {
 
     @SuppressWarnings("unchecked")
     private Problems validate(Origin origin, Map map) {
-            Problems problems = new Problems();
-            checker.check(origin.value(), new KeysValues.MapAdapter(map), problems);
-            return problems;
+        Problems problems = new Problems();
+        checker.check(origin.value(), new KeysValues.MapAdapter(map), problems);
+        return problems;
     }
 
     public <T> T toObject(Map<String, ?> m, Class<T> type) throws InvalidInputException {

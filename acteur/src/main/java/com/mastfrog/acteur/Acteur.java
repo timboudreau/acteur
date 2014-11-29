@@ -29,6 +29,7 @@ import com.mastfrog.acteur.errors.Err;
 import com.mastfrog.acteur.errors.ErrorRenderer;
 import com.mastfrog.acteur.errors.ErrorResponse;
 import com.mastfrog.acteur.errors.ExceptionEvaluatorRegistry;
+import com.mastfrog.acteur.errors.ResponseException;
 import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.giulius.Dependencies;
@@ -222,6 +223,14 @@ public abstract class Acteur {
     static final class ErrorActeur extends Acteur {
 
         ErrorActeur(Acteur errSource, HttpEvent evt, Page page, Throwable t, boolean tryErrResponse, boolean log) throws IOException {
+            while (t.getCause() != null) {
+                t = t.getCause();
+            }
+            if (t instanceof ResponseException) {
+                ResponseException rt = (ResponseException) t;
+                setState(new RespondWith(new Err(rt.status(), rt.getMessage())));
+                return;
+            }
             if (tryErrResponse) {
                 Dependencies deps = page.application.getDependencies();
                 if (t instanceof ProvisionException) {

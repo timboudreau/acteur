@@ -24,6 +24,7 @@
 package com.mastfrog.acteur;
 
 import com.google.inject.name.Named;
+import com.mastfrog.acteur.errors.ResponseException;
 import com.mastfrog.acteur.server.ServerModule;
 import static com.mastfrog.acteur.server.ServerModule.DELAY_EXECUTOR;
 import com.mastfrog.acteur.util.RequestID;
@@ -205,8 +206,10 @@ final class PagesImpl implements Pages {
                 } catch (ThreadDeath | OutOfMemoryError ee) {
                     Exceptions.chuck(ee);
                 } catch (Exception | Error e) {
-                    e.printStackTrace();
-                    application.internalOnError(e);
+                    if (!(e instanceof ResponseException)) {
+                        e.printStackTrace();
+                        application.internalOnError(e);
+                    }
 
                     // Send an error message
                     Acteur err = Acteur.error(null, state.getLockedPage(), e, 

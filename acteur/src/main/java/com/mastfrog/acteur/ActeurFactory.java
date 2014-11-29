@@ -37,7 +37,6 @@ import com.mastfrog.util.Checks;
 import com.mastfrog.util.Exceptions;
 import com.mastfrog.util.Strings;
 import io.netty.handler.codec.http.HttpResponseStatus;
-import static io.netty.handler.codec.http.HttpResponseStatus.BAD_REQUEST;
 import static io.netty.handler.codec.http.HttpResponseStatus.SEE_OTHER;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -46,6 +45,8 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.Charset;
 import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
@@ -53,6 +54,7 @@ import java.util.logging.Logger;
 import java.util.regex.Pattern;
 import javax.inject.Inject;
 import org.netbeans.validation.api.InvalidInputException;
+import org.netbeans.validation.api.Problem;
 
 /**
  * Factory for standard Acteur implementations, mainly used to determine if a
@@ -255,15 +257,22 @@ public class ActeurFactory {
             @Override
             public State getState() {
                 final ContentConverter converter = deps.getInstance(ContentConverter.class);
-
                 HttpEvent evt = deps.getInstance(HttpEvent.class);
                 try {
                     MediaType mt = evt.getHeader(Headers.CONTENT_TYPE);
                     if (mt == null) {
                         mt = MediaType.ANY_TYPE;
                     }
-                    T obj = converter.readObject(evt.getContent(), mt, type);
-                    return new ConsumedLockedState(obj);
+                    try {
+                        T obj = converter.readObject(evt.getContent(), mt, type);
+                        return new ConsumedLockedState(obj);
+                    } catch (InvalidInputException e) {
+                        List<String> pblms = new LinkedList<>();
+                        for (Problem p : e.getProblems()) {
+                            pblms.add(p.getMessage());
+                        }
+                        return new RespondWith(Err.badRequest("Invalid data").put("problems", pblms));
+                    }
                 } catch (IOException ex) {
                     Logger.getLogger(ActeurFactory.class.getName()).log(Level.SEVERE, null, ex);
                     return new RespondWith(Err.badRequest("Bad or no JSON\n" + stackTrace(ex)));
