@@ -69,7 +69,7 @@ public class ResourcesApp extends Application {
 
         @Override
         protected void configure() {
-            install(new ServerModule(ResourcesApp.class));
+            install(new ServerModule<ResourcesApp>(ResourcesApp.class));
             bind(File.class).toInstance(tmpdir);
             bind(StaticResources.class).to(FileResources.class);
             bind(HttpClient.class).toInstance(HttpClient.builder().build());
@@ -79,7 +79,7 @@ public class ResourcesApp extends Application {
 
         @Override
         protected void configure() {
-            install(new ServerModule(ResourcesApp.class));
+            install(new ServerModule<ResourcesApp>(ResourcesApp.class));
             bind(File.class).toInstance(tmpdir);
             bind(StaticResources.class).to(FileResources.class);
             bind(HttpClient.class).toInstance(HttpClient.builder().build());
@@ -89,7 +89,7 @@ public class ResourcesApp extends Application {
 
         @Override
         protected void configure() {
-            install(new ServerModule(ResourcesApp.class));
+            install(new ServerModule<ResourcesApp>(ResourcesApp.class));
             bind(StaticResources.class).to(ClasspathResources.class);
             bind(ClasspathResourceInfo.class).toInstance(new ClasspathResourceInfo(ResourcesApp.class,
                     "hello.txt", "another.txt"));
@@ -101,7 +101,7 @@ public class ResourcesApp extends Application {
 
         @Override
         protected void configure() {
-            install(new ServerModule(ResourcesApp.class));
+            install(new ServerModule<ResourcesApp>(ResourcesApp.class));
             bind(File.class).toInstance(tmpdir);
             bind(StaticResources.class).to(MergedResources.class);
             bind(ClasspathResourceInfo.class).toInstance(new ClasspathResourceInfo(ResourcesApp.class,
