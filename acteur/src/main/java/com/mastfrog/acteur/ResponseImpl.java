@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright 2013 Tim Boudreau.
+ * Copyright 2014 Tim Boudreau.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -72,7 +72,9 @@ import org.joda.time.Duration;
 
 /**
  * Aggregates the set of headers and a body writer which is used to respond to
- * an HTTP request.
+ * an HTTP request. Each Acteur has its own which will be merged into the one
+ * belonging to the page if it succeeds, so Acteurs that reject a response
+ * cannot have side-effects.
  *
  * @author Tim Boudreau
  */
@@ -221,7 +223,6 @@ final class ResponseImpl extends Response {
                 return this;
             }
             if (Names.CONTENT_LENGTH.equals(name)) {
-//                System.out.println("ATTEMPT TO SET LENGTH TO " + values);
                 return this;
             }
             return orig.add(name, values);
@@ -233,13 +234,11 @@ final class ResponseImpl extends Response {
                 return this;
             }
             if (Names.CONTENT_LENGTH.equals(name)) {
-//                System.out.println("ATTEMPT TO SET LENGTH TO " + value);
                 return this;
             }
-            if (Names.CONTENT_ENCODING.equals(name)) {
-//                System.out.println("ATTEMPT TO SET CONTENT ENCODING TO " + value);
-                return this;
-            }
+//            if (Names.CONTENT_ENCODING.equals(name) && !"true".equals(orig.get("X-Internal-Compress"))) {
+//                return this;
+//            }
             return orig.set(name, value);
         }
 
@@ -249,11 +248,9 @@ final class ResponseImpl extends Response {
                 return this;
             }
             if (Names.CONTENT_LENGTH.equals(name)) {
-//                System.out.println("ATTEMPT TO SET LENGTH");
                 return this;
             }
             if (Names.CONTENT_ENCODING.equals(name)) {
-//                System.out.println("ATTEMPT TO SET TO ");
                 return this;
             }
             return orig.set(name, values);
@@ -265,11 +262,9 @@ final class ResponseImpl extends Response {
                 return this;
             }
             if (Names.CONTENT_LENGTH.equals(name)) {
-//                System.out.println("ATTEMPT TO REMOVE LENGTH");
                 return this;
             }
             if (Names.CONTENT_ENCODING.equals(name)) {
-//                System.out.println("ATTEMPT TO REMOVE TO ");
                 return this;
             }
             return orig.remove(name);
@@ -571,11 +566,17 @@ final class ResponseImpl extends Response {
                     continue;
                 } else if (HttpHeaders.Names.CONTENT_ENCODING.equals(e.decorator.name())) {
                     continue;
-                } else if ("Transfer-Encoding".equals(e.decorator.name())) {
+                } else if (Headers.TRANSFER_ENCODING.name().equals(e.decorator.name())) {
                     continue;
                 }
             }
             e.write(resp);
+        }
+        // Ensure a 0 content length is present for items with no content
+        if (message == null && listener == null && resp.headers() instanceof HackHttpHeaders) {
+            ((HackHttpHeaders) resp.headers()).orig.set(Headers.CONTENT_LENGTH.name(), 0);
+            ((HackHttpHeaders) resp.headers()).remove(Headers.TRANSFER_ENCODING.name());
+            ((HackHttpHeaders) resp.headers()).remove(Headers.CONTENT_ENCODING.name());
         }
         return resp;
     }
@@ -589,7 +590,7 @@ final class ResponseImpl extends Response {
         }
         return future;
     }
-    
+
     @Override
     public String toString() {
         return "Response{" + "modified=" + modified + ", status=" + status + ", headers=" + headers + ", message=" + message + ", listener=" + listener + ", chunked=" + chunked + " has listener " + (this.listener != null) + '}';
@@ -603,8 +604,6 @@ final class ResponseImpl extends Response {
         Entry(HeaderValueType<T> decorator, T value) {
             Checks.notNull("decorator", decorator);
             Checks.notNull(decorator.name().toString(), value);
-//            assert value == null || decorator.type().isInstance(value) :
-//                    value + " of type " + value.getClass() + " is not a " + decorator.type();
             this.decorator = decorator;
             this.value = value;
         }
