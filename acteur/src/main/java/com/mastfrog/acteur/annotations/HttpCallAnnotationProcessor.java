@@ -26,6 +26,7 @@ package com.mastfrog.acteur.annotations;
 import static com.mastfrog.acteur.annotations.HttpCall.GENERATED_SOURCE_SUFFIX;
 import com.mastfrog.acteur.preconditions.InjectUrlParametersAs;
 import com.mastfrog.acteur.preconditions.InjectRequestBodyAs;
+import com.mastfrog.giulius.annotations.processors.IndexGeneratingProcessor;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -80,21 +81,18 @@ import org.openide.util.lookup.ServiceProvider;
 @ServiceProvider(service = Processor.class)
 @SupportedAnnotationTypes({"com.mastfrog.acteur.annotations.HttpCall",
     "com.mastfrog.acteur.preconditions.InjectRequestBodyAs",
-    "com.mastfrog.acteur.preconditions.InjectParametersAsInterface"
+    "com.mastfrog.acteur.preconditions.InjectUrlParametersAs"
 })
 @SupportedSourceVersion(SourceVersion.RELEASE_6)
-public class HttpCallAnnotationProcessor extends AbstractProcessor {
-
-    private ProcessingEnvironment env;
-
-    @Override
-    public void init(ProcessingEnvironment processingEnv) {
-        this.env = processingEnv;
+public class HttpCallAnnotationProcessor extends IndexGeneratingProcessor {
+    
+    public HttpCallAnnotationProcessor() {
+        super(true);
     }
 
     private boolean isPageSubtype(Element e) {
-        Types types = env.getTypeUtils();
-        Elements elements = env.getElementUtils();
+        Types types = processingEnv.getTypeUtils();
+        Elements elements = processingEnv.getElementUtils();
         TypeElement pageType = elements.getTypeElement("com.mastfrog.acteur.Page");
         if (pageType == null) {
             return false;
@@ -103,8 +101,8 @@ public class HttpCallAnnotationProcessor extends AbstractProcessor {
     }
 
     private boolean isActeurSubtype(Element e) {
-        Types types = env.getTypeUtils();
-        Elements elements = env.getElementUtils();
+        Types types = processingEnv.getTypeUtils();
+        Elements elements = processingEnv.getElementUtils();
         TypeElement pageType = elements.getTypeElement("com.mastfrog.acteur.Acteur");
         if (pageType == null) {
             return false;
@@ -168,25 +166,25 @@ public class HttpCallAnnotationProcessor extends AbstractProcessor {
                                 if (av.getValue() instanceof DeclaredType) {
                                     DeclaredType dt = (DeclaredType) av.getValue();
                                     // Convert e.g. mypackage.Foo.Bar.Baz to mypackage.Foo$Bar$Baz
-                                    String canonical = canonicalize(dt.asElement().asType(), env.getTypeUtils());
+                                    String canonical = canonicalize(dt.asElement().asType(), processingEnv.getTypeUtils());
                                     result.add(canonical);
                                 } else {
-                                    env.getMessager().printMessage(Diagnostic.Kind.WARNING,
+                                    processingEnv.getMessager().printMessage(Diagnostic.Kind.WARNING,
                                             "Not a declared type: " + av);
                                 }
                             } else {
-                                env.getMessager().printMessage(Diagnostic.Kind.WARNING,
+                                processingEnv.getMessager().printMessage(Diagnostic.Kind.WARNING,
                                         "Annotation value for scopeTypes is not an AnnotationValue " + types(o));
                             }
                         }
                     } else if (x.getValue().getValue() instanceof DeclaredType) {
                         DeclaredType dt = (DeclaredType) x.getValue().getValue();
                         // Convert e.g. mypackage.Foo.Bar.Baz to mypackage.Foo$Bar$Baz
-                        String canonical = canonicalize(dt.asElement().asType(), env.getTypeUtils());
+                        String canonical = canonicalize(dt.asElement().asType(), processingEnv.getTypeUtils());
                         result.add(canonical);
 
                     } else {
-                        env.getMessager().printMessage(Diagnostic.Kind.WARNING,
+                        processingEnv.getMessager().printMessage(Diagnostic.Kind.WARNING,
                                 "Annotation value for scopeTypes is not a list on " + mirror + " - " + types(x.getValue().getValue()));
                     }
                 }
@@ -205,7 +203,6 @@ public class HttpCallAnnotationProcessor extends AbstractProcessor {
         return result;
     }
 
-    StringBuilder lines = new StringBuilder();
     Set<Element> elements = new HashSet<>();
 
     int ix;
@@ -213,7 +210,7 @@ public class HttpCallAnnotationProcessor extends AbstractProcessor {
     private List<String> deferred = new LinkedList<String>();
     
     @Override
-    public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
+    public boolean handleProcess(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
         Set<Element> all = new HashSet<>(roundEnv.getElementsAnnotatedWith(HttpCall.class));
         all.addAll(roundEnv.getElementsAnnotatedWith(InjectUrlParametersAs.class));
         all.addAll(roundEnv.getElementsAnnotatedWith(InjectRequestBodyAs.class));
@@ -224,7 +221,7 @@ public class HttpCallAnnotationProcessor extends AbstractProcessor {
         // correctly into a generated page subclass if the type of its value will be
         // generated by Numble
         for (String type : deferred) {
-            TypeElement retry = env.getElementUtils().getTypeElement(type);
+            TypeElement retry = processingEnv.getElementUtils().getTypeElement(type);
             all.add(retry);
         }
         deferred.clear();
@@ -240,7 +237,7 @@ public class HttpCallAnnotationProcessor extends AbstractProcessor {
                 }
                 boolean acteur = isActeurSubtype(e);
                 if (!isPageSubtype(e) && !acteur) {
-                    env.getMessager().printMessage(Diagnostic.Kind.ERROR, "Not a subclass of Page or Acteur: " + e.asType(), e);
+                    processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Not a subclass of Page or Acteur: " + e.asType(), e);
                     continue;
                 }
                 elements.add(e);
@@ -253,15 +250,13 @@ public class HttpCallAnnotationProcessor extends AbstractProcessor {
                     AtomicBoolean err = new AtomicBoolean();
                     String className = generatePageSource(te, err);
                     if (!err.get()) {
-                        env.getMessager().printMessage(Diagnostic.Kind.NOTE, "Generated " + className + " for " + e.asType(), e);
+                        processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE, "Generated " + className + " for " + e.asType(), e);
                     } else {
                         failed.add(te.getQualifiedName().toString());
                     }
                 } else {
-                    if (lines.length() > 0) {
-                        lines.append('\n');
-                    }
-                    lines.append(canonicalize(e.asType(), env.getTypeUtils())).append(":").append(order);
+                    StringBuilder lines = new StringBuilder();
+                    lines.append(canonicalize(e.asType(), processingEnv.getTypeUtils())).append(":").append(order);
                     List<String> bindingTypes = bindingTypes(e);
                     if (!bindingTypes.isEmpty()) {
                         lines.append('{');
@@ -274,26 +269,7 @@ public class HttpCallAnnotationProcessor extends AbstractProcessor {
                             }
                         }
                     }
-                }
-            }
-            if (all.isEmpty() && lines.length() > 0) {
-                if (!elements.isEmpty()) {
-                    String path = HttpCall.META_INF_PATH;
-                    try {
-                        env.getMessager().printMessage(Diagnostic.Kind.NOTE,
-                                "Found the following Page classes annotated with @HttpCall:\n" + lines);
-                        FileObject fo = env.getFiler().createResource(StandardLocation.CLASS_OUTPUT,
-                                "", path, elements.toArray(new Element[0]));
-                        try (OutputStream out = fo.openOutputStream()) {
-                            try (PrintStream ps = new PrintStream(out)) {
-                                ps.println(lines);
-                            }
-                        }
-                    } catch (FilerException ex) {
-                        // Harmless;  sort this out at some point - we gat called
-                        // again for our generated source
-                        ex.printStackTrace();
-                    }
+                    addLine(HttpCall.META_INF_PATH, lines.toString(), e);
                 }
             }
         } catch (IOException ex) {
@@ -394,7 +370,7 @@ public class HttpCallAnnotationProcessor extends AbstractProcessor {
             ps.println("}");
         }
         if (!error.get()) {
-            JavaFileObject jfo = env.getFiler().createSourceFile(pkg.getQualifiedName() + "." + className, typeElement);
+            JavaFileObject jfo = processingEnv.getFiler().createSourceFile(pkg.getQualifiedName() + "." + className, typeElement);
             try (OutputStream stream = jfo.openOutputStream()) {
                 stream.write(out.toByteArray());
             }
