@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright 2013 Tim Boudreau.
+ * Copyright 2014 Tim Boudreau.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -41,7 +41,6 @@ import io.netty.handler.codec.http.HttpContentCompressor;
 import io.netty.handler.codec.http.HttpRequestDecoder;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseEncoder;
-import io.netty.util.internal.StringUtil;
 import java.util.List;
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -78,9 +77,6 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
         ChannelPipeline pipeline = ch.pipeline();
         ChannelHandler decoder = new HackHttpRequestDecoder();
         ChannelHandler encoder = new HttpResponseEncoder();
-//        SSLEngine engine = SecureChatSslContextFactory.getServerContext().createSSLEngine();
-//        engine.setUseClientMode(false);
-//        pipeline.addLast("ssl", new SslHandler(engine));
 
         pipeline.addLast("decoder", decoder);
         // Uncomment the following line if you don't want to handle HttpChunks.
