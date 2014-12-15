@@ -6,12 +6,12 @@
 
 package com.mastfrog.acteur;
 
-import com.google.inject.Inject;
 import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.util.Checks;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import java.util.Map;
+import javax.inject.Inject;
 
 /**
  * Convenience Acteur which compares the current Page's ETag against the

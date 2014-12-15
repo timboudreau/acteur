@@ -24,26 +24,13 @@
 package com.mastfrog.acteur;
 
 import com.google.inject.ImplementedBy;
-import com.mastfrog.acteur.auth.AuthenticationActeur;
+import com.mastfrog.acteur.errors.ResponseException;
 import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.acteur.headers.Headers;
-import com.mastfrog.acteur.preconditions.BannedUrlParameters;
-import com.mastfrog.acteur.preconditions.BasicAuth;
 import com.mastfrog.acteur.preconditions.Description;
-import com.mastfrog.acteur.preconditions.InjectRequestBodyAs;
-import com.mastfrog.acteur.preconditions.MaximumPathLength;
-import com.mastfrog.acteur.preconditions.Methods;
 import com.mastfrog.acteur.preconditions.PageAnnotationHandler;
-import com.mastfrog.acteur.preconditions.ParametersMustBeNumbersIfPresent;
-import com.mastfrog.acteur.preconditions.Path;
-import com.mastfrog.acteur.preconditions.PathRegex;
-import com.mastfrog.acteur.preconditions.RequireAtLeastOneUrlParameterFrom;
-import com.mastfrog.acteur.preconditions.RequireParametersIfMethodMatches;
-import com.mastfrog.acteur.preconditions.RequiredUrlParameters;
 import com.mastfrog.acteur.util.CacheControl;
 import com.mastfrog.giulius.Dependencies;
-import com.mastfrog.guicy.scope.ReentrantScope;
-import com.mastfrog.settings.Settings;
 import com.mastfrog.util.Checks;
 import com.mastfrog.util.Exceptions;
 import com.mastfrog.util.collections.CollectionUtils;
@@ -58,13 +45,16 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
 import org.joda.time.DateTime;
 import org.joda.time.Duration;
 
 /**
- * Really an aggregation of Acteurs and a place to set header values. To
- * implement, simply subclass and add zero or more
+ * Really an aggregation of Acteurs and a place to set header values;  in recent
+ * versions of Acteur it is rarely necessary to implement this - instead, simply
+ * annotate your entry-point Acteur with &#064;HttpCall and one will be generated
+ * for you under-the-hood.
+ * 
+ * To implement, simply subclass and add zero or more
  * <code><a href="Acteur.html">Acteur</a></code> classes or instances using the
  * <code>add()</code> method. Each Acteur is called in succession and can do one
  * or more of:
@@ -103,9 +93,10 @@ public abstract class Page implements Iterable<Acteur> {
     }
 
     protected String getDescription() {
-        return getClass().getSimpleName();
+        Description desc = getClass().getAnnotation(Description.class);
+        return desc != null ? desc.value() : getClass().getSimpleName();
     }
-    
+
     Iterable<Object> contents() {
         return CollectionUtils.toIterable(this.acteurs.iterator());
     }
@@ -125,7 +116,7 @@ public abstract class Page implements Iterable<Acteur> {
             }
         }
         if (!m.isEmpty()) {
-            into.put(getDescription(), m);
+            into.put(getClass().getSimpleName(), m);
         }
     }
 
@@ -177,6 +168,7 @@ public abstract class Page implements Iterable<Acteur> {
         return getActeur(ix, true);
     }
 
+    @SuppressWarnings("unchecked")
     final Acteur getActeur(int ix, boolean logErrors) {
         try (QuietAutoCloseable ac = Page.set(this)) {
             Application app = getApplication();
@@ -192,15 +184,9 @@ public abstract class Page implements Iterable<Acteur> {
                 } catch (ThreadDeath | OutOfMemoryError e) {
                     return Exceptions.chuck(e);
                 } catch (final Exception t) {
-                    if (logErrors) {
-                        app.internalOnError(t);
-                    }
-                    return Acteur.error(null, this, t, deps.getInstance(HttpEvent.class));
+                    return Acteur.error(null, this, t, deps.getInstance(HttpEvent.class), logErrors && !(t instanceof ResponseException));
                 } catch (final Error t) {
-                    if (logErrors) {
-                        app.internalOnError(t);
-                    }
-                    return Acteur.error(null, this, t, deps.getInstance(HttpEvent.class));
+                    return Acteur.error(null, this, t, deps.getInstance(HttpEvent.class), logErrors);
                 }
             } else if (o instanceof Acteur) {
                 return (Acteur) o;
@@ -208,10 +194,6 @@ public abstract class Page implements Iterable<Acteur> {
                 throw new AssertionError("?: " + o + " in " + this);
             }
         }
-    }
-
-    Acteurs getActeurs(ExecutorService exe, ReentrantScope scope) {
-        return new ActeursImpl(exe, scope, this, getApplication().getDependencies().getInstance(Settings.class));
     }
 
     protected void decorateResponse(Event<?> event, Acteur acteur, HttpResponse response) {
@@ -245,87 +227,19 @@ public abstract class Page implements Iterable<Acteur> {
 
     @SuppressWarnings("deprecation")
     private Iterator<Acteur> annotationActeurs() {
-        List<Acteur> acteurs = new LinkedList<>();
-        Class<?> c = getClass();
-        PathRegex regex = c.getAnnotation(PathRegex.class);
-        ActeurFactory a = null;
-        if (regex != null) {
-            ActeurFactory af = a = getApplication().getDependencies().getInstance(ActeurFactory.class);
-            acteurs.add(af.matchPath(regex.value()));
-        }
-        Path path = c.getAnnotation(Path.class);
-        if (path != null) {
-            ActeurFactory af = a != null ? a : (a = getApplication().getDependencies().getInstance(ActeurFactory.class));
-            acteurs.add(af.globPathMatch(path.value()));
-        }
-        Methods m = c.getAnnotation(Methods.class);
-        if (m != null) {
-            ActeurFactory af = a != null ? a : (a = getApplication().getDependencies().getInstance(ActeurFactory.class));
-            acteurs.add(af.matchMethods(m.value()));
-        }
-        MaximumPathLength len = c.getAnnotation(MaximumPathLength.class);
-        if (len != null) {
-            ActeurFactory af = a != null ? a : (a = getApplication().getDependencies().getInstance(ActeurFactory.class));
-            acteurs.add(af.maximumPathLength(len.value()));
-        }
-        BannedUrlParameters banned = c.getAnnotation(BannedUrlParameters.class);
-        if (banned != null) {
-            ActeurFactory af = a != null ? a : (a = getApplication().getDependencies().getInstance(ActeurFactory.class));
-            acteurs.add(af.banParameters(banned.value()));
-        }
-        RequireAtLeastOneUrlParameterFrom atLeastOneOf = c.getAnnotation(RequireAtLeastOneUrlParameterFrom.class);
-        if (atLeastOneOf != null) {
-            ActeurFactory af = a != null ? a : (a = getApplication().getDependencies().getInstance(ActeurFactory.class));
-            acteurs.add(af.requireAtLeastOneParameter(banned.value()));
-        }
-        RequiredUrlParameters params = c.getAnnotation(RequiredUrlParameters.class);
-        if (params != null) {
-            ActeurFactory af = a != null ? a : (a = getApplication().getDependencies().getInstance(ActeurFactory.class));
-            switch (params.combination()) {
-                case ALL:
-                    acteurs.add(af.requireParameters(params.value()));
-                    break;
-                case AT_LEAST_ONE:
-                    acteurs.add(af.requireAtLeastOneParameter(params.value()));
-                    break;
-                default:
-                    throw new AssertionError(params.combination());
-            }
-        }
-        RequireParametersIfMethodMatches methodParams = c.getAnnotation(RequireParametersIfMethodMatches.class);
-        if (methodParams != null) {
-            ActeurFactory af = a != null ? a : (a = getApplication().getDependencies().getInstance(ActeurFactory.class));
-            acteurs.add(af.requireParametersIfMethodMatches(methodParams.method(), methodParams.value()));
-        }
-        ParametersMustBeNumbersIfPresent nums = c.getAnnotation(ParametersMustBeNumbersIfPresent.class);
-        if (nums != null) {
-            ActeurFactory af = a != null ? a : (a = getApplication().getDependencies().getInstance(ActeurFactory.class));
-            acteurs.add(af.parametersMustBeNumbersIfTheyArePresent(nums.allowDecimal(), nums.allowNegative(), nums.value()));
-        }
-        BasicAuth auth = c.getAnnotation(BasicAuth.class);
-        if (auth != null) {
-            acteurs.add(Acteur.wrap(AuthenticationActeur.class, application.getDependencies()));
-        }
-        PageAnnotationHandler handler = getApplication().getDependencies().getInstance(PageAnnotationHandler.class);
-        handler.processAnnotations(this, acteurs);
-        InjectRequestBodyAs as = c.getAnnotation(InjectRequestBodyAs.class);
-        if (as != null) {
-            ActeurFactory af = a != null ? a : (a = getApplication().getDependencies().getInstance(ActeurFactory.class));
-            acteurs.add(af.injectRequestBodyAsJSON(as.value()));
-        }
-        return acteurs.iterator();
-    }
-
-    private boolean hasAnnotations() {
-        Class<?> c = getClass();
-        return c.getAnnotation(Methods.class) != null || c.getAnnotation(PathRegex.class) != null
-                || c.getAnnotation(RequiredUrlParameters.class) != null;
+        PageAnnotationHandler.Registry handler = getApplication().getDependencies().getInstance(PageAnnotationHandler.Registry.class);
+        List<Acteur> results = new LinkedList<>();
+        handler.processAnnotations(this, results);
+        return results.iterator();
     }
 
     @Override
     public Iterator<Acteur> iterator() {
         assert getApplication() != null : "Application is null - called outside request?";
-        if (hasAnnotations()) {
+        PageAnnotationHandler.Registry registry = 
+                getApplication().getDependencies().getInstance(
+                        PageAnnotationHandler.Registry.class);
+        if (registry.hasAnnotations(this)) {
             return CollectionUtils.combine(annotationActeurs(), new I());
         } else {
             return new I();

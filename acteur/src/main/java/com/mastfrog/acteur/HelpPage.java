@@ -24,7 +24,6 @@
 package com.mastfrog.acteur;
 
 import com.google.common.net.MediaType;
-import com.google.inject.Inject;
 import static com.mastfrog.acteur.Help.HELP_URL_PATTERN_SETTINGS_KEY;
 import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.acteur.headers.Method;
@@ -39,6 +38,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import javax.inject.Inject;
 import org.joda.time.DateTime;
 
 /**
@@ -69,6 +69,7 @@ final class HelpPage extends Page {
             if (html) {
                 add(Headers.CONTENT_TYPE, MediaType.HTML_UTF_8.withCharset(charset));
             }
+            setChunked(true);
             setResponseWriter(new HelpWriter(html, app));
             add(Headers.CONNECTION, Connection.close);
         }
@@ -108,7 +109,7 @@ final class HelpPage extends Page {
                     sb.append("<p><i style='font-size: 0.85em;'>Note that "
                             + "URL matching expressions are relative to the "
                             + "application base path, which can be set by passing "
-                            + "<code>--basepath $PATH</code> on the command-line"
+                            + "<code>--basepath $PATH</code> on the command-line "
                             + "or set in a properties file."
                             + "<i></p>");
                     writeOut(null, help, sb, null);
@@ -147,14 +148,15 @@ final class HelpPage extends Page {
                 return sb.toString();
             }
 
+            @SuppressWarnings("unchecked")
             private StringBuilder writeOut(String key, Object object, StringBuilder sb, String parentKey) {
                 boolean code = ("PathRegex".equals(parentKey) || "Path".equals(parentKey) || "Methods".equals(parentKey))
                         && "value".equals(key);
                 String codeOpen = code ? "<code>" : "";
                 String codeClose = code ? "</code>" : "";
                 String humanized = deBicapitalize(key);
-                if (key == null || object instanceof Map) {
-                    Map<String, Object> m = Collections.checkedMap((Map) object, String.class, Object.class);
+                if (key == null || object instanceof Map<?,?>) {
+                    Map<String, Object> m = Collections.checkedMap((Map<String,Object>) object, String.class, Object.class);
                     if (key != null) {
                         sb.append("\n<tr><th valign=\"left\" bgcolor='#FFEECC'>").append(humanized).append("</th><td>");
                     }

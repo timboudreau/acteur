@@ -1,7 +1,7 @@
-/* 
+/*
  * The MIT License
  *
- * Copyright 2013 Tim Boudreau.
+ * Copyright 2014 Tim Boudreau.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,12 +21,30 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.mastfrog.acteur.auth.file;
+package com.mastfrog.acteur.preconditions;
+
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
 /**
+ * Indicates that this endpoint requires authentication using whatever 
+ * mechanism is configured (by default, HTTP Basic Auth - you should implement
+ * and bind Authenticator to use it).
  *
  * @author Tim Boudreau
  */
-public interface Role {
-    public String getName();
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.TYPE)
+@Description("Requires authentication")
+public @interface Authenticated {
+
+    /**
+     * Unused for basic auth, but may be by other authentication schemes
+     *
+     * @return Some parameter describing who can access this resource or
+     * other information usefully passed to the authentication code
+     */
+    String value() default "default";
 }

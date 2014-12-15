@@ -24,9 +24,12 @@
 package com.mastfrog.acteur;
 
 import com.google.common.net.MediaType;
+import com.google.inject.ProvisionException;
+import com.mastfrog.acteur.errors.Err;
 import com.mastfrog.acteur.errors.ErrorRenderer;
 import com.mastfrog.acteur.errors.ErrorResponse;
 import com.mastfrog.acteur.errors.ExceptionEvaluatorRegistry;
+import com.mastfrog.acteur.errors.ResponseException;
 import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.giulius.Dependencies;
@@ -173,13 +176,13 @@ public abstract class Acteur {
         return getResponse();
     }
 
-    static Acteur error(Acteur errSource, Page page, Throwable t, HttpEvent evt) {
+    static Acteur error(Acteur errSource, Page page, Throwable t, HttpEvent evt, boolean log) {
         try {
-            return new ErrorActeur(errSource, evt, page, t, true);
+            return new ErrorActeur(errSource, evt, page, t, true, log);
         } catch (IOException ex) {
             page.application.internalOnError(t);
             try {
-                return new ErrorActeur(errSource, evt, page, t, true);
+                return new ErrorActeur(errSource, evt, page, t, true, log);
             } catch (IOException ex1) {
                 return Exceptions.chuck(ex1);
             }
@@ -219,11 +222,25 @@ public abstract class Acteur {
 
     static final class ErrorActeur extends Acteur {
 
-        ErrorActeur(Acteur errSource, HttpEvent evt, Page page, Throwable t, boolean tryErrResponse) throws IOException {
+        ErrorActeur(Acteur errSource, HttpEvent evt, Page page, Throwable t, boolean tryErrResponse, boolean log) throws IOException {
+            while (t.getCause() != null) {
+                t = t.getCause();
+            }
+            if (t instanceof ResponseException) {
+                ResponseException rt = (ResponseException) t;
+                setState(new RespondWith(new Err(rt.status(), rt.getMessage())));
+                return;
+            }
             if (tryErrResponse) {
                 Dependencies deps = page.application.getDependencies();
+                if (t instanceof ProvisionException) {
+                    t = t.getCause();
+                }
                 ExceptionEvaluatorRegistry reg = deps.getInstance(ExceptionEvaluatorRegistry.class);
                 ErrorResponse resp = reg.evaluate(t, errSource, page, evt);
+                if (log && resp instanceof Err && ((Err) resp).unhandled) {
+                    page.application.control().internalOnError(t);
+                }
                 if (resp != null) {
                     ErrorRenderer ren = deps.getInstance(ErrorRenderer.class);
                     ren.render(resp, response(), evt);
@@ -628,7 +645,7 @@ public abstract class Acteur {
         return state;
     }
 
-    static Acteur wrap(final Class<? extends Acteur> type, final Dependencies deps) {
+    public static Acteur wrap(final Class<? extends Acteur> type, final Dependencies deps) {
         Checks.notNull("type", type);
         final Charset charset = deps.getInstance(Charset.class);
         return new WrapperActeur(deps, charset, type);

@@ -23,12 +23,9 @@
  */
 package com.mastfrog.acteur.errors;
 
-import com.google.common.collect.ImmutableMap;
 import com.mastfrog.acteur.Acteur;
 import com.mastfrog.acteur.HttpEvent;
 import com.mastfrog.acteur.Page;
-import io.netty.handler.codec.http.HttpResponseStatus;
-import java.util.Map;
 import javax.inject.Singleton;
 
 /**
@@ -72,6 +69,4 @@ public abstract class ExceptionEvaluator implements Comparable<ExceptionEvaluato
     }
 
     public abstract ErrorResponse evaluate(Throwable t, Acteur acteur, Page page, HttpEvent evt);
-    
-
 }

@@ -1,7 +1,7 @@
-/* 
+/*
  * The MIT License
  *
- * Copyright 2013 Tim Boudreau.
+ * Copyright 2014 tim.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,42 +21,49 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.mastfrog.acteur.auth.file;
+
+package com.mastfrog.acteur.mongo.util;
 
 import com.google.inject.Inject;
-import java.io.IOException;
+import com.mastfrog.acteur.Acteur;
+import com.mastfrog.acteur.HttpEvent;
+import com.mastfrog.acteur.Page;
+import com.mastfrog.acteur.errors.Err;
+import com.mastfrog.acteur.errors.ErrorResponse;
+import com.mastfrog.acteur.errors.ExceptionEvaluator;
+import com.mastfrog.acteur.errors.ExceptionEvaluatorRegistry;
 
 /**
  *
- * @author Tim Boudreau
+ * @author tim
  */
-final class UsersImpl implements Users {
-    private final Filer filer;
-    @Inject
-    UsersImpl (Filer filer) {
-        this.filer = filer;
-    }
-    
-    @Override
-    public User getUser(String name) throws IOException {
-        FolderUser result = new FolderUser(name, filer);
-        if (result.isValid()) {
-            return result;
-        }
-        return null;
-    }
-    
-    @Override
-    public User newUser(String name, String password) throws IOException {
-        return filer.newUser(name, password);
+public class InvalidParameterException extends IllegalArgumentException {
+
+    InvalidParameterException() {
     }
 
-    @Override
-    public User newUser(String name, String password, String realName) throws IOException {
-        FolderUser u = filer.newUser(name, password);
-        if (realName != null && !realName.equals(name)) {
-            u.setDisplayName(realName);
+    InvalidParameterException(String string) {
+        super(string);
+    }
+
+    InvalidParameterException(String string, Throwable thrwbl) {
+        super(string, thrwbl);
+    }
+
+    InvalidParameterException(Throwable thrwbl) {
+        super(thrwbl);
+    }
+    
+    public static class Evaluator extends ExceptionEvaluator {
+        @Inject
+        Evaluator(ExceptionEvaluatorRegistry registry) {
+            super(registry);
         }
-        return u;
+
+        @Override
+        public ErrorResponse evaluate(Throwable t, Acteur acteur, Page page, HttpEvent evt) {
+            String msg = t.getMessage() == null ? t.getClass().getSimpleName() : t.getMessage();
+            return Err.badRequest(msg);
+        }
     }
 }

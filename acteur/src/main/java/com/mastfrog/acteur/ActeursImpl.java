@@ -28,6 +28,7 @@ import com.google.inject.name.Named;
 import com.mastfrog.acteur.server.ServerModule;
 import com.mastfrog.guicy.scope.ReentrantScope;
 import com.mastfrog.settings.Settings;
+import com.mastfrog.treadmill.SynchronousTreadmill;
 import com.mastfrog.treadmill.Treadmill;
 import com.mastfrog.util.Checks;
 import com.mastfrog.util.collections.CollectionUtils;
@@ -50,6 +51,7 @@ final class ActeursImpl implements Acteurs {
     private final Page page;
     private final Settings settings;
     private static boolean debug;
+    private final boolean sync;
 
     @Inject
     ActeursImpl(@Named(ServerModule.BACKGROUND_THREAD_POOL_NAME) ExecutorService exe, ReentrantScope scope, Page page, Settings settings) {
@@ -63,6 +65,7 @@ final class ActeursImpl implements Acteurs {
         assert check(page.getActeurs());
         this.settings = settings;
         debug = settings.getBoolean("acteur.debug", true);
+        sync = settings.getBoolean("acteur.synchronous", false);
     }
 
     private boolean check(List<Object> actionsOrTypes) {
@@ -93,7 +96,7 @@ final class ActeursImpl implements Acteurs {
         Iterator<Acteur> acteurs = page.iterator();
         // Convert Acteurs to Callable<Object[]> which return the state's context
         // for injection into the request scope for the next Acteur
-        ActeurToCallable converter = new ActeurToCallable(page, response, lastState, acteurs);
+        ActeurToCallable converter = new ActeurToCallable(page, response, lastState);
         
         if (!acteurs.hasNext()) {
             throw new IllegalStateException("No acteurs at all from " + page);
@@ -102,9 +105,15 @@ final class ActeursImpl implements Acteurs {
         Iterator<Callable<Object[]>> it = CollectionUtils.convertedIterator(converter, acteurs);
         // The nifty thing that will run each Callable in succession and 
         // inject its output into the next callable's scope
-        Treadmill t = new Treadmill(exe, scope, it, receiver);
-        // Launch the response
-        t.start(finish, event, page);
+        if (!sync) {
+            Treadmill t = new Treadmill(exe, scope, it, receiver);
+            // Launch the response
+            t.start(finish, event, page);
+        } else {
+            SynchronousTreadmill t = new SynchronousTreadmill(scope, it, receiver);
+            // Launch the response
+            t.start(finish, event, page);
+        }
     }
 
     @Override
@@ -122,13 +131,11 @@ final class ActeursImpl implements Acteurs {
         private final Page page;
         private final ResponseImpl response;
         private final AtomicReference<State> lastState;
-        private final Iterator<Acteur> acteurs;
 
-        ActeurToCallable(Page page, ResponseImpl response, AtomicReference<State> lastState, Iterator<Acteur> acteurs) {
+        ActeurToCallable(Page page, ResponseImpl response, AtomicReference<State> lastState) {
             this.page = page;
             this.response = response;
             this.lastState = lastState;
-            this.acteurs = acteurs;
         }
 
         @Override
@@ -136,7 +143,7 @@ final class ActeursImpl implements Acteurs {
             Checks.notNull("Null acteur", acteur);
 //            System.out.println("Run acteur " + acteur + " for " + page);
 //            try (QuietAutoCloseable ac = Page.set(page)){
-                return new ActeurCallable(page, acteur, response, lastState, !acteurs.hasNext());
+                return new ActeurCallable(page, acteur, response, lastState);
 //            }
         }
 
@@ -168,7 +175,6 @@ final class ActeursImpl implements Acteurs {
                 State state = lastState.get();
                 // Null means a broken Acteur implementation - bail out
                 if (state == null) {
-                    lastState.lazySet(null);
                     receiver.uncaughtException(Thread.currentThread(), new NullPointerException("Last state is null"));
                 } else {
                     // Pass it into the receiver
@@ -192,14 +198,12 @@ final class ActeursImpl implements Acteurs {
         final Acteur acteur;
         private final ResponseImpl response;
         private final AtomicReference<State> lastState;
-        private final boolean isLast;
 
-        public ActeurCallable(Page page, Acteur acteur, ResponseImpl response, AtomicReference<State> lastState, boolean isLast) {
+        public ActeurCallable(Page page, Acteur acteur, ResponseImpl response, AtomicReference<State> lastState) {
             this.page = page;
             this.acteur = acteur;
             this.response = response;
             this.lastState = lastState;
-            this.isLast = isLast;
         }
 
         @Override
@@ -222,8 +226,7 @@ final class ActeursImpl implements Acteurs {
                     if (acteur.creationStackTrace != null) {
                         npe.addSuppressed(acteur.creationStackTrace);
                     }
-                    state = Acteur.error(acteur, page, npe, page.application.getDependencies().getInstance(HttpEvent.class)).getState();
-                    npe.printStackTrace();
+                    state = Acteur.error(acteur, page, npe, page.application.getDependencies().getInstance(HttpEvent.class), true).getState();
                     throw npe;
                 }
                 // Set the atomic reference used by the finisher
@@ -244,9 +247,8 @@ final class ActeursImpl implements Acteurs {
             } catch (ThreadDeath | OutOfMemoryError e) {
                 throw e;
             } catch (Exception | Error e) {
-                page.getApplication().internalOnError(e);
                 try (QuietAutoCloseable ac = Page.set(page)) {
-                    State state = Acteur.error(acteur, page, e, page.getApplication().getDependencies().getInstance(HttpEvent.class)).getState();
+                    State state = Acteur.error(acteur, page, e, page.getApplication().getDependencies().getInstance(HttpEvent.class), true).getState();
                     lastState.set(state);
                     response.merge(acteur.getResponse());
                 }

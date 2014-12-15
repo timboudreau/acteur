@@ -1,7 +1,7 @@
-/* 
+/*
  * The MIT License
  *
- * Copyright 2013 Tim Boudreau.
+ * Copyright 2014 tim.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,18 +21,26 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.mastfrog.acteur.auth.file;
 
-import java.io.IOException;
+package com.mastfrog.acteur.sse;
+
+import com.google.inject.ImplementedBy;
 
 /**
+ * Renders a message into a server-sent event. The default implementation
+ * renders strings as plain text and other types as JSON. Implement and bind
+ * this type if you want some other sort of behavior.
  *
  * @author Tim Boudreau
  */
-public class UserExistsException extends IOException {
+@ImplementedBy(DefaultMessageRenderer.class)
+public interface MessageRenderer {
 
-    public UserExistsException(String message) {
-        super(message);
-    }
-
+    /**
+     * Converts a message object to a string
+     *
+     * @param msg The message
+     * @return A string representation
+     */
+    String toString(Object msg);
 }

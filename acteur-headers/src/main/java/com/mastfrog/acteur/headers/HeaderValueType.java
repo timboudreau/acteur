@@ -59,5 +59,5 @@ public interface HeaderValueType<T> {
      * @return An object that represents the header appropriately, such as a
      * <code>DateTime</code> for a date header.
      */
-    public T toValue(String value);
+    public T toValue(CharSequence value);
 }

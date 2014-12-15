@@ -44,9 +44,9 @@ final class UriHeader extends AbstractHeader<URI> {
     }
 
     @Override
-    public URI toValue(String value) {
+    public URI toValue(CharSequence value) {
         try {
-            return new URI(value);
+            return new URI(value.toString());
         } catch (URISyntaxException ex) {
             Logger.getLogger(Headers.class.getName()).log(Level.SEVERE, "Bad URI in " + name() + " - " + value, ex);
             return null;

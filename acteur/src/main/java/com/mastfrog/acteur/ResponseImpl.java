@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright 2013 Tim Boudreau.
+ * Copyright 2014 Tim Boudreau.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -44,9 +44,13 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import static io.netty.channel.ChannelFutureListener.CLOSE;
+import io.netty.handler.codec.TextHeaders;
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
 import io.netty.handler.codec.http.DefaultHttpContent;
+import io.netty.handler.codec.http.DefaultHttpHeaders;
 import io.netty.handler.codec.http.DefaultHttpResponse;
+import io.netty.handler.codec.http.HttpHeaderNames;
+import io.netty.handler.codec.http.HttpHeaderValues;
 import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpMessage;
 import io.netty.handler.codec.http.HttpResponse;
@@ -59,20 +63,25 @@ import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Spliterator;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import org.joda.time.Duration;
 
 /**
  * Aggregates the set of headers and a body writer which is used to respond to
- * an HTTP request.
+ * an HTTP request. Each Acteur has its own which will be merged into the one
+ * belonging to the page if it succeeds, so Acteurs that reject a response
+ * cannot have side-effects.
  *
  * @author Tim Boudreau
  */
@@ -163,17 +172,18 @@ final class ResponseImpl extends Response {
         return delay;
     }
 
-    static class HackHttpHeaders extends HttpHeaders {
+/*
+    static class HackHttpHeaders implements HttpHeaders {
 
         private final HttpHeaders orig;
 
         public HackHttpHeaders(HttpHeaders orig, boolean chunked) {
             this.orig = orig;
             if (chunked) {
-                orig.set(Names.TRANSFER_ENCODING, Values.CHUNKED);
-                orig.remove(Names.CONTENT_LENGTH);
+                orig.set(HttpHeaderNames.TRANSFER_ENCODING, HttpHeaderValues.CHUNKED);
+                orig.remove(HttpHeaderNames.CONTENT_LENGTH);
             } else {
-                orig.remove(Names.TRANSFER_ENCODING);
+                orig.remove(HttpHeaderNames.TRANSFER_ENCODING);
             }
         }
 
@@ -183,12 +193,7 @@ final class ResponseImpl extends Response {
         }
 
         @Override
-        public List<String> getAll(CharSequence name) {
-            return orig.getAll(name);
-        }
-
-        @Override
-        public List<Map.Entry<String, String>> entries() {
+        public List<Map.Entry<CharSequence, CharSequence>> entries() {
             return orig.entries();
         }
 
@@ -203,13 +208,13 @@ final class ResponseImpl extends Response {
         }
 
         @Override
-        public Set<String> names() {
+        public Set<CharSequence> names() {
             return orig.names();
         }
 
         @Override
         public HttpHeaders add(CharSequence name, Object value) {
-            if (Names.TRANSFER_ENCODING.equals(name)) {
+            if (HttpHeaderNames.TRANSFER_ENCODING.equals(name)) {
                 return this;
             }
             return orig.add(name, value);
@@ -221,7 +226,6 @@ final class ResponseImpl extends Response {
                 return this;
             }
             if (Names.CONTENT_LENGTH.equals(name)) {
-//                System.out.println("ATTEMPT TO SET LENGTH TO " + values);
                 return this;
             }
             return orig.add(name, values);
@@ -233,13 +237,11 @@ final class ResponseImpl extends Response {
                 return this;
             }
             if (Names.CONTENT_LENGTH.equals(name)) {
-//                System.out.println("ATTEMPT TO SET LENGTH TO " + value);
                 return this;
             }
-            if (Names.CONTENT_ENCODING.equals(name)) {
-//                System.out.println("ATTEMPT TO SET CONTENT ENCODING TO " + value);
-                return this;
-            }
+//            if (Names.CONTENT_ENCODING.equals(name) && !"true".equals(orig.get("X-Internal-Compress"))) {
+//                return this;
+//            }
             return orig.set(name, value);
         }
 
@@ -249,27 +251,23 @@ final class ResponseImpl extends Response {
                 return this;
             }
             if (Names.CONTENT_LENGTH.equals(name)) {
-//                System.out.println("ATTEMPT TO SET LENGTH");
                 return this;
             }
             if (Names.CONTENT_ENCODING.equals(name)) {
-//                System.out.println("ATTEMPT TO SET TO ");
                 return this;
             }
             return orig.set(name, values);
         }
 
         @Override
-        public HttpHeaders remove(CharSequence name) {
+        public HttpHeaders remove(String name) {
             if (Names.TRANSFER_ENCODING.equals(name)) {
                 return this;
             }
             if (Names.CONTENT_LENGTH.equals(name)) {
-//                System.out.println("ATTEMPT TO REMOVE LENGTH");
                 return this;
             }
             if (Names.CONTENT_ENCODING.equals(name)) {
-//                System.out.println("ATTEMPT TO REMOVE TO ");
                 return this;
             }
             return orig.remove(name);
@@ -284,7 +282,43 @@ final class ResponseImpl extends Response {
         public Iterator<Map.Entry<String, String>> iterator() {
             return orig.iterator();
         }
+
+        @Override
+        public String get(String name) {
+            return get((CharSequence) name);
+        }
+
+        @Override
+        public List<String> getAll(String name) {
+            return orig.getAll(name);
+        }
+
+        @Override
+        public boolean contains(String name) {
+            return orig.contains(name);
+        }
+
+        @Override
+        public HttpHeaders add(String name, Object value) {
+            return add((CharSequence) name, value);
+        }
+
+        @Override
+        public HttpHeaders add(String name, Iterable<?> values) {
+            return add((CharSequence) name, values);
+        }
+
+        @Override
+        public HttpHeaders set(String name, Object value) {
+            return set((CharSequence) name, value);
+        }
+
+        @Override
+        public HttpHeaders set(String name, Iterable<?> values) {
+            return set((CharSequence) name, values);
+        }
     }
+    */
 
     private static class HackHttpResponse extends DefaultHttpResponse {
 
@@ -302,6 +336,7 @@ final class ResponseImpl extends Response {
         }
     }
 
+    @SuppressWarnings("unchecked")
     public <T> void add(HeaderValueType<T> decorator, T value) {
         List<Entry<?>> old = new LinkedList<>();
         // XXX set cookie!
@@ -568,13 +603,20 @@ final class ResponseImpl extends Response {
             if (this.status == NOT_MODIFIED) {
                 if (e.decorator == Headers.CONTENT_LENGTH) {
                     continue;
-                } else if (HttpHeaders.Names.CONTENT_ENCODING.equals(e.decorator.name())) {
+                } else if (HttpHeaderNames.CONTENT_ENCODING.equals(e.decorator.name())) {
                     continue;
-                } else if ("Transfer-Encoding".equals(e.decorator.name())) {
+                } else if (Headers.TRANSFER_ENCODING.name().equals(e.decorator.name())) {
                     continue;
                 }
             }
             e.write(resp);
+        }
+        // Ensure a 0 content length is present for items with no content
+        if (message == null && listener == null && resp.headers() instanceof HackHttpHeaders) {
+            HttpHeaders hdrs = ((HackHttpHeaders)resp.headers()).orig;
+            hdrs.setLong(Headers.CONTENT_LENGTH.name().toString(), 0L);
+            hdrs.remove(Headers.TRANSFER_ENCODING.name().toString());
+            hdrs.remove(Headers.CONTENT_ENCODING.name().toString());
         }
         return resp;
     }
@@ -588,7 +630,7 @@ final class ResponseImpl extends Response {
         }
         return future;
     }
-    
+
     @Override
     public String toString() {
         return "Response{" + "modified=" + modified + ", status=" + status + ", headers=" + headers + ", message=" + message + ", listener=" + listener + ", chunked=" + chunked + " has listener " + (this.listener != null) + '}';
@@ -608,7 +650,7 @@ final class ResponseImpl extends Response {
         }
 
         public void decorate(HttpMessage msg) {
-            msg.headers().set(decorator.name(), value);
+            msg.headers().setObject(decorator.name(), value);
         }
 
         public void write(HttpMessage msg) {

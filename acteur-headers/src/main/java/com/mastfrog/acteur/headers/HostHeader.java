@@ -42,8 +42,8 @@ class HostHeader extends AbstractHeader<String> {
 
     @Override
 //    public Host toValue(String value) {
-    public String toValue(String value) {
-        return value;
+    public String toValue(CharSequence value) {
+        return value.toString();
 //        return Host.parse(value);
     }
 

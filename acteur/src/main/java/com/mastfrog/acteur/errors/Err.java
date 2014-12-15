@@ -37,12 +37,25 @@ public final class Err implements ErrorResponse {
 
     public final HttpResponseStatus status;
     public final Map<String, Object> message;
+    public boolean unhandled;
 
+    public Err(Throwable t, boolean unhandled) {
+        this(t);
+        this.unhandled = unhandled;
+    }
+    
     public Err(Throwable t) {
         this(unwind(t, true));
     }
     
     public static Err of(Throwable t) {
+        while (t.getCause() != null) {
+            t = t.getCause();
+        }
+        if (t instanceof ResponseException) {
+            ResponseException ex = (ResponseException) t;
+            return new Err(ex.status(), ex.getMessage());
+        }
         return new Err(t);
     }
     
@@ -74,6 +87,9 @@ public final class Err implements ErrorResponse {
             t = t.getCause();
         } while (t != null);
         if (lastMessage == null) {
+            if (t == null) {
+                t = orig;
+            }
             Throwable[] others = t.getSuppressed();
             if (others != null && others.length > 0) {
                 for (Throwable other : others) {

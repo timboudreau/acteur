@@ -24,7 +24,7 @@
 package com.mastfrog.acteur.headers;
 
 import com.mastfrog.util.Exceptions;
-import io.netty.handler.codec.http.HttpHeaders;
+import io.netty.handler.codec.http.HttpHeaderNames;
 import java.net.MalformedURLException;
 import java.net.URL;
 
@@ -35,7 +35,7 @@ import java.net.URL;
 final class WebSocketLocationHeader extends AbstractHeader<URL> {
 
     public WebSocketLocationHeader() {
-        super(URL.class, HttpHeaders.Names.WEBSOCKET_LOCATION.toString());
+        super(URL.class, HttpHeaderNames.WEBSOCKET_LOCATION.toString());
     }
 
     @Override
@@ -44,9 +44,9 @@ final class WebSocketLocationHeader extends AbstractHeader<URL> {
     }
 
     @Override
-    public URL toValue(String value) {
+    public URL toValue(CharSequence value) {
         try {
-            return new URL(value);
+            return new URL(value.toString());
         } catch (MalformedURLException ex) {
             return Exceptions.chuck(ex);
         }

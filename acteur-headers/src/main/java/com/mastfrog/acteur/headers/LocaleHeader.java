@@ -41,8 +41,8 @@ class LocaleHeader extends AbstractHeader<Locale> {
     }
 
     @Override
-    public Locale toValue(String value) {
-        return Locale.forLanguageTag(value);
+    public Locale toValue(CharSequence value) {
+        return Locale.forLanguageTag(value.toString());
     }
 
 }

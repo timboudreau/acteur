@@ -1,7 +1,7 @@
-/* 
+/*
  * The MIT License
  *
- * Copyright 2013 Tim Boudreau.
+ * Copyright 2014 tim.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,36 +21,41 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.mastfrog.acteur.auth.file;
 
-import com.google.inject.Inject;
-import com.mastfrog.acteur.util.PasswordHasher;
-import java.io.File;
+package com.mastfrog.acteur.sse;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mastfrog.acteur.spi.ApplicationControl;
 import java.io.IOException;
+import javax.inject.Inject;
 
 /**
+ * Default implementation which just uses Jackson to convert messages to JSON.
  *
  * @author Tim Boudreau
  */
-public class EncryptedPasswordIO extends PlaintextPasswordIO {
-    private final PasswordHasher enc;
+final class DefaultMessageRenderer implements MessageRenderer {
+
+    private final ObjectMapper codec;
+    private final ApplicationControl ctrl;
 
     @Inject
-    public EncryptedPasswordIO(PasswordHasher enc) {
-        this.enc = enc;
+    DefaultMessageRenderer(ObjectMapper codec, ApplicationControl ctrl) {
+        this.codec = codec;
+        this.ctrl = ctrl;
     }
 
     @Override
-    public void writePassword(String password, File file) throws IOException {
-        super.writePassword(enc.encryptPassword(password), file);
-    }
-
-    @Override
-    public boolean checkPassword(String password, File file) throws IOException {
-        if (file == null || password == null || password.length() == 0) {
-            return false;
+    public String toString(Object msg) {
+        if (msg instanceof String) {
+            return msg.toString();
         }
-        String encrypted = super.readPassword(file);
-        return enc.checkPassword(password, encrypted);
+        try {
+            return codec.writeValueAsString(codec);
+        } catch (IOException ex) {
+            ctrl.internalOnError(ex);
+            return null;
+        }
     }
+
 }

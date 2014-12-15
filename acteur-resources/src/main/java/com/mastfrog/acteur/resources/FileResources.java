@@ -52,7 +52,7 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.compression.JZlibDecoder;
 import io.netty.handler.codec.compression.ZlibWrapper;
 import io.netty.handler.codec.http.DefaultHttpContent;
-import io.netty.handler.codec.http.HttpHeaders;
+import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.LastHttpContent;
 import java.io.BufferedInputStream;
 import java.io.File;
@@ -89,8 +89,8 @@ public final class FileResources implements StaticResources {
     private final DeploymentMode mode;
     private final ByteBufAllocator allocator;
     private final boolean internalGzip;
-    private File dir;
-    
+    private final File dir;
+
     public static final String RESOURCES_BASE_PATH = "resources.base.path";
 
     @Inject
@@ -106,7 +106,6 @@ public final class FileResources implements StaticResources {
         this.mode = mode;
         List<String> l = new ArrayList<>();
         scan(dir, "", l);
-        System.out.println("Serving files from " + dir);
         patterns = l.toArray(new String[0]);
         String resourcesBasePath = settings.getString(RESOURCES_BASE_PATH, "");
         for (String name : l) {
@@ -279,6 +278,7 @@ public final class FileResources implements StaticResources {
             }
             if (isGzip(evt)) {
                 page.getResponseHeaders().setContentEncoding("gzip");
+                response.add(Headers.CONTENT_ENCODING, "gzip");
                 if (!chunked) {
                     response.add(Headers.CONTENT_LENGTH, (long) compressed.readableBytes());
                 }
@@ -328,7 +328,7 @@ public final class FileResources implements StaticResources {
         if (!internalGzip) {
             return false;
         }
-        String hdr = evt.getHeader(HttpHeaders.Names.ACCEPT_ENCODING);
+        String hdr = evt.getHeader(HttpHeaderNames.ACCEPT_ENCODING);
         return hdr != null && hdr.toLowerCase().contains("gzip");
     }
 

@@ -23,7 +23,7 @@
  */
 package com.mastfrog.acteur.headers;
 
-import io.netty.handler.codec.http.HttpHeaders;
+import io.netty.handler.codec.http.HttpHeaderNames;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -34,7 +34,7 @@ import java.util.logging.Logger;
 final class AllowHeader extends AbstractHeader<Method[]> {
 
     AllowHeader(boolean isAllowOrigin) {
-        super(Method[].class, isAllowOrigin ? "Access-Control-Allow-Methods" : HttpHeaders.Names.ALLOW);
+        super(Method[].class, isAllowOrigin ? "Access-Control-Allow-Methods" : HttpHeaderNames.ALLOW);
     }
 
     @Override
@@ -50,8 +50,8 @@ final class AllowHeader extends AbstractHeader<Method[]> {
     }
 
     @Override
-    public Method[] toValue(String value) {
-        String[] s = value.split(",");
+    public Method[] toValue(CharSequence value) {
+        String[] s = value.toString().split(",");
         Method[] result = new Method[s.length];
         for (int i = 0; i < s.length; i++) {
             try {

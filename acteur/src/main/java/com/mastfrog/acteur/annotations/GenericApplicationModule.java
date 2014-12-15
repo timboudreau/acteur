@@ -25,7 +25,7 @@ import java.util.Set;
  *
  * @author Tim Boudreau
  */
-public final class GenericApplicationModule extends ServerModule {
+public class GenericApplicationModule<T extends GenericApplication> extends ServerModule<T> { // non final for unit tests that need to hide arguments
 
     private final Settings settings;
     private final Class<?>[] exclude;
@@ -36,8 +36,9 @@ public final class GenericApplicationModule extends ServerModule {
      *
      * @param settings
      */
+    @SuppressWarnings("unchecked")
     public GenericApplicationModule(Settings settings) {
-        this(settings, GenericApplication.class, new Class<?>[0]);
+        this(settings, (Class<T>)GenericApplication.class, new Class<?>[0]);
     }
 
     /**
@@ -48,8 +49,9 @@ public final class GenericApplicationModule extends ServerModule {
      * @param exclude A list of Page, Module or implicit binding classes which
      * should be ignored
      */
+    @SuppressWarnings("unchecked")
     public GenericApplicationModule(Settings settings, Class<?>... exclude) {
-        this(settings, GenericApplication.class, exclude);
+        this(settings, (Class<T>)GenericApplication.class, exclude);
     }
 
     /**
@@ -61,13 +63,13 @@ public final class GenericApplicationModule extends ServerModule {
      * @param exclude A list of Page, Module or implicit binding classes which
      * should be ignored
      */
-    public GenericApplicationModule(Settings settings, Class<? extends GenericApplication> appType, Class<?>... exclude) {
+    public GenericApplicationModule(Settings settings, Class<T> appType, Class<?>... exclude) {
         super(appType);
         this.settings = settings;
         this.exclude = exclude;
     }
 
-    private <T extends Module> T instantiateModule(Class<T> m) throws NoSuchMethodException, InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
+    public static <T extends Module> T instantiateModule(Class<T> m, Settings settings, ReentrantScope scope) throws NoSuchMethodException, InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
         try {
             try {
                 Constructor<T> c = m.getDeclaredConstructor();
@@ -104,12 +106,14 @@ public final class GenericApplicationModule extends ServerModule {
             bind(Class[].class).annotatedWith(Names.named(EXCLUDED_CLASSES)).toInstance(exclude);
             bind(new GenericArrayOfClasses()).annotatedWith(Names.named(EXCLUDED_CLASSES)).toInstance(exclude);
             bind(new SetOfClasses()).annotatedWith(Names.named(EXCLUDED_CLASSES)).toInstance(toExclude);
-            Set<Class<?>> bindTypes = ldr.implicitBindings();
-            bindTypes.removeAll(toExclude);
-            scope.bindTypes(binder(), bindTypes.toArray(new Class<?>[0]));
+            for (Class<?> c : ldr.implicitBindings()) {
+                if (!toExclude.contains(c)) {
+                    scope.bindTypes(binder(), c);
+                }
+            }
             for (Class<? extends Module> module : ldr.modules()) {
                 if (!toExclude.contains(module)) {
-                    install(instantiateModule(module));
+                    install(instantiateModule(module, settings, scope));
                 }
             }
         } catch (IOException | ClassNotFoundException | NoSuchMethodException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {

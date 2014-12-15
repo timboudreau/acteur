@@ -41,8 +41,8 @@ class CharsetHeader extends AbstractHeader<Charset> {
     }
 
     @Override
-    public Charset toValue(String value) {
-        return Charset.forName(value);
+    public Charset toValue(CharSequence value) {
+        return Charset.forName(value.toString());
     }
 
 }

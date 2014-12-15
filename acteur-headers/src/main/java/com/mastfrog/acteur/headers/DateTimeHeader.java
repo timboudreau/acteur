@@ -43,17 +43,18 @@ class DateTimeHeader extends AbstractHeader<DateTime> {
     }
 
     @Override
-    public DateTime toValue(String value) {
+    public DateTime toValue(CharSequence value) {
+        String stringValue = value.toString();
         long val = 0;
         if (val == 0) {
             try {
-                val = Headers.ISO2822DateFormat.parseDateTime(value).getMillis();
+                val = Headers.ISO2822DateFormat.parseDateTime(stringValue).getMillis();
             } catch (IllegalArgumentException e) {
                 try {
                     //Sigh...use java.util.date to handle "GMT", "PST", "EST"
-                    val = Date.parse(value);
+                    val = Date.parse(stringValue);
                 } catch (IllegalArgumentException ex) {
-                    new IllegalArgumentException(value, ex).printStackTrace();
+                    new IllegalArgumentException(stringValue, ex).printStackTrace();
                     return null;
                 }
             }

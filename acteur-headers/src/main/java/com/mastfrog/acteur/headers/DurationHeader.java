@@ -43,13 +43,12 @@ final class DurationHeader extends AbstractHeader<Duration> {
     }
 
     @Override
-    public Duration toValue(String value) {
+    public Duration toValue(CharSequence value) {
         try {
-            return new Duration(Long.parseLong(value));
+            return new Duration(Long.parseLong(value.toString()));
         } catch (NumberFormatException nfe) {
             Logger.getLogger(DurationHeader.class.getName()).log(Level.INFO, "Bad duration header '" + value + "'", nfe);
             return null;
         }
     }
-
 }

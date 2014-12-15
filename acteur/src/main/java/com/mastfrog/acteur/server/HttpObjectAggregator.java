@@ -36,17 +36,13 @@ import io.netty.handler.codec.TooLongFrameException;
 import io.netty.handler.codec.http.DefaultFullHttpRequest;
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
 import io.netty.handler.codec.http.FullHttpMessage;
-import io.netty.handler.codec.http.FullHttpResponse;
 import io.netty.handler.codec.http.HttpContent;
-import io.netty.handler.codec.http.HttpHeaders;
-import static io.netty.handler.codec.http.HttpHeaders.is100ContinueExpected;
-import static io.netty.handler.codec.http.HttpHeaders.removeTransferEncodingChunked;
+import io.netty.handler.codec.http.HttpHeaderNames;
+import static io.netty.handler.codec.http.HttpHeaderUtil.is100ContinueExpected;
 import io.netty.handler.codec.http.HttpMessage;
 import io.netty.handler.codec.http.HttpObject;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponse;
-import io.netty.handler.codec.http.HttpResponseStatus;
-import io.netty.handler.codec.http.HttpVersion;
 import io.netty.handler.codec.http.LastHttpContent;
 import io.netty.util.CharsetUtil;
 import java.util.List;
@@ -147,20 +143,20 @@ public class HttpObjectAggregator extends MessageToMessageDecoder<HttpObject> {
                 });
             }
 
-            if (!m.getDecoderResult().isSuccess()) {
-                removeTransferEncodingChunked(m);
+            if (!m.decoderResult().isSuccess()) {
+                m.headers().remove(HttpHeaderNames.TRANSFER_ENCODING);
                 out.add(toFullMessage(m));
                 this.currentMessage = null;
                 return;
             }
             if (msg instanceof HttpRequest) {
                 HttpRequest header = (HttpRequest) msg;
-                this.currentMessage = currentMessage = new DefaultFullHttpRequest(header.getProtocolVersion(),
-                        header.getMethod(), header.getUri(), Unpooled.compositeBuffer(maxCumulationBufferComponents));
+                this.currentMessage = currentMessage = new DefaultFullHttpRequest(header.protocolVersion(),
+                        header.method(), header.uri(), Unpooled.compositeBuffer(maxCumulationBufferComponents));
             } else if (msg instanceof HttpResponse) {
                 HttpResponse header = (HttpResponse) msg;
                 this.currentMessage = currentMessage = new DefaultFullHttpResponse(
-                        header.getProtocolVersion(), header.getStatus(),
+                        header.protocolVersion(), header.status(),
                         Unpooled.compositeBuffer(maxCumulationBufferComponents));
             } else {
                 throw new Error();
@@ -169,7 +165,8 @@ public class HttpObjectAggregator extends MessageToMessageDecoder<HttpObject> {
             currentMessage.headers().set(m.headers());
 
             // A streamed message - initialize the cumulative buffer, and wait for incoming chunks.
-            removeTransferEncodingChunked(currentMessage);
+            currentMessage.headers().remove(HttpHeaderNames.TRANSFER_ENCODING);
+
         } else if (msg instanceof HttpContent) {
             if (tooLongFrameFound) {
                 if (msg instanceof LastHttpContent) {
@@ -204,9 +201,9 @@ public class HttpObjectAggregator extends MessageToMessageDecoder<HttpObject> {
             }
 
             final boolean last;
-            if (!chunk.getDecoderResult().isSuccess()) {
+            if (!chunk.decoderResult().isSuccess()) {
                 currentMessage.setDecoderResult(
-                        DecoderResult.failure(chunk.getDecoderResult().cause()));
+                        DecoderResult.failure(chunk.decoderResult().cause()));
                 last = true;
             } else {
                 last = chunk instanceof LastHttpContent;
@@ -223,7 +220,7 @@ public class HttpObjectAggregator extends MessageToMessageDecoder<HttpObject> {
 
                 // Set the 'Content-Length' header.
                 currentMessage.headers().set(
-                        HttpHeaders.Names.CONTENT_LENGTH,
+                        HttpHeaderNames.CONTENT_LENGTH,
                         String.valueOf(content.readableBytes()));
 
                 // All done
@@ -270,11 +267,11 @@ public class HttpObjectAggregator extends MessageToMessageDecoder<HttpObject> {
         if (msg instanceof HttpRequest) {
             HttpRequest req = (HttpRequest) msg;
             fullMsg = new DefaultFullHttpRequest(
-                    req.getProtocolVersion(), req.getMethod(), req.getUri(), Unpooled.EMPTY_BUFFER, false);
+                    req.protocolVersion(), req.method(), req.uri(), Unpooled.EMPTY_BUFFER, false);
         } else if (msg instanceof HttpResponse) {
             HttpResponse res = (HttpResponse) msg;
             fullMsg = new DefaultFullHttpResponse(
-                    res.getProtocolVersion(), res.getStatus(), Unpooled.EMPTY_BUFFER, false);
+                    res.protocolVersion(), res.status(), Unpooled.EMPTY_BUFFER, false);
         } else {
             throw new IllegalStateException();
         }

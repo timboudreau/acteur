@@ -1,4 +1,4 @@
-/* 
+/*
  * The MIT License
  *
  * Copyright 2013 Tim Boudreau.
@@ -29,6 +29,7 @@ import com.google.common.net.MediaType;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import com.mastfrog.acteur.Acteur.WrapperActeur;
+import com.mastfrog.acteur.annotations.Concluders;
 import com.mastfrog.acteur.annotations.HttpCall;
 import com.mastfrog.acteur.annotations.Precursors;
 import com.mastfrog.acteur.preconditions.Description;
@@ -43,6 +44,8 @@ import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.acteur.headers.Method;
 import com.mastfrog.acteur.spi.ApplicationControl;
 import com.mastfrog.acteur.util.RequestID;
+import com.mastfrog.parameters.Param;
+import com.mastfrog.parameters.Params;
 import com.mastfrog.url.Path;
 import com.mastfrog.util.ConfigurationError;
 import com.mastfrog.util.Checks;
@@ -56,10 +59,12 @@ import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
 import io.netty.handler.codec.http.DefaultHttpRequest;
+import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpHeaders;
+import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpVersion;
 import java.io.IOException;
@@ -76,6 +81,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -84,6 +91,8 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import org.joda.time.DateTime;
 import org.joda.time.Duration;
+import org.netbeans.validation.api.Validator;
+import org.netbeans.validation.api.builtin.stringvalidation.StringValidators;
 import org.openide.util.Exceptions;
 
 /**
@@ -126,12 +135,15 @@ public class Application implements Iterable<Page> {
     @Named("acteur.debug")
     private boolean debug = true;
 
+    private final RequestID.Factory ids = new RequestID.Factory();
+
     /**
      * Create an application, optionally passing in an array of page types (you
      * can also call <code>add()</code> to add them).
      *
      * @param types
      */
+    @SuppressWarnings("unchecked")
     protected Application(Class<?>... types) {
         this();
         for (Class<?> type : types) {
@@ -214,6 +226,25 @@ public class Application implements Iterable<Page> {
     ExecutorService getWorkerThreadPool() {
         return exe;
     }
+    
+    private static String deConstantNameify(String name) {
+        StringBuilder sb = new StringBuilder();
+        boolean capitalize = true;
+        for (char c : name.toCharArray()) {
+            if (c == '_') {
+                sb.append(' ');
+            } else {
+                if (capitalize) {
+                    c = Character.toUpperCase(c);
+                    capitalize = false;
+                } else {
+                    c = Character.toLowerCase(c);
+                }
+                sb.append(c);
+            }
+        }
+        return sb.toString();
+    }
 
     private void introspectAnnotation(Annotation a, Map<String, Object> into) throws IllegalAccessException, IllegalArgumentException, InvocationTargetException {
         if (a instanceof HttpCall) {
@@ -225,6 +256,43 @@ public class Application implements Iterable<Page> {
                 for (Annotation anno : t.getAnnotations()) {
                     introspectAnnotation(anno, into);
                 }
+            }
+        } else if (a instanceof Concluders) {
+            Concluders c = (Concluders) a;
+            for (Class<?> t : c.value()) {
+                for (Annotation anno : t.getAnnotations()) {
+                    introspectAnnotation(anno, into);
+                }
+            }
+        } else if (a instanceof Params) {
+            Params p = (Params) a;
+            for (Param par : p.value()) {
+                String name = par.value();
+                Map<String, Object> desc = new LinkedHashMap<>();
+                desc.put("type", par.type().toString());
+                if (!par.defaultValue().isEmpty()) {
+                    desc.put("Default value", par.defaultValue());
+                }
+                if (!par.example().isEmpty()) {
+                    desc.put("Example", par.example());
+                }
+                desc.put("required", par.required());
+                List<String> constraints = new LinkedList<>();
+                for (StringValidators validator : par.constraints()) {
+                    constraints.add(deConstantNameify(validator.name()));
+                }
+                for (Class<? extends Validator<String>> c : par.validators()) {
+                    Description des = c.getAnnotation(Description.class);
+                    if (des == null) {
+                        constraints.add(c.getSimpleName());
+                    } else {
+                        constraints.add(des.value());
+                    }
+                }
+                if (!constraints.isEmpty()) {
+                    desc.put("constraints", constraints);
+                }
+                into.put(name, desc);
             }
         } else {
             Class<? extends Annotation> type = a.annotationType();
@@ -318,6 +386,7 @@ public class Application implements Iterable<Page> {
         }
         return m;
     }
+
     /**
      * Add a subtype of Page which should be instantiated on demand when
      * responding to requests
@@ -377,8 +446,10 @@ public class Application implements Iterable<Page> {
      * @param page
      * @param action
      * @param response
+     * @deprecated Use onBeforeSendResponse instead
      * @return
      */
+    @Deprecated
     protected HttpResponse decorateResponse(Event<?> event, Page page, Acteur action, HttpResponse response) {
         return response;
     }
@@ -392,9 +463,9 @@ public class Application implements Iterable<Page> {
             Headers.write(Headers.stringHeader("X-Acteur"), action.getClass().getName(), response);
             Headers.write(Headers.stringHeader("X-Page"), page.getClass().getName(), response);
         }
-        if (corsEnabled && !response.headers().contains(HttpHeaders.Names.ACCESS_CONTROL_ALLOW_ORIGIN)) {
+        if (corsEnabled && !response.headers().contains(HttpHeaderNames.ACCESS_CONTROL_ALLOW_ORIGIN)) {
             Headers.write(Headers.ACCESS_CONTROL_ALLOW_ORIGIN, corsAllowOrigin, response);
-            if (!response.headers().contains(HttpHeaders.Names.ACCESS_CONTROL_MAX_AGE)) {
+            if (!response.headers().contains(HttpHeaderNames.ACCESS_CONTROL_MAX_AGE)) {
                 Headers.write(Headers.ACCESS_CONTROL_MAX_AGE, new Duration(corsMaxAgeMinutes), response);
             }
         }
@@ -496,7 +567,7 @@ public class Application implements Iterable<Page> {
     private CountDownLatch onEvent(final Event<?> event, final Channel channel) {
         //XXX get rid of channel param?
         // Create a new incremented id for this request
-        final RequestID id = new RequestID();
+        final RequestID id = ids.next();
         // Enter request scope with the id and the event
         // XXX is the scope entry here actually needed anymore?
         return scope.run(new Invokable<Event<?>, CountDownLatch, RuntimeException>() {
@@ -543,11 +614,15 @@ public class Application implements Iterable<Page> {
 
     protected void send404(RequestID id, Event<?> event, Channel channel) {
         HttpResponse response = createNotFoundResponse(event);
-        onBeforeRespond(id, event, response.getStatus());
+        onBeforeRespond(id, event, response.status());
         ChannelFutureListener closer = !ResponseImpl.isKeepAlive(event) ? ChannelFutureListener.CLOSE : null;
         ChannelFuture fut = channel.writeAndFlush(response);
         if (closer != null) {
             fut.addListener(closer);
         }
+    }
+
+    protected void onBeforeSendResponse(HttpResponseStatus status, Event<?> event, Response response, Acteur acteur, Page page) {
+        // do nothing
     }
 }

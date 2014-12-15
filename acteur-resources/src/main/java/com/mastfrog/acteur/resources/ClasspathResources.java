@@ -53,7 +53,7 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.compression.JZlibDecoder;
 import io.netty.handler.codec.compression.ZlibWrapper;
 import io.netty.handler.codec.http.DefaultHttpContent;
-import io.netty.handler.codec.http.HttpHeaders;
+import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.LastHttpContent;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -298,7 +298,7 @@ public final class ClasspathResources implements StaticResources {
         if (!internalGzip) {
             return false;
         }
-        String hdr = evt.getHeader(HttpHeaders.Names.ACCEPT_ENCODING);
+        String hdr = evt.getHeader(HttpHeaderNames.ACCEPT_ENCODING);
         return hdr != null && hdr.toLowerCase().contains("gzip");
     }
 

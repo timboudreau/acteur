@@ -33,9 +33,12 @@ import org.joda.time.Duration;
  */
 public final class RequestID {
 
-    private static final AtomicInteger indexSource = new AtomicInteger();
-    public final int index = indexSource.getAndIncrement();
+    public final int index;
     public final long time = System.currentTimeMillis();
+    
+    private RequestID(int index) {
+        this.index = index;
+    }
 
     public int getIndex() {
         return index;
@@ -48,5 +51,13 @@ public final class RequestID {
     @Override
     public String toString() {
         return index + "/" + getDuration().getMillis() + "ms";
+    }
+    
+    public static final class Factory {
+        private final AtomicInteger indexSource = new AtomicInteger();
+
+        public RequestID next() {
+            return new RequestID(indexSource.getAndIncrement());
+        }
     }
 }

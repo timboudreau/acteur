@@ -27,20 +27,20 @@ package com.mastfrog.acteur.headers;
  *
  * @author Tim Boudreau
  */
-class StringHeader extends AbstractHeader<String> {
+class StringHeader extends AbstractHeader<CharSequence> {
 
     StringHeader(CharSequence name) {
-        super(String.class, name);
+        super(CharSequence.class, name);
     }
 
     @Override
-    public String toString(String value) {
-        return value;
+    public String toString(CharSequence value) {
+        return value.toString();
     }
 
     @Override
-    public String toValue(String value) {
-        return value;
+    public String toValue(CharSequence value) {
+        return value.toString();
     }
 
 }

@@ -41,6 +41,8 @@ public final class CacheControl {
             = new CacheControl(Public, must_revalidate);
     public static CacheControl PUBLIC_MUST_REVALIDATE_MAX_AGE_1_DAY
             = new CacheControl(Public, must_revalidate).add(max_age, Duration.standardDays(1));
+    public static CacheControl PRIVATE_NO_CACHE_NO_STORE 
+            = new CacheControl(Private, no_cache, no_store);
 
     public CacheControl(CacheControlTypes... types) {
         for (CacheControlTypes c : types) {
@@ -158,9 +160,9 @@ public final class CacheControl {
         return entries.isEmpty();
     }
 
-    public static CacheControl fromString(String s) {
+    public static CacheControl fromString(CharSequence s) {
         CacheControl result = new CacheControl();
-        String[] parts = s.split(",");
+        String[] parts = s.toString().split(",");
         for (String part : parts) {
             part = part.trim();
             CacheControlTypes t = CacheControlTypes.find(part);

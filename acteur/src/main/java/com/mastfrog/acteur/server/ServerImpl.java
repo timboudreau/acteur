@@ -23,7 +23,6 @@
  */
 package com.mastfrog.acteur.server;
 
-import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.name.Named;
 import static com.mastfrog.acteur.server.ServerModule.EVENT_THREADS;
@@ -47,14 +46,16 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.Date;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executor;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.inject.Inject;
 
 /**
  *
- * @author Tim Boudreau
+ * @author Tim BoudreauUpstreamHandlerImpl
  */
 final class ServerImpl implements Server {
 
@@ -180,7 +181,7 @@ final class ServerImpl implements Server {
         private final Reference<Runnable> delegate;
 
         WeakRunnable(Runnable real) {
-            this.delegate = new WeakReference(real);
+            this.delegate = new WeakReference<>(real);
         }
 
         @Override
@@ -191,11 +192,25 @@ final class ServerImpl implements Server {
             }
         }
     }
+    
+    static class TFExecutor implements Executor {
+        private final ThreadFactory tf;
+
+        public TFExecutor(ThreadFactory tf) {
+            this.tf = tf;
+        }
+
+        @Override
+        public void execute(Runnable r) {
+            tf.newThread(r).start();
+        }
+        
+    }
 
     private class ServerControlImpl implements ServerControl, Runnable {
 
-        private final NioEventLoopGroup events = new NioEventLoopGroup(eventThreadCount.get(), eventThreadFactory);
-        private final NioEventLoopGroup workers = new NioEventLoopGroup(workerThreadCount.get(), workerThreadFactory);
+        private final NioEventLoopGroup events = new NioEventLoopGroup(eventThreadCount.get(), new TFExecutor(eventThreadFactory));
+        private final NioEventLoopGroup workers = new NioEventLoopGroup(workerThreadCount.get(), new TFExecutor(workerThreadFactory));
         private final int port;
 
         ServerControlImpl(int port) {

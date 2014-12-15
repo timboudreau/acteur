@@ -23,6 +23,7 @@
  */
 package com.mastfrog.acteur.headers;
 
+import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaders;
 
 /**
@@ -32,7 +33,7 @@ import io.netty.handler.codec.http.HttpHeaders;
 final class VaryHeader extends AbstractHeader<HeaderValueType[]> {
 
     VaryHeader() {
-        super(HeaderValueType[].class, HttpHeaders.Names.VARY.toString());
+        super(HeaderValueType[].class, HttpHeaderNames.VARY.toString());
     }
 
     @Override
@@ -48,13 +49,12 @@ final class VaryHeader extends AbstractHeader<HeaderValueType[]> {
     }
 
     @Override
-    public HeaderValueType<?>[] toValue(String value) {
-        String[] s = value.split(",");
+    public HeaderValueType<?>[] toValue(CharSequence value) {
+        String[] s = value.toString().split(",");
         HeaderValueType<?>[] result = new HeaderValueType<?>[s.length];
         for (int i = 0; i < s.length; i++) {
             result[i] = new StringHeader(s[i].trim());
         }
         return result;
     }
-
 }

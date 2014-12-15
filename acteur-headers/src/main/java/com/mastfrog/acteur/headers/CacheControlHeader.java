@@ -24,7 +24,7 @@
 package com.mastfrog.acteur.headers;
 
 import com.mastfrog.acteur.util.CacheControl;
-import io.netty.handler.codec.http.HttpHeaders;
+import io.netty.handler.codec.http.HttpHeaderNames;
 
 /**
  *
@@ -33,7 +33,7 @@ import io.netty.handler.codec.http.HttpHeaders;
 final class CacheControlHeader extends AbstractHeader<CacheControl> {
 
     CacheControlHeader() {
-        super(CacheControl.class, HttpHeaders.Names.CACHE_CONTROL);
+        super(CacheControl.class, HttpHeaderNames.CACHE_CONTROL);
     }
 
     @Override
@@ -42,7 +42,7 @@ final class CacheControlHeader extends AbstractHeader<CacheControl> {
     }
 
     @Override
-    public CacheControl toValue(String value) {
+    public CacheControl toValue(CharSequence value) {
         return CacheControl.fromString(value);
     }
 

@@ -23,17 +23,24 @@ import com.mastfrog.acteur.headers.Method;
 import com.mastfrog.acteur.server.EventImplFactory;
 import com.mastfrog.acteur.server.PathFactory;
 import com.mastfrog.acteur.server.ServerModule;
+import static com.mastfrog.acteur.server.ServerModule.DELAY_EXECUTOR;
 import com.mastfrog.acteur.util.RequestID;
+import com.mastfrog.settings.Settings;
 import com.mastfrog.util.Checks;
+import com.mastfrog.util.Codec;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
 import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.http.DefaultFullHttpRequest;
+import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.util.CharsetUtil;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.charset.Charset;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
 import org.joda.time.DateTime;
 import org.joda.time.Duration;
@@ -58,8 +65,30 @@ public class AppTest {
             bind(ReentrantScope.class).toInstance(scope);
             ExecutorService exe = Executors.newSingleThreadExecutor();
             bind(ExecutorService.class).annotatedWith(Names.named(ServerModule.BACKGROUND_THREAD_POOL_NAME)).toInstance(exe);
-            bind(RequestID.class).toInstance(new RequestID());
-            
+            bind(RequestID.class).toInstance(new RequestID.Factory().next());
+            bind(ScheduledExecutorService.class).annotatedWith(Names.named(DELAY_EXECUTOR)).toInstance(Executors.newScheduledThreadPool(2));
+            bind(Codec.class).toInstance(new Codec() {
+                final ObjectMapper mapper = new ObjectMapper();
+                @Override
+                public <T> String writeValueAsString(T object) throws IOException {
+                    return mapper.writeValueAsString(object);
+                }
+
+                @Override
+                public <T> void writeValue(T object, OutputStream out) throws IOException {
+                    mapper.writeValue(out, object);
+                }
+
+                @Override
+                public <T> byte[] writeValueAsBytes(T object) throws IOException {
+                    return mapper.writeValueAsBytes(object);
+                }
+
+                @Override
+                public <T> T readValue(InputStream byteBufInputStream, Class<T> type) throws IOException {
+                    return mapper.readValue(byteBufInputStream, type);
+                }
+            });
             //Generic madness - Event != Event<?>
             final Provider<Event> e = binder().getProvider(Event.class);
             bind(new TypeLiteral<Event<?>>(){}).toProvider(new Provider<Event<?>>() {
@@ -85,14 +114,15 @@ public class AppTest {
     }
 
     @Test
-    public void testApp(Application app, PathFactory paths, ReentrantScope scope) throws IOException, InterruptedException, Exception {
+    public void testApp(Application app, PathFactory paths, ReentrantScope scope, Settings settings) throws IOException, InterruptedException, Exception {
         assertTrue(app instanceof App);
         assertTrue("App has no pages", app.iterator().hasNext());
         Page page = app.iterator().next();
         assertNotNull(page);
         try (AutoCloseable cl = app.getRequestScope().enter(page)) {
             page.setApplication(app);
-            ActeursImpl ai = (ActeursImpl) page.getActeurs(Executors.newSingleThreadExecutor(), scope);
+            
+            ActeursImpl ai = new ActeursImpl(Executors.newSingleThreadExecutor(), scope, page, settings);
 
             Event event = createEvent(paths);
 
@@ -158,9 +188,8 @@ public class AppTest {
     static class ConvertBodyAction extends Acteur {
 
         @Inject
-        ConvertBodyAction(Event<?> event) throws IOException {
-            System.err.println("Convert body ");
-            Thing thing = event.getContentAsJSON(Thing.class);
+        ConvertBodyAction(HttpEvent event, ContentConverter cvt) throws IOException {
+            Thing thing = cvt.readObject(event.getContent(), event.getHeader(Headers.CONTENT_TYPE), Thing.class);
             if (thing == null) {
                 setState(new RejectedState());
             } else {
@@ -210,8 +239,8 @@ public class AppTest {
 
         System.err.println("Cache-Control: " + req.headers().get(Headers.CACHE_CONTROL.name()));
 
-        System.err.println("AUTH HEADER IS " + req.headers().get(HttpHeaders.Names.AUTHORIZATION));
-        assertNotNull(req.headers().get(HttpHeaders.Names.AUTHORIZATION));
+        System.err.println("AUTH HEADER IS " + req.headers().get(HttpHeaderNames.AUTHORIZATION));
+        assertNotNull(req.headers().get(HttpHeaderNames.AUTHORIZATION));
         BasicCredentials c = Headers.read(Headers.AUTHORIZATION, req);
         assertNotNull(c);
         assertEquals("joey", c.username);

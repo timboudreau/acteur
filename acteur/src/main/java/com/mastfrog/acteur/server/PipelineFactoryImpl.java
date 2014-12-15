@@ -23,49 +23,48 @@
  */
 package com.mastfrog.acteur.server;
 
-import com.google.inject.Inject;
 import com.google.inject.Provider;
-import com.google.inject.name.Named;
+import static com.mastfrog.acteur.server.ServerModule.HTTP_COMPRESSION;
+import static com.mastfrog.acteur.server.ServerModule.MAX_CONTENT_LENGTH;
 import com.mastfrog.acteur.spi.ApplicationControl;
+import com.mastfrog.settings.Settings;
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandler;
+import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.socket.SocketChannel;
+import io.netty.handler.codec.DecoderException;
 import io.netty.handler.codec.MessageToByteEncoder;
-import io.netty.handler.codec.http.DefaultFullHttpResponse;
 import io.netty.handler.codec.http.HttpContentCompressor;
-import io.netty.handler.codec.http.HttpMessage;
-//import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpRequestDecoder;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseEncoder;
-import io.netty.handler.codec.http.HttpResponseStatus;
+import io.netty.util.internal.StringUtil;
 import java.util.List;
+import javax.inject.Inject;
+import javax.inject.Singleton;
 
-//@Singleton
-//@Sharable
+@Singleton
+@Sharable
 class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
 
     static final boolean DEFAULT_AGGREGATE_CHUNKS = true;
 
     private final Provider<ChannelHandler> handler;
-    private @Inject(optional = true)
-    @Named("aggregateChunks")
-    boolean aggregateChunks = DEFAULT_AGGREGATE_CHUNKS;
-    private @Inject(optional = true)
-    @Named("maxContentLength")
-    int maxContentLength = 1048576;
-    @Named("httpCompression")
-    boolean httpCompression = false;
+    private final boolean aggregateChunks;
+    private final int maxContentLength;
+    private final boolean httpCompression;
     private final Provider<ApplicationControl> app;
 
     @Inject
-    PipelineFactoryImpl(Provider<ChannelHandler> handler, Provider<ApplicationControl> app) {
+    PipelineFactoryImpl(Provider<ChannelHandler> handler, Provider<ApplicationControl> app, Settings settings) {
         this.handler = handler;
         this.app = app;
+        aggregateChunks = settings.getBoolean("aggregateChunks", DEFAULT_AGGREGATE_CHUNKS);
+        httpCompression = settings.getBoolean(HTTP_COMPRESSION, true);
+        maxContentLength = settings.getInt(MAX_CONTENT_LENGTH, 1048576);
     }
 
     @Override
@@ -75,32 +74,27 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
 
     @Override
     public void initChannel(SocketChannel ch) throws Exception {
-        if (maxContentLength == 0) {
-            maxContentLength = 1048576;
-        }
         // Create a default pipeline implementation.
         ChannelPipeline pipeline = ch.pipeline();
-
+        ChannelHandler decoder = new HackHttpRequestDecoder();
+        ChannelHandler encoder = new HttpResponseEncoder();
 //        SSLEngine engine = SecureChatSslContextFactory.getServerContext().createSSLEngine();
 //        engine.setUseClientMode(false);
 //        pipeline.addLast("ssl", new SslHandler(engine));
 
-        ChannelHandler decoder = (ChannelHandler) new HttpRequestDecoder();
-
         pipeline.addLast("decoder", decoder);
         // Uncomment the following line if you don't want to handle HttpChunks.
         if (aggregateChunks) {
-            ChannelHandler aggregator = (ChannelHandler) new HttpObjectAggregator(maxContentLength);
+            ChannelHandler aggregator = new HttpObjectAggregator(maxContentLength);
             pipeline.addLast("aggregator", aggregator);
         }
-        
+
         pipeline.addLast("bytes", new MessageBufEncoder());
-        ChannelHandler encoder = (ChannelHandler) new HttpResponseEncoder();
         pipeline.addLast("encoder", encoder);
 
         // Remove the following line if you don't want automatic content compression.
         if (httpCompression) {
-            ChannelHandler compressor = (ChannelHandler) new SelectiveCompressor();
+            ChannelHandler compressor = new SelectiveCompressor();
             pipeline.addLast("deflater", compressor);
         }
         pipeline.addLast("handler", handler.get());
@@ -116,11 +110,50 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
 
     private static class SelectiveCompressor extends HttpContentCompressor {
 
-        protected Result beginEncode(HttpResponse headers, String acceptEncoding) throws Exception {
+        @Override
+        protected Result beginEncode(HttpResponse headers, CharSequence acceptEncoding) throws Exception {
             if (headers.headers().contains("X-Internal-Compress")) {
+                headers.headers().remove("X-Internal-Compress");
                 return null;
             }
             return super.beginEncode(headers, acceptEncoding);
+        }
+    }
+
+    static class HackHttpRequestDecoder extends HttpRequestDecoder {
+        // See https://github.com/netty/netty/issues/3247
+        protected void callDecode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) {
+            try {
+                while (in.isReadable()) {
+                    int outSize = out.size();
+                    int oldInputLength = in.readableBytes();
+                    decode(ctx, in, out);
+
+                // Check if this handler was removed before continuing the loop.
+                    // If it was removed, it is not safe to continue to operate on the buffer.
+                    //
+                    // See https://github.com/netty/netty/issues/1664
+                    if (ctx.isRemoved()) {
+                        break;
+                    }
+
+                    if (outSize == out.size()) {
+                        if (oldInputLength == in.readableBytes()) {
+                            break;
+                        } else {
+                            continue;
+                        }
+                    }
+
+                    if (isSingleDecode()) {
+                        break;
+                    }
+                }
+            } catch (DecoderException e) {
+                throw e;
+            } catch (Throwable cause) {
+                throw new DecoderException(cause);
+            }
         }
     }
 }

@@ -25,43 +25,55 @@ package com.mastfrog.acteur.server;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.inject.AbstractModule;
-import com.google.inject.Inject;
 import com.google.inject.Module;
 import com.google.inject.Provider;
 import com.google.inject.Scopes;
 import com.google.inject.Singleton;
 import com.google.inject.TypeLiteral;
+import com.google.inject.name.Named;
 import com.google.inject.name.Names;
+import com.mastfrog.acteur.Acteur;
 import com.mastfrog.acteur.Application;
+import com.mastfrog.acteur.BuiltInPageAnnotationHandler;
 import com.mastfrog.acteur.Closables;
 import com.mastfrog.acteur.Event;
 import com.mastfrog.acteur.HttpEvent;
 import com.mastfrog.acteur.ImplicitBindings;
 import com.mastfrog.acteur.Page;
+import com.mastfrog.acteur.ResponseHeaders;
+import com.mastfrog.acteur.errors.Err;
+import com.mastfrog.acteur.errors.ErrorResponse;
+import com.mastfrog.acteur.errors.ExceptionEvaluator;
 import com.mastfrog.acteur.errors.ExceptionEvaluatorRegistry;
+import com.mastfrog.acteur.headers.Method;
 import com.mastfrog.acteur.server.ServerModule.TF;
 import com.mastfrog.acteur.spi.ApplicationControl;
 import com.mastfrog.acteur.util.BasicCredentials;
 import com.mastfrog.acteur.util.Server;
+import com.mastfrog.acteur.util.ServerControl;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.guicy.annotations.Defaults;
 import com.mastfrog.guicy.scope.ReentrantScope;
+import com.mastfrog.parameters.KeysValues;
 import com.mastfrog.settings.MutableSettings;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.settings.SettingsBuilder;
 import com.mastfrog.treadmill.Treadmill;
+import com.mastfrog.url.Path;
 import com.mastfrog.util.Codec;
 import com.mastfrog.util.ConfigurationError;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.buffer.UnpooledByteBufAllocator;
+import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.codec.http.Cookie;
 import io.netty.handler.codec.http.CookieDecoder;
+import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.util.CharsetUtil;
 import java.io.IOException;
@@ -76,13 +88,18 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
+import javax.inject.Inject;
 import org.joda.time.DateTime;
 import org.joda.time.Duration;
+import org.netbeans.validation.api.InvalidInputException;
 
 /**
+ * Guice module for creating a server;  also defines settings keys which can
+ * affect behavior.
  *
  * @author Tim Boudreau
  */
@@ -164,6 +181,32 @@ public class ServerModule<A extends Application> extends AbstractModule {
      * The port to run on
      */
     public static final String PORT = "port";
+    
+    /**
+     * Settings key for enabling HTTP compression.
+     */
+    public static final String HTTP_COMPRESSION = "httpCompression";
+    
+    /**
+     * Settings key for the maximum content length.
+     */
+    public static final String MAX_CONTENT_LENGTH = "maxContentLength";
+    /**
+     * Guice binding for <code>&#064;Named(DELAY_EXECUTOR) ScheduledExecutorService</code>
+     * to get a scheduled executor service which shares a ThreadFactory with the
+     * worker thread pool.
+     */
+    public static final String DELAY_EXECUTOR = "delayExecutor";
+    /**
+     * Number of threads to process delayed responses (see Acteur.setDelay()).
+     * These threads are typically not busy and can be 1-2 threads.
+     */
+    public static final String SETTINGS_KEY_DELAY_THREAD_POOL_THREADS = "delay.response.threads";
+    /**
+     * The default number of delay threads.
+     */
+    private static final int DEFAULT_DELAY_THREADS = 2;
+
 
     /**
      * If true, the return value of Event.getRemoteAddress() will prefer the
@@ -172,6 +215,9 @@ public class ServerModule<A extends Application> extends AbstractModule {
      * address.
      */
     public static final String SETTINGS_KEY_DECODE_REAL_IP = "decodeRealIP";
+    /**
+     * Settings key if true, do CORS responses on OPTIONS requests
+     */
     public static final String SETTINGS_KEY_CORS_ENABLED = "cors.enabled";
     protected final Class<A> appType;
     protected final ReentrantScope scope = new ReentrantScope();
@@ -281,6 +327,134 @@ public class ServerModule<A extends Application> extends AbstractModule {
         bind(Codec.class).to(CodecImpl.class);
         bind(ApplicationControl.class).toProvider(ApplicationControlProvider.class).in(Scopes.SINGLETON);
         bind(ExceptionEvaluatorRegistry.class).asEagerSingleton();
+        bind(KeysValues.class).toProvider(KeysValuesProvider.class);
+        bind(InvalidInputExceptionEvaluator.class).asEagerSingleton();
+        bind(Channel.class).toProvider(ChannelProvider.class);
+        bind(Method.class).toProvider(MethodProvider.class);
+        bind(Path.class).toProvider(PathProvider.class);
+        bind(BuiltInPageAnnotationHandler.class).asEagerSingleton();
+        bind(ResponseHeaders.class).toProvider(ResponseHeadersProvider.class);
+        bind(ScheduledExecutorService.class).annotatedWith(Names.named(DELAY_EXECUTOR)).toProvider(DelayExecutorProvider.class);
+    }
+    
+    @Singleton
+    private static final class DelayExecutorProvider implements Provider<ScheduledExecutorService> {
+
+        private final ThreadFactory workerThreadFactory;
+        private final int count;
+        private volatile ScheduledExecutorService exe;
+
+        @Inject
+        DelayExecutorProvider(@Named(ServerModule.WORKER_THREADS) ThreadFactory workerThreadFactory, Settings settings) {
+            this.workerThreadFactory = workerThreadFactory;
+            count = settings.getInt(SETTINGS_KEY_DELAY_THREAD_POOL_THREADS, DEFAULT_DELAY_THREADS);
+        }
+
+        @Override
+        public ScheduledExecutorService get() {
+            if (exe == null) {
+                synchronized (this) {
+                    if (exe == null) {
+                        exe = Executors.newScheduledThreadPool(count, workerThreadFactory);
+                    }
+                }
+            }
+            return exe;
+        }
+    }
+
+    @Singleton
+    private static final class ResponseHeadersProvider implements Provider<ResponseHeaders> {
+
+        private final Provider<Page> page;
+
+        @Inject
+        public ResponseHeadersProvider(Provider<Page> page) {
+            this.page = page;
+        }
+        
+        @Override
+        public ResponseHeaders get() {
+            return page.get().getResponseHeaders();
+        }
+    }
+
+    private static final class PathProvider implements Provider<Path> {
+
+        private final Provider<HttpEvent> evt;
+
+        @Inject
+        PathProvider(Provider<HttpEvent> evt) {
+            this.evt = evt;
+        }
+
+        @Override
+        public Path get() {
+            return evt.get().getPath();
+        }
+    }
+
+    private static final class MethodProvider implements Provider<Method> {
+
+        private final Provider<HttpEvent> evt;
+
+        @Inject
+        MethodProvider(Provider<HttpEvent> evt) {
+            this.evt = evt;
+        }
+
+        @Override
+        public Method get() {
+            return evt.get().getMethod();
+        }
+
+    }
+
+    private static final class ChannelProvider implements Provider<Channel> {
+
+        private final Provider<HttpEvent> evt;
+
+        @Inject
+        ChannelProvider(Provider<HttpEvent> evt) {
+            this.evt = evt;
+        }
+
+        @Override
+        public Channel get() {
+            return evt.get().getChannel();
+        }
+    }
+
+    private static final class KeysValuesProvider implements Provider<KeysValues> {
+
+        private final Provider<HttpEvent> evt;
+
+        @Inject
+        public KeysValuesProvider(Provider<HttpEvent> evt) {
+            this.evt = evt;
+        }
+
+        @Override
+        public KeysValues get() {
+            return new KeysValues.MapAdapter(evt.get().getParametersAsMap());
+        }
+    }
+
+    private static final class InvalidInputExceptionEvaluator extends ExceptionEvaluator {
+
+        @Inject
+        public InvalidInputExceptionEvaluator(ExceptionEvaluatorRegistry registry) {
+            super(registry);
+        }
+
+        @Override
+        public ErrorResponse evaluate(Throwable t, Acteur acteur, Page page, HttpEvent evt) {
+            if (t instanceof InvalidInputException) {
+                InvalidInputException iie = (InvalidInputException) t;
+                return Err.badRequest(iie.getProblems().toString());
+            }
+            return null;
+        }
     }
 
     private static final class EventProvider implements Provider<Event<?>> {
@@ -340,13 +514,18 @@ public class ServerModule<A extends Application> extends AbstractModule {
         }
 
         @Override
-        public <T> byte[] writeValueAsBytes(T object, OutputStream out) throws IOException {
-            return mapper.get().writeValueAsBytes(out);
+        public <T> void writeValue(T object, OutputStream out) throws IOException {
+            mapper.get().writeValue(out, object);
         }
 
         @Override
         public <T> T readValue(InputStream byteBufInputStream, Class<T> type) throws IOException {
             return mapper.get().readValue(byteBufInputStream, type);
+        }
+
+        @Override
+        public <T> byte[] writeValueAsBytes(T object) throws IOException {
+            return mapper.get().writeValueAsBytes(object);
         }
     }
 
@@ -497,7 +676,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
         @Override
         public Set<Cookie> get() {
             HttpEvent evt = ev.get();
-            String h = evt.getHeader(HttpHeaders.Names.COOKIE);
+            String h = evt.getHeader(HttpHeaderNames.COOKIE);
             if (h != null) {
                 Set<Cookie> result = CookieDecoder.decode(h);
                 if (result != null) {
@@ -609,11 +788,32 @@ public class ServerModule<A extends Application> extends AbstractModule {
     protected void onAfterStart(Server server, Dependencies deps) {
     }
 
-    public Condition start() throws IOException, InterruptedException {
+    /**
+     * Start a server
+     * 
+     * @return an object to wait on, which can be used to shut down
+     * the server
+     * @throws IOException if something goes wrong
+     * @throws InterruptedException if something goes wrong
+     * @deprecated Use ServerBuilder instead
+     */
+    @Deprecated
+    public ServerControl start() throws IOException, InterruptedException {
         return start(null);
     }
 
-    public Condition start(Integer port) throws IOException, InterruptedException {
+    /**
+     * Start a server
+     * 
+     * @param port The port to start on
+     * @return an object to wait on, which can be used to shut down
+     * the server
+     * @throws IOException if something goes wrong
+     * @throws InterruptedException if something goes wrong
+     * @deprecated Use ServerBuilder instead
+     */
+    @Deprecated
+    public ServerControl start(Integer port) throws IOException, InterruptedException {
         MutableSettings settings = SettingsBuilder.createDefault().buildMutableSettings();
         if (port != null) {
             settings.setInt("port", port);
@@ -629,7 +829,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
         Server server = dependencies.getInstance(Server.class);
         onBeforeStart(server, dependencies);
 
-        Condition result = server.start();
+        ServerControl result = server.start(pt);
         onAfterStart(server, dependencies);
         return result;
     }

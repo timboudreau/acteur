@@ -23,6 +23,7 @@
  */
 package com.mastfrog.acteur.headers;
 
+import io.netty.handler.codec.AsciiString;
 import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpRequest;
 
@@ -33,10 +34,44 @@ import io.netty.handler.codec.http.HttpRequest;
  */
 public enum Method implements com.mastfrog.acteur.util.HttpMethod {
 
-    GET, PUT, POST, OPTIONS, HEAD, DELETE, TRACE, UNKNOWN;
+    GET, PUT, POST, OPTIONS, HEAD, DELETE, TRACE, CONNECT,
+    // WEBDAV
+    PROPFIND, PROPPATCH, MKCOL, COPY, MOVE, LOCK, UNLOCK,
+    UNKNOWN;
 
-    public static Method get(HttpRequest req) {
-        HttpMethod m = req.getMethod();
-        return Method.valueOf(m.name().toUpperCase());
+    public static com.mastfrog.acteur.util.HttpMethod get(HttpRequest req) {
+        io.netty.handler.codec.http.HttpMethod m = req.method();
+        AsciiString methodName = m.name().toUpperCase();
+        for (Method mm : values()) {
+            if (methodName.contentEquals(mm.name())) {
+                return mm;
+            }
+        }
+        return new UnknownMethodImpl(methodName);
+    }
+    
+    public static Method valueOf(AsciiString string) {
+        string = string.toUpperCase();
+        for (Method mm : values()) {
+            if (string.contentEquals(mm.name())) {
+                return mm;
+            }
+        }
+        return null;
+    }
+
+    static class UnknownMethodImpl implements com.mastfrog.acteur.util.HttpMethod {
+
+        private final AsciiString name;
+
+        public UnknownMethodImpl(AsciiString name) {
+            this.name = name;
+        }
+
+        @Override
+        public String name() {
+            return name.toString();
+        }
+
     }
 }

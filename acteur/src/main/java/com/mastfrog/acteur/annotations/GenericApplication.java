@@ -1,6 +1,5 @@
 package com.mastfrog.acteur.annotations;
 
-import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import com.mastfrog.acteur.Application;
 import com.mastfrog.acteur.ImplicitBindings;
@@ -10,6 +9,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
+import javax.inject.Inject;
 
 /**
  * An application which looks up its pages using registry files on the

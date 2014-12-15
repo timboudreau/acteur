@@ -39,8 +39,8 @@ class IntHeader extends AbstractHeader<Integer> {
     }
 
     @Override
-    public Integer toValue(String value) {
-        return Integer.parseInt(value);
+    public Integer toValue(CharSequence value) {
+        return Integer.parseInt(value.toString());
     }
 
 }

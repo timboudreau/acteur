@@ -23,18 +23,17 @@
  */
 package com.mastfrog.acteur.server;
 
-import com.google.inject.Inject;
-import com.google.inject.name.Named;
+import com.google.inject.Singleton;
+import com.mastfrog.acteur.ContentConverter;
 import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_DECODE_REAL_IP;
 import com.mastfrog.acteur.spi.ApplicationControl;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.util.Codec;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelFutureListener;
+import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.handler.codec.http.DefaultHttpResponse;
-import io.netty.handler.codec.http.FullHttpRequest;
+import static io.netty.handler.codec.http.HttpHeaderUtil.is100ContinueExpected;
 import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponse;
@@ -43,36 +42,36 @@ import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
 import io.netty.handler.codec.http.websocketx.WebSocketFrame;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
+import javax.inject.Inject;
 
 /**
  *
  * @author Tim Boudreau
  */
-//@ChannelHandler.Sharable
-//@Singleton
+@ChannelHandler.Sharable
+@Singleton
 final class UpstreamHandlerImpl extends ChannelInboundHandlerAdapter {
 
     private final ApplicationControl application;
     private final PathFactory paths;
-    @Inject(optional = true)
-    @Named("neverKeepAlive")
-    private boolean neverKeepAlive;
-    private @Inject(optional = true)
-    @Named("aggregateChunks")
-    boolean aggregateChunks = PipelineFactoryImpl.DEFAULT_AGGREGATE_CHUNKS;
+    private final boolean neverKeepAlive;
+    private final boolean aggregateChunks;
     private final Codec mapper;
     @Inject
     private UnknownNetworkEventHandler uneh;
 
-    @Inject(optional = true)
-    @Named(SETTINGS_KEY_DECODE_REAL_IP)
-    private boolean decodeRealIP = true;
+    private final boolean decodeRealIP;
+    private final ContentConverter converter;
 
     @Inject
-    UpstreamHandlerImpl(ApplicationControl application, PathFactory paths, Codec mapper, Settings settings) {
+    UpstreamHandlerImpl(ApplicationControl application, PathFactory paths, Codec mapper, Settings settings, ContentConverter converter) {
         this.application = application;
         this.paths = paths;
         this.mapper = mapper;
+        this.converter = converter;
+        aggregateChunks = settings.getBoolean("aggregateChunks", PipelineFactoryImpl.DEFAULT_AGGREGATE_CHUNKS);
+        neverKeepAlive = settings.getBoolean("neverKeepAlive", true);
+        decodeRealIP = settings.getBoolean(SETTINGS_KEY_DECODE_REAL_IP, true);
     }
 
     @Override
@@ -83,35 +82,25 @@ final class UpstreamHandlerImpl extends ChannelInboundHandlerAdapter {
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
         if (msg instanceof HttpRequest) {
             final HttpRequest request = (HttpRequest) msg;
-            if (!aggregateChunks && HttpHeaders.is100ContinueExpected(request)) {
+            if (!aggregateChunks && is100ContinueExpected(request)) {
                 send100Continue(ctx);
             }
             SocketAddress addr = ctx.channel().remoteAddress();
             if (decodeRealIP) {
-                String hdr = request.headers().get("X-Real-IP");
+                CharSequence hdr = request.headers().get("X-Real-IP");
                 if (hdr == null) {
                     hdr = request.headers().get("X-Forwarded-For");
                 }
                 if (hdr != null) {
-                    addr = new InetSocketAddress(hdr, addr instanceof InetSocketAddress ? ((InetSocketAddress) addr).getPort() : 80);
+                    addr = new InetSocketAddress(hdr.toString(), addr instanceof InetSocketAddress ? ((InetSocketAddress) addr).getPort() : 80);
                 }
             }
-//            ctx.channel().closeFuture().addListener(new ChannelFutureListener(){
-//
-//                @Override
-//                public void operationComplete(ChannelFuture f) throws Exception {
-//                    if (request instanceof FullHttpRequest) {
-//                        ((FullHttpRequest) request).content().release();
-//                    }
-//                }
-//                
-//            });
-            EventImpl evt = new EventImpl(request, addr, ctx.channel(), paths, mapper);
+            EventImpl evt = new EventImpl(request, addr, ctx.channel(), paths, converter);
             evt.setNeverKeepAlive(neverKeepAlive);
             application.onEvent(evt, ctx.channel());
         } else if (msg instanceof WebSocketFrame) {
             WebSocketFrame frame = (WebSocketFrame) msg;
-            SocketAddress addr = (SocketAddress) ctx.channel().remoteAddress();
+            SocketAddress addr = ctx.channel().remoteAddress();
             // XXX - any way to decode real IP?
             WebSocketEvent wsEvent = new WebSocketEvent(frame, ctx.channel(), addr, mapper);
 

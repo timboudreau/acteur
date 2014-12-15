@@ -23,11 +23,11 @@
  */
 package com.mastfrog.acteur;
 
-import com.google.inject.Inject;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.util.collections.CollectionUtils;
 import com.mastfrog.util.collections.Converter;
 import java.util.List;
+import javax.inject.Inject;
 
 /**
  * Creates a typed iterator over a List&lt;Object&gt; which may contain either

@@ -1,4 +1,4 @@
-/* 
+/*
  * The MIT License
  *
  * Copyright 2013 Tim Boudreau.
@@ -42,11 +42,11 @@ import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Method;
 import java.net.URLDecoder;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import org.apache.commons.codec.binary.Base64;
 import org.joda.time.DateTime;
 import org.joda.time.Duration;
 
@@ -55,8 +55,8 @@ import org.joda.time.Duration;
  * caching headers as follows: ETag is generated (SHA-1) on first read; last
  * modified = server start time.
  * <p/>
- * Use this to embed resources inside application JARs - this is not for
- * serving flat files on disk.
+ * Use this to embed resources inside application JARs - this is not for serving
+ * flat files on disk.
  *
  * @author Tim Boudreau
  */
@@ -69,9 +69,9 @@ public abstract class ClasspathResourcePage extends Page implements ContentLengt
     private final Path path;
 
     protected ClasspathResourcePage(final HttpEvent event, ActeurFactory f, DateTime serverStartTime, String... patterns) {
-        this (null, event, f, serverStartTime, patterns);
+        this(null, event, f, serverStartTime, patterns);
     }
-    
+
     @Deprecated
     @SuppressWarnings("LeakingThisInConstructor")
     protected ClasspathResourcePage(final Application app, final HttpEvent event, ActeurFactory f, DateTime serverStartTime, String... patterns) {
@@ -203,6 +203,7 @@ public abstract class ClasspathResourcePage extends Page implements ContentLengt
             bytes = content;
             this.keepAlive = keepAlive;
         }
+
         @Override
         public Status write(Event<?> evt, Output out, int iteration) throws Exception {
             int old = offset;
@@ -370,7 +371,7 @@ public abstract class ClasspathResourcePage extends Page implements ContentLengt
     String getHashString(HashingInputStream hin) throws IOException {
         hin.close();
         byte[] bytes = hin.getDigest();
-        byte[] base64 = Base64.encodeBase64(bytes);
+        byte[] base64 = Base64.getEncoder().encode(bytes);
         return new String(base64, CharsetUtil.US_ASCII);
     }
 }

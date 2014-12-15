@@ -1,7 +1,7 @@
-/* 
+/*
  * The MIT License
  *
- * Copyright 2013 Tim Boudreau.
+ * Copyright 2014 tim.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,29 +21,23 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.mastfrog.acteur.auth.file;
 
-import java.io.IOException;
+package com.mastfrog.acteur.preconditions;
+
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
 /**
+ * Annotation which can appear on an Acteur with the &#064;HttpCall annotation
+ * or on a Page with that annotation.
  *
  * @author Tim Boudreau
  */
-public class PasswordTooWeakException extends IOException {
-
-    public PasswordTooWeakException(Throwable cause) {
-        super(cause);
-    }
-
-    public PasswordTooWeakException(String message, Throwable cause) {
-        super(message, cause);
-    }
-
-    public PasswordTooWeakException(String message) {
-        super(message);
-    }
-
-    public PasswordTooWeakException() {
-    }
-
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.TYPE)
+@Description("Groups of URL parameters which may not appear in combination")
+public @interface UrlParametersMayNotBeCombinedSets {
+    UrlParametersMayNotBeCombined[] value();
 }

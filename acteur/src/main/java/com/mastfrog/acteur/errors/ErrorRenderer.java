@@ -26,11 +26,11 @@ package com.mastfrog.acteur.errors;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.inject.ImplementedBy;
-import com.google.inject.Inject;
 import com.mastfrog.acteur.HttpEvent;
 import com.mastfrog.acteur.Response;
 import com.mastfrog.acteur.errors.ErrorRenderer.DefaultErrorRenderer;
 import java.io.IOException;
+import javax.inject.Inject;
 
 /**
  * Renders error messages into responses
@@ -62,7 +62,7 @@ public abstract class ErrorRenderer {
         @Override
         public void render(ErrorResponse resp, Response into, HttpEvent evt) throws JsonProcessingException {
             into.setResponseCode(resp.status());
-            into.setMessage(mapper.writeValueAsString(resp.message()));
+            into.setMessage(mapper.writeValueAsString(resp.message()) + "\n");
         }
 
         @Override

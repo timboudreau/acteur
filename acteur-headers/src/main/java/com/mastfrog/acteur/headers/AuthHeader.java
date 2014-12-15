@@ -24,7 +24,7 @@
 package com.mastfrog.acteur.headers;
 
 import com.mastfrog.acteur.util.Realm;
-import io.netty.handler.codec.http.HttpHeaders;
+import io.netty.handler.codec.http.HttpHeaderNames;
 
 /**
  *
@@ -33,7 +33,7 @@ import io.netty.handler.codec.http.HttpHeaders;
 final class AuthHeader extends AbstractHeader<Realm> {
 
     AuthHeader() {
-        super(Realm.class, HttpHeaders.Names.WWW_AUTHENTICATE);
+        super(Realm.class, HttpHeaderNames.WWW_AUTHENTICATE);
     }
 
     @Override
@@ -42,7 +42,7 @@ final class AuthHeader extends AbstractHeader<Realm> {
     }
 
     @Override
-    public Realm toValue(String value) {
+    public Realm toValue(CharSequence value) {
         return Realm.createSimple(value);
     }
 

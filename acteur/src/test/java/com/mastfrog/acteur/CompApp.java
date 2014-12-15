@@ -11,6 +11,7 @@ import com.mastfrog.acteur.errors.ErrorRenderer;
 import com.mastfrog.acteur.errors.ErrorResponse;
 import com.mastfrog.acteur.errors.ExceptionEvaluator;
 import com.mastfrog.acteur.errors.ExceptionEvaluatorRegistry;
+import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.acteur.headers.Method;
 import com.mastfrog.acteur.server.ServerModule;
 import com.mastfrog.acteur.util.ErrorInterceptor;
@@ -25,7 +26,6 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotNull;
 import org.openide.util.Exceptions;
 
@@ -66,7 +66,7 @@ public class CompApp extends Application {
 
         @Override
         protected void configure() {
-            install(new ServerModule(CompApp.class));
+            install(new ServerModule<CompApp>(CompApp.class));
             bind(ErrorInterceptor.class).to(TestHarness.class);
             bind(ExceptionEval.class).asEagerSingleton();
             bind(ErrorRenderer.class).to(ExceptionRen.class);
@@ -94,6 +94,7 @@ public class CompApp extends Application {
     static class ExceptionRen extends ErrorRenderer {
 
         @Override
+        @SuppressWarnings("unchecked")
         public String render(ErrorResponse resp, HttpEvent evt) throws IOException {
             Map<String, Object> m = (Map<String, Object>) resp.message();
             String s = (String) m.get("error");
@@ -186,7 +187,7 @@ public class CompApp extends Application {
         private static final class EchoActeur extends Acteur {
 
             @Inject
-            EchoActeur(Event<?> evt) throws IOException {
+            EchoActeur(HttpEvent evt, ContentConverter cvt) throws IOException {
 //                if (!evt.getContent().isReadable()) {
 //                    setState(new RespondWith(400, "Content not readable"));
 //                    return;
@@ -194,7 +195,7 @@ public class CompApp extends Application {
 //                    setState(new RespondWith(HttpResponseStatus.EXPECTATION_FAILED, "Zero byte content"));
 //                    return;
 //                }
-                String content = evt.getContentAsJSON(String.class);
+                String content = cvt.toObject(evt.getContent(), evt.getHeader(Headers.CONTENT_TYPE), String.class);
                 System.out.println("SEND MESSAGE '" + content + "'");
                 setState(new RespondWith(200, content));
             }

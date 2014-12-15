@@ -32,6 +32,7 @@ import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.acteur.Page;
 import com.mastfrog.acteur.Response;
 import com.mastfrog.acteur.headers.Method;
+import com.mastfrog.acteur.preconditions.Description;
 import com.mastfrog.acteur.resources.StaticResources.Resource;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.url.Path;
@@ -46,6 +47,7 @@ import org.joda.time.DateTime;
  *
  * @author Tim Boudreau
  */
+@Description("Serves static files")
 public class ResourcesPage extends Page {
 
     /**

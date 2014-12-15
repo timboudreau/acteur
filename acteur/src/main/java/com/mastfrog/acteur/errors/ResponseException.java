@@ -1,7 +1,7 @@
-/* 
+/*
  * The MIT License
  *
- * Copyright 2013 Tim Boudreau.
+ * Copyright 2014 Tim Boudreau.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,18 +21,28 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.mastfrog.acteur.auth.file;
+package com.mastfrog.acteur.errors;
 
-import com.google.inject.ImplementedBy;
-import java.io.File;
-import java.io.IOException;
+import io.netty.handler.codec.http.HttpResponseStatus;
 
 /**
+ * Exception that can be thrown from a Provider and result in a
+ * specific HTTP error response.  Please do not use where you can manage
+ * this without exceptions - this is a last resort for when you don't have
+ * access to the Acteur to set its state.
  *
  * @author Tim Boudreau
  */
-@ImplementedBy(PlaintextPasswordIO.class)
-public interface PasswordIO {
-    public void writePassword(String password, File file) throws IOException;
-    public boolean checkPassword(String password, File file) throws IOException;
+public class ResponseException extends RuntimeException {
+
+    private final HttpResponseStatus status;
+
+    public ResponseException(HttpResponseStatus status, String msg) {
+        super(msg);
+        this.status = status;
+    }
+
+    public HttpResponseStatus status() {
+        return status;
+    }
 }

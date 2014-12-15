@@ -39,8 +39,8 @@ class LongHeader extends AbstractHeader<Long> {
     }
 
     @Override
-    public Long toValue(String value) {
-        return Long.parseLong(value);
+    public Long toValue(CharSequence value) {
+        return Long.parseLong(value.toString());
     }
 
 }

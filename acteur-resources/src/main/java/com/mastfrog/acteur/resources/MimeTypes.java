@@ -43,13 +43,10 @@ public class MimeTypes {
     private final Map<String, MediaType> m = new HashMap<>();
     @Inject(optional = true)
     private Charset charset = CharsetUtil.UTF_8;
-    private final ExpiresPolicy policy;
 
     @Inject
-    public MimeTypes(Charset defaultCharset, ExpiresPolicy policy) {
+    public MimeTypes(Charset defaultCharset) {
         this.charset = defaultCharset;
-        this.policy = policy;
-        // XXX use Guava's MediaType
         add("js", MediaType.JAVASCRIPT_UTF_8.withCharset(charset), true);
         add("gif", MediaType.GIF);
         add("png", MediaType.PNG);
@@ -74,7 +71,7 @@ public class MimeTypes {
     }
 
     public MimeTypes() {
-        this(CharsetUtil.UTF_8, new NullExpiresPolicy());
+        this(CharsetUtil.UTF_8);
     }
 
     private static class NullExpiresPolicy implements ExpiresPolicy {

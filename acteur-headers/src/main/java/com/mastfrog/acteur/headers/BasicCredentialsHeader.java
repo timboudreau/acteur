@@ -24,7 +24,7 @@
 package com.mastfrog.acteur.headers;
 
 import com.mastfrog.acteur.util.BasicCredentials;
-import io.netty.handler.codec.http.HttpHeaders;
+import io.netty.handler.codec.http.HttpHeaderNames;
 
 /**
  *
@@ -33,7 +33,7 @@ import io.netty.handler.codec.http.HttpHeaders;
 class BasicCredentialsHeader extends AbstractHeader<BasicCredentials> {
 
     BasicCredentialsHeader() {
-        super(BasicCredentials.class, HttpHeaders.Names.AUTHORIZATION);
+        super(BasicCredentials.class, HttpHeaderNames.AUTHORIZATION);
     }
 
     @Override
@@ -42,8 +42,7 @@ class BasicCredentialsHeader extends AbstractHeader<BasicCredentials> {
     }
 
     @Override
-    public BasicCredentials toValue(String value) {
+    public BasicCredentials toValue(CharSequence value) {
         return BasicCredentials.parse(value);
     }
-
 }

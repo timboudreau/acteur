@@ -1,7 +1,7 @@
-/* 
+/*
  * The MIT License
  *
- * Copyright 2013 Tim Boudreau.
+ * Copyright 2014 tim.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,19 +21,26 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.mastfrog.acteur.auth.file;
 
-import java.io.IOException;
+package com.mastfrog.acteur.preconditions;
+
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
 /**
  *
- * @author tim
+ * Annotation which can appear on an Acteur with the &#064;HttpCall annotation
+ * or on a Page with that annotation.  Specifies a maximum length for the
+ * request body, which is computed without necessarily parsing that body.
+ *
+ * @author Tim Boudreau
  */
-public interface Users {
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.TYPE)
+@Description("Maximum length of the request body")
+public @interface MaximumRequestBodyLength {
 
-    User getUser(String name) throws IOException;
-
-    User newUser(String name, String password) throws IOException;
-
-    User newUser(String name, String password, String realName) throws IOException;
+    int value();
 }

@@ -26,18 +26,21 @@ package com.mastfrog.acteur.util;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.util.ConfigurationError;
 import com.mastfrog.util.Exceptions;
+import com.mastfrog.util.GUIDFactory;
 import java.nio.charset.Charset;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
+import java.util.Base64;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.inject.Inject;
 import javax.inject.Singleton;
-import org.apache.commons.codec.binary.Base64;
 
 /**
- * Hashes passwords into hashes which can be tested for matching but which
- * the original password cannot be easily decrypted from.  The default
- * algorithm is SHA-512.
+ * Hashes passwords into hashes which can be tested for matching but which the
+ * original password cannot be easily decrypted from. The default algorithm is
+ * SHA-512.
  *
  * @author Tim Boudreau
  */
@@ -54,42 +57,139 @@ public final class PasswordHasher {
     public static final String SETTINGS_KEY_PASSWORD_SALT = "salt";
     public static final String SETTINGS_KEY_HASHING_ALGORITHM = "passwordHashingAlgorithm";
     public static final String DEFAULT_HASHING_ALGORITHM = "SHA-512";
+    public static final String SETTINGS_KEY_RANDOM_SALT_LENGTH = "randomSaltLength";
+    public static final int DEFAULT_RANDOM_SALT_LENGTH = 48;
+    private final GUIDFactory guids;
+    private final int saltLength;
 
     @Inject
-    PasswordHasher(Settings settings, Charset charset) throws NoSuchAlgorithmException {
+    PasswordHasher(Settings settings, Charset charset, GUIDFactory guids) throws NoSuchAlgorithmException {
         this.charset = charset;
+        saltLength = settings.getInt(SETTINGS_KEY_RANDOM_SALT_LENGTH, DEFAULT_RANDOM_SALT_LENGTH);
+        if (saltLength <= 0) {
+            throw new ConfigurationError("Salt length must be > 0");
+        }
         String salt = settings.getString(SETTINGS_KEY_PASSWORD_SALT, DEFAULT_SALT);
         String alg = settings.getString(SETTINGS_KEY_HASHING_ALGORITHM, DEFAULT_HASHING_ALGORITHM);
         if (settings.getBoolean("productionMode", false) && DEFAULT_SALT.equals(salt)) {
             throw new ConfigurationError("Default password salt should not be used in "
-                    + "production mode.  Set property salt for namespace timetracker to "
-                    + "be something else");
+                    + "production mode.");
         }
         saltBytes = salt.getBytes(charset);
         this.algorithm = alg;
         // fail early
-        hash("abcd");
+        hash("abcd", alg);
+        this.guids = guids;
     }
 
+    private String[] findSalt(String hashed) {
+        String[] result = hashed.split(":", 3);
+        return result;
+    }
+
+    /**
+     * Check an unhashed password against a stored, hashed one
+     *
+     * @param unhashed The unhashed password
+     * @param hashed
+     * @return
+     */
     public boolean checkPassword(String unhashed, String hashed) {
         try {
-            byte[] bytes = hash(unhashed);
-            byte[] check = Base64.decodeBase64(hashed);
-            return Arrays.equals(bytes, check);
+            String[] saltAndPassAndAlgorithm = findSalt(hashed);
+            if (saltAndPassAndAlgorithm.length == 1) {
+                // Backward compatibility
+                byte[] bytes = hash(unhashed, algorithm);
+                byte[] check = Base64.getDecoder().decode(hashed);
+                return Arrays.equals(bytes, check);
+            }
+            if (saltAndPassAndAlgorithm.length != 3) {
+                // Ensure a failed attempt takes the same amount of time
+                encryptPassword("DaCuBYLAlxBbT6lTyatauRp2iXCsf9WGDi8a2SyWeFVsoxGBk3Y3l1l9IHie"
+                        + "+aVuOGQBD8mZlrhj8yGjl1ghjw==", "3J5pgcx0", algorithm);
+                return false;
+            }
+            String enc = encryptPassword(unhashed, saltAndPassAndAlgorithm[1], decodeAlgorithm(saltAndPassAndAlgorithm[0]));
+            return slowEquals(enc, hashed);
         } catch (NoSuchAlgorithmException ex) {
             return Exceptions.chuck(ex);
         }
+    }
+    
+    private boolean slowEquals(String a, String b) {
+        // Compare all the characters of the string, so that
+        // the comparison time is the same whether equal or not
+        boolean result = true;
+        int max = Math.min(a.length(), b.length());
+        for (int i = 0; i < max; i++) {
+            char ca = a.charAt(i);
+            char cb = b.charAt(i);
+            result &= ca == cb;
+        }
+        return result && a.length() == b.length();
+    }
+
+    private String encryptPassword(String password, String randomSalt, String algorithm) throws NoSuchAlgorithmException {
+        return encodeAlgorithm(algorithm) + ":" + randomSalt + ":" + Base64.getEncoder().encodeToString(hash(password + randomSalt, algorithm));
+    }
+    
+    public String hash(String s) {
+        try {
+            return Base64.getEncoder().encodeToString(hash(s, algorithm));
+        } catch (NoSuchAlgorithmException ex) {
+            return Exceptions.chuck(ex);
+        }
+    }
+
+    private String encodeAlgorithm(String alg) {
+        // SHorten the stored strings a smidgen
+        switch (alg) {
+            case "SHA-512":
+                return "a";
+            case "SHA-1":
+                return "b";
+            case "MD2":
+                return "c";
+            case "MD5":
+                return "d";
+            case "SHA-256":
+                return "e";
+            case "SHA-384":
+                return "f";
+        }
+        return alg;
+    }
+
+    private String decodeAlgorithm(String alg) {
+        // Reconstitute algorithm strings
+        switch (alg) {
+            case "a":
+                return "SHA-512";
+            case "b":
+                return "SHA-1";
+            case "c":
+                return "MD2";
+            case "d":
+                return "MD5";
+            case "e":
+                return "SHA-256";
+            case "f":
+                return "SHA-384";
+        }
+        return alg;
     }
 
     public String encryptPassword(String password) {
         try {
-            return Base64.encodeBase64String(hash(password));
+            String randomSalt = guids.newGUID(1, saltLength);
+            String result = encryptPassword(password, randomSalt, algorithm);
+            return result;
         } catch (NoSuchAlgorithmException ex) {
             return Exceptions.chuck(ex);
         }
     }
 
-    private byte[] hash(String unhashed) throws NoSuchAlgorithmException {
+    private byte[] hash(String unhashed, String algorithm) throws NoSuchAlgorithmException {
         MessageDigest dg = MessageDigest.getInstance(algorithm);
         byte[] b = (unhashed + ":" + new String(saltBytes)).getBytes(charset);
         byte[] check = dg.digest(b);

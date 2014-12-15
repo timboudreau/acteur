@@ -58,7 +58,7 @@ public class Realm implements Comparable<Realm> {
         return toString().compareTo(o.toString());
     }
 
-    public static Realm createSimple(String name) {
-        return new Realm(name);
+    public static Realm createSimple(CharSequence name) {
+        return new Realm(name.toString());
     }
 }
