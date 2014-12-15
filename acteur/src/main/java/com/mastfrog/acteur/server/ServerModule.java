@@ -49,6 +49,7 @@ import com.mastfrog.acteur.headers.Method;
 import com.mastfrog.acteur.server.ServerModule.TF;
 import com.mastfrog.acteur.spi.ApplicationControl;
 import com.mastfrog.acteur.util.BasicCredentials;
+import com.mastfrog.acteur.util.HttpMethod;
 import com.mastfrog.acteur.util.Server;
 import com.mastfrog.acteur.util.ServerControl;
 import com.mastfrog.giulius.Dependencies;
@@ -329,7 +330,8 @@ public class ServerModule<A extends Application> extends AbstractModule {
         bind(KeysValues.class).toProvider(KeysValuesProvider.class);
         bind(InvalidInputExceptionEvaluator.class).asEagerSingleton();
         bind(Channel.class).toProvider(ChannelProvider.class);
-        bind(Method.class).toProvider(MethodProvider.class);
+        bind(HttpMethod.class).toProvider(MethodProvider.class);
+        bind(Method.class).toProvider(MethodProvider2.class);
         bind(Path.class).toProvider(PathProvider.class);
         bind(BuiltInPageAnnotationHandler.class).asEagerSingleton();
         bind(ResponseHeaders.class).toProvider(ResponseHeadersProvider.class);
@@ -393,7 +395,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
         }
     }
 
-    private static final class MethodProvider implements Provider<Method> {
+    private static final class MethodProvider implements Provider<HttpMethod> {
 
         private final Provider<HttpEvent> evt;
 
@@ -403,11 +405,31 @@ public class ServerModule<A extends Application> extends AbstractModule {
         }
 
         @Override
-        public Method get() {
+        public HttpMethod get() {
             return evt.get().getMethod();
         }
 
     }
+    
+    private static final class MethodProvider2 implements Provider<Method> {
+
+        private final Provider<HttpEvent> evt;
+
+        @Inject
+        MethodProvider2(Provider<HttpEvent> evt) {
+            this.evt = evt;
+        }
+
+        @Override
+        public Method get() {
+            HttpEvent e = evt.get();
+            if (e == null) {
+                return null;
+            }
+            return e == null || !(e.getMethod() instanceof Method) ? null : (Method) evt.get().getMethod();
+        }
+
+    }    
 
     private static final class ChannelProvider implements Provider<Channel> {
 
