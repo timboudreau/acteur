@@ -47,6 +47,7 @@ import static io.netty.channel.ChannelFutureListener.CLOSE;
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
 import io.netty.handler.codec.http.DefaultHttpContent;
 import io.netty.handler.codec.http.DefaultHttpResponse;
+import io.netty.handler.codec.http.HttpContent;
 import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpMessage;
 import io.netty.handler.codec.http.HttpResponse;
@@ -503,6 +504,16 @@ final class ResponseImpl extends Response {
         @Override
         public ChannelFuture future() {
             return future;
+        }
+
+        @Override
+        public Output write(HttpContent chunk) throws IOException {
+            if (!chunked) {
+                ResponseWriterListener.this.future = ResponseWriterListener.this.future.channel().writeAndFlush(chunk.content());
+            } else {
+                ResponseWriterListener.this.future = ResponseWriterListener.this.future.channel().writeAndFlush(chunk);
+            }
+            return this;
         }
     }
 
