@@ -38,7 +38,7 @@ public class GenericApplicationModule<T extends GenericApplication> extends Serv
      */
     @SuppressWarnings("unchecked")
     public GenericApplicationModule(Settings settings) {
-        this(settings, (Class<T>)GenericApplication.class, new Class<?>[0]);
+        this(settings, (Class<T>) GenericApplication.class, new Class<?>[0]);
     }
 
     /**
@@ -51,7 +51,7 @@ public class GenericApplicationModule<T extends GenericApplication> extends Serv
      */
     @SuppressWarnings("unchecked")
     public GenericApplicationModule(Settings settings, Class<?>... exclude) {
-        this(settings, (Class<T>)GenericApplication.class, exclude);
+        this(settings, (Class<T>) GenericApplication.class, exclude);
     }
 
     /**
@@ -65,6 +65,22 @@ public class GenericApplicationModule<T extends GenericApplication> extends Serv
      */
     public GenericApplicationModule(Settings settings, Class<T> appType, Class<?>... exclude) {
         super(appType);
+        this.settings = settings;
+        this.exclude = exclude;
+    }
+
+    /**
+     * Create a new GenericApplicationModule with a specific subtype of
+     * GenericApplication, passing in the scope to be used for request scope.
+     *
+     * @param scope The scope to bind types in
+     * @param settings Settings
+     * @param appType The application type
+     * @param exclude A list of Page, Module or implicit binding classes which
+     * should be ignored
+     */
+    public GenericApplicationModule(ReentrantScope scope, Settings settings, Class<T> appType, Class<?>... exclude) {
+        super(scope, appType, -1, -1, -1);
         this.settings = settings;
         this.exclude = exclude;
     }
@@ -86,9 +102,15 @@ public class GenericApplicationModule<T extends GenericApplication> extends Serv
                         c.setAccessible(true);
                         return c.newInstance(settings, scope);
                     } catch (NoSuchMethodException e2) {
-                        Constructor<T> c = m.getDeclaredConstructor(ReentrantScope.class, Settings.class);
-                        c.setAccessible(true);
-                        return c.newInstance(scope, settings);
+                        try {
+                            Constructor<T> c = m.getDeclaredConstructor(ReentrantScope.class, Settings.class);
+                            c.setAccessible(true);
+                            return c.newInstance(scope, settings);
+                        } catch (NoSuchMethodException e3) {
+                            Constructor<T> c = m.getDeclaredConstructor(ReentrantScope.class);
+                            c.setAccessible(true);
+                            return c.newInstance(scope);
+                        }
                     }
                 }
             }

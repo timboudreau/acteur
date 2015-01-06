@@ -76,6 +76,9 @@ public final class Err implements ErrorResponse {
     }
     
     static String unwind(Throwable t, boolean returnClassName) {
+        if (t == null) {
+            return "Unknown";
+        }
         Throwable orig = t;
         String lastMessage = null;
         String lastType;

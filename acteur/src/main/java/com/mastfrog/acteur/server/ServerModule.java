@@ -91,14 +91,13 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.Condition;
 import javax.inject.Inject;
 import org.joda.time.DateTime;
 import org.joda.time.Duration;
 import org.netbeans.validation.api.InvalidInputException;
 
 /**
- * Guice module for creating a server;  also defines settings keys which can
+ * Guice module for creating a server; also defines settings keys which can
  * affect behavior.
  *
  * @author Tim Boudreau
@@ -181,20 +180,21 @@ public class ServerModule<A extends Application> extends AbstractModule {
      * The port to run on
      */
     public static final String PORT = "port";
-    
+
     /**
      * Settings key for enabling HTTP compression.
      */
     public static final String HTTP_COMPRESSION = "httpCompression";
-    
+
     /**
      * Settings key for the maximum content length.
      */
     public static final String MAX_CONTENT_LENGTH = "maxContentLength";
     /**
-     * Guice binding for <code>&#064;Named(DELAY_EXECUTOR) ScheduledExecutorService</code>
-     * to get a scheduled executor service which shares a ThreadFactory with the
-     * worker thread pool.
+     * Guice binding for
+     * <code>&#064;Named(DELAY_EXECUTOR) ScheduledExecutorService</code> to get
+     * a scheduled executor service which shares a ThreadFactory with the worker
+     * thread pool.
      */
     public static final String DELAY_EXECUTOR = "delayExecutor";
     /**
@@ -206,7 +206,6 @@ public class ServerModule<A extends Application> extends AbstractModule {
      * The default number of delay threads.
      */
     private static final int DEFAULT_DELAY_THREADS = 2;
-
 
     /**
      * If true, the return value of Event.getRemoteAddress() will prefer the
@@ -220,13 +219,17 @@ public class ServerModule<A extends Application> extends AbstractModule {
      */
     public static final String SETTINGS_KEY_CORS_ENABLED = "cors.enabled";
     protected final Class<A> appType;
-    protected final ReentrantScope scope = new ReentrantScope();
+    protected final ReentrantScope scope;
     private final int eventThreads;
     private final int workerThreads;
     private final int backgroundThreads;
     private final List<Module> otherModules = new ArrayList<>();
 
     public ServerModule(Class<A> appType, int workerThreadCount, int eventThreadCount, int backgroundThreadCount) {
+        this(new ReentrantScope(), appType, workerThreadCount, eventThreadCount, backgroundThreadCount);
+    }
+
+    public ServerModule(ReentrantScope scope, Class<A> appType, int workerThreadCount, int eventThreadCount, int backgroundThreadCount) {
         if (!Application.class.isAssignableFrom(appType)) {
             throw new ClassCastException(appType.getName() + " is not a subclass of " + Application.class.getName());
         }
@@ -234,6 +237,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
         this.workerThreads = workerThreadCount;
         this.eventThreads = eventThreadCount;
         this.backgroundThreads = backgroundThreadCount;
+        this.scope = scope;
     }
 
     public ServerModule(Class<A> appType) {
@@ -337,7 +341,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
         bind(ResponseHeaders.class).toProvider(ResponseHeadersProvider.class);
         bind(ScheduledExecutorService.class).annotatedWith(Names.named(DELAY_EXECUTOR)).toProvider(DelayExecutorProvider.class);
     }
-    
+
     @Singleton
     private static final class DelayExecutorProvider implements Provider<ScheduledExecutorService> {
 
@@ -373,7 +377,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
         public ResponseHeadersProvider(Provider<Page> page) {
             this.page = page;
         }
-        
+
         @Override
         public ResponseHeaders get() {
             return page.get().getResponseHeaders();
@@ -410,7 +414,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
         }
 
     }
-    
+
     private static final class MethodProvider2 implements Provider<Method> {
 
         private final Provider<HttpEvent> evt;
@@ -429,7 +433,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
             return e == null || !(e.getMethod() instanceof Method) ? null : (Method) evt.get().getMethod();
         }
 
-    }    
+    }
 
     private static final class ChannelProvider implements Provider<Channel> {
 
@@ -811,9 +815,8 @@ public class ServerModule<A extends Application> extends AbstractModule {
 
     /**
      * Start a server
-     * 
-     * @return an object to wait on, which can be used to shut down
-     * the server
+     *
+     * @return an object to wait on, which can be used to shut down the server
      * @throws IOException if something goes wrong
      * @throws InterruptedException if something goes wrong
      * @deprecated Use ServerBuilder instead
@@ -825,10 +828,9 @@ public class ServerModule<A extends Application> extends AbstractModule {
 
     /**
      * Start a server
-     * 
+     *
      * @param port The port to start on
-     * @return an object to wait on, which can be used to shut down
-     * the server
+     * @return an object to wait on, which can be used to shut down the server
      * @throws IOException if something goes wrong
      * @throws InterruptedException if something goes wrong
      * @deprecated Use ServerBuilder instead

@@ -223,6 +223,7 @@ public abstract class Acteur {
     static final class ErrorActeur extends Acteur {
 
         ErrorActeur(Acteur errSource, HttpEvent evt, Page page, Throwable t, boolean tryErrResponse, boolean log) throws IOException {
+            Throwable orig = t;
             while (t.getCause() != null) {
                 t = t.getCause();
             }
@@ -233,8 +234,11 @@ public abstract class Acteur {
             }
             if (tryErrResponse) {
                 Dependencies deps = page.application.getDependencies();
-                if (t instanceof ProvisionException) {
+                if (t instanceof ProvisionException && t.getCause() != null) {
                     t = t.getCause();
+                }
+                if (t == null) {
+                    t = orig;
                 }
                 ExceptionEvaluatorRegistry reg = deps.getInstance(ExceptionEvaluatorRegistry.class);
                 ErrorResponse resp = reg.evaluate(t, errSource, page, evt);

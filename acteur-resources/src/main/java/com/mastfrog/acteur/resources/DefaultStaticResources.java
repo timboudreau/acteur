@@ -39,13 +39,15 @@ import java.util.List;
  * @author Tim Boudreau
  */
 class DefaultStaticResources extends MergedResources {
+    private final ExpiresPolicy policy;
 
     @Inject
-    DefaultStaticResources(Settings s, DeploymentMode mode, MimeTypes types, ByteBufAllocator allocator) {
-        super(find(s, mode, types, allocator));
+    DefaultStaticResources(Settings s, DeploymentMode mode, MimeTypes types, ByteBufAllocator allocator, ExpiresPolicy policy) {
+        super(find(s, mode, types, allocator, policy));
+        this.policy = policy;
     }
 
-    private static List<StaticResources> find(Settings settings, DeploymentMode mode, MimeTypes types, ByteBufAllocator allocator) {
+    private static List<StaticResources> find(Settings settings, DeploymentMode mode, MimeTypes types, ByteBufAllocator allocator, ExpiresPolicy policy) {
         List<StaticResources> result = new ArrayList<>();
 
         for (String name : splitAndTrim(settings.getString(RESOURCE_FOLDERS_KEY))) {
@@ -59,7 +61,7 @@ class DefaultStaticResources extends MergedResources {
                         + RESOURCE_FOLDERS_KEY + " - " + f);
             }
             try {
-                result.add(new FileResources(f, types, mode, allocator, settings));
+                result.add(new FileResources(f, types, mode, allocator, settings, policy));
             } catch (Exception ex) {
                 Exceptions.chuck(ex);
             }

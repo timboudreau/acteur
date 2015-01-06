@@ -183,6 +183,7 @@ public class Application implements Iterable<Page> {
 
         @Override
         public void internalOnError(Throwable err) {
+            Checks.notNull("err", err);
             Application.this.internalOnError(err);
         }
 
@@ -526,6 +527,7 @@ public class Application implements Iterable<Page> {
      */
     @Benchmark(value = "uncaughtExceptions", publish = Kind.CALL_COUNT)
     final void internalOnError(Throwable err) {
+        Checks.notNull("err", err);
         try {
             if (errorHandler != null) {
                 errorHandler.onError(err);
@@ -541,6 +543,7 @@ public class Application implements Iterable<Page> {
      * @param err
      */
     public void onError(Throwable err) {
+        Checks.notNull("err", err);
         err.printStackTrace(System.err);
     }
 

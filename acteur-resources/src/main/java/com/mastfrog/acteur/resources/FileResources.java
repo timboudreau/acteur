@@ -37,6 +37,7 @@ import com.mastfrog.acteur.util.CacheControlTypes;
 import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.giulius.DeploymentMode;
 import com.mastfrog.settings.Settings;
+import com.mastfrog.url.Path;
 import com.mastfrog.util.Checks;
 import com.mastfrog.util.Streams;
 import com.mastfrog.util.Strings;
@@ -92,9 +93,10 @@ public final class FileResources implements StaticResources {
     private final File dir;
 
     public static final String RESOURCES_BASE_PATH = "resources.base.path";
+    private final ExpiresPolicy policy;
 
     @Inject
-    public FileResources(File dir, MimeTypes types, DeploymentMode mode, ByteBufAllocator allocator, Settings settings) throws Exception {
+    public FileResources(File dir, MimeTypes types, DeploymentMode mode, ByteBufAllocator allocator, Settings settings, ExpiresPolicy policy) throws Exception {
         Checks.notNull("allocator", allocator);
         Checks.notNull("types", types);
         Checks.notNull("dir", dir);
@@ -109,8 +111,14 @@ public final class FileResources implements StaticResources {
         patterns = l.toArray(new String[0]);
         String resourcesBasePath = settings.getString(RESOURCES_BASE_PATH, "");
         for (String name : l) {
-            this.names.put(Strings.join(resourcesBasePath,name), new FileResource2(name));
+            String pth = Strings.join(resourcesBasePath,name);
+            Path p = Path.parse(pth);
+            DateTime expires = policy.get(types.get(pth), p);
+            Duration maxAge = expires == null ? Duration.standardHours(2) 
+                    : new Duration(DateTime.now(), expires);
+            this.names.put(pth, new FileResource2(name, maxAge));
         }
+        this.policy = policy;
     }
 
     private void scan(File dir, String path, List<String> result) {
@@ -170,12 +178,14 @@ public final class FileResources implements StaticResources {
         private int length;
         private final File file;
         private long lastModified;
+        private final Duration maxAge;
 
-        FileResource2(String name) throws Exception {
+        FileResource2(String name, Duration maxAge) throws Exception {
             Checks.notNull("name", name);
             this.name = name;
             file = new File(dir, name);
             load();
+            this.maxAge = maxAge;
         }
 
         private synchronized void load() throws Exception {
@@ -249,7 +259,7 @@ public final class FileResources implements StaticResources {
             }
 //            if (productionMode()) {
                 page.getResponseHeaders().addCacheControl(CacheControlTypes.Public);
-                page.getResponseHeaders().addCacheControl(CacheControlTypes.max_age, Duration.standardHours(2));
+                page.getResponseHeaders().addCacheControl(CacheControlTypes.max_age, maxAge);
                 page.getResponseHeaders().addCacheControl(CacheControlTypes.must_revalidate);
 //            } else {
 //                page.getReponseHeaders().addCacheControl(CacheControlTypes.Private);
