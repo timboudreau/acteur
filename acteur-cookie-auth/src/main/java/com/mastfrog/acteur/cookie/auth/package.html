@@ -1,0 +1,36 @@
+<!doctype html>
+<html>
+    <head>
+        <title>Acteur Cookie Auth API</title>
+    </head>
+    <body>
+        <p>
+            This is an API which makes it trivial to add cookie-based authentication
+            to acteur-based web applications, as opposed to using HTTP basic
+            authentication.  Code that was using the <code>&#064;Authenticated</code>
+            (or deprecated <code>&#064;BasicAuth</code>) annotation need not be
+            modified - the new authentication scheme can be used transparently.
+        </p>
+        <p>
+            To use cookie authentication, the following changes are needed in an
+            application that formerly used HTTP Basic Authentication and the
+            <code>&#064;Authenticated</code> annotation:
+        </p>
+        <ul>
+            <li>
+                Add HTTP endpoints for logging in and logging out.  The login
+                endpoint should expect a JSON request body containing the fields
+                <code>username</code> and <code>password</code>, and list a
+                <code><a href="LoginActeur.html">LoginActeur</a></code> in its 
+                <code>&#064;Precursors</code> annotation.  The logout endpoint
+                should do the same with 
+                <code><a href="LogoutActeur.html">LogoutActeur</a></code>.
+            </li>
+            <li>Implement <code><a href="UserFinder.html">UserFinder</a></code> and
+                pass the implementation type to the constructor of a 
+                <code><a href="CookieAuthModule.html">CookieAuthModule</a></code> which
+                should be used by Guice.
+            </li>
+        </ul>
+    </body>
+</html>
