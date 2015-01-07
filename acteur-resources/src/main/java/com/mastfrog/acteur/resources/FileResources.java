@@ -93,7 +93,6 @@ public final class FileResources implements StaticResources {
     private final File dir;
 
     public static final String RESOURCES_BASE_PATH = "resources.base.path";
-    private final ExpiresPolicy policy;
 
     @Inject
     public FileResources(File dir, MimeTypes types, DeploymentMode mode, ByteBufAllocator allocator, Settings settings, ExpiresPolicy policy) throws Exception {
@@ -109,16 +108,19 @@ public final class FileResources implements StaticResources {
         List<String> l = new ArrayList<>();
         scan(dir, "", l);
         patterns = l.toArray(new String[0]);
+        boolean debug = settings.getBoolean("acteur.debug", false);
         String resourcesBasePath = settings.getString(RESOURCES_BASE_PATH, "");
         for (String name : l) {
             String pth = Strings.join(resourcesBasePath,name);
+            if (debug) {
+                System.out.println("STATIC RES: " + name + " -> " + pth);
+            }
             Path p = Path.parse(pth);
             DateTime expires = policy.get(types.get(pth), p);
             Duration maxAge = expires == null ? Duration.standardHours(2) 
                     : new Duration(DateTime.now(), expires);
             this.names.put(pth, new FileResource2(name, maxAge));
         }
-        this.policy = policy;
     }
 
     private void scan(File dir, String path, List<String> result) {

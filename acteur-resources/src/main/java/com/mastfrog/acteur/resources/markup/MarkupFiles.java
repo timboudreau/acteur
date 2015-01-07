@@ -189,6 +189,7 @@ public class MarkupFiles implements Provider<StaticResources> {
                     try (OutputStream outputFileStream = new FileOutputStream(outputFile)) {
                         Streams.copy(debInputStream, outputFileStream);
                     }
+                    outputFile.setLastModified(entry.getModTime().getTime());
                 }
                 untaredFiles.add(outputFile);
             }

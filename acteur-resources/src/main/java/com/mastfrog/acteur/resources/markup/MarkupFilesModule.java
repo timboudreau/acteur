@@ -21,12 +21,12 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-
 package com.mastfrog.acteur.resources.markup;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.name.Names;
 import com.mastfrog.acteur.resources.StaticResources;
+import com.mastfrog.guicy.scope.ReentrantScope;
 import com.mastfrog.healthtracker.MarkupFiles;
 
 /**
@@ -67,16 +67,21 @@ import com.mastfrog.healthtracker.MarkupFiles;
  * @author Tim Boudreau
  */
 public class MarkupFilesModule extends AbstractModule {
+
     private final Class<?> relativeTo;
-    
-    public MarkupFilesModule(Class<?> relativeTo) {
+    private final ReentrantScope scope;
+
+    public MarkupFilesModule(Class<?> relativeTo, ReentrantScope scope) {
         this.relativeTo = relativeTo;
+        this.scope = scope;
     }
 
     @Override
     protected void configure() {
-        bind(Class.class).annotatedWith(Names.named(MarkupFiles.GUICE_BINDING_CLASS_RELATIVE_MARKUP)).toInstance(relativeTo);
+        bind(Class.class).annotatedWith(
+                Names.named(MarkupFiles.GUICE_BINDING_CLASS_RELATIVE_MARKUP))
+                .toInstance(relativeTo);
         bind(StaticResources.class).toProvider(MarkupFiles.class);
+        scope.bindTypes(binder(), StaticResources.Resource.class);
     }
-
 }
