@@ -186,7 +186,6 @@ public class Application implements Iterable<Page> {
             Checks.notNull("err", err);
             Application.this.internalOnError(err);
         }
-
     };
 
     ApplicationControl control() {

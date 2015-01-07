@@ -49,9 +49,9 @@ final class ActeursImpl implements Acteurs {
     private final ReentrantScope scope;
     private final ExecutorService exe;
     private final Page page;
-    private final Settings settings;
     private static boolean debug;
     private final boolean sync;
+    static final boolean DEFAULT_DEBUG = false;
 
     @Inject
     ActeursImpl(@Named(ServerModule.BACKGROUND_THREAD_POOL_NAME) ExecutorService exe, ReentrantScope scope, Page page, Settings settings) {
@@ -63,8 +63,7 @@ final class ActeursImpl implements Acteurs {
         this.page = page;
         // perform sanity checks if assertions are on
         assert check(page.getActeurs());
-        this.settings = settings;
-        debug = settings.getBoolean("acteur.debug", true);
+        debug = settings.getBoolean("acteur.debug", DEFAULT_DEBUG);
         sync = settings.getBoolean("acteur.synchronous", false);
     }
 
@@ -91,7 +90,7 @@ final class ActeursImpl implements Acteurs {
         final AtomicReference<State> lastState = new AtomicReference<>();
         // A runnable which will be called if the request completes normally,
         // to send the headers and start sending the body (if any)
-        FinishRequest finish = new FinishRequest(lastState, response, receiver, settings);
+        FinishRequest finish = new FinishRequest(lastState, response, receiver, debug);
 
         Iterator<Acteur> acteurs = page.iterator();
         // Convert Acteurs to Callable<Object[]> which return the state's context
@@ -161,11 +160,11 @@ final class ActeursImpl implements Acteurs {
         private final ResponseSender receiver;
         private final boolean debug;
 
-        public FinishRequest(AtomicReference<State> lastState, ResponseImpl response, ResponseSender receiver, Settings settings) {
+        public FinishRequest(AtomicReference<State> lastState, ResponseImpl response, ResponseSender receiver, boolean debug) {
             this.lastState = lastState;
             this.response = response;
             this.receiver = receiver;
-            debug = settings.getBoolean("acteur.debug", true);
+            this.debug = debug;
         }
 
         @Override
@@ -180,6 +179,9 @@ final class ActeursImpl implements Acteurs {
                     // Pass it into the receiver
                     try {
                         try (AutoCloseable cl = Page.set(state.getLockedPage())) {
+                            if (debug) {
+                                System.out.println("Finish request using " + state.getLockedPage());
+                            }
                             receiver.receive(state.getActeur(), state, response);
                         }
                     } catch (Exception ex) {
@@ -208,9 +210,9 @@ final class ActeursImpl implements Acteurs {
 
         @Override
         public Object[] call() throws Exception {
-//            if (debug) {
-//                System.out.println("ACTEUR " + acteur);
-//            }
+            if (debug) {
+                System.out.println("Call " + acteur);
+            }
             // Set the Page ThreadLocal, for things that will call Page.get()
             try (QuietAutoCloseable ac = Page.set(page)){
                 // Get the state
@@ -231,9 +233,9 @@ final class ActeursImpl implements Acteurs {
                 }
                 // Set the atomic reference used by the finisher
                 lastState.set(state);
-//                if (debug) {
-//                    System.out.println(acteur + " - " + state);
-//                }
+                if (debug) {
+                    System.out.println(acteur.getClass().getName() + " - " + acteur + " - " + state);
+                }
                 // Merge in the response, in case some headers were added
                 
                 boolean done = state.isRejected();
@@ -248,10 +250,12 @@ final class ActeursImpl implements Acteurs {
                 throw e;
             } catch (Exception | Error e) {
                 try (QuietAutoCloseable ac = Page.set(page)) {
-                    State state = Acteur.error(acteur, page, e, page.getApplication().getDependencies().getInstance(HttpEvent.class), true).getState();
+                    Acteur errActeur = Acteur.error(acteur, page, e, page.getApplication().getDependencies().getInstance(HttpEvent.class), true);
+                    State state = errActeur.getState();
                     lastState.set(state);
-                    response.merge(acteur.getResponse());
+                    response.merge(errActeur.getResponse());
                 }
+                page.getApplication().internalOnError(e);
                 return new Object[0];
 //                throw e;
             }

@@ -83,7 +83,7 @@ final class ResponseImpl extends Response {
 
     private volatile boolean modified;
     HttpResponseStatus status;
-    private final List<Entry<?>> headers = Collections.synchronizedList(new ArrayList<Entry<?>>());
+    private final List<Entry<?>> headers = new ArrayList<Entry<?>>();
     private String message;
     ChannelFutureListener listener;
     private boolean chunked;

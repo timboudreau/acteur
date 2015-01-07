@@ -219,6 +219,10 @@ public abstract class Acteur {
     protected void ok() {
         setState(new RespondWith(OK));
     }
+    
+    protected void reply(HttpResponseStatus status, Object msg) {
+        setState(new RespondWith(status, msg));
+    }
 
     static final class ErrorActeur extends Acteur {
 
@@ -307,14 +311,13 @@ public abstract class Acteur {
          */
         public RespondWith(HttpResponseStatus status, Object msg) {
             page = Page.get();
+            if (page == null) {
+                throw new IllegalStateException("No page set");
+            }
             if (msg instanceof String) {
                 setResponseCode(status);
                 setMessage((String) msg);
             } else if (msg != null) {
-                if (page == null) {
-                    throw new IllegalStateException("No page set");
-                }
-                Codec mapper = page.getApplication().getDependencies().getInstance(Codec.class);
                 setResponseCode(status);
                 setMessage(msgToString(msg));
             }
@@ -618,7 +621,7 @@ public abstract class Acteur {
             getResponse().setBodyWriter(listener);
             return;
         }
-        final Page p = Page.get();
+        Page p = Page.get();
         final Application app = p.getApplication();
         class WL implements ChannelFutureListener, Callable<Void> {
 

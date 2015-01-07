@@ -49,11 +49,11 @@ import org.joda.time.DateTime;
 import org.joda.time.Duration;
 
 /**
- * Really an aggregation of Acteurs and a place to set header values;  in recent
+ * Really an aggregation of Acteurs and a place to set header values; in recent
  * versions of Acteur it is rarely necessary to implement this - instead, simply
- * annotate your entry-point Acteur with &#064;HttpCall and one will be generated
- * for you under-the-hood.
- * 
+ * annotate your entry-point Acteur with &#064;HttpCall and one will be
+ * generated for you under-the-hood.
+ *
  * To implement, simply subclass and add zero or more
  * <code><a href="Acteur.html">Acteur</a></code> classes or instances using the
  * <code>add()</code> method. Each Acteur is called in succession and can do one
@@ -198,6 +198,9 @@ public abstract class Page implements Iterable<Acteur> {
 
     protected void decorateResponse(Event<?> event, Acteur acteur, HttpResponse response) {
         final ResponseHeaders properties = getResponseHeaders();
+        if (!properties.modified()) {
+            return;
+        }
 
         List<HeaderValueType<?>> vary = new LinkedList<>();
         properties.getVaryHeaders(vary);
@@ -236,8 +239,8 @@ public abstract class Page implements Iterable<Acteur> {
     @Override
     public Iterator<Acteur> iterator() {
         assert getApplication() != null : "Application is null - called outside request?";
-        PageAnnotationHandler.Registry registry = 
-                getApplication().getDependencies().getInstance(
+        PageAnnotationHandler.Registry registry
+                = getApplication().getDependencies().getInstance(
                         PageAnnotationHandler.Registry.class);
         if (registry.hasAnnotations(this)) {
             return CollectionUtils.combine(annotationActeurs(), new I());
