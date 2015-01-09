@@ -1,0 +1,126 @@
+<html>
+    <head>
+        <title>Acteur-Base</title>
+    </head>
+    <body>
+
+        <h1>Acteur-Base</h1>
+        <p>
+            This package defines the base abstractions for Acteurs, which are 
+            actors that utilize Java constructors as function objects.
+        </p><p>
+            It is not a framework so much as a framework for creating frameworks
+            that utilize acteurs to asynchronously, thread-safely do work,
+            taking advantage of dependency injection.
+        </p><p>
+            An acteur is part of a <i>chain</i> - a list of acteurs and acteur
+            subtypes which are instantiated dynamically and run in sequence.
+            The constructor arguments can be anything available for injection
+            by Guice, and constructors may throw exceptions, which are handled
+            externally.
+        </p><p>
+            Each acteur becomes a unit of reusable logic which can be strung
+            together into multiple chains, or workflows, as simply as by
+            assembling a list of <code>Class</code> objects.
+        </p><p>
+            An acteur may provide some objects which shall be available for
+            injection into the constructors of subsequent acteurs in the chain,
+            via its <i>state</i>.
+        </p><p>
+            Every acteur must set its state in its constructor, or override
+            <code>getState()</code> to compute it dynamically.  To fail to
+            do so is an error and will abort processing.
+        </p><p>
+            Effectively, a chain of acteurs is a chain of <code>Class&lt;? extends AbstractActeur&lt;?,?&gt;&gt;</code>
+            objects.  Acteurs may be run asynchronously - meaning one acteur
+            and the next in a chain may not be run on the same thread - and
+            should be coded accordingly.
+        </p>
+        <h2>What on earth is this for?</h2>
+        <p>
+            Acteurs generally <i>build something</i> - in the acteur web framework
+            Acteurs are building the response to an HTTP request.  But this
+            library could be used for anything where small pieces of asynchronous
+            work can be used to assemble something useful - possibly in the face
+            of high load, where it is important that work for many clients
+            be done in small chunks rather than potentially starving some clients.
+        </p><p>
+            Any acteur can complete the processing for its chain, or can defer
+            further processing until some asynchronous event has happened.
+            An acteur can also request that the chain itself be injected,
+            and insert additional acteurs to be invoked after itself, so it is 
+            possible to have a chain that dynamically decides what work comes
+            next.
+        </p>
+        <h1>Implementing Acteurs</h1>
+        <p>
+            The base class for Acteurs is <code><a href="AbstractActeur.html">AbstractActeur</a></code>.
+            In writing APIs that use Acteurs, you will typically create a subclass of this
+            which hides the generic types and implementation details, for others
+            to subclass.  In particular, AbstractActeur has the parameters
+            <code>&lt;T, R extends T&gt;</code>.  The purpose of this is so that
+            you can expose an API type <code>T</code> to your subclassers, while
+            allowing your implementation access to the implementation type.  You
+            implement one class which manages the object implementations are assembling,
+            by implementing <a href="ActeurResponseFactory.html"><code>ActeurResponseFactory</code></a>
+            and passing that to your subclass' super constructor.
+        </p><p>
+            An example that can be found in the unit tests is similar to the web frameworks
+            usage of it, which provides convenience methods for setting the state:
+        </p>
+        <pre>
+public abstract class A2 extends AbstractActeur&lt;Response, ResponseImpl&gt; {
+
+    protected A2() {
+        super(INSTANCE);
+    }
+
+    protected A2 reject() {
+        setState(new State&lt;Response, ResponseImpl&gt;(true));
+        return this;
+    }
+
+    protected A2 next(Object... context) {
+        if (context == null || context.length == 0) {
+            setState(new State&lt;Response, ResponseImpl&gt;(false));
+        } else {
+            setState(new State&lt;Response, ResponseImpl&gt;(true));
+        }
+        return this;
+    }
+
+    protected A2 reply(HttpResponseStatus status, Object response) {
+        response().setStatus(status);
+        response().setMessage(response);
+        setState(new State&lt;Response, ResponseImpl&gt;(response == null ? 
+                new Object[0] : new Object[]{response}));
+        return this;
+    }
+
+    private static final RT INSTANCE = new RT();
+
+    static class RT extends ActeurResponseFactory&lt;Response, ResponseImpl&gt; {
+
+        @Override
+        protected ResponseImpl create() {
+            return new ResponseImpl();
+        }
+
+        @Override
+        protected boolean isFinished(ResponseImpl obj) {
+            return obj != null && obj.status() != null;
+        }
+
+        @Override
+        protected boolean isModified(ResponseImpl obj) {
+            return obj != null && obj.modified();
+        }
+    }
+}            
+        </pre>
+        <p>
+            This class can then be subclassed by users of your framework with
+            minimum complexity.
+        </p>
+    </body>
+</html>

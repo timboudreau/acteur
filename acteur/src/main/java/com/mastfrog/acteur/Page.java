@@ -98,7 +98,9 @@ public abstract class Page implements Iterable<Acteur> {
     }
 
     Iterable<Object> contents() {
-        return CollectionUtils.toIterable(this.acteurs.iterator());
+        List<Object> result = new ArrayList<Object>(annotations());
+        result.addAll(this.acteurs);
+        return result;
     }
 
     void describeYourself(Map<String, Object> into) {
@@ -129,6 +131,10 @@ public abstract class Page implements Iterable<Acteur> {
 
     static Page get() {
         return CURRENT_PAGE.get();
+    }
+
+    static void clear() {
+        CURRENT_PAGE.clear();
     }
 
     protected final void add(Class<? extends Acteur> action) {
@@ -162,6 +168,10 @@ public abstract class Page implements Iterable<Acteur> {
 
     final List<Object> getActeurs() {
         return Collections.unmodifiableList(acteurs);
+    }
+
+    List<Object> acteurs() {
+        return acteurs;
     }
 
     final Acteur getActeur(int ix) {
@@ -230,10 +240,14 @@ public abstract class Page implements Iterable<Acteur> {
 
     @SuppressWarnings("deprecation")
     private Iterator<Acteur> annotationActeurs() {
+        return annotations().iterator();
+    }
+
+    private List<Acteur> annotations() {
         PageAnnotationHandler.Registry handler = getApplication().getDependencies().getInstance(PageAnnotationHandler.Registry.class);
         List<Acteur> results = new LinkedList<>();
         handler.processAnnotations(this, results);
-        return results.iterator();
+        return results;
     }
 
     @Override

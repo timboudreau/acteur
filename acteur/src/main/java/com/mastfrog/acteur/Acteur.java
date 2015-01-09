@@ -32,6 +32,8 @@ import com.mastfrog.acteur.errors.ExceptionEvaluatorRegistry;
 import com.mastfrog.acteur.errors.ResponseException;
 import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.acteur.headers.Headers;
+import com.mastfrog.acteurbase.AbstractActeur;
+import com.mastfrog.acteurbase.ActeurResponseFactory;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.guicy.scope.ReentrantScope;
 import com.mastfrog.settings.Settings;
@@ -96,9 +98,8 @@ import java.util.concurrent.atomic.AtomicReference;
  *
  * @author Tim Boudreau
  */
-public abstract class Acteur {
+public abstract class Acteur extends AbstractActeur<Response, ResponseImpl> {
 
-    private State state;
     Throwable creationStackTrace;
 
     /**
@@ -108,13 +109,32 @@ public abstract class Acteur {
      * action asynchronously
      */
     protected Acteur() {
+        super(INSTANCE);
         boolean asserts = false;
         assert asserts = true;
         if (asserts) {
             creationStackTrace = new Throwable();
         }
     }
+    private static final RT INSTANCE = new RT();
 
+    static class RT extends ActeurResponseFactory<Response, ResponseImpl> {
+
+        @Override
+        protected ResponseImpl create() {
+            return new ResponseImpl();
+        }
+
+        @Override
+        protected boolean isFinished(ResponseImpl obj) {
+            return obj != null && obj.status != null;
+        }
+
+        @Override
+        protected boolean isModified(ResponseImpl obj) {
+            return obj != null && obj.isModified();
+        }
+    }
     /**
      * If you write an acteur which delegates to another one, implement this so
      * that that other one's changes to the response will be picked up. This
@@ -131,49 +151,39 @@ public abstract class Acteur {
         Acteur getDelegate();
     }
 
-    private volatile ResponseImpl response;
 
     protected <T> void add(HeaderValueType<T> decorator, T value) {
-        getResponse().add(decorator, value);
+        response().add(decorator, value);
     }
 
-    ResponseImpl getResponse() {
+    protected ResponseImpl getResponse() {
         if (this instanceof Delegate) {
             return ((Delegate) this).getDelegate().getResponse();
         }
-        if (response == null) {
-            synchronized (this) {
-                if (response == null) {
-                    response = new ResponseImpl();
-                }
-            }
-        }
-        return response;
+        return super.getResponse();
     }
 
     protected <T> T get(HeaderValueType<T> header) {
-        return getResponse().get(header);
+        return response().get(header);
     }
 
     public void setResponseCode(HttpResponseStatus status) {
-        getResponse().setResponseCode(status);
+        response().setResponseCode(status);
     }
 
     public void setMessage(String message) {
-        getResponse().setMessage(message);
-    }
-
-    protected void setState(State state) {
-        Checks.notNull("state", state);
-        this.state = state;
+        response().setMessage(message);
     }
 
     public void setChunked(boolean chunked) {
-        getResponse().setChunked(chunked);
+        response().setChunked(chunked);
     }
 
     protected Response response() {
-        return getResponse();
+        if (this instanceof Delegate) {
+            return ((Delegate) this).getDelegate().response();
+        }
+        return super.response();
     }
 
     static Acteur error(Acteur errSource, Page page, Throwable t, HttpEvent evt, boolean log) {
@@ -271,7 +281,7 @@ public abstract class Acteur {
      * A shorthand state for responding with a particular http response code and
      * optional message, which if non-string, will be rendered as JSON.
      */
-    public class RespondWith extends State {
+    public class RespondWith extends State<Response, ResponseImpl> {
 
         private final Page page;
 
@@ -288,6 +298,7 @@ public abstract class Acteur {
         }
 
         public RespondWith(ErrorResponse err) {
+            super(false);
             page = Page.get();
             setResponseCode(err.status());
             ErrorRenderer ren = getLockedPage().getApplication().getDependencies().getInstance(ErrorRenderer.class);
@@ -303,13 +314,14 @@ public abstract class Acteur {
             }
         }
 
-        /**
+        /**Acteur.this;
          * Response which uses JSON
          *
          * @param status
          * @param msg
          */
         public RespondWith(HttpResponseStatus status, Object msg) {
+            super(false);
             page = Page.get();
             if (page == null) {
                 throw new IllegalStateException("No page set");
@@ -350,24 +362,13 @@ public abstract class Acteur {
             }
         }
 
-        @Override
-        protected boolean isLockedInChain() {
-            return false;
-        }
-
-        @Override
-        protected boolean isConsumed() {
-            return false;
-        }
-
-        @Override
         protected Page getLockedPage() {
             return page;
         }
 
         @Override
         protected Acteur getActeur() {
-            return Acteur.this;
+            return (Acteur) super.getActeur();
         }
 
         @Override
@@ -381,11 +382,12 @@ public abstract class Acteur {
      * A state indicating the acteur neither accepts nor definitively refuses a
      * request.
      */
-    protected class RejectedState extends State {
+    protected class RejectedState extends State<Response, ResponseImpl> {
 
         private final Page page;
 
         public RejectedState() {
+            super(true);
             page = Page.get();
             if (page == null) {
                 throw new IllegalStateException("Called outside ActionsImpl.onEvent");
@@ -400,17 +402,6 @@ public abstract class Acteur {
             setResponseCode(status);
         }
 
-        @Override
-        protected boolean isLockedInChain() {
-            return false;
-        }
-
-        @Override
-        protected boolean isConsumed() {
-            return false;
-        }
-
-        @Override
         protected Page getLockedPage() {
             return page;
         }
@@ -426,12 +417,13 @@ public abstract class Acteur {
      * responding to the request. It may optionally include objects which should
      * be available for injection into subsequent acteurs.
      */
-    protected class ConsumedState extends State {
+    protected class ConsumedState extends State<Response, ResponseImpl> implements com.mastfrog.acteur.State {
 
         private final Page page;
         private final Object[] context;
 
         public ConsumedState(Object... context) {
+            super(false);
             page = Page.get();
             if (page == null) {
                 throw new IllegalStateException("Called outside ActionsImpl.onEvent");
@@ -440,67 +432,47 @@ public abstract class Acteur {
         }
 
         @Override
-        protected Object[] getContext() {
-            return context;
+        public Object[] getContext() {
+            return super.context();
         }
 
         @Override
-        protected boolean isLockedInChain() {
-            return false;
-        }
-
-        @Override
-        protected boolean isConsumed() {
-            return true;
-        }
-
-        @Override
-        protected Page getLockedPage() {
+        public Page getLockedPage() {
             return page;
         }
 
         @Override
-        protected Acteur getActeur() {
-            return Acteur.this;
+        public Acteur getActeur() {
+            return (Acteur) super.getActeur();
         }
+
     }
 
-    protected class ConsumedLockedState extends State {
+    protected class ConsumedLockedState extends State<Response, ResponseImpl> implements com.mastfrog.acteur.State  {
 
         private final Page page;
-        private final Object[] context;
 
         public ConsumedLockedState(Object... context) {
+            super(context);
             page = Page.get();
             if (page == null) {
                 throw new IllegalStateException("Called outside ActionsImpl.onEvent");
             }
-            this.context = context;
         }
 
         @Override
-        protected Object[] getContext() {
-            return context;
+        public Object[] getContext() {
+            return super.context();
         }
 
         @Override
-        protected boolean isLockedInChain() {
-            return true;
-        }
-
-        @Override
-        protected boolean isConsumed() {
-            return true;
-        }
-
-        @Override
-        protected Page getLockedPage() {
+        public Page getLockedPage() {
             return page;
         }
 
         @Override
-        protected Acteur getActeur() {
-            return Acteur.this;
+        public Acteur getActeur() {
+            return (Acteur) super.getActeur();
         }
     }
 
@@ -648,9 +620,9 @@ public abstract class Acteur {
         getResponse().setBodyWriter(new WL());
     }
 
-    public State getState() {
-        return state;
-    }
+//    public <T extends State & com.mastfrog.acteur.State> State getState() {
+//        return super.getState();
+//    }
 
     public static Acteur wrap(final Class<? extends Acteur> type, final Dependencies deps) {
         Checks.notNull("type", type);
@@ -682,14 +654,6 @@ public abstract class Acteur {
             } catch (Exception e) {
                 //ok - we may be called without an event to play with
             }
-        }
-
-        @Override
-        ResponseImpl getResponse() {
-            if (acteur != null) {
-                return acteur.getResponse();
-            }
-            return super.getResponse();
         }
 
         boolean inOnError;

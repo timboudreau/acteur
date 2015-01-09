@@ -144,6 +144,10 @@ public class Application implements Iterable<Page> {
             add(helpPageType());
         }
     }
+    
+    List<Object> rawPages() {
+        return this.pages;
+    }
 
     /**
      * Get the type of the built in help page class, which uses

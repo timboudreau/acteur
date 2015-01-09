@@ -4,12 +4,16 @@
     <parent>
         <groupId>com.mastfrog</groupId>
         <artifactId>mastfrog-parent</artifactId>
-        <version>1.5.4</version>
+        <version>1.6.0-dev</version>
         <relativePath/>
     </parent>
     <artifactId>acteur</artifactId>
     <name>Acteur</name>
     <dependencies>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>acteur-base</artifactId>
+        </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>giulius</artifactId>

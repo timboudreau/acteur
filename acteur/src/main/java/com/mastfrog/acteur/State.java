@@ -26,18 +26,18 @@ package com.mastfrog.acteur;
 /**
  * Represents a state of event processing.
  */
-public abstract class State {
-    public boolean isRejected() {
-        return !isLockedInChain() && !isConsumed();
-    }
-
-    Object[] getContext() {
-        return new Object[0];
-    }
-
-    State() {
-    }
-
+public interface State {
+//    public boolean isRejected() {
+//        return !isLockedInChain() && !isConsumed();
+//    }
+//
+//    Object[] getContext() {
+//        return new Object[0];
+//    }
+//
+//    State() {
+//    }
+//
     /**
      * Returns whether the event processing has to be stopped after the
      * processing by the chain the acteur producing this state belongs to - 
@@ -46,14 +46,14 @@ public abstract class State {
      *
      * @return true if locked in chain
      */
-    abstract boolean isLockedInChain();
+//    abstract boolean isLockedInChain();
 
     /**
      * Returns whether the event is consumed.
      *
      * @return true if the event is consumed
      */
-    abstract boolean isConsumed();
+//    abstract boolean isConsumed();
 
     /**
      * Returns whether (and by which "page") the next event has to be
@@ -61,7 +61,7 @@ public abstract class State {
      *
      * @return the locked widget; if null, then there is no prior widget
      */
-    protected abstract Page getLockedPage();
+    abstract Page getLockedPage();
 
     /**
      * Returns whether (and by which action) the next event has to be
@@ -69,10 +69,7 @@ public abstract class State {
      *
      * @return the locked action; if null, then there is no prior action
      */
-    protected abstract Acteur getActeur();
+    abstract Acteur getActeur();
     
-    @Override
-    public String toString() {
-        return getClass().getName() + ": " + (isConsumed() ? "consumed" : "not-consumed") + " " + (isLockedInChain() ? "locked" : "not-locked") + " action=" + getActeur() + " page=" + getLockedPage();
-    }
+    Object[] getContext();
 }
