@@ -23,10 +23,11 @@
  */
 package com.mastfrog.acteur.server;
 
-import com.google.inject.AbstractModule;
+import com.google.inject.Binder;
 import com.google.inject.Module;
 import com.mastfrog.acteur.Application;
 import com.mastfrog.acteur.annotations.GenericApplication;
+import com.mastfrog.acteur.annotations.GenericApplication.GenericApplicationSettings;
 import com.mastfrog.acteur.annotations.GenericApplicationModule;
 import com.mastfrog.acteur.util.Server;
 import com.mastfrog.giulius.DependenciesBuilder;
@@ -59,6 +60,8 @@ public final class ServerBuilder {
     private final List<Class<? extends Module>> moduleClasses = new LinkedList<>();
     private final Set<Class<?>> types = new HashSet<>();
     private final ReentrantScope scope;
+    private boolean enableCors = true;
+    private boolean enableHelp = false;
 
     public ServerBuilder(ReentrantScope scope) {
         this(Namespace.DEFAULT, scope);
@@ -158,9 +161,29 @@ public final class ServerBuilder {
         this.types.addAll(Arrays.asList(types));
         return this;
     }
-    
+
     public ReentrantScope scope() {
         return scope;
+    }
+
+    public ServerBuilder enableHelp() {
+        this.enableHelp = true;
+        return this;
+    }
+
+    public ServerBuilder disableHelp() {
+        this.enableHelp = false;
+        return this;
+    }
+
+    public ServerBuilder enableCORS() {
+        this.enableCors = true;
+        return this;
+    }
+
+    public ServerBuilder disableCORS() {
+        this.enableCors = false;
+        return this;
     }
 
     /**
@@ -187,6 +210,7 @@ public final class ServerBuilder {
         for (Class<? extends Module> m : moduleClasses) {
             db.add(instantiateModule(m, appModule, settings));
         }
+        db.add(new CorsAndHelpModule(enableCors, enableHelp));
         return db.build().getInstance(Server.class);
     }
 
@@ -201,6 +225,18 @@ public final class ServerBuilder {
 
     private static <T extends Application> TS<T> createModule(ReentrantScope scope, Class<T> appType, Set<Class<?>> toBind) {
         return new TS<>(scope, appType, toBind);
+    }
+
+    static class CorsAndHelpModule extends GenericApplicationSettings implements Module {
+
+        public CorsAndHelpModule(boolean corsEnabled, boolean helpEnabled) {
+            super(corsEnabled, helpEnabled);
+        }
+
+        @Override
+        public void configure(Binder binder) {
+            binder.bind(GenericApplicationSettings.class).toInstance(this);
+        }
     }
 
     private static final class TS<T extends Application> extends ServerModule<T> implements ScopeProvider {

@@ -45,11 +45,10 @@ import com.mastfrog.parameters.Param;
 import com.mastfrog.parameters.Params;
 import com.mastfrog.util.ConfigurationError;
 import com.mastfrog.util.Checks;
-import com.mastfrog.util.Invokable;
 import com.mastfrog.util.perf.Benchmark;
 import com.mastfrog.util.perf.Benchmark.Kind;
+import com.mastfrog.util.thread.QuietAutoCloseable;
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
@@ -163,7 +162,7 @@ public class Application implements Iterable<Page> {
         return corsEnabled;
     }
 
-    final void enableDefaultCorsHandling() {
+    protected final void enableDefaultCorsHandling() {
         if (!corsEnabled) {
             corsEnabled = true;
             pages.add(0, CORSResource.class);
@@ -214,7 +213,7 @@ public class Application implements Iterable<Page> {
     ExecutorService getWorkerThreadPool() {
         return exe;
     }
-    
+
     private static String deConstantNameify(String name) {
         StringBuilder sb = new StringBuilder();
         boolean capitalize = true;
@@ -467,9 +466,11 @@ public class Application implements Iterable<Page> {
      * @return
      */
     protected HttpResponse createNotFoundResponse(Event<?> event) {
-        ByteBuf buf = Unpooled.copiedBuffer("<html><head>"
+        ByteBuf buf = event.getChannel().alloc().buffer(90);
+        String msg = "<html><head>"
                 + "<title>Not Found</title></head><body><h1>Not Found</h1>"
-                + event + " was not found\n<body></html>\n", charset);
+                + event + " was not found\n<body></html>\n";
+        buf.writeBytes(msg.getBytes(charset));
         DefaultFullHttpResponse resp = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1,
                 HttpResponseStatus.NOT_FOUND, buf);
         Headers.write(Headers.CONTENT_TYPE, MediaType.HTML_UTF_8.withCharset(charset), resp);
@@ -559,21 +560,15 @@ public class Application implements Iterable<Page> {
         // Create a new incremented id for this request
         final RequestID id = ids.next();
         // Enter request scope with the id and the event
-        // XXX is the scope entry here actually needed anymore?
-        return scope.run(new Invokable<Event<?>, CountDownLatch, RuntimeException>() {
-            @Override
-            public CountDownLatch run(Event<?> argument) {
-                // Set the thread name
-//                Thread.currentThread().setName(event.getPath() + " " + event.getRemoteAddress());
-                onBeforeEvent(id, event);
-                try {
-                    return runner.onEvent(id, event, channel);
-                } catch (Exception e) {
-                    internalOnError(e);
-                }
-                return null;
-            }
-        }, event, id);
+        try (QuietAutoCloseable cl = scope.enter(event, id)) {
+            onBeforeEvent(id, event);
+            return runner.onEvent(id, event, channel);
+        } catch (Exception e) {
+            internalOnError(e);
+            CountDownLatch latch = new CountDownLatch(1);
+            latch.countDown();
+            return latch;
+        }
     }
 
     @SuppressWarnings({"unchecked", "ThrowableInstanceNotThrown", "ThrowableInstanceNeverThrown"})

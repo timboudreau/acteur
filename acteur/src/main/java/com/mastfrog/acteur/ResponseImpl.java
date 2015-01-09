@@ -59,7 +59,6 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -560,7 +559,8 @@ final class ResponseImpl extends Response {
         String msg = getMessage();
         HttpResponse resp;
         if (msg != null) {
-            ByteBuf buf = Unpooled.copiedBuffer(msg, charset);
+            ByteBuf buf = evt.getChannel().alloc().buffer(msg.length());
+            buf.writeBytes(msg.getBytes(charset));
             long size = buf.readableBytes();
             add(Headers.CONTENT_LENGTH, size);
             DefaultFullHttpResponse r = new DefaultFullHttpResponse(
