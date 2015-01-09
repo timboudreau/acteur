@@ -29,7 +29,7 @@ import java.util.List;
  *
  * @author Tim Boudreau
  */
-public interface ChainCallback<P extends Chain<? extends AbstractActeur<T, R>>, T, R extends T> {
+public interface ChainCallback<P extends Chain<? extends AbstractActeur<T, R, ?>>, T, R extends T> {
 
     void onDone(AbstractActeur.State<T, R> state, List<R> responses);
 
@@ -41,5 +41,5 @@ public interface ChainCallback<P extends Chain<? extends AbstractActeur<T, R>>, 
 
     void onBeforeRunOne(P chain);
 
-    void onAfterRunOne(P chain, AbstractActeur<T, R> acteur);
+    void onAfterRunOne(P chain, AbstractActeur<T, R, ?> acteur);
 }

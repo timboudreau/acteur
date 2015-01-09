@@ -32,9 +32,9 @@ import java.util.Arrays;
  *
  * @author Tim Boudreau
  */
-public class AbstractActeur<T, R extends T> {
+public class AbstractActeur<T, R extends T, S extends AbstractActeur.State<T,R>> {
 
-    private State<T, R> state;
+    private S state;
     private R response;
     private final ActeurResponseFactory<T, R> factory;
 
@@ -47,7 +47,7 @@ public class AbstractActeur<T, R extends T> {
      *
      * @param state The new state, must be non null.
      */
-    protected void setState(State<T, R> state) {
+    protected void setState(S state) {
         Checks.notNull("state", state);
         this.state = state;
         state.acteur = this;
@@ -59,7 +59,7 @@ public class AbstractActeur<T, R extends T> {
      * @return The state, if set
      * @throws IllegalStateException if the state has not been set
      */
-    protected State<T, R> getState() {
+    protected S getState() {
         if (state == null) {
             throw new IllegalStateException("State not set");
         }
@@ -92,7 +92,7 @@ public class AbstractActeur<T, R extends T> {
 
         private final Object[] context;
         private final boolean rejected;
-        AbstractActeur<T, R> acteur;
+        AbstractActeur<T, R, ?> acteur;
 
         public State(Object... context) {
             this.context = context;
@@ -112,7 +112,7 @@ public class AbstractActeur<T, R extends T> {
             return context;
         }
         
-        protected AbstractActeur<T,R> getActeur() {
+        protected AbstractActeur<T,R,?> getActeur() {
             return acteur;
         }
 

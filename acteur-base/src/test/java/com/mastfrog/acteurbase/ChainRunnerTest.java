@@ -54,11 +54,11 @@ public class ChainRunnerTest {
     ReentrantScope scope;
     Dependencies deps;
     ExecutorService svc;
-    AbstractChain<AbstractActeur<Response, ResponseImpl>> chain;
-    AbstractChain<AbstractActeur<Response, ResponseImpl>> rejectIt;
-    AbstractChain<AbstractActeur<Response, ResponseImpl>> dontRespond;
-    AbstractChain<AbstractActeur<Response, ResponseImpl>> plainChain;
-    AbstractChain<AbstractActeur<Response, ResponseImpl>> errorChain;
+    AbstractChain<AbstractActeur<Response, ResponseImpl, AbstractActeur.State<Response, ResponseImpl>>> chain;
+    AbstractChain<AbstractActeur<Response, ResponseImpl, AbstractActeur.State<Response, ResponseImpl>>> rejectIt;
+    AbstractChain<AbstractActeur<Response, ResponseImpl, AbstractActeur.State<Response, ResponseImpl>>> dontRespond;
+    AbstractChain<AbstractActeur<Response, ResponseImpl, AbstractActeur.State<Response, ResponseImpl>>> plainChain;
+    AbstractChain<AbstractActeur<Response, ResponseImpl, AbstractActeur.State<Response, ResponseImpl>>> errorChain;
     Timer timer = new Timer();
 
     @Test(timeout = 10000)
@@ -85,9 +85,9 @@ public class ChainRunnerTest {
 
     @Test(timeout = 10000)
     public void testMultiChainRunner() throws Exception, Throwable {
-        List<AbstractChain<AbstractActeur<Response, ResponseImpl>>> l = new LinkedList<>();
+        List<AbstractChain<AbstractActeur<Response, ResponseImpl, AbstractActeur.State<Response, ResponseImpl>>>> l = new LinkedList<>();
         for (int i = 0; i < 5; i++) {
-            AbstractChain<AbstractActeur<Response, ResponseImpl>> ch = new AbstractChain<AbstractActeur<Response, ResponseImpl>>(deps, AbstractActeur.class)
+            AbstractChain<AbstractActeur<Response, ResponseImpl,AbstractActeur.State<Response, ResponseImpl>>> ch = new AbstractChain<AbstractActeur<Response, ResponseImpl,AbstractActeur.State<Response, ResponseImpl>>>(deps, AbstractActeur.class)
                     .add(FirstA.class).add(Rejecter.class).add(SecondA.class).add(FinalA.class);
             l.add(ch);
         }
@@ -112,19 +112,19 @@ public class ChainRunnerTest {
         ShutdownHookRegistry reg = deps.getInstance(ShutdownHookRegistry.class);
         reg.add(svc);
         reg.add(timer);
-        chain = new AbstractChain<AbstractActeur<Response, ResponseImpl>>(deps, AbstractActeur.class)
+        chain = new AbstractChain<AbstractActeur<Response, ResponseImpl, AbstractActeur.State<Response, ResponseImpl>>>(deps, AbstractActeur.class)
                 .add(FirstA.class).add(SecondA.class).add(FinalA.class);
 
-        rejectIt = new AbstractChain<AbstractActeur<Response, ResponseImpl>>(deps, AbstractActeur.class)
+        rejectIt = new AbstractChain<AbstractActeur<Response, ResponseImpl, AbstractActeur.State<Response, ResponseImpl>>>(deps, AbstractActeur.class)
                 .add(FirstA.class).add(Rejecter.class).add(SecondA.class).add(FinalA.class);
 
-        dontRespond = new AbstractChain<AbstractActeur<Response, ResponseImpl>>(deps, AbstractActeur.class)
+        dontRespond = new AbstractChain<AbstractActeur<Response, ResponseImpl, AbstractActeur.State<Response, ResponseImpl>>>(deps, AbstractActeur.class)
                 .add(FirstA.class).add(SecondWithoutTimeoutA.class);
 
-        plainChain = new AbstractChain<AbstractActeur<Response, ResponseImpl>>(deps, AbstractActeur.class)
+        plainChain = new AbstractChain<AbstractActeur<Response, ResponseImpl, AbstractActeur.State<Response, ResponseImpl>>>(deps, AbstractActeur.class)
                 .add(FirstA.class).add(SecondWithoutTimeoutA.class).add(FinalA.class);
 
-        errorChain = new AbstractChain<AbstractActeur<Response, ResponseImpl>>(deps, AbstractActeur.class)
+        errorChain = new AbstractChain<AbstractActeur<Response, ResponseImpl, AbstractActeur.State<Response, ResponseImpl>>>(deps, AbstractActeur.class)
                 .add(FirstA.class).add(SecondWithoutTimeoutA.class).add(ErrorA.class);
     }
 

@@ -31,7 +31,7 @@ import io.netty.handler.codec.http.HttpResponseStatus;
  *
  * @author Tim Boudreau
  */
-public class A2 extends AbstractActeur<Response, ResponseImpl> {
+public class A2 extends AbstractActeur<Response, ResponseImpl, AbstractActeur.State<Response, ResponseImpl>> {
 
     protected A2() {
         super(INSTANCE);

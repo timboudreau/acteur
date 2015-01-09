@@ -56,7 +56,7 @@ public final class ChainRunner {
         this.scope = scope;
     }
 
-    public <X extends P, P extends Chain<? extends AbstractActeur<T, R>>, T, R extends T> void run(X chain, ChainCallback<P, T, R> onDone) {
+    public <P extends Chain<? extends AbstractActeur<T, R, ?>>, T, R extends T> void run(P chain, ChainCallback<P, T, R> onDone) {
         CC<P, T, R> cc = new CC<>(svc, scope, chain, onDone);
         // Enter the scope, with the Chain (so it can be dynamically added to)
         // and the deferral, which can be used to pause the chain
@@ -67,12 +67,12 @@ public final class ChainRunner {
         }
     }
 
-    static class CC<P extends Chain<? extends AbstractActeur<T, R>>, T, R extends T> implements Callable<Object[]>, Resumer {
+    static class CC<P extends Chain<? extends AbstractActeur<T, R, ?>>, T, R extends T> implements Callable<Object[]>, Resumer {
 
         private final ExecutorService svc;
 
         private final ReentrantScope scope;
-        private final Iterator<? extends AbstractActeur<T, R>> iter;
+        private final Iterator<? extends AbstractActeur<T, R, ?>> iter;
         private Object[] state = new Object[0];
         private final List<R> responses = new LinkedList<>();
         private final ChainCallback<P, T, R> onDone;
@@ -124,7 +124,7 @@ public final class ChainRunner {
             }
             State<T, R> newState;
             try {
-                AbstractActeur<T,R> a2 = null;
+                AbstractActeur<T, R, ?> a2 = null;
                 try {
                     onDone.onBeforeRunOne(chain);
                     // Instantiate the next acteur, most likely causing its 

@@ -34,7 +34,8 @@ import org.junit.Assert;
  *
  * @author Tim Boudreau
  */
-class TestCallback implements ChainCallback<AbstractChain<AbstractActeur<Response, ResponseImpl>>, Response, ResponseImpl> {
+class TestCallback implements ChainCallback<AbstractChain<AbstractActeur<Response, ResponseImpl, AbstractActeur.State<Response, ResponseImpl>>>, Response, ResponseImpl> {
+
     private final CountDownLatch latch;
     private Throwable ex;
     private Boolean done;
@@ -148,13 +149,12 @@ class TestCallback implements ChainCallback<AbstractChain<AbstractActeur<Respons
     }
 
     @Override
-    public void onBeforeRunOne(AbstractChain<AbstractActeur<Response, ResponseImpl>> chain) {
+    public void onBeforeRunOne(AbstractChain<AbstractActeur<Response, ResponseImpl, AbstractActeur.State<Response, ResponseImpl>>> chain) {
         System.out.println("On before run one " + chain);
     }
 
     @Override
-    public void onAfterRunOne(AbstractChain<AbstractActeur<Response, ResponseImpl>> chain, AbstractActeur<Response, ResponseImpl> acteur) {
+    public void onAfterRunOne(AbstractChain<AbstractActeur<Response, ResponseImpl, AbstractActeur.State<Response, ResponseImpl>>> chain, AbstractActeur<Response, ResponseImpl, ?> acteur) {
         System.out.println("On after run one " + acteur);
     }
-
 }

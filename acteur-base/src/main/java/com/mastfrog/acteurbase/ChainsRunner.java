@@ -45,11 +45,11 @@ public class ChainsRunner {
         this.chainRunner = chainRunner;
     }
 
-    public <P extends Chain<? extends AbstractActeur<T, R>>, T, R extends T> void run(Iterable<P> chains, ChainCallback<P, T, R> onDone, Object... initialContext) {
+    public <P extends Chain<? extends AbstractActeur<T, R, ?>>, T, R extends T> void run(Iterable<P> chains, ChainCallback<P, T, R> onDone, Object... initialContext) {
         svc.submit(scope.wrap(new OneChainRun<>(svc, onDone, chains.iterator()), initialContext));
     }
 
-    class OneChainRun<P extends Chain<? extends AbstractActeur<T, R>>, T, R extends T> implements ChainCallback<P, T, R>, Callable<Void> {
+    class OneChainRun<P extends Chain<? extends AbstractActeur<T, R, ?>>, T, R extends T> implements ChainCallback<P, T, R>, Callable<Void> {
 
         private final ExecutorService svc;
 
@@ -101,7 +101,7 @@ public class ChainsRunner {
         }
 
         @Override
-        public void onAfterRunOne(P chain, AbstractActeur<T, R> a) {
+        public void onAfterRunOne(P chain, AbstractActeur<T, R, ?> a) {
         }
     }
 }
