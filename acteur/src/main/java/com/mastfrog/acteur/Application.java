@@ -41,6 +41,7 @@ import com.mastfrog.acteur.server.ServerModule;
 import com.mastfrog.acteur.util.ErrorInterceptor;
 import com.mastfrog.acteur.spi.ApplicationControl;
 import com.mastfrog.acteur.util.RequestID;
+import com.mastfrog.acteurbase.InstantiatingIterators;
 import com.mastfrog.parameters.Param;
 import com.mastfrog.parameters.Params;
 import com.mastfrog.util.ConfigurationError;
@@ -598,8 +599,11 @@ public class Application implements Iterable<Page> {
      */
     @Override
     public Iterator<Page> iterator() {
-        return new InstantiatingIterators(deps).iterable(pages, Page.class).iterator();
+        return iterators.iterable(pages, Page.class).iterator();
     }
+    
+    @Inject
+    private InstantiatingIterators iterators;
 
     protected void send404(RequestID id, Event<?> event, Channel channel) {
         HttpResponse response = createNotFoundResponse(event);

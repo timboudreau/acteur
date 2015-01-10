@@ -39,7 +39,6 @@ import com.mastfrog.util.Codec;
 import com.mastfrog.util.Exceptions;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
-import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
@@ -82,7 +81,7 @@ final class ResponseImpl extends Response {
 
     private volatile boolean modified;
     HttpResponseStatus status;
-    private final List<Entry<?>> headers = new ArrayList<Entry<?>>();
+    private final List<Entry<?>> headers = new ArrayList<Entry<?>>(2);
     private String message;
     ChannelFutureListener listener;
     private boolean chunked;

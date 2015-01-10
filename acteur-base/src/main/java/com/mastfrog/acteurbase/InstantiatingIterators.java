@@ -38,7 +38,7 @@ import javax.inject.Inject;
  *
  * @author Tim Boudreau
  */
-final class InstantiatingIterators {
+public final class InstantiatingIterators {
 
     private final Dependencies deps;
 
@@ -47,7 +47,7 @@ final class InstantiatingIterators {
         this.deps = deps;
     }
 
-    <T> Iterable<T> iterable(List<Object> obj, final Class<? extends T> type) {
+    public <T> Iterable<T> iterable(List<Object> obj, final Class<? extends T> type) {
         return CollectionUtils.<T>toIterable(CollectionUtils.<Object, T>convertedIterator(new Converter<T, Object>() {
 
             @Override

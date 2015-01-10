@@ -31,6 +31,7 @@ import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.acteur.headers.Method;
 import com.mastfrog.acteur.preconditions.Description;
 import com.mastfrog.acteur.server.PathFactory;
+import com.mastfrog.acteurbase.Chain;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.url.Path;
 import com.mastfrog.util.Checks;
@@ -772,6 +773,9 @@ public class ActeurFactory {
     /**
      * Compute the etag on demand, and send a not modified header if the one in
      * the request matches the one provided by the passed ETagComputer.
+     * <p>
+     * Note this depends on the etag being set on the Page, not just passed as
+     * an earlier header.
      *
      * @param computer The thing that computes an ETag
      * @return An acteur
@@ -849,31 +853,18 @@ public class ActeurFactory {
     }
 
     public Acteur branch(final Class<? extends Acteur> ifTrue, final Class<? extends Acteur> ifFalse, final Test test) {
-        class Brancher extends Acteur implements Delegate {
-
-            private Acteur delegate;
-
+        class Brancher extends Acteur {
             @Override
+            @SuppressWarnings("unchecked")
             public com.mastfrog.acteur.State getState() {
-                return getDelegate().getState();
-            }
-
-            @Override
-            protected ResponseImpl getResponse() {
-                return getDelegate().getResponse();
-            }
-
-            @Override
-            public Acteur getDelegate() {
-                if (delegate != null) {
-                    return delegate;
-                }
                 boolean result = test.test(deps.getInstance(HttpEvent.class));
+                Chain<Acteur> chain = deps.getInstance(Chain.class);
                 if (result) {
-                    return delegate = deps.getInstance(ifTrue);
+                    chain.add(ifTrue);
                 } else {
-                    return delegate = deps.getInstance(ifFalse);
+                    chain.add(ifFalse);
                 }
+                return new ConsumedLockedState();
             }
         }
         return new Brancher();
