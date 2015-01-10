@@ -23,9 +23,13 @@
  */
 package com.mastfrog.acteur;
 
+import com.google.common.net.MediaType;
 import com.google.inject.name.Named;
 import com.mastfrog.acteur.errors.ResponseException;
+import com.mastfrog.acteur.headers.Headers;
 import static com.mastfrog.acteur.server.ServerModule.DELAY_EXECUTOR;
+import com.mastfrog.acteur.util.CacheControl;
+import com.mastfrog.acteur.util.CacheControlTypes;
 import com.mastfrog.acteur.util.RequestID;
 import com.mastfrog.acteurbase.ArrayChain;
 import com.mastfrog.acteurbase.ChainCallback;
@@ -49,6 +53,7 @@ import io.netty.handler.codec.http.HttpVersion;
 import java.io.PrintStream;
 import java.nio.charset.Charset;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ScheduledExecutorService;
@@ -56,6 +61,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javax.inject.Inject;
+import org.joda.time.DateTime;
 import org.joda.time.Duration;
 import org.netbeans.validation.api.InvalidInputException;
 
@@ -220,6 +226,7 @@ class PagesImpl2 {
         }
 
         boolean inUncaughtException = false;
+
         @Override
         public void uncaughtException(Thread thread, Throwable thrwbl) {
             try {
@@ -262,6 +269,11 @@ class PagesImpl2 {
                             ex.printStackTrace(ps);
                         }
                         DefaultFullHttpResponse resp = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.INTERNAL_SERVER_ERROR, buf);
+                        Headers.write(Headers.CONTENT_TYPE, MediaType.PLAIN_TEXT_UTF_8, resp);
+                        Headers.write(Headers.CONTENT_LENGTH, (long) buf.writerIndex(), resp);
+                        Headers.write(Headers.CONTENT_LANGUAGE, Locale.ENGLISH, resp);
+                        Headers.write(Headers.CACHE_CONTROL, CacheControl.PRIVATE_NO_CACHE_NO_STORE, resp);
+                        Headers.write(Headers.DATE, new DateTime(), resp);
                         channel.writeAndFlush(resp).addListener(ChannelFutureListener.CLOSE);
                     }
                 } finally {
