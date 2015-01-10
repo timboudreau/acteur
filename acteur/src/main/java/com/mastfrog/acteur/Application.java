@@ -38,6 +38,8 @@ import com.mastfrog.guicy.scope.ReentrantScope;
 import com.mastfrog.acteur.util.CacheControl;
 import com.mastfrog.acteur.util.CacheControlTypes;
 import com.mastfrog.acteur.server.ServerModule;
+import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_CORS_ALLOW_ORIGIN;
+import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_CORS_MAX_AGE_MINUTES;
 import com.mastfrog.acteur.util.ErrorInterceptor;
 import com.mastfrog.acteur.spi.ApplicationControl;
 import com.mastfrog.acteur.util.RequestID;
@@ -112,11 +114,11 @@ public class Application implements Iterable<Page> {
     @Inject
     private Charset charset;
     @Inject(optional = true)
-    @Named(CORSResource.SETTINGS_KEY_CORS_ALLOW_ORIGIN)
+    @Named(SETTINGS_KEY_CORS_ALLOW_ORIGIN)
     String corsAllowOrigin = "*";
 
     @Inject(optional = true)
-    @Named(CORSResource.SETTINGS_KEY_CORS_MAX_AGE_MINUTES)
+    @Named(SETTINGS_KEY_CORS_MAX_AGE_MINUTES)
     long corsMaxAgeMinutes = 5;
 
     @Inject(optional = true)

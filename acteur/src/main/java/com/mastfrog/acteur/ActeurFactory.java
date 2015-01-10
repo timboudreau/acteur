@@ -83,13 +83,7 @@ public class ActeurFactory {
      */
     @Deprecated
     public Acteur matchMethods(final Method... methods) {
-//        boolean asserts = false;
-//        assert asserts = true;
-        String type = "";
-//        if (asserts) {
-//            type = "(" + new Exception().getStackTrace()[1].getClassName() + ")";
-//        }
-        return matchMethods(false, type, methods);
+        return matchMethods(false, methods);
     }
 
     /**
@@ -103,16 +97,6 @@ public class ActeurFactory {
      * @return An Acteur
      */
     public Acteur matchMethods(final boolean notSupp, final Method... methods) {
-//        boolean asserts = false;
-//        assert asserts = true;
-        String type = "";
-//        if (asserts) {
-//            type = "(" + new Exception().getStackTrace()[1].getClassName() + ")";
-//        }
-        return matchMethods(notSupp, type, methods);
-    }
-
-    private Acteur matchMethods(final boolean notSupp, final String typeName, final Method... methods) {
         class MatchMethods extends Acteur {
 
             @Override
@@ -124,7 +108,7 @@ public class ActeurFactory {
                     add(Headers.CONTENT_TYPE, MediaType.PLAIN_TEXT_UTF_8.withCharset(charset));
                     return new RespondWith(new Err(HttpResponseStatus.METHOD_NOT_ALLOWED, "405 Method "
                             + event.getMethod() + " not allowed.  Accepted methods are "
-                            + Headers.ALLOW.toString(methods) + " " + typeName + "\n"));
+                            + Headers.ALLOW.toString(methods) + "\n"));
                 }
                 com.mastfrog.acteur.State result = hasMethod ? new ConsumedState() : new RejectedState();
                 return result;
@@ -150,9 +134,9 @@ public class ActeurFactory {
             public com.mastfrog.acteur.State getState() {
                 HttpEvent event = deps.getInstance(HttpEvent.class);
                 if (event.getPath().getElements().length == length) {
-                    return new Acteur.RejectedState();
+                    return new RejectedState();
                 } else {
-                    return new Acteur.ConsumedState();
+                    return new ConsumedState();
                 }
             }
 

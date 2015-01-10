@@ -29,7 +29,6 @@ import com.mastfrog.acteur.errors.ResponseException;
 import com.mastfrog.acteur.headers.Headers;
 import static com.mastfrog.acteur.server.ServerModule.DELAY_EXECUTOR;
 import com.mastfrog.acteur.util.CacheControl;
-import com.mastfrog.acteur.util.CacheControlTypes;
 import com.mastfrog.acteur.util.RequestID;
 import com.mastfrog.acteurbase.ArrayChain;
 import com.mastfrog.acteurbase.ChainCallback;

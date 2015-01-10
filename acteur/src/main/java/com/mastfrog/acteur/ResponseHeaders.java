@@ -50,8 +50,8 @@ public class ResponseHeaders {
     private Locale locale;
     private URI contentLocation;
     private MediaType contentType;
-    private CacheControl cacheControl = new CacheControl();
-    private List<HeaderValueType<?>> varyHeaders = new LinkedList<>();
+    private final CacheControl cacheControl = new CacheControl();
+    private final List<HeaderValueType<?>> varyHeaders = new LinkedList<>();
     private ContentLengthProvider contentLengthProvider;
     private ETagProvider etagProvider;
     private DateTime expires;

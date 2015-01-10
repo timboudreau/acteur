@@ -6,10 +6,9 @@
 
 package com.mastfrog.acteur;
 
-import com.mastfrog.acteur.headers.Headers;
+import static com.mastfrog.acteur.headers.Headers.IF_NONE_MATCH;
 import com.mastfrog.util.Checks;
-import io.netty.channel.ChannelFutureListener;
-import io.netty.handler.codec.http.HttpResponseStatus;
+import static io.netty.handler.codec.http.HttpResponseStatus.NOT_MODIFIED;
 import java.util.Map;
 import javax.inject.Inject;
 
@@ -26,14 +25,14 @@ public class CheckIfNoneMatchHeader extends Acteur {
     CheckIfNoneMatchHeader(HttpEvent event, Page page) throws Exception {
         Checks.notNull("event", event);
         Checks.notNull("page", page);
-        String etag = event.getHeader(Headers.IF_NONE_MATCH);
+        String etag = event.getHeader(IF_NONE_MATCH);
         String pageEtag = page.getResponseHeaders().getETag();
         if (etag != null && pageEtag != null) {
             if (etag.equals(pageEtag)) {
-                setState(new RespondWith(HttpResponseStatus.NOT_MODIFIED));
+                reply(NOT_MODIFIED);
                 // XXX workaround for peculiar problem with FileResource =
                 // not modified responses are leaving a hanging connection
-                setResponseBodyWriter(ChannelFutureListener.CLOSE);
+//                setResponseBodyWriter(ChannelFutureListener.CLOSE);
                 return;
             }
         }
@@ -42,7 +41,9 @@ public class CheckIfNoneMatchHeader extends Acteur {
 
     @Override
     public void describeYourself(Map<String, Object> into) {
-        into.put("Supports If-None-Match header", true);
+        into.put("Replies with a 304 not modified if the "
+                + "If-None-Match header in the current request matches the "
+                + "ETag already set on the current page", true);
     }
 
 }

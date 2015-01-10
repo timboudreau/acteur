@@ -221,6 +221,13 @@ public class ServerModule<A extends Application> extends AbstractModule {
      * Settings key if true, do CORS responses on OPTIONS requests
      */
     public static final String SETTINGS_KEY_CORS_ENABLED = "cors.enabled";
+    
+    public static final String SETTINGS_KEY_CORS_MAX_AGE_MINUTES = "cors.max.age.minutes";
+    public static final String SETTINGS_KEY_CORS_ALLOW_ORIGIN = "cors.allow.origin";
+    public static final boolean DEFAULT_CORS_ENABLED = true;
+    public static final long DEFAULT_CORS_MAX_AGE_MINUTES = 5;
+    public static final String DEFAULT_CORS_ALLOW_ORIGIN = "*";
+    
     protected final Class<A> appType;
     protected final ReentrantScope scope;
     private final int eventThreads;
@@ -274,7 +281,6 @@ public class ServerModule<A extends Application> extends AbstractModule {
         // to another server
         install(new ActeurBaseModule(scope));
 
-        Provider<Application> appProvider = binder().getProvider(Application.class);
         Provider<ApplicationControl> appControlProvider = binder().getProvider(ApplicationControl.class);
         Provider<Settings> set = binder().getProvider(Settings.class);
 
@@ -801,7 +807,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
             if ("event".equals(tg.getName())) {
                 t.setPriority(Thread.MAX_PRIORITY);
             } else {
-                t.setPriority(Thread.NORM_PRIORITY - 1);
+                t.setPriority(Thread.NORM_PRIORITY);
             }
             t.setUncaughtExceptionHandler(this);
             String nm = name + "-" + count.getAndIncrement();

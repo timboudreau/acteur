@@ -6,8 +6,8 @@
 
 package com.mastfrog.acteur;
 
-import com.mastfrog.acteur.headers.Headers;
-import io.netty.handler.codec.http.HttpResponseStatus;
+import static com.mastfrog.acteur.headers.Headers.IF_UNMODIFIED_SINCE;
+import static io.netty.handler.codec.http.HttpResponseStatus.PRECONDITION_FAILED;
 import java.util.Map;
 import javax.inject.Inject;
 import org.joda.time.DateTime;
@@ -20,13 +20,13 @@ public class CheckIfUnmodifiedSinceHeader extends Acteur {
 
     @Inject
     CheckIfUnmodifiedSinceHeader(HttpEvent event, Page page) {
-        DateTime dt = event.getHeader(Headers.IF_UNMODIFIED_SINCE);
+        DateTime dt = event.getHeader(IF_UNMODIFIED_SINCE);
         if (dt != null) {
             DateTime pageLastModified = page.getResponseHeaders().getLastModified();
             if (pageLastModified != null) {
                 boolean modSince = pageLastModified.getMillis() > dt.getMillis();
                 if (modSince) {
-                    setState(new RespondWith(HttpResponseStatus.PRECONDITION_FAILED));
+                    reply(PRECONDITION_FAILED);
                     return;
                 }
             }
