@@ -253,6 +253,7 @@ public abstract class Page implements Iterable<Acteur> {
     }
 
     @Override
+    @Deprecated
     public Iterator<Acteur> iterator() {
         assert getApplication() != null : "Application is null - called outside request?";
         PageAnnotationHandler.Registry registry

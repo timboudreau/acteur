@@ -6,10 +6,61 @@
 
         <h1>Acteur-Base</h1>
         <p>
-            This package defines the base abstractions for Acteurs, which are 
-            actors that utilize Java constructors as function objects.
+            This package defines the base abstractions for Acteurs, which are
+            actors that utilize Java constructors as function objects.  The result
+            is that you can write sequences of work to do and decision trees
+            as lists of classes.  So, a workflow is a chain of Acteurs which
+            are invoked in sequence, each of which can pass data to the next,
+            and which collaborate to build some object.  An application is
+            a set of workflows, each of which starts with some acteurs that
+            evaluate the input and decide whether to claim it or pass
+            it on to another workflow.
         </p><p>
-            It is not a framework so much as a framework for creating frameworks
+            For example, in the <a href='https://github.com/timboudreau/acteur'>Acteur web framework</a>
+            an application is a list of "page" classes, and each page consists
+            of a list of acteur classes that accept or reject the request, and
+            if they accept it, do the work of assembling a response.  So an
+            application there might look like:
+        </p>
+        <ul>
+            <li>Application
+                <ul>
+                    <li>LoginPage
+                        <ul>
+                            <li>Match POST Requests Acteur</li>
+                            <li>Match /login Path Acteur</li>
+                            <li>Extract User Name From URL Acteur</li>
+                            <li>Look Up User In Database</li>
+                            <li>Check Request Payload Against Stored Password Acteur</li>
+                        </ul>
+                    </li>
+                    <li>GetItemsPage
+                        <ul>
+                            <li>Match GET Requests Acteur</li>
+                            <li>Match /user/*/items Path Acteur</li>
+                            <li>Extract User Name From URL Acteur</li>
+                            <li>Look Up User In Database Acteur</li>
+                            <li>Check User Is Authorized To See User Name's Items Acteur</li>
+                            <li>Look Up Items Acteur</li>
+                            <li>Send Items In Response Acteur</li>
+                        </ul>
+                </ul>
+            </li>
+        </ul>
+        <p>
+            As you can see, a number of the acteurs are reused in both requests.
+            So, applications can be assembled out of reusable chunks of logic
+            which are decoupled from each other.
+        </p><p>
+            And such an API is fairly refactoring-proof - that is, if this were
+            traditional, 
+            sequential code, then adding one parameter at the top would 
+            require every method that uses it to pass it forward;  with Acteur's design, only
+            directly affected parts might need to be changed.
+        </p>
+        <h2>About Acteurs</h2>
+        <p>
+            This library is not a framework so much as a framework for creating frameworks
             that utilize acteurs to asynchronously, thread-safely do work,
             taking advantage of dependency injection.
         </p><p>
@@ -48,7 +99,7 @@
             Any acteur can complete the processing for its chain, or can defer
             further processing until some asynchronous event has happened.
             An acteur can also request that the chain itself be injected,
-            and insert additional acteurs to be invoked after itself, so it is 
+            and insert additional acteurs to be invoked after itself, so it is
             possible to have a chain that dynamically decides what work comes
             next.
         </p>
@@ -92,7 +143,7 @@ public abstract class A2 extends AbstractActeur&lt;Response, ResponseImpl&gt; {
     protected A2 reply(HttpResponseStatus status, Object response) {
         response().setStatus(status);
         response().setMessage(response);
-        setState(new State&lt;Response, ResponseImpl&gt;(response == null ? 
+        setState(new State&lt;Response, ResponseImpl&gt;(response == null ?
                 new Object[0] : new Object[]{response}));
         return this;
     }
@@ -116,7 +167,7 @@ public abstract class A2 extends AbstractActeur&lt;Response, ResponseImpl&gt; {
             return obj != null && obj.modified();
         }
     }
-}            
+}
         </pre>
         <p>
             This class can then be subclassed by users of your framework with
