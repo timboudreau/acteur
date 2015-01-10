@@ -31,7 +31,7 @@ public class CheckIfUnmodifiedSinceHeader extends Acteur {
                 }
             }
         }
-        setState(new ConsumedState());
+        next();
     }
 
     @Override

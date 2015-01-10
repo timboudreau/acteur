@@ -48,7 +48,7 @@ import org.netbeans.validation.api.builtin.stringvalidation.StringValidators;
  */
 @Path("/numble")
 @Methods(PUT)
-@HttpCall(order=Integer.MIN_VALUE)
+@HttpCall(order = Integer.MIN_VALUE)
 @InjectRequestBodyAs(NumblePageParams.class)
 @Params(value = {
     @Param(value = "host", constraints = {StringValidators.NO_WHITESPACE, StringValidators.HOST_NAME}, defaultValue = "timboudreau.com", required = false
@@ -57,18 +57,17 @@ import org.netbeans.validation.api.builtin.stringvalidation.StringValidators;
     ),
     @Param(value = "bool", type = Types.BOOLEAN, defaultValue = "true")
 },
-    generateToJSON = true
+        generateToJSON = true
 )
 public class NumblePage extends Acteur {
 
     @Inject
     NumblePage(ReentrantScope scope, HttpEvent evt, Provider<NumblePageParams> params) throws JsonProcessingException, IOException {
-            System.out.println("CONTAINS PARAMS? " + scope.contains(NumblePageParams.class));
-            System.out.println("SCOPE CONTENTS: " + scope.toString());
-            setState(new ConsumedLockedState());
+        System.out.println("CONTAINS PARAMS? " + scope.contains(NumblePageParams.class));
+        System.out.println("SCOPE CONTENTS: " + scope.toString());
         ok(params.get().toJSON());
     }
-    
+
     static final class PortValidator extends AbstractValidator<String> {
 
         PortValidator() {

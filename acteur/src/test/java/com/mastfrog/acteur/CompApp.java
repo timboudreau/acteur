@@ -163,7 +163,7 @@ public class CompApp extends Application {
             @Inject
             ABranch() {
                 System.out.println("abranch");
-                setState(new RespondWith(200, "A"));
+                ok("A");
             }
         }
 
@@ -172,7 +172,7 @@ public class CompApp extends Application {
             @Inject
             BBranch() {
                 System.out.println("bbranch");
-                setState(new RespondWith(200, "B"));
+                ok("B");
             }
         }
     }
@@ -406,7 +406,7 @@ public class CompApp extends Application {
         @Inject
         FirstActeur(Chain<Acteur> chain) {
             chain.add(SecondActeur.class);
-            setState(new ConsumedLockedState());
+            next();
         }
     }
 
@@ -415,7 +415,7 @@ public class CompApp extends Application {
         @Inject
         SecondActeur(Chain<Acteur> chain) {
             chain.add(ThirdActeur.class);
-            setState(new ConsumedLockedState());
+            next();
         }
     }
 

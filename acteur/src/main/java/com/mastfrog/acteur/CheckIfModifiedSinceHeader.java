@@ -33,7 +33,7 @@ public class CheckIfModifiedSinceHeader extends Acteur {
             setResponseBodyWriter(ChannelFutureListener.CLOSE);
             return;
         }
-        setState(new ConsumedState());
+        next();
     }
 
     @Override

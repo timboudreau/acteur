@@ -148,11 +148,11 @@ public class AppTest {
         AuthenticationAction(HttpEvent event) {
             BasicCredentials credentials = event.getHeader(Headers.AUTHORIZATION);
             if (credentials != null) {
-                setState(new ConsumedLockedState(credentials));
+                next(credentials);
                 System.err.println("CREDENTIALS " + credentials.username + " pw=" + credentials.password);
             } else {
                 System.err.println("NO CREDENTIALS");
-                setState(new RespondWith(HttpResponseStatus.UNAUTHORIZED));
+                reply(HttpResponseStatus.UNAUTHORIZED);
             }
         }
     }
@@ -167,7 +167,7 @@ public class AppTest {
                 setState(new RejectedState());
             } else {
                 System.err.println("PARAMS " + p.getClass().getName());
-                setState(new ConsumedLockedState(p));
+                next(p);
             }
         }
     }
@@ -180,7 +180,7 @@ public class AppTest {
             if (thing == null) {
                 setState(new RejectedState());
             } else {
-                setState(new ConsumedLockedState(thing));
+                next(thing);
             }
         }
     }
@@ -203,7 +203,7 @@ public class AppTest {
 
             setResponseCode(HttpResponseStatus.FORBIDDEN);
             setMessage("Hello " + creds.username + "\n" + thing.foo);
-            setState(new ConsumedState());
+            next();
         }
     }
 

@@ -24,13 +24,10 @@
 package com.mastfrog.acteur;
 
 import com.google.common.net.MediaType;
-import com.google.inject.ProvisionException;
 import com.mastfrog.acteur.Acteur.BaseState;
 import com.mastfrog.acteur.errors.Err;
 import com.mastfrog.acteur.errors.ErrorRenderer;
 import com.mastfrog.acteur.errors.ErrorResponse;
-import com.mastfrog.acteur.errors.ExceptionEvaluatorRegistry;
-import com.mastfrog.acteur.errors.ResponseException;
 import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.acteurbase.AbstractActeur;
@@ -101,7 +98,7 @@ import java.util.concurrent.atomic.AtomicReference;
  */
 public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, State> {
 
-    abstract class BaseState extends com.mastfrog.acteur.State {
+    class BaseState extends com.mastfrog.acteur.State {
 
         protected final Page page;
 
@@ -142,8 +139,8 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
     protected com.mastfrog.acteur.State getState() {
         return super.getState();
     }
-    
-    Throwable creationStackTrace() {
+
+    final Throwable creationStackTrace() {
         return creationStackTrace;
     }
 
@@ -182,8 +179,9 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
         Acteur getDelegate();
     }
 
-    protected <T> void add(HeaderValueType<T> decorator, T value) {
+    protected <T> Acteur add(HeaderValueType<T> decorator, T value) {
         response().add(decorator, value);
+        return this;
     }
 
     protected ResponseImpl getResponse() {
@@ -197,19 +195,22 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
         return response().get(header);
     }
 
-    public void setResponseCode(HttpResponseStatus status) {
+    public final Acteur setResponseCode(HttpResponseStatus status) {
         response().setResponseCode(status);
+        return this;
     }
 
-    public void setMessage(String message) {
+    public final Acteur setMessage(String message) {
         response().setMessage(message);
+        return this;
     }
 
-    public void setChunked(boolean chunked) {
+    public final Acteur setChunked(boolean chunked) {
         response().setChunked(chunked);
+        return this;
     }
 
-    protected Response response() {
+    protected final Response response() {
         if (this instanceof Delegate) {
             return ((Delegate) this).getDelegate().response();
         }
@@ -232,36 +233,68 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
     public void describeYourself(Map<String, Object> into) {
     }
 
-    protected void noContent() {
+    protected final Acteur noContent() {
         setState(new RespondWith(NO_CONTENT));
+        return this;
     }
 
-    protected void badRequest() {
+    protected final Acteur badRequest() {
         setState(new RespondWith(BAD_REQUEST));
+        return this;
     }
 
-    protected void badRequest(Object msg) {
+    protected final Acteur badRequest(Object msg) {
         setState(new RespondWith(BAD_REQUEST, msg));
+        return this;
     }
 
-    protected void notFound() {
+    protected final Acteur notFound() {
         setState(new RespondWith(NOT_FOUND));
+        return this;
     }
 
-    protected void notFound(Object msg) {
+    protected final Acteur notFound(Object msg) {
         setState(new RespondWith(NOT_FOUND, msg));
+        return this;
     }
 
-    protected void ok(Object msg) {
+    protected final Acteur ok(Object msg) {
         setState(new RespondWith(OK, msg));
+        return this;
     }
 
-    protected void ok() {
+    protected final Acteur ok() {
         setState(new RespondWith(OK));
+        return this;
     }
 
-    protected void reply(HttpResponseStatus status, Object msg) {
+    protected final Acteur reply(HttpResponseStatus status) {
+        setState(new RespondWith(status));
+        return this;
+    }
+
+    protected final Acteur reply(HttpResponseStatus status, Object msg) {
         setState(new RespondWith(status, msg));
+        return this;
+    }
+    
+    protected final Acteur reply(Err err) {
+        setState(new RespondWith(err));
+        return this;
+    }
+
+    protected final Acteur reject() {
+        setState(new RejectedState());
+        return this;
+    }
+
+    protected final Acteur next(Object... context) {
+        if (context == null || context.length == 0) {
+            setState(new ConsumedState());
+        } else {
+            setState(new ConsumedLockedState(context));
+        }
+        return this;
     }
 
     /**
@@ -354,11 +387,9 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
      */
     protected class RejectedState extends BaseState {
 
-        private final Page page;
 
         public RejectedState() {
             super(true);
-            page = Page.get();
             if (page == null) {
                 throw new IllegalStateException("Called outside ActionsImpl.onEvent");
             }
@@ -366,10 +397,6 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
 
         public RejectedState(HttpResponseStatus status) {
             super(true);
-            page = Page.get();
-            if (page == null) {
-                throw new IllegalStateException("Called outside ActionsImpl.onEvent");
-            }
             setResponseCode(status);
         }
     }
@@ -415,12 +442,13 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
      * @param <T> The type of writer
      * @param writerType The writer class
      */
-    protected <T extends ResponseWriter> void setResponseWriter(Class<T> writerType) {
+    protected final <T extends ResponseWriter> Acteur setResponseWriter(Class<T> writerType) {
         Page page = Page.get();
         Dependencies deps = page.getApplication().getDependencies();
         HttpEvent evt = deps.getInstance(HttpEvent.class);
         response();
         getResponse().setWriter(writerType, deps, evt);
+        return this;
     }
 
     /**
@@ -430,12 +458,13 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
      * @param <T> The type of writer
      * @param writer The writer
      */
-    protected <T extends ResponseWriter> void setResponseWriter(T writer) {
+    protected final <T extends ResponseWriter> Acteur setResponseWriter(T writer) {
         Page page = Page.get();
         Dependencies deps = page.getApplication().getDependencies();
         HttpEvent evt = deps.getInstance(HttpEvent.class);
         response();
         getResponse().setWriter(writer, deps, evt);
+        return this;
     }
 
     /**
@@ -452,7 +481,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
      * @param <T> a type
      * @param type The type of listener
      */
-    protected final <T extends ChannelFutureListener> void setResponseBodyWriter(final Class<T> type) {
+    protected final <T extends ChannelFutureListener> Acteur setResponseBodyWriter(final Class<T> type) {
         final Page page = Page.get();
         final Dependencies deps = page.getApplication().getDependencies();
         ReentrantScope scope = page.getApplication().getRequestScope();
@@ -504,9 +533,10 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
 
         ChannelFutureListener l = new C();
         setResponseBodyWriter(l);
+        return this;
     }
 
-    protected Dependencies dependencies() {
+    protected final Dependencies dependencies() {
         final Page p = Page.get();
         final Application app = p.getApplication();
         return app.getDependencies();
@@ -521,11 +551,11 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
      *
      * @param listener
      */
-    public final void setResponseBodyWriter(final ChannelFutureListener listener) {
+    public final Acteur setResponseBodyWriter(final ChannelFutureListener listener) {
         if (listener == ChannelFutureListener.CLOSE || listener == ChannelFutureListener.CLOSE_ON_FAILURE) {
             response();
             getResponse().setBodyWriter(listener);
-            return;
+            return this;
         }
         Page p = Page.get();
         final Application app = p.getApplication();
@@ -552,6 +582,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
             }
         }
         getResponse().setBodyWriter(new WL());
+        return this;
     }
 
 //    public <T extends State & com.mastfrog.acteur.State> State getState() {

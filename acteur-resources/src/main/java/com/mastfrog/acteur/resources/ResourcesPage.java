@@ -91,7 +91,7 @@ public class ResourcesPage extends Page {
                 if (path.equals(pat)) {
                     Resource r = res.get(path);
                     if (r == null) {
-                        setState(new RejectedState());
+                        reject();
                         return;
                     } else {
                         r.decoratePage(page, evt, path, response(), chunked);
@@ -102,12 +102,13 @@ public class ResourcesPage extends Page {
                                 add(Headers.EXPIRES, dt);
                             }
                         }
-                        setState(new ConsumedLockedState(r));
+//                        setState(new ConsumedLockedState(r));
+                        next(r);
                         return;
                     }
                 }
             }
-            setState(new RejectedState());
+            reject();
         }
     }
 

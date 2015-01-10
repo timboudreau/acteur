@@ -23,7 +23,7 @@ public class X extends Acteur {
     static class Fooble extends Acteur {
 
         Fooble() {
-            setState(new ConsumedLockedState(new Foo()));
+            next(new Foo());
         }
     }
 

@@ -37,7 +37,7 @@ public class CheckIfNoneMatchHeader extends Acteur {
                 return;
             }
         }
-        setState(new ConsumedState());
+        next();
     }
 
     @Override
