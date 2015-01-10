@@ -115,7 +115,7 @@ public class ActeurFactory {
         class MatchMethods extends Acteur {
 
             @Override
-            public BaseState getState() {
+            public com.mastfrog.acteur.State getState() {
                 HttpEvent event = deps.getInstance(HttpEvent.class);
                 boolean hasMethod = Arrays.asList(methods).contains(event.getMethod());
                 add(Headers.ALLOW, methods);
@@ -125,7 +125,7 @@ public class ActeurFactory {
                             + event.getMethod() + " not allowed.  Accepted methods are "
                             + Headers.ALLOW.toString(methods) + " " + typeName + "\n"));
                 }
-                BaseState result = hasMethod ? new ConsumedState() : new RejectedState();
+                com.mastfrog.acteur.State result = hasMethod ? new ConsumedState() : new RejectedState();
                 return result;
             }
 
@@ -146,7 +146,7 @@ public class ActeurFactory {
         Checks.nonNegative("length", length);
         return new Acteur() {
             @Override
-            public BaseState getState() {
+            public com.mastfrog.acteur.State getState() {
                 HttpEvent event = deps.getInstance(HttpEvent.class);
                 if (event.getPath().getElements().length == length) {
                     return new Acteur.RejectedState();
@@ -167,7 +167,7 @@ public class ActeurFactory {
         Checks.nonNegative("length", length);
         return new Acteur() {
             @Override
-            public BaseState getState() {
+            public com.mastfrog.acteur.State getState() {
                 HttpEvent event = deps.getInstance(HttpEvent.class);
                 if (event.getPath().getElements().length < length) {
                     return new RejectedState();
@@ -188,7 +188,7 @@ public class ActeurFactory {
         Checks.nonNegative("length", length);
         return new Acteur() {
             @Override
-            public BaseState getState() {
+            public com.mastfrog.acteur.State getState() {
                 HttpEvent event = deps.getInstance(HttpEvent.class);
                 if (event.getPath().getElements().length > length) {
                     return new Acteur.RejectedState();
@@ -235,7 +235,7 @@ public class ActeurFactory {
             this.status = status;
         }
 
-        public BaseState getState() {
+        public com.mastfrog.acteur.State getState() {
             add(Headers.LOCATION, location);
             return new RespondWith(status, "Redirecting to " + location);
         }
@@ -255,7 +255,7 @@ public class ActeurFactory {
         class InjectBody extends Acteur {
 
             @Override
-            public BaseState getState() {
+            public com.mastfrog.acteur.State getState() {
                 final ContentConverter converter = deps.getInstance(ContentConverter.class);
                 HttpEvent evt = deps.getInstance(HttpEvent.class);
                 try {
@@ -311,7 +311,7 @@ public class ActeurFactory {
         class InjectParams extends Acteur {
 
             @Override
-            public BaseState getState() {
+            public com.mastfrog.acteur.State getState() {
                 HttpEvent evt = deps.getInstance(HttpEvent.class);
                 ContentConverter converter = deps.getInstance(ContentConverter.class);
                 try {
@@ -339,7 +339,7 @@ public class ActeurFactory {
         class SendResponseCode extends Acteur {
 
             @Override
-            public BaseState getState() {
+            public com.mastfrog.acteur.State getState() {
                 return new Acteur.RespondWith(status);
             }
 
@@ -362,7 +362,7 @@ public class ActeurFactory {
         class RequireParameters extends Acteur {
 
             @Override
-            public BaseState getState() {
+            public com.mastfrog.acteur.State getState() {
                 HttpEvent event = deps.getInstance(HttpEvent.class);
                 for (String nm : names) {
                     String val = event.getParameter(nm);
@@ -392,7 +392,7 @@ public class ActeurFactory {
         class RequireParametersNotBeCombined extends Acteur {
 
             @Override
-            public BaseState getState() {
+            public com.mastfrog.acteur.State getState() {
                 HttpEvent event = deps.getInstance(HttpEvent.class);
                 String first = null;
                 for (String nm : names) {
@@ -435,7 +435,7 @@ public class ActeurFactory {
                         + (allowDecimal ? "(decimal-allowed)" : "(must be integers)") + (""), names);
             }
 
-            public BaseState getState() {
+            public com.mastfrog.acteur.State getState() {
                 HttpEvent evt = deps.getInstance(HttpEvent.class);
                 for (String name : names) {
                     String p = evt.getParameter(name);
@@ -489,7 +489,7 @@ public class ActeurFactory {
         @Description("Requires that parameters not be present")
         class BanParameters extends Acteur {
 
-            public BaseState getState() {
+            public com.mastfrog.acteur.State getState() {
                 HttpEvent evt = deps.getInstance(HttpEvent.class);
                 for (Map.Entry<String, String> e : evt.getParametersAsMap().entrySet()) {
                     if (Arrays.binarySearch(names, e.getKey()) >= 0) {
@@ -519,7 +519,7 @@ public class ActeurFactory {
         class RequireAtLeastOneParameter extends Acteur {
 
             @Override
-            public BaseState getState() {
+            public com.mastfrog.acteur.State getState() {
                 HttpEvent event = deps.getInstance(HttpEvent.class);
                 for (String nm : names) {
                     String val = event.getParameter(nm);
@@ -573,7 +573,7 @@ public class ActeurFactory {
         class MatchPath extends Acteur {
 
             @Override
-            public BaseState getState() {
+            public com.mastfrog.acteur.State getState() {
                 HttpEvent event = deps.getInstance(HttpEvent.class);
                 for (String regex : regexen) {
                     Pattern p = getPattern(regex);
@@ -727,7 +727,7 @@ public class ActeurFactory {
         }
 
         @Override
-        public BaseState getState() {
+        public com.mastfrog.acteur.State getState() {
             return msg == null ? new RespondWith(code) : new RespondWith(code, msg);
         }
     }
@@ -736,7 +736,7 @@ public class ActeurFactory {
         return new Acteur() {
 
             @Override
-            public BaseState getState() {
+            public com.mastfrog.acteur.State getState() {
                 try {
                     int val = deps.getInstance(HttpEvent.class).getContent().readableBytes();
                     if (val < length) {
@@ -754,7 +754,7 @@ public class ActeurFactory {
         return new Acteur() {
 
             @Override
-            public BaseState getState() {
+            public com.mastfrog.acteur.State getState() {
                 try {
                     int val = deps.getInstance(HttpEvent.class).getContent().readableBytes();
                     if (val > length) {
@@ -780,11 +780,11 @@ public class ActeurFactory {
         class A extends Acteur implements ETagProvider {
 
             @Override
-            public BaseState getState() {
+            public com.mastfrog.acteur.State getState() {
                 Page page = deps.getInstance(Page.class);
                 page.getResponseHeaders().setETagProvider(this);
                 CheckIfNoneMatchHeader h = deps.getInstance(CheckIfNoneMatchHeader.class);
-                BaseState result = h.getState();
+                com.mastfrog.acteur.State result = h.getState();
                 getResponse().merge(h.getResponse());
                 return result;
             }
@@ -812,7 +812,7 @@ public class ActeurFactory {
         Checks.notEmpty("params", Arrays.asList(params));
         class RequireParametersIfMethodMatches extends Acteur {
 
-            public BaseState getState() {
+            public com.mastfrog.acteur.State getState() {
                 HttpEvent evt = deps.getInstance(HttpEvent.class);
                 if (method.equals(evt.getMethod())) {
                     if (!evt.getParametersAsMap().keySet().containsAll(Arrays.asList(params))) {
@@ -834,7 +834,7 @@ public class ActeurFactory {
         Checks.notNull("to", to);
         class MatchNothing extends Acteur {
 
-            public BaseState getState() {
+            public com.mastfrog.acteur.State getState() {
                 HttpEvent evt = deps.getInstance(HttpEvent.class);
                 if (evt.getPath().toString().isEmpty()) {
                     PathFactory pf = deps.getInstance(PathFactory.class);
@@ -854,7 +854,7 @@ public class ActeurFactory {
             private Acteur delegate;
 
             @Override
-            public BaseState getState() {
+            public com.mastfrog.acteur.State getState() {
                 return getDelegate().getState();
             }
 

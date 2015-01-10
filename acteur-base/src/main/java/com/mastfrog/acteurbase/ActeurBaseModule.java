@@ -23,42 +23,25 @@
  */
 package com.mastfrog.acteurbase;
 
+import com.google.inject.AbstractModule;
+import com.mastfrog.guicy.scope.ReentrantScope;
+
 /**
- * A chain of objects which can be added to by either adding class objects or
- * instances, which will take care of instantiating the class objects on the
- * fly.
- * <p>
- * Acteurs can ask for an instance of Chain to be injected, and can insert
- * additional objects into the chain on the fly.
  *
  * @author Tim Boudreau
  */
-public interface Chain<T> extends Iterable<T> {
+public class ActeurBaseModule extends AbstractModule {
 
-    /**
-     * Add an object of type T to this chain.
-     *
-     * @param obj The object, non null, checked for type safety
-     * @return this
-     */
-    Chain add(T obj);
+    private final ReentrantScope scope;
 
-    /**
-     * Add a type which should be instantiated by the iterator on-demand. The
-     * type must be a subtype of T, must not be an inner class or abstract
-     * class. Any of these will throw an immediate error.
-     *
-     * @param type The type
-     * @return this
-     */
-    Chain add(Class<? extends T> type);
+    public ActeurBaseModule(ReentrantScope scope) {
+        this.scope = scope;
 
-    /**
-     * Get any objects this chain should contribute into the injection context.
-     *
-     * @return an array of objects
-     */
-    default Object[] getContextContribution() {
-        return new Object[0];
     }
+
+    @Override
+    protected void configure() {
+        scope.bindTypes(binder(), Chain.class, Deferral.class);
+    }
+
 }

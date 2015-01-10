@@ -99,9 +99,9 @@ import java.util.concurrent.atomic.AtomicReference;
  *
  * @author Tim Boudreau
  */
-public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, BaseState> {
+public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, State> {
 
-    public abstract class BaseState extends AbstractActeur.State<Response, ResponseImpl> implements com.mastfrog.acteur.State {
+    abstract class BaseState extends com.mastfrog.acteur.State {
 
         protected final Page page;
 
@@ -122,19 +122,10 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Base
         }
 
         @Override
-        public final Page getLockedPage() {
-            return page;
-        }
-
-        @Override
         public final Acteur getActeur() {
             return Acteur.this;
         }
 
-        @Override
-        public final Object[] getContext() {
-            return super.context();
-        }
     }
 
     /**
@@ -148,7 +139,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Base
     }
     private static final RT INSTANCE = new RT();
 
-    protected BaseState getState() {
+    protected com.mastfrog.acteur.State getState() {
         return super.getState();
     }
     
@@ -617,7 +608,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Base
                 inOnError = false;
             }
         }
-        private BaseState cachedState;
+        private com.mastfrog.acteur.State cachedState;
 
         Acteur delegate() {
             if (acteur == null) {
@@ -636,7 +627,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Base
         }
 
         @Override
-        public BaseState getState() {
+        public com.mastfrog.acteur.State getState() {
             return cachedState == null ? cachedState = delegate().getState() : cachedState;
         }
 

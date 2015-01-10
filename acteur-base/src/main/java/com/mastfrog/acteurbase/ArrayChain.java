@@ -30,20 +30,22 @@ import java.lang.reflect.Modifier;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-import javax.inject.Inject;
 
 /**
+ * Base class for Chain implementations - a thing you can add either 
+ * class objects of type T or objects of type T to, and it will provide
+ * an <code>Iterator&lt;T&gt;</code> over the result.
  *
  * @author Tim Boudreau
  */
-public class AbstractChain<T> implements Chain<T> {
+public class ArrayChain<T> implements Chain<T> {
 
     private final List<Object> types = new LinkedList<>();
     private final Dependencies deps;
     private final Class<? super T> type;
 
     @SuppressWarnings("unchecked")
-    public AbstractChain(Dependencies deps, Class<? super T> type, List<Object> objs) {
+    public ArrayChain(Dependencies deps, Class<? super T> type, List<Object> objs) {
         this(deps, type);
         for (Object o : objs) {
             if (o instanceof Class<?>) {
@@ -55,14 +57,14 @@ public class AbstractChain<T> implements Chain<T> {
         }
     }
 
-    public AbstractChain(Dependencies deps, Class<? super T> type) {
+    public ArrayChain(Dependencies deps, Class<? super T> type) {
         Checks.notNull("deps", deps);
         Checks.notNull("type", type);
         this.deps = deps;
         this.type = type;
     }
 
-    public final AbstractChain<T> add(Class<? extends T> type) {
+    public final ArrayChain<T> add(Class<? extends T> type) {
         Checks.notNull("type", type);
         if (!this.type.isAssignableFrom(type)) {
             throw new ConfigurationError(type.getName() + " is not a " + this.type.getName());
@@ -83,7 +85,7 @@ public class AbstractChain<T> implements Chain<T> {
         return this;
     }
 
-    public final AbstractChain<T> add(T obj) {
+    public final ArrayChain<T> add(T obj) {
         Checks.notNull("obj", obj);
         if (!this.type.isInstance(obj)) {
             throw new ConfigurationError("Not an instance of " + this.type.getName() + ": " + obj);

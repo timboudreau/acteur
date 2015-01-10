@@ -23,7 +23,7 @@
  */
 package com.mastfrog.acteurbase;
 
-import com.mastfrog.acteurbase.AbstractActeur.State;
+import com.mastfrog.acteurbase.ActeurState;
 import com.mastfrog.acteurbase.impl.Response;
 import com.mastfrog.acteurbase.impl.ResponseImpl;
 import java.util.List;
@@ -35,12 +35,12 @@ import org.junit.Assert;
  *
  * @author Tim Boudreau
  */
-class TestCallback implements ChainCallback<AbstractActeur<Response, ResponseImpl, State<Response, ResponseImpl>>, AbstractActeur.State<Response, ResponseImpl>, AbstractChain<AbstractActeur<Response, ResponseImpl, AbstractActeur.State<Response, ResponseImpl>>>, Response, ResponseImpl> {
+class TestCallback implements ChainCallback<AbstractActeur<Response, ResponseImpl, ActeurState<Response, ResponseImpl>>, ActeurState<Response, ResponseImpl>, ArrayChain<AbstractActeur<Response, ResponseImpl, ActeurState<Response, ResponseImpl>>>, Response, ResponseImpl> {
 
     private final CountDownLatch latch;
     private Throwable ex;
     private Boolean done;
-    private AbstractActeur.State<Response, ResponseImpl> state;
+    private ActeurState<Response, ResponseImpl> state;
     List<ResponseImpl> responses;
     private Boolean rejected;
 
@@ -54,7 +54,7 @@ class TestCallback implements ChainCallback<AbstractActeur<Response, ResponseImp
     }
 
     @Override
-    public synchronized void onDone(AbstractActeur.State<Response, ResponseImpl> state, List<ResponseImpl> responses) {
+    public synchronized void onDone(ActeurState<Response, ResponseImpl> state, List<ResponseImpl> responses) {
         System.out.println("OnDone " + state);
         System.out.println("RESPONSES: " + responses);
         rejected = state.isRejected();
@@ -65,7 +65,7 @@ class TestCallback implements ChainCallback<AbstractActeur<Response, ResponseImp
     }
 
     @Override
-    public synchronized void onRejected(AbstractActeur.State<Response, ResponseImpl> state) {
+    public synchronized void onRejected(ActeurState<Response, ResponseImpl> state) {
         System.out.println("on rejected " + state);
         rejected = state.isRejected();
         this.state = state;
@@ -88,7 +88,7 @@ class TestCallback implements ChainCallback<AbstractActeur<Response, ResponseImp
 
     TestCallback assertActeurClass(Class<? extends AbstractActeur> type) throws Throwable {
         await();
-        AbstractActeur.State<Response, ResponseImpl> state;
+        ActeurState<Response, ResponseImpl> state;
         synchronized (this) {
             state = this.state;
         }
@@ -150,12 +150,12 @@ class TestCallback implements ChainCallback<AbstractActeur<Response, ResponseImp
     }
 
     @Override
-    public void onBeforeRunOne(AbstractChain<AbstractActeur<Response, ResponseImpl, AbstractActeur.State<Response, ResponseImpl>>> chain) {
+    public void onBeforeRunOne(ArrayChain<AbstractActeur<Response, ResponseImpl, ActeurState<Response, ResponseImpl>>> chain) {
         System.out.println("On before run one " + chain);
     }
 
     @Override
-    public void onAfterRunOne(AbstractChain<AbstractActeur<Response, ResponseImpl, State<Response, ResponseImpl>>> chain, AbstractActeur<Response, ResponseImpl, State<Response, ResponseImpl>> acteur) {
+    public void onAfterRunOne(ArrayChain<AbstractActeur<Response, ResponseImpl, ActeurState<Response, ResponseImpl>>> chain, AbstractActeur<Response, ResponseImpl, ActeurState<Response, ResponseImpl>> acteur) {
         System.out.println("On after run one " + acteur);
     }
 }

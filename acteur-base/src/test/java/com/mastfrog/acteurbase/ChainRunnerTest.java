@@ -54,11 +54,11 @@ public class ChainRunnerTest {
     ReentrantScope scope;
     Dependencies deps;
     ExecutorService svc;
-    AbstractChain<AbstractActeur<Response, ResponseImpl, AbstractActeur.State<Response, ResponseImpl>>> chain;
-    AbstractChain<AbstractActeur<Response, ResponseImpl, AbstractActeur.State<Response, ResponseImpl>>> rejectIt;
-    AbstractChain<AbstractActeur<Response, ResponseImpl, AbstractActeur.State<Response, ResponseImpl>>> dontRespond;
-    AbstractChain<AbstractActeur<Response, ResponseImpl, AbstractActeur.State<Response, ResponseImpl>>> plainChain;
-    AbstractChain<AbstractActeur<Response, ResponseImpl, AbstractActeur.State<Response, ResponseImpl>>> errorChain;
+    ArrayChain<AbstractActeur<Response, ResponseImpl, ActeurState<Response, ResponseImpl>>> chain;
+    ArrayChain<AbstractActeur<Response, ResponseImpl, ActeurState<Response, ResponseImpl>>> rejectIt;
+    ArrayChain<AbstractActeur<Response, ResponseImpl, ActeurState<Response, ResponseImpl>>> dontRespond;
+    ArrayChain<AbstractActeur<Response, ResponseImpl, ActeurState<Response, ResponseImpl>>> plainChain;
+    ArrayChain<AbstractActeur<Response, ResponseImpl, ActeurState<Response, ResponseImpl>>> errorChain;
     Timer timer = new Timer();
 
     @Test(timeout = 10000)
@@ -71,11 +71,11 @@ public class ChainRunnerTest {
         TestCallback errorChainResults = new TestCallback();
         TestCallback rejectChainResults = new TestCallback();
         try (AutoCloseable cl = scope.enter()) {
-            cr.run(chain, chainWithDeferResults, cancelled);
-            cr.run(dontRespond, dontRespondChainResults, cancelled);
-            cr.run(plainChain, plainChainResults, cancelled);
-            cr.run(errorChain, errorChainResults, cancelled);
-            cr.run(rejectIt, rejectChainResults, cancelled);
+            cr.submit(chain, chainWithDeferResults, cancelled);
+            cr.submit(dontRespond, dontRespondChainResults, cancelled);
+            cr.submit(plainChain, plainChainResults, cancelled);
+            cr.submit(errorChain, errorChainResults, cancelled);
+            cr.submit(rejectIt, rejectChainResults, cancelled);
         }
         chainWithDeferResults.assertGotResponse().assertActeurClass(AddedA.class).throwIfError().assertNotRejected();
         dontRespondChainResults.assertNoResponse().throwIfError();
@@ -86,9 +86,9 @@ public class ChainRunnerTest {
     @Test(timeout = 20000)
     public void testMultiChainRunner() throws Exception, Throwable {
         AtomicBoolean cancelled = new AtomicBoolean();
-        List<AbstractChain<AbstractActeur<Response, ResponseImpl, AbstractActeur.State<Response, ResponseImpl>>>> l = new LinkedList<>();
+        List<ArrayChain<AbstractActeur<Response, ResponseImpl, ActeurState<Response, ResponseImpl>>>> l = new LinkedList<>();
         for (int i = 0; i < 5; i++) {
-            AbstractChain<AbstractActeur<Response, ResponseImpl, AbstractActeur.State<Response, ResponseImpl>>> ch
+            ArrayChain<AbstractActeur<Response, ResponseImpl, ActeurState<Response, ResponseImpl>>> ch
                     = new NamedChain("Chain " + i, deps, AbstractActeur.class)
                     .add(FirstA.class).add(Rejecter.class).add(SecondWithoutTimeoutA.class).add(EndA.class);
             l.add(ch);
@@ -96,20 +96,20 @@ public class ChainRunnerTest {
         l.add(plainChain);
         ChainsRunner cr = new ChainsRunner(svc, scope, new ChainRunner(svc, scope));
         TestCallback callback = new TestCallback();
-        cr.run(l, callback, cancelled);
+        cr.submit(l, callback, cancelled);
         callback.throwIfError().assertNotRejected().assertGotResponse();
 
         l.remove(l.size() - 1);
         callback = new TestCallback();
-        cr.run(l, callback, cancelled);
+        cr.submit(l, callback, cancelled);
         callback.throwIfError().assertNoResponse();
     }
 
-    static class NamedChain extends AbstractChain<AbstractActeur<Response, ResponseImpl, AbstractActeur.State<Response, ResponseImpl>>> {
+    static class NamedChain extends ArrayChain<AbstractActeur<Response, ResponseImpl, ActeurState<Response, ResponseImpl>>> {
 
         private final String name;
 
-        public NamedChain(String name, Dependencies deps, Class<? super AbstractActeur<Response, ResponseImpl, AbstractActeur.State<Response, ResponseImpl>>> type) {
+        public NamedChain(String name, Dependencies deps, Class<? super AbstractActeur<Response, ResponseImpl, ActeurState<Response, ResponseImpl>>> type) {
             super(deps, type);
             this.name = name;
         }
@@ -171,7 +171,7 @@ public class ChainRunnerTest {
 
         FirstA() {
             System.out.println("firstA " + Thread.currentThread());
-            setState(new State<Response, ResponseImpl>("hello"));
+            setState(new ActeurState<Response, ResponseImpl>("hello"));
         }
     }
 
@@ -181,7 +181,7 @@ public class ChainRunnerTest {
         SecondA(String msg, Timer timer, Deferral defer) {
             System.out.println("secondA " + msg + " " + Thread.currentThread());
             response().add(Headers.CONTENT_ENCODING, "foo " + msg);
-            setState(new AbstractActeur.State<Response, ResponseImpl>(23));
+            setState(new ActeurState<Response, ResponseImpl>(23));
             System.out.println("defer");
             final Resumer resume = defer.defer();
             timer.schedule(new TimerTask() {
@@ -201,7 +201,7 @@ public class ChainRunnerTest {
         SecondWithoutTimeoutA(String msg) {
             System.out.println("secondA " + msg + " " + Thread.currentThread());
             response().add(Headers.CONTENT_ENCODING, "foo " + msg);
-            setState(new AbstractActeur.State<Response, ResponseImpl>(23));
+            setState(new ActeurState<Response, ResponseImpl>(23));
         }
     }
 
@@ -212,7 +212,7 @@ public class ChainRunnerTest {
         FinalA(String msg, Integer val, Chain chain) {
             System.out.println("finalA " + val + " " + Thread.currentThread());
             response().add(Headers.ACCEPT, "3 ");
-            setState(new AbstractActeur.State<Response, ResponseImpl>(0.5F));
+            setState(new ActeurState<Response, ResponseImpl>(0.5F));
             chain.add(AddedA.class);
             chain.add(ErrorA.class); // will not be called because AddedA sets teh response code
         }
@@ -224,7 +224,7 @@ public class ChainRunnerTest {
         AddedA(Float f) {
             System.out.println("AddedA " + f + " " + Thread.currentThread());
             response().setStatus(HttpResponseStatus.CREATED);
-            setState(new AbstractActeur.State<Response, ResponseImpl>(false));
+            setState(new ActeurState<Response, ResponseImpl>(false));
         }
     }
     
@@ -232,7 +232,7 @@ public class ChainRunnerTest {
         EndA() {
             response().setMessage("foo");
             response().setStatus(HttpResponseStatus.OK);
-            setState( new AbstractActeur.State<Response, ResponseImpl>(false));
+            setState( new ActeurState<Response, ResponseImpl>(false));
         }
     }
 

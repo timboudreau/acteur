@@ -36,10 +36,6 @@
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
-            <artifactId>treadmill</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>${project.groupId}</groupId>
             <artifactId>netty-http-test-harness</artifactId>
             <scope>test</scope>
         </dependency>

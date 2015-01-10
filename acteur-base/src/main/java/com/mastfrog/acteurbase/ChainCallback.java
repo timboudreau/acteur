@@ -26,20 +26,59 @@ package com.mastfrog.acteurbase;
 import java.util.List;
 
 /**
+ * Callback which is notified on various events while a chain is being run.
  *
  * @author Tim Boudreau
  */
-public interface ChainCallback<A extends AbstractActeur<T, R, S>, S extends AbstractActeur.State<T, R>, P extends Chain<? extends AbstractActeur<T, R, ?>>, T, R extends T> {
+public interface ChainCallback<A extends AbstractActeur<T, R, S>, S extends ActeurState<T, R>, P extends Chain<? extends AbstractActeur<T, R, ?>>, T, R extends T> {
 
+    /**
+     * Executing the chain or chains has completed, with the passed state and
+     * the passed list of objects.
+     *
+     * @param state The state
+     * @param responses A list of response objects constructed by some or all of
+     * the AbstractActeurs that ran
+     */
     void onDone(S state, List<R> responses);
 
+    /**
+     * An acteur indicated it cannot process whatever it was processing and is
+     * kicking control back to the callback.
+     *
+     * @param state The state + acteur that rejected it
+     */
     void onRejected(S state);
 
+    /**
+     * Called when the chain was completed without any acteur finishing the
+     * work.
+     */
     void onNoResponse();
 
+    /**
+     * Called before each AbstractActeur in the chain is run. The acteur has not
+     * yet been instantiated when this is called. Used by the Acteur web
+     * framework to set the threadlocal reference to the Page, which its State
+     * subclasses need access to.
+     *
+     * @param chain The chain in question
+     */
     void onBeforeRunOne(P chain);
 
+    /**
+     * Called after each AbstractActeur is run.
+     *
+     * @param chain The chain
+     * @param acteur The acteur that was just run
+     */
     void onAfterRunOne(P chain, A acteur);
 
+    /**
+     * Called if an exception is thrown during processing. Execution of the
+     * chain is aborted if this is called.
+     *
+     * @param ex The throwable
+     */
     void onFailure(Throwable ex);
 }

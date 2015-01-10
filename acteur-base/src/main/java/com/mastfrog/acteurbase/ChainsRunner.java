@@ -31,6 +31,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
+ * Runs multiple chains, calling the callback when one has finished the work.
  *
  * @author Tim Boudreau
  */
@@ -40,18 +41,55 @@ public class ChainsRunner {
     private final ReentrantScope scope;
     private final ChainRunner chainRunner;
 
+    /**
+     * Create a ChainsRunner
+     *
+     * @param svc The ExecutorService which will provide threads to run the work
+     * @param scope The scope types AbstractActeurs pass between them will be
+     * bound in
+     * @param chainRunner A runner which will run individual chains
+     */
     public ChainsRunner(ExecutorService svc, ReentrantScope scope, ChainRunner chainRunner) {
         this.svc = svc;
         this.scope = scope;
         this.chainRunner = chainRunner;
     }
 
-    public <A extends AbstractActeur<T, R, S>, S extends AbstractActeur.State<T, R>, P extends Chain<? extends A>, T, R extends T>
-            void run(Iterable<P> chains, ChainCallback<A, S, P, T, R> onDone, AtomicBoolean cancelled, Object... initialContext) {
+    /**
+     * Create a ChainsRunner
+     *
+     * @param svc The ExecutorService which will provide threads to run the work
+     * @param scope The scope types AbstractActeurs pass between them will be
+     * bound in
+     */
+    public ChainsRunner(ExecutorService svc, ReentrantScope scope) {
+        this(svc, scope, new ChainRunner(svc, scope));
+    }
+
+    /**
+     * Submit an {@link java.lang.Iterable} of {@link Chain} objects to be run
+     * sequentially until one satisfies the work to be done.
+     *
+     * @param <A> The type of acteur.
+     * @param <S> The type of state
+     * @param <P> The type of chain
+     * @param <T> The public type the {@link AbstractActeur} is parameterized on
+     * @param <R> The implementation type the {@link AbstractActeur} is
+     * parameterized on
+     * @param chains An iterable collection of chains
+     * @param onDone The callback to be notified when the work has completed, or
+     * the chains have all been completed without success, or on failure
+     * @param cancelled An atomic boolean which will be checked - if true, the
+     * work will be aborted.
+     * @param initialContext Any objects which should be available for injection
+     * into the {@link AbstractActeur}s in the chain.
+     */
+    public <A extends AbstractActeur<T, R, S>, S extends ActeurState<T, R>, P extends Chain<? extends A>, T, R extends T>
+            void submit(Iterable<P> chains, ChainCallback<A, S, P, T, R> onDone, AtomicBoolean cancelled, Object... initialContext) {
         svc.submit(scope.wrap(new OneChainRun<>(svc, onDone, chains.iterator(), cancelled), initialContext));
     }
 
-    class OneChainRun<A extends AbstractActeur<T, R, S>, S extends AbstractActeur.State<T, R>, P extends Chain<? extends A>, T, R extends T> implements ChainCallback<A, S, P, T, R>, Callable<Void> {
+    class OneChainRun<A extends AbstractActeur<T, R, S>, S extends ActeurState<T, R>, P extends Chain<? extends A>, T, R extends T> implements ChainCallback<A, S, P, T, R>, Callable<Void> {
 
         private final ExecutorService svc;
 
@@ -69,11 +107,9 @@ public class ChainsRunner {
         @Override
         public void onNoResponse() {
             boolean hasNext = iter.hasNext();
-            System.out.println("OneChainRunner onNoResponse hasNext " + hasNext);
             if (!hasNext) {
                 this.onDone.onNoResponse();
             } else {
-                System.out.println("Resubmit chains runner");
                 svc.submit(this);
             }
         }
@@ -85,14 +121,11 @@ public class ChainsRunner {
             }
             try {
                 boolean hasNext = iter.hasNext();
-                System.out.println("ChainsRunner.call hasNext " + hasNext);
                 if (!hasNext) {
-                    System.out.println("send on no response");
                     this.onDone.onNoResponse();
                 } else {
                     P c = iter.next();
-                    System.out.println("Run chain " + c);
-                    chainRunner.run(c, this, cancelled);
+                    chainRunner.submit(c, this, cancelled);
                 }
             } catch (Exception e) {
                 e.printStackTrace();
@@ -102,19 +135,16 @@ public class ChainsRunner {
 
         @Override
         public void onDone(S state, List<R> responses) {
-            System.out.println("onDone " + state);
             this.onDone.onDone(state, responses);
         }
 
         @Override
         public void onFailure(Throwable ex) {
-            System.out.println("OneChainRunner ON FAILURE");
             this.onDone.onFailure(ex);
         }
 
         @Override
         public void onRejected(S state) {
-            System.out.println("On rejected " + state);
             onNoResponse();
         }
 

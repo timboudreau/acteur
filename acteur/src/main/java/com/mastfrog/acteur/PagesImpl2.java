@@ -24,11 +24,10 @@
 package com.mastfrog.acteur;
 
 import com.google.inject.name.Named;
-import com.mastfrog.acteur.Acteur.BaseState;
 import com.mastfrog.acteur.errors.ResponseException;
 import static com.mastfrog.acteur.server.ServerModule.DELAY_EXECUTOR;
 import com.mastfrog.acteur.util.RequestID;
-import com.mastfrog.acteurbase.AbstractChain;
+import com.mastfrog.acteurbase.ArrayChain;
 import com.mastfrog.acteurbase.ChainCallback;
 import com.mastfrog.acteurbase.ChainRunner;
 import com.mastfrog.acteurbase.ChainsRunner;
@@ -38,11 +37,16 @@ import com.mastfrog.url.Path;
 import com.mastfrog.util.Exceptions;
 import com.mastfrog.util.collections.CollectionUtils;
 import com.mastfrog.util.collections.Converter;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufOutputStream;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
+import io.netty.handler.codec.http.DefaultFullHttpResponse;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
+import io.netty.handler.codec.http.HttpVersion;
+import java.io.PrintStream;
 import java.nio.charset.Charset;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -87,8 +91,6 @@ class PagesImpl2 {
     public CountDownLatch onEvent(RequestID id, Event<?> event, Channel channel) {
         CountDownLatch latch = new CountDownLatch(1);
 
-        System.out.println("PI2 EVENT " + id + " - " + event);
-
         Closables clos = new Closables(channel, application.control());
         ToChain chainConverter = new ToChain(id, event, clos);
         Iterable<PageChain> pagesIterable
@@ -96,10 +98,9 @@ class PagesImpl2 {
 
         CB callback = new CB(id, event, latch, channel);
 
-        System.out.println("Submit " + pagesIterable + " to " + ch);
         CancelOnChannelClose closer = new CancelOnChannelClose();
         channel.closeFuture().addListener(closer);
-        ch.run(pagesIterable, callback, closer.cancelled, id, event, clos);
+        ch.submit(pagesIterable, callback, closer.cancelled, id, event, clos);
 
         return latch;
     }
@@ -115,7 +116,7 @@ class PagesImpl2 {
 
     }
 
-    class CB implements ChainCallback<Acteur, BaseState, PageChain, Response, ResponseImpl>, ResponseSender {
+    class CB implements ChainCallback<Acteur, com.mastfrog.acteur.State, PageChain, Response, ResponseImpl>, ResponseSender {
 
         private final Event<?> event;
 
@@ -132,20 +133,18 @@ class PagesImpl2 {
 
         @Override
         public void onBeforeRunOne(PageChain chain) {
-            System.out.println("ON BEFORE RUN ONE " + chain.page);
             Page.set(chain.page);
         }
 
         @Override
         public void onAfterRunOne(PageChain chain, Acteur acteur) {
-            System.out.println("ON AFTER ONE " + chain.page + " - " + acteur);
             if (Page.get() == chain.page) {
                 Page.clear();
             }
         }
 
         @Override
-        public void onDone(BaseState state, List<ResponseImpl> responses) {
+        public void onDone(com.mastfrog.acteur.State state, List<ResponseImpl> responses) {
             ResponseImpl finalR = new ResponseImpl();
             for (ResponseImpl r : responses) {
                 finalR.merge(r);
@@ -155,7 +154,7 @@ class PagesImpl2 {
         }
 
         @Override
-        public void onRejected(BaseState state) {
+        public void onRejected(com.mastfrog.acteur.State state) {
             throw new UnsupportedOperationException("Should not ever be called from ChainsRunner");
         }
 
@@ -167,15 +166,12 @@ class PagesImpl2 {
 
         @Override
         public void onFailure(Throwable ex) {
-            System.out.println("ON FAILURE " + ex.getClass().getName());
-//            application.internalOnError(ex);
             uncaughtException(Thread.currentThread(), ex);
             latch.countDown();
         }
 
         @Override
-        public void receive(final Acteur acteur, final BaseState state, final ResponseImpl response) {
-            System.out.println("RECEIVE " + acteur + " with " + state);
+        public void receive(final Acteur acteur, final com.mastfrog.acteur.State state, final ResponseImpl response) {
             if (response.isModified() && response.status != null) {
                 // Actually send the response
                 try {
@@ -230,7 +226,6 @@ class PagesImpl2 {
 
         @Override
         public void uncaughtException(Thread thread, Throwable thrwbl) {
-            System.out.println("UCAUGHT EX ON " + thread.getName());
             try {
                 if (!(thrwbl instanceof ResponseException)) {
                     thrwbl.printStackTrace();
@@ -239,11 +234,10 @@ class PagesImpl2 {
                 if (thrwbl instanceof ThreadDeath || thrwbl instanceof OutOfMemoryError) {
                     Exceptions.chuck(thrwbl);
                 }
-                System.out.println("Send internal on error");
                 application.internalOnError(thrwbl);
 
-                System.out.println("Create error acteur");
-
+                // V1.6 - we no longer have access to the page where the exception was
+                // thrown
                 ErrorPage pg = application.getDependencies().getInstance(ErrorPage.class);
                 pg.setApplication(application);
                 try (AutoCloseable ac = Page.set(pg)) {
@@ -251,14 +245,23 @@ class PagesImpl2 {
                         Acteur err = Acteur.error(null, pg, thrwbl,
                                 application.getDependencies().getInstance(HttpEvent.class), true);
 
-                        System.out.println("SEND ERR TO RESPONSE");
                         // XXX this might recurse badly
                         receive(err, err.getState(), err.getResponse());
                     }
                 }
             } catch (Throwable ex) {
-                System.err.println("WHOA!");
-                ex.printStackTrace();
+                try {
+                    if (channel.isOpen()) {
+                        ByteBuf buf = channel.alloc().buffer();
+                        try (PrintStream ps = new PrintStream(new ByteBufOutputStream(buf))) {
+                            ex.printStackTrace(ps);
+                        }
+                        DefaultFullHttpResponse resp = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.INTERNAL_SERVER_ERROR, buf);
+                        channel.writeAndFlush(resp).addListener(ChannelFutureListener.CLOSE);
+                    }
+                } finally {
+                    application.internalOnError(ex);
+                }
             }
         }
 
@@ -305,6 +308,7 @@ class PagesImpl2 {
         }
     }
 
+    // A fake page for use with errors
     static class ErrorPage extends Page {
 
     }
@@ -328,7 +332,6 @@ class PagesImpl2 {
                 Path pth = ((HttpEvent) event).getPath();
                 Thread.currentThread().setName(pth + " for " + r.getClass().getName());
             }
-            System.out.println("create page chain for " + r);
             PageChain result = new PageChain(application.getDependencies(), Acteur.class, r, r, id, event, clos);
             return result;
         }
@@ -339,10 +342,11 @@ class PagesImpl2 {
         }
     }
 
-    static class PageChain extends AbstractChain<Acteur> {
+    static class PageChain extends ArrayChain<Acteur> {
 
         private final Page page;
         private final Object[] ctx;
+        private AtomicBoolean first = new AtomicBoolean(true);
 
         public PageChain(Dependencies deps, Class<? super Acteur> type, Page page, Object... ctx) {
             super(deps, type, page.acteurs());
@@ -352,7 +356,14 @@ class PagesImpl2 {
 
         @Override
         public Object[] getContextContribution() {
-            return ctx;
+            // First round we need to wrap the callable in the scope with
+            // these objects;  they will already be in scope when it is
+            // wrapped for a subsequent call
+            if (first.compareAndSet(true, false)) {
+                return ctx;
+            } else {
+                return new Object[0];
+            }
         }
 
         public String toString() {

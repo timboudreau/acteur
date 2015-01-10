@@ -279,7 +279,7 @@ public class AppTest {
         }
 
         @Override
-        public void receive(Acteur action, BaseState state, ResponseImpl response) {
+        public void receive(Acteur action, com.mastfrog.acteur.State state, ResponseImpl response) {
             assertNotNull(state);
             System.err.println("Received " + state);
             synchronized (this) {

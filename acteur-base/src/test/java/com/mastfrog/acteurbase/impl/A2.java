@@ -25,28 +25,29 @@ package com.mastfrog.acteurbase.impl;
 
 import com.mastfrog.acteurbase.AbstractActeur;
 import com.mastfrog.acteurbase.ActeurResponseFactory;
+import com.mastfrog.acteurbase.ActeurState;
 import io.netty.handler.codec.http.HttpResponseStatus;
 
 /**
  *
  * @author Tim Boudreau
  */
-public class A2 extends AbstractActeur<Response, ResponseImpl, AbstractActeur.State<Response, ResponseImpl>> {
+public class A2 extends AbstractActeur<Response, ResponseImpl, ActeurState<Response, ResponseImpl>> {
 
     protected A2() {
         super(INSTANCE);
     }
 
     protected A2 reject() {
-        setState(new State<Response, ResponseImpl>(true));
+        setState(new ActeurState<Response, ResponseImpl>(true));
         return this;
     }
 
     protected A2 next(Object... context) {
         if (context == null || context.length == 0) {
-            setState(new State<Response, ResponseImpl>(false));
+            setState(new ActeurState<Response, ResponseImpl>(false));
         } else {
-            setState(new State<Response, ResponseImpl>(true));
+            setState(new ActeurState<Response, ResponseImpl>(true));
         }
         return this;
     }
@@ -54,7 +55,7 @@ public class A2 extends AbstractActeur<Response, ResponseImpl, AbstractActeur.St
     protected A2 reply(HttpResponseStatus status, Object response) {
         response().setStatus(status);
         response().setMessage(response);
-        setState(new State<Response, ResponseImpl>(response == null ? new Object[0] : new Object[]{response}));
+        setState(new ActeurState<Response, ResponseImpl>(response == null ? new Object[0] : new Object[]{response}));
         return this;
     }
 

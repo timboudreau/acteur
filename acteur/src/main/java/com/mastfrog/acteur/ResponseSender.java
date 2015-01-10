@@ -31,5 +31,5 @@ import com.mastfrog.acteur.Acteur.BaseState;
  * @author Tim Boudreau
  */
 interface ResponseSender extends Thread.UncaughtExceptionHandler {
-    void receive(Acteur action, BaseState state, ResponseImpl response);
+    void receive(Acteur action, com.mastfrog.acteur.State state, ResponseImpl response);
 }

@@ -29,18 +29,45 @@ import java.util.Arrays;
 /**
  * Base class for Acteurs. Implementations should implement ResponseFactory and
  * not expose generic types directly.
+ * <p>
+ * An acteur is a function object which uses its constructor to do whatever work
+ * it is going to do. The output of the constructor is its {@link State}.
+ * <p>
+ * An acteur also has a response object, which it may alter. Acteurs in a chain
+ * each have their own response object (for thread-safety purposes); these are
+ * coalesced into a final result.
+ * <p>
+ * Acteurs may provide objects to subsequent acteurs in a chain by including
+ * them in the state's context.
+ * <p>
+ * Types which are passed between Acteurs need to be registered with the Guice
+ * binder and the {@link com.mastfrog.guicy.scope.ReentrantScope} used by the
+ * {@link ChainRunner}.
  *
  * @author Tim Boudreau
  */
-public class AbstractActeur<T, R extends T, S extends AbstractActeur.State<T, R>> {
+public class AbstractActeur<T, R extends T, S extends ActeurState<T, R>> {
 
     private S state;
     private R response;
-    private final ActeurResponseFactory<T, R> factory;
+    final ActeurResponseFactory<T, R> factory;
+    /**
+     * If running with assertions enabled, this will be a throwable which can be
+     * used to determine the instantiation point of this AbstractActeur.
+     */
     protected Throwable creationStackTrace;
 
-    public AbstractActeur(ActeurResponseFactory<T, R> rf) {
-        this.factory = rf;
+    /**
+     * Create a new AbstractActeur.
+     *
+     * @param factory The thing which is responsible for creating the response
+     * object on-demand, and determining if it is modified and so should be
+     * included in the list of response objects passed to the callback when the
+     * chain is completed.
+     */
+    protected AbstractActeur(ActeurResponseFactory<T, R> factory) {
+        Checks.notNull("factory", factory);
+        this.factory = factory;
         boolean asserts = false;
         assert asserts = true;
         if (asserts) {
@@ -84,77 +111,13 @@ public class AbstractActeur<T, R extends T, S extends AbstractActeur.State<T, R>
         return response;
     }
 
+    /**
+     * Getter for the response which will not create it if nothing else has
+     * triggered its creation.
+     *
+     * @return
+     */
     protected R getResponse() {
         return response;
-    }
-
-    /**
-     * State of an Acteur
-     *
-     * @param <T> The public type
-     * @param <R> The implementation type
-     */
-    public static class State<T, R extends T> {
-
-        private final Object[] context;
-        private final boolean rejected;
-        AbstractActeur<T, R, ?> acteur;
-        protected Throwable creationStackTrace;
-
-        private State(boolean rejected, Object... context) {
-            this.context = context;
-            this.rejected = rejected;
-            boolean asserts = false;
-            assert asserts = true;
-            if (asserts) {
-                creationStackTrace = new Throwable();
-            }
-        }
-
-        public State(Object... context) {
-            this(false, context);
-        }
-
-        public State(boolean rejected) {
-            this(rejected, (Object[]) null);
-        }
-
-        protected boolean isRejected() {
-            return rejected;
-        }
-
-        protected Object[] context() {
-            return context;
-        }
-
-        protected AbstractActeur<T, R, ?> getActeur() {
-            return acteur;
-        }
-
-        public boolean isFinished() {
-            AbstractActeur<T, R, ?> acteur = getActeur();
-            if (getActeur() == null) {
-                IllegalStateException ex = new IllegalStateException(getClass().getName()
-                        + " does not have its acteur set");
-                if (creationStackTrace != null) {
-                    ex.initCause(creationStackTrace);
-                }
-                ex.printStackTrace();
-                throw ex;
-            }
-            R r = getActeur().getResponse();
-            return r != null && getActeur().factory.isFinished(r);
-        }
-
-        R response() {
-            R r = getActeur().getResponse();
-            return r != null && getActeur().factory.isModified(r) ? r : null;
-        }
-
-        public String toString() {
-            return getClass().getName() + " rej? " + rejected
-                    + " for " + getActeur() + " with " + (context == null
-                            ? " (none0)" : Arrays.asList(context).toString());
-        }
     }
 }

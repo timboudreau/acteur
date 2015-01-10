@@ -25,6 +25,9 @@ package com.mastfrog.acteurbase;
 
 /**
  * Does the plumbing of allowing an AbstractActeur to work with a ChainRunner.
+ * The typical use case of AbstractActeur is to write a subclass for your users
+ * to subclass, which provides a specific state type and hides the generic
+ * signatures.
  *
  * @param <T> The exposed type
  * @param <ImplType> The implementation type

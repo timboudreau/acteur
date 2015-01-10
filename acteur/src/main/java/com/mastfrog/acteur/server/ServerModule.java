@@ -52,6 +52,8 @@ import com.mastfrog.acteur.util.BasicCredentials;
 import com.mastfrog.acteur.util.HttpMethod;
 import com.mastfrog.acteur.util.Server;
 import com.mastfrog.acteur.util.ServerControl;
+import com.mastfrog.acteurbase.ActeurBaseModule;
+import com.mastfrog.acteurbase.Chain;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.guicy.annotations.Defaults;
 import com.mastfrog.guicy.scope.ReentrantScope;
@@ -59,7 +61,6 @@ import com.mastfrog.parameters.KeysValues;
 import com.mastfrog.settings.MutableSettings;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.settings.SettingsBuilder;
-import com.mastfrog.treadmill.Treadmill;
 import com.mastfrog.url.Path;
 import com.mastfrog.util.Codec;
 import com.mastfrog.util.ConfigurationError;
@@ -269,7 +270,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
         // Acteurs can ask for a Deferral to pause execution while some
         // other operation completes, such as making an external HTTP request
         // to another server
-        scope.bindTypes(binder(), Treadmill.Deferral.class);
+        install(new ActeurBaseModule(scope));
 
         Provider<Application> appProvider = binder().getProvider(Application.class);
         Provider<ApplicationControl> appControlProvider = binder().getProvider(ApplicationControl.class);
@@ -340,6 +341,31 @@ public class ServerModule<A extends Application> extends AbstractModule {
         bind(BuiltInPageAnnotationHandler.class).asEagerSingleton();
         bind(ResponseHeaders.class).toProvider(ResponseHeadersProvider.class);
         bind(ScheduledExecutorService.class).annotatedWith(Names.named(DELAY_EXECUTOR)).toProvider(DelayExecutorProvider.class);
+        // allow Chain<Acteur> to be injected
+        bind(new CL()).toProvider(ChainProvider.class);
+    }
+
+    static class CL extends TypeLiteral<Chain<Acteur>> {
+
+    }
+
+    static class ChainProvider implements Provider<Chain<Acteur>> {
+
+        @SuppressWarnings("unchecked")
+        private final Provider<Chain> chain;
+
+        @SuppressWarnings("unchecked")
+        @Inject
+        ChainProvider(Provider<Chain> chain) {
+            this.chain = chain;
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public Chain<Acteur> get() {
+            return chain.get();
+        }
+
     }
 
     @Singleton
