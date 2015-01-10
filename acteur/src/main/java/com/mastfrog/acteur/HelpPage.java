@@ -80,7 +80,7 @@ final class HelpPage extends Page {
         }
 
         @Override
-        public State getState() {
+        public BaseState getState() {
             return new RespondWith(200);
         }
 

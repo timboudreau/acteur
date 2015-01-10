@@ -48,7 +48,6 @@ public class CompApp extends Application {
     @Override
     public void onError(Throwable err) {
         System.out.println("OUCH! ");
-        err.printStackTrace();
         this.err = err;
     }
 
@@ -82,10 +81,11 @@ public class CompApp extends Application {
 
         @Override
         public ErrorResponse evaluate(Throwable t, Acteur acteur, Page page, HttpEvent evt) {
+            System.out.println("EVALUATE " + t.getClass().getName());
             if (t instanceof ConfigurationException) {
-                if (page instanceof Fails) {
+//                if (page instanceof Fails) {
                     return Err.conflict("werg");
-                }
+//                }
             }
             return null;
         }

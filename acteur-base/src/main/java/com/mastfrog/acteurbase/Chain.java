@@ -32,4 +32,8 @@ public interface Chain<T> extends Iterable<T> {
     public Chain add(T obj);
 
     public Chain add(Class<? extends T> type);
+    
+    default Object[] getContextContribution() {
+        return new Object[0];
+    }
 }

@@ -56,37 +56,43 @@ public final class ChainRunner {
         this.scope = scope;
     }
 
-    public <P extends Chain<? extends AbstractActeur<T, R, ?>>, T, R extends T> void run(P chain, ChainCallback<P, T, R> onDone) {
-        CC<P, T, R> cc = new CC<>(svc, scope, chain, onDone);
+    public <A extends AbstractActeur<T, R, S>, S extends AbstractActeur.State<T, R>, P extends Chain<? extends A>, T, R extends T>
+            void run(P chain, ChainCallback<A, S, P, T, R> onDone, AtomicBoolean cancelled) {
+        System.out.println("ChainRunner run " + chain);
+        ActeurInvoker<A, S, P, T, R> cc = new ActeurInvoker<>(svc, scope, chain, onDone, cancelled);
         // Enter the scope, with the Chain (so it can be dynamically added to)
         // and the deferral, which can be used to pause the chain
         try (QuietAutoCloseable ac = scope.enter(chain, cc.deferral)) {
+            System.out.println("Submit " + chain);
             // Wrap the callable so whenn it is invoked, we will be in the
             // scope with the same contents as before
             svc.submit(scope.wrap(cc));
         }
     }
 
-    static class CC<P extends Chain<? extends AbstractActeur<T, R, ?>>, T, R extends T> implements Callable<Object[]>, Resumer {
+    static class ActeurInvoker<A extends AbstractActeur<T, R, S>, S extends AbstractActeur.State<T, R>, P extends Chain<? extends A>, T, R extends T> implements Callable<Void>, Resumer {
 
         private final ExecutorService svc;
 
         private final ReentrantScope scope;
-        private final Iterator<? extends AbstractActeur<T, R, ?>> iter;
+        private final Iterator<? extends A> iter;
         private Object[] state = new Object[0];
         private final List<R> responses = new LinkedList<>();
-        private final ChainCallback<P, T, R> onDone;
+        private final ChainCallback<A, S, P, T, R> onDone;
         private final AtomicBoolean deferred = new AtomicBoolean();
         private Callable<?> next;
         final Deferral deferral = new DeferralImpl();
         private final P chain;
+        private final AtomicBoolean cancelled;
 
-        public CC(ExecutorService svc, ReentrantScope scope, P chain, ChainCallback<P, T, R> onDone) {
+        public ActeurInvoker(ExecutorService svc, ReentrantScope scope, P chain, ChainCallback<A, S, P, T, R> onDone, AtomicBoolean cancelled) {
             this.svc = svc;
             this.scope = scope;
             this.iter = chain.iterator();
             this.chain = chain;
             this.onDone = onDone;
+            System.out.println("Create ActeurInvoker with " + chain);
+            this.cancelled = cancelled;
         }
 
         class DeferralImpl implements Deferral {
@@ -94,7 +100,7 @@ public final class ChainRunner {
             @Override
             public Resumer defer() {
                 if (deferred.compareAndSet(false, true)) {
-                    return CC.this;
+                    return ActeurInvoker.this;
                 } else {
                     throw new IllegalStateException("Already deferred");
                 }
@@ -113,82 +119,110 @@ public final class ChainRunner {
         }
 
         @Override
-        public Object[] call() throws Exception {
-            AutoCloseable ac = null;
-            // Optimization - only reenter the scope if we have some state
-            // from previous acteurs to incorporate into it
-            synchronized (this) {
-                if (this.state.length > 0) {
-                    ac = scope.enter(this.state);
-                }
+        public Void call() throws Exception {
+            System.out.println("Chain runner run");
+            if (cancelled.get()) {
+                return null;
             }
-            State<T, R> newState;
-            try {
-                AbstractActeur<T, R, ?> a2 = null;
-                try {
-                    onDone.onBeforeRunOne(chain);
-                    // Instantiate the next acteur, most likely causing its 
-                    // constructor to set its state
-                    a2 = iter.next();
-                    // Get the state, which may compute the state if it is lazy
-                    newState = a2.getState();
-                } finally {
-                    onDone.onAfterRunOne(chain, a2);
+            try (AutoCloseable ctx = scope.enter(chain.getContextContribution())) {
+                System.out.println("Entered with " + chain);
+                AutoCloseable ac = null;
+                // Optimization - only reenter the scope if we have some state
+                // from previous acteurs to incorporate into it
+                synchronized (this) {
+                    if (this.state.length > 0) {
+                        ac = scope.enter(this.state);
+                    }
                 }
-                if (newState.isRejected()) {
-                    onDone.onRejected(newState);
+                S newState;
+                try {
+                    A a2 = null;
+                    try {
+                        System.out.println("call on before run one");
+                        onDone.onBeforeRunOne(chain);
+                        // Instantiate the next acteur, most likely causing its 
+                        // constructor to set its state
+                        System.out.println("Run acteur");
+                        a2 = iter.next();
+                        System.out.println("Ran " + a2);
+                        // Get the state, which may compute the state if it is lazy
+                        newState = a2.getState();
+                        System.out.println("Got state " + newState);
+                    } finally {
+                        onDone.onAfterRunOne(chain, a2);
+                    }
+                    if (newState.isRejected()) {
+                        System.out.println("State was rejected - move on");
+                        onDone.onRejected(newState);
+                        return null;
+                    }
+                    // Add any objects it provided into the scope for the next 
+                    // invocation
+                    addToContext(newState);
+                } catch (Exception | Error e) {
+                    Throwable t = e;
+                    if (e instanceof ProvisionException && e.getCause() != null) {
+                        t = e.getCause();
+                    }
+                    onDone.onFailure(t);
+                    return null;
+                } finally {
+                    if (ac != null) {
+                        ac.close();
+                    }
+                }
+                if (cancelled.get()) {
                     return null;
                 }
-                // Add any objects it provided into the scope for the next 
-                // invocation
-                addToContext(newState);
-            } catch (Exception e) {
-                Throwable t = e;
-                if (e instanceof ProvisionException && e.getCause() != null) {
-                    t = e.getCause();
+                // Get the response, which may be null if it was untouched by the
+                // acteurs execution
+                R resp = newState.response();
+                if (resp != null) {
+                    // Add it into the set of response objects the OnDone will
+                    // coalesce
+                    synchronized (this) {
+                        responses.add(resp);
+                    }
                 }
-                onDone.onFailure(t);
-                return null;
-            } finally {
-                if (ac != null) {
-                    ac.close();
-                }
-            }
-            // Get the response, which may be null if it was untouched by the
-            // acteurs execution
-            R resp = newState.response();
-            if (resp != null) {
-                // Add it into the set of response objects the OnDone will
-                // coalesce
-                synchronized (this) {
-                    responses.add(resp);
-                }
-            }
-            // See if we're done
-            if (!newState.isFinished()) {
-                // If no more Acteurs, tell the callback we give up
-                if (!iter.hasNext()) {
-                    onDone.onNoResponse();
-                } else if (deferred.get()) {
-                    // Store the next iteration with the current scope
-                    // contents, so that when resumer.resume() is called
-                    // we can go back to work
+                // See if we're done
+                if (!newState.isFinished()) {
+                    // If no more Acteurs, tell the callback we give up
+                    if (!iter.hasNext()) {
+                        System.out.println("No more acteurs - onNoResponse");
+                        onDone.onNoResponse();
+                    } else if (deferred.get()) {
+                        // Store the next iteration with the current scope
+                        // contents, so that when resumer.resume() is called
+                        // we can go back to work
+                        System.out.println("Deferred");
 //                    try (QuietAutoCloseable qac = scope.enter(state)) {
-                    next = scope.wrap(this);
+                        next = scope.wrap(this);
 //                    }
+                    } else {
+                        System.out.println("Resumbit this - iter hasNext? " + iter.hasNext());
+                        // Re-wrap "this" in the current scope and tee it up
+                        // to be run
+                        if (!cancelled.get()) {
+                            svc.submit(scope.wrap(this));
+                        }
+                    }
                 } else {
-                    // Re-wrap "this" in the current scope and tee it up
-                    // to be run
-                    svc.submit(scope.wrap(this));
+                    System.out.println("State finished - call onDone and bail");
+                    onDone.onDone(newState, responses);
                 }
-            } else {
-                onDone.onDone(newState, responses);
+                return null;
+            } catch (Exception | Error e) {
+                e.printStackTrace();
+                onDone.onFailure(e);
+                return null;
             }
-            return this.state;
         }
 
         @Override
         public void resume() {
+            if (cancelled.get()) {
+                return;
+            }
             if (deferred.compareAndSet(true, false)) {
                 Callable<?> next = this.next;
                 svc.submit(next);

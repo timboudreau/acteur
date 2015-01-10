@@ -29,17 +29,17 @@ import java.util.List;
  *
  * @author Tim Boudreau
  */
-public interface ChainCallback<P extends Chain<? extends AbstractActeur<T, R, ?>>, T, R extends T> {
+public interface ChainCallback<A extends AbstractActeur<T, R, S>, S extends AbstractActeur.State<T, R>, P extends Chain<? extends AbstractActeur<T, R, ?>>, T, R extends T> {
 
-    void onDone(AbstractActeur.State<T, R> state, List<R> responses);
+    void onDone(S state, List<R> responses);
 
-    void onRejected(AbstractActeur.State<T, R> state);
+    void onRejected(S state);
 
     void onNoResponse();
 
-    void onFailure(Throwable ex);
-
     void onBeforeRunOne(P chain);
 
-    void onAfterRunOne(P chain, AbstractActeur<T, R, ?> acteur);
+    void onAfterRunOne(P chain, A acteur);
+
+    void onFailure(Throwable ex);
 }

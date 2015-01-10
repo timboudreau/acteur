@@ -25,6 +25,7 @@ package com.mastfrog.acteur;
 
 import com.google.common.net.MediaType;
 import com.google.inject.ProvisionException;
+import com.mastfrog.acteur.Acteur.BaseState;
 import com.mastfrog.acteur.errors.Err;
 import com.mastfrog.acteur.errors.ErrorRenderer;
 import com.mastfrog.acteur.errors.ErrorResponse;
@@ -98,9 +99,43 @@ import java.util.concurrent.atomic.AtomicReference;
  *
  * @author Tim Boudreau
  */
-public abstract class Acteur extends AbstractActeur<Response, ResponseImpl> {
+public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, BaseState> {
 
-    Throwable creationStackTrace;
+    public abstract class BaseState extends AbstractActeur.State<Response, ResponseImpl> implements com.mastfrog.acteur.State {
+
+        protected final Page page;
+
+        public BaseState(Object... context) {
+            super(context);
+            page = Page.get();
+            if (page == null) {
+                throw new IllegalStateException("Page not set");
+            }
+        }
+
+        public BaseState(boolean rejected) {
+            super(rejected);
+            page = Page.get();
+            if (page == null) {
+                throw new IllegalStateException("Page not set");
+            }
+        }
+
+        @Override
+        public final Page getLockedPage() {
+            return page;
+        }
+
+        @Override
+        public final Acteur getActeur() {
+            return Acteur.this;
+        }
+
+        @Override
+        public final Object[] getContext() {
+            return super.context();
+        }
+    }
 
     /**
      * Create an acteur.
@@ -110,13 +145,16 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl> {
      */
     protected Acteur() {
         super(INSTANCE);
-        boolean asserts = false;
-        assert asserts = true;
-        if (asserts) {
-            creationStackTrace = new Throwable();
-        }
     }
     private static final RT INSTANCE = new RT();
+
+    protected BaseState getState() {
+        return super.getState();
+    }
+    
+    Throwable creationStackTrace() {
+        return creationStackTrace;
+    }
 
     static class RT extends ActeurResponseFactory<Response, ResponseImpl> {
 
@@ -134,7 +172,9 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl> {
         protected boolean isModified(ResponseImpl obj) {
             return obj != null && obj.isModified();
         }
+
     }
+
     /**
      * If you write an acteur which delegates to another one, implement this so
      * that that other one's changes to the response will be picked up. This
@@ -150,7 +190,6 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl> {
          */
         Acteur getDelegate();
     }
-
 
     protected <T> void add(HeaderValueType<T> decorator, T value) {
         response().add(decorator, value);
@@ -229,61 +268,16 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl> {
     protected void ok() {
         setState(new RespondWith(OK));
     }
-    
+
     protected void reply(HttpResponseStatus status, Object msg) {
         setState(new RespondWith(status, msg));
-    }
-
-    static final class ErrorActeur extends Acteur {
-
-        ErrorActeur(Acteur errSource, HttpEvent evt, Page page, Throwable t, boolean tryErrResponse, boolean log) throws IOException {
-            Throwable orig = t;
-            while (t.getCause() != null) {
-                t = t.getCause();
-            }
-            if (t instanceof ResponseException) {
-                ResponseException rt = (ResponseException) t;
-                setState(new RespondWith(new Err(rt.status(), rt.getMessage())));
-                return;
-            }
-            if (tryErrResponse) {
-                Dependencies deps = page.application.getDependencies();
-                if (t instanceof ProvisionException && t.getCause() != null) {
-                    t = t.getCause();
-                }
-                if (t == null) {
-                    t = orig;
-                }
-                ExceptionEvaluatorRegistry reg = deps.getInstance(ExceptionEvaluatorRegistry.class);
-                ErrorResponse resp = reg.evaluate(t, errSource, page, evt);
-                if (log && resp instanceof Err && ((Err) resp).unhandled) {
-                    page.application.control().internalOnError(t);
-                }
-                if (resp != null) {
-                    ErrorRenderer ren = deps.getInstance(ErrorRenderer.class);
-                    ren.render(resp, response(), evt);
-                    setState(new RespondWith(resp.status()));
-                    return;
-                }
-            }
-            StringBuilder sb = new StringBuilder("Page " + page + " (" + page.getClass().getName() + " threw " + t.getMessage() + '\n');
-            try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-                t.printStackTrace(new PrintStream(out));
-                sb.append(new String(out.toByteArray()));
-            } catch (IOException ioe) {
-            }
-            setState(new RespondWith(HttpResponseStatus.INTERNAL_SERVER_ERROR,
-                    sb.toString()));
-        }
     }
 
     /**
      * A shorthand state for responding with a particular http response code and
      * optional message, which if non-string, will be rendered as JSON.
      */
-    public class RespondWith extends State<Response, ResponseImpl> {
-
-        private final Page page;
+    public class RespondWith extends BaseState {
 
         public RespondWith(int status) {
             this(HttpResponseStatus.valueOf(status));
@@ -299,7 +293,6 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl> {
 
         public RespondWith(ErrorResponse err) {
             super(false);
-            page = Page.get();
             setResponseCode(err.status());
             ErrorRenderer ren = getLockedPage().getApplication().getDependencies().getInstance(ErrorRenderer.class);
             String s;
@@ -314,18 +307,14 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl> {
             }
         }
 
-        /**Acteur.this;
-         * Response which uses JSON
+        /**
+         * Acteur.this; Response which uses JSON
          *
          * @param status
          * @param msg
          */
         public RespondWith(HttpResponseStatus status, Object msg) {
             super(false);
-            page = Page.get();
-            if (page == null) {
-                throw new IllegalStateException("No page set");
-            }
             if (msg instanceof String) {
                 setResponseCode(status);
                 setMessage((String) msg);
@@ -350,7 +339,6 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl> {
         }
 
         public RespondWith(HttpResponseStatus status, String msg) {
-            page = Page.get();
             if (page == null) {
                 IllegalStateException e = new IllegalStateException("Called outside ActionsImpl.onEvent");
                 e.printStackTrace();
@@ -360,15 +348,6 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl> {
             if (msg != null) {
                 setMessage(msg);
             }
-        }
-
-        protected Page getLockedPage() {
-            return page;
-        }
-
-        @Override
-        protected Acteur getActeur() {
-            return (Acteur) super.getActeur();
         }
 
         @Override
@@ -382,7 +361,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl> {
      * A state indicating the acteur neither accepts nor definitively refuses a
      * request.
      */
-    protected class RejectedState extends State<Response, ResponseImpl> {
+    protected class RejectedState extends BaseState {
 
         private final Page page;
 
@@ -395,20 +374,12 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl> {
         }
 
         public RejectedState(HttpResponseStatus status) {
+            super(true);
             page = Page.get();
             if (page == null) {
                 throw new IllegalStateException("Called outside ActionsImpl.onEvent");
             }
             setResponseCode(status);
-        }
-
-        protected Page getLockedPage() {
-            return page;
-        }
-
-        @Override
-        protected Acteur getActeur() {
-            return Acteur.this;
         }
     }
 
@@ -417,7 +388,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl> {
      * responding to the request. It may optionally include objects which should
      * be available for injection into subsequent acteurs.
      */
-    protected class ConsumedState extends State<Response, ResponseImpl> implements com.mastfrog.acteur.State {
+    protected class ConsumedState extends BaseState {
 
         private final Page page;
         private final Object[] context;
@@ -430,25 +401,9 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl> {
             }
             this.context = context;
         }
-
-        @Override
-        public Object[] getContext() {
-            return super.context();
-        }
-
-        @Override
-        public Page getLockedPage() {
-            return page;
-        }
-
-        @Override
-        public Acteur getActeur() {
-            return (Acteur) super.getActeur();
-        }
-
     }
 
-    protected class ConsumedLockedState extends State<Response, ResponseImpl> implements com.mastfrog.acteur.State  {
+    protected class ConsumedLockedState extends BaseState {
 
         private final Page page;
 
@@ -458,21 +413,6 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl> {
             if (page == null) {
                 throw new IllegalStateException("Called outside ActionsImpl.onEvent");
             }
-        }
-
-        @Override
-        public Object[] getContext() {
-            return super.context();
-        }
-
-        @Override
-        public Page getLockedPage() {
-            return page;
-        }
-
-        @Override
-        public Acteur getActeur() {
-            return (Acteur) super.getActeur();
         }
     }
 
@@ -488,6 +428,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl> {
         Page page = Page.get();
         Dependencies deps = page.getApplication().getDependencies();
         HttpEvent evt = deps.getInstance(HttpEvent.class);
+        response();
         getResponse().setWriter(writerType, deps, evt);
     }
 
@@ -502,6 +443,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl> {
         Page page = Page.get();
         Dependencies deps = page.getApplication().getDependencies();
         HttpEvent evt = deps.getInstance(HttpEvent.class);
+        response();
         getResponse().setWriter(writer, deps, evt);
     }
 
@@ -590,6 +532,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl> {
      */
     public final void setResponseBodyWriter(final ChannelFutureListener listener) {
         if (listener == ChannelFutureListener.CLOSE || listener == ChannelFutureListener.CLOSE_ON_FAILURE) {
+            response();
             getResponse().setBodyWriter(listener);
             return;
         }
@@ -623,7 +566,6 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl> {
 //    public <T extends State & com.mastfrog.acteur.State> State getState() {
 //        return super.getState();
 //    }
-
     public static Acteur wrap(final Class<? extends Acteur> type, final Dependencies deps) {
         Checks.notNull("type", type);
         final Charset charset = deps.getInstance(Charset.class);
@@ -675,7 +617,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl> {
                 inOnError = false;
             }
         }
-        private State cachedState;
+        private BaseState cachedState;
 
         Acteur delegate() {
             if (acteur == null) {
@@ -694,7 +636,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl> {
         }
 
         @Override
-        public State getState() {
+        public BaseState getState() {
             return cachedState == null ? cachedState = delegate().getState() : cachedState;
         }
 

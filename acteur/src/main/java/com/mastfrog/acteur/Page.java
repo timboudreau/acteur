@@ -171,7 +171,9 @@ public abstract class Page implements Iterable<Acteur> {
     }
 
     List<Object> acteurs() {
-        return acteurs;
+        List<Object> l = new LinkedList<>(this.annotations());
+        l.addAll(acteurs);
+        return l;
     }
 
     final Acteur getActeur(int ix) {

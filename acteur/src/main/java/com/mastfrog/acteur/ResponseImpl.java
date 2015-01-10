@@ -100,6 +100,7 @@ final class ResponseImpl extends Response {
     }
 
     void merge(ResponseImpl other) {
+        Checks.notNull("other", other);
         this.modified |= other.modified;
         if (other.modified) {
             for (Entry<?> e : other.headers) {

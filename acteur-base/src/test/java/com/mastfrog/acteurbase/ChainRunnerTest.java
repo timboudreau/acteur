@@ -40,7 +40,7 @@ import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -63,6 +63,7 @@ public class ChainRunnerTest {
 
     @Test(timeout = 10000)
     public void testChainRunner() throws Exception, Throwable {
+        AtomicBoolean cancelled = new AtomicBoolean();
         ChainRunner cr = new ChainRunner(svc, scope);
         TestCallback chainWithDeferResults = new TestCallback();
         TestCallback dontRespondChainResults = new TestCallback();
@@ -70,11 +71,11 @@ public class ChainRunnerTest {
         TestCallback errorChainResults = new TestCallback();
         TestCallback rejectChainResults = new TestCallback();
         try (AutoCloseable cl = scope.enter()) {
-            cr.run(chain, chainWithDeferResults);
-            cr.run(dontRespond, dontRespondChainResults);
-            cr.run(plainChain, plainChainResults);
-            cr.run(errorChain, errorChainResults);
-            cr.run(rejectIt, rejectChainResults);
+            cr.run(chain, chainWithDeferResults, cancelled);
+            cr.run(dontRespond, dontRespondChainResults, cancelled);
+            cr.run(plainChain, plainChainResults, cancelled);
+            cr.run(errorChain, errorChainResults, cancelled);
+            cr.run(rejectIt, rejectChainResults, cancelled);
         }
         chainWithDeferResults.assertGotResponse().assertActeurClass(AddedA.class).throwIfError().assertNotRejected();
         dontRespondChainResults.assertNoResponse().throwIfError();
@@ -82,49 +83,64 @@ public class ChainRunnerTest {
         errorChainResults.assertException(SpecialError.class);
         rejectChainResults.throwIfError().assertRejected();
     }
-
-    @Test(timeout = 10000)
+    @Test(timeout = 20000)
     public void testMultiChainRunner() throws Exception, Throwable {
+        AtomicBoolean cancelled = new AtomicBoolean();
         List<AbstractChain<AbstractActeur<Response, ResponseImpl, AbstractActeur.State<Response, ResponseImpl>>>> l = new LinkedList<>();
         for (int i = 0; i < 5; i++) {
-            AbstractChain<AbstractActeur<Response, ResponseImpl,AbstractActeur.State<Response, ResponseImpl>>> ch = new AbstractChain<AbstractActeur<Response, ResponseImpl,AbstractActeur.State<Response, ResponseImpl>>>(deps, AbstractActeur.class)
-                    .add(FirstA.class).add(Rejecter.class).add(SecondA.class).add(FinalA.class);
+            AbstractChain<AbstractActeur<Response, ResponseImpl, AbstractActeur.State<Response, ResponseImpl>>> ch
+                    = new NamedChain("Chain " + i, deps, AbstractActeur.class)
+                    .add(FirstA.class).add(Rejecter.class).add(SecondWithoutTimeoutA.class).add(EndA.class);
             l.add(ch);
         }
         l.add(plainChain);
         ChainsRunner cr = new ChainsRunner(svc, scope, new ChainRunner(svc, scope));
         TestCallback callback = new TestCallback();
-        cr.run(l, callback);
+        cr.run(l, callback, cancelled);
         callback.throwIfError().assertNotRejected().assertGotResponse();
 
         l.remove(l.size() - 1);
         callback = new TestCallback();
-        cr.run(l, callback);
+        cr.run(l, callback, cancelled);
         callback.throwIfError().assertNoResponse();
+    }
+
+    static class NamedChain extends AbstractChain<AbstractActeur<Response, ResponseImpl, AbstractActeur.State<Response, ResponseImpl>>> {
+
+        private final String name;
+
+        public NamedChain(String name, Dependencies deps, Class<? super AbstractActeur<Response, ResponseImpl, AbstractActeur.State<Response, ResponseImpl>>> type) {
+            super(deps, type);
+            this.name = name;
+        }
+
+        public String toString() {
+            return name;
+        }
     }
 
     @Before
     public void before() throws IOException {
-        svc = Executors.newCachedThreadPool();
-//        svc = new java.util.concurrent.ForkJoinPool(12);
+//        svc = Executors.newCachedThreadPool();
+        svc = new java.util.concurrent.ForkJoinPool(12);
         scope = new ReentrantScope();
         deps = new Dependencies(new M());
         ShutdownHookRegistry reg = deps.getInstance(ShutdownHookRegistry.class);
         reg.add(svc);
         reg.add(timer);
-        chain = new AbstractChain<AbstractActeur<Response, ResponseImpl, AbstractActeur.State<Response, ResponseImpl>>>(deps, AbstractActeur.class)
+        chain = new NamedChain("Simple", deps, AbstractActeur.class)
                 .add(FirstA.class).add(SecondA.class).add(FinalA.class);
 
-        rejectIt = new AbstractChain<AbstractActeur<Response, ResponseImpl, AbstractActeur.State<Response, ResponseImpl>>>(deps, AbstractActeur.class)
+        rejectIt = new NamedChain("RejectIt", deps, AbstractActeur.class)
                 .add(FirstA.class).add(Rejecter.class).add(SecondA.class).add(FinalA.class);
 
-        dontRespond = new AbstractChain<AbstractActeur<Response, ResponseImpl, AbstractActeur.State<Response, ResponseImpl>>>(deps, AbstractActeur.class)
+        dontRespond = new NamedChain("DontRespond", deps, AbstractActeur.class)
                 .add(FirstA.class).add(SecondWithoutTimeoutA.class);
 
-        plainChain = new AbstractChain<AbstractActeur<Response, ResponseImpl, AbstractActeur.State<Response, ResponseImpl>>>(deps, AbstractActeur.class)
+        plainChain = new NamedChain("Plain", deps, AbstractActeur.class)
                 .add(FirstA.class).add(SecondWithoutTimeoutA.class).add(FinalA.class);
 
-        errorChain = new AbstractChain<AbstractActeur<Response, ResponseImpl, AbstractActeur.State<Response, ResponseImpl>>>(deps, AbstractActeur.class)
+        errorChain = new NamedChain("ErrorChain", deps, AbstractActeur.class)
                 .add(FirstA.class).add(SecondWithoutTimeoutA.class).add(ErrorA.class);
     }
 
@@ -209,6 +225,14 @@ public class ChainRunnerTest {
             System.out.println("AddedA " + f + " " + Thread.currentThread());
             response().setStatus(HttpResponseStatus.CREATED);
             setState(new AbstractActeur.State<Response, ResponseImpl>(false));
+        }
+    }
+    
+    static class EndA extends A2 {
+        EndA() {
+            response().setMessage("foo");
+            response().setStatus(HttpResponseStatus.OK);
+            setState( new AbstractActeur.State<Response, ResponseImpl>(false));
         }
     }
 

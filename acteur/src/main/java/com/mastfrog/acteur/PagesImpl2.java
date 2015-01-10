@@ -24,21 +24,23 @@
 package com.mastfrog.acteur;
 
 import com.google.inject.name.Named;
+import com.mastfrog.acteur.Acteur.BaseState;
 import com.mastfrog.acteur.errors.ResponseException;
 import static com.mastfrog.acteur.server.ServerModule.DELAY_EXECUTOR;
 import com.mastfrog.acteur.util.RequestID;
-import com.mastfrog.acteurbase.AbstractActeur;
 import com.mastfrog.acteurbase.AbstractChain;
 import com.mastfrog.acteurbase.ChainCallback;
 import com.mastfrog.acteurbase.ChainRunner;
 import com.mastfrog.acteurbase.ChainsRunner;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.settings.Settings;
+import com.mastfrog.url.Path;
 import com.mastfrog.util.Exceptions;
 import com.mastfrog.util.collections.CollectionUtils;
 import com.mastfrog.util.collections.Converter;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import java.nio.charset.Charset;
@@ -48,6 +50,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import javax.inject.Inject;
 import org.joda.time.Duration;
 
@@ -55,7 +58,7 @@ import org.joda.time.Duration;
  *
  * @author Tim Boudreau
  */
-public class PagesImpl2 implements Pages {
+class PagesImpl2 {
 
     private final Application application;
 
@@ -81,22 +84,38 @@ public class PagesImpl2 implements Pages {
         ch = new ChainsRunner(application.getWorkerThreadPool(), application.getRequestScope(), chr);
     }
 
-    @Override
     public CountDownLatch onEvent(RequestID id, Event<?> event, Channel channel) {
         CountDownLatch latch = new CountDownLatch(1);
 
-        ToChain chainConverter = new ToChain();
+        System.out.println("PI2 EVENT " + id + " - " + event);
+
+        Closables clos = new Closables(channel, application.control());
+        ToChain chainConverter = new ToChain(id, event, clos);
         Iterable<PageChain> pagesIterable
                 = CollectionUtils.toIterable(CollectionUtils.convertedIterator(chainConverter, application.iterator()));
 
         CB callback = new CB(id, event, latch, channel);
 
-        ch.run(pagesIterable, callback, id, event, new Closables(channel, application.control()));
+        System.out.println("Submit " + pagesIterable + " to " + ch);
+        CancelOnChannelClose closer = new CancelOnChannelClose();
+        channel.closeFuture().addListener(closer);
+        ch.run(pagesIterable, callback, closer.cancelled, id, event, clos);
 
         return latch;
     }
 
-    class CB implements ChainCallback<PageChain, Response, ResponseImpl>, ResponseSender {
+    static class CancelOnChannelClose implements ChannelFutureListener {
+
+        final AtomicBoolean cancelled = new AtomicBoolean();
+
+        @Override
+        public void operationComplete(ChannelFuture f) throws Exception {
+            cancelled.set(true);
+        }
+
+    }
+
+    class CB implements ChainCallback<Acteur, BaseState, PageChain, Response, ResponseImpl>, ResponseSender {
 
         private final Event<?> event;
 
@@ -113,27 +132,30 @@ public class PagesImpl2 implements Pages {
 
         @Override
         public void onBeforeRunOne(PageChain chain) {
+            System.out.println("ON BEFORE RUN ONE " + chain.page);
             Page.set(chain.page);
         }
 
         @Override
-        public void onAfterRunOne(PageChain chain, AbstractActeur<Response, ResponseImpl> acteur) {
+        public void onAfterRunOne(PageChain chain, Acteur acteur) {
+            System.out.println("ON AFTER ONE " + chain.page + " - " + acteur);
             if (Page.get() == chain.page) {
                 Page.clear();
             }
         }
 
         @Override
-        public void onDone(AbstractActeur.State<Response, ResponseImpl> state, List<ResponseImpl> responses) {
+        public void onDone(BaseState state, List<ResponseImpl> responses) {
             ResponseImpl finalR = new ResponseImpl();
             for (ResponseImpl r : responses) {
                 finalR.merge(r);
             }
+            receive(state.getActeur(), state, finalR);
             latch.countDown();
         }
 
         @Override
-        public void onRejected(AbstractActeur.State<Response, ResponseImpl> state) {
+        public void onRejected(BaseState state) {
             throw new UnsupportedOperationException("Should not ever be called from ChainsRunner");
         }
 
@@ -145,13 +167,15 @@ public class PagesImpl2 implements Pages {
 
         @Override
         public void onFailure(Throwable ex) {
-            ex.printStackTrace();
-            application.internalOnError(ex);
+            System.out.println("ON FAILURE " + ex.getClass().getName());
+//            application.internalOnError(ex);
+            uncaughtException(Thread.currentThread(), ex);
             latch.countDown();
         }
 
         @Override
-        public void receive(final Acteur acteur, final AbstractActeur.State<Response, ResponseImpl> state, final ResponseImpl response) {
+        public void receive(final Acteur acteur, final BaseState state, final ResponseImpl response) {
+            System.out.println("RECEIVE " + acteur + " with " + state);
             if (response.isModified() && response.status != null) {
                 // Actually send the response
                 try {
@@ -189,7 +213,7 @@ public class PagesImpl2 implements Pages {
                         } else {
                             final ScheduledFuture<?> s = scheduler.schedule(c, response.getDelay().getMillis(), TimeUnit.MILLISECONDS);
                             // Ensure the task is discarded if the connection is broken
-                            channel.closeFuture().addListener(new PagesImpl.CancelOnClose(s));
+                            channel.closeFuture().addListener(new CancelOnClose(s));
                         }
                     } finally {
                         latch.countDown();
@@ -197,44 +221,45 @@ public class PagesImpl2 implements Pages {
                 } catch (ThreadDeath | OutOfMemoryError ee) {
                     Exceptions.chuck(ee);
                 } catch (Exception | Error e) {
-                    if (!(e instanceof ResponseException)) {
-                        e.printStackTrace();
-                        application.internalOnError(e);
-                    }
-
-                    // Send an error message
-                    Acteur err = Acteur.error(null, state.getLockedPage(), e,
-                            application.getDependencies().getInstance(HttpEvent.class), true);
-                    // XXX this might recurse badly
-                    receive(err, err.getState(), err.getResponse());
-                }
-            } else // Do we have more pages?
-            if (pages.hasNext()) {
-                if (debug) {
-                    System.out.println("Try next page");
-                }
-                try {
-//                        call();
-                    application.getWorkerThreadPool().submit(this);
-                } catch (Exception ex) {
-                    application.internalOnError(ex);
+                    uncaughtException(Thread.currentThread(), e);
                 }
             } else {
-                // Otherwise, we're done - no page handled the request
-                try {
-                    if (debug) {
-                        System.out.println("Send 404");
-                    }
-                    application.send404(id, event, channel);
-                } finally {
-                    latch.countDown();
-                }
+                onNoResponse();
             }
         }
 
         @Override
         public void uncaughtException(Thread thread, Throwable thrwbl) {
-            application.internalOnError(thrwbl);
+            System.out.println("UCAUGHT EX ON " + thread.getName());
+            try {
+                if (!(thrwbl instanceof ResponseException)) {
+                    thrwbl.printStackTrace();
+                    application.internalOnError(thrwbl);
+                }
+                if (thrwbl instanceof ThreadDeath || thrwbl instanceof OutOfMemoryError) {
+                    Exceptions.chuck(thrwbl);
+                }
+                System.out.println("Send internal on error");
+                application.internalOnError(thrwbl);
+
+                System.out.println("Create error acteur");
+
+                ErrorPage pg = application.getDependencies().getInstance(ErrorPage.class);
+                pg.setApplication(application);
+                try (AutoCloseable ac = Page.set(pg)) {
+                    try (AutoCloseable ac2 = application.getRequestScope().enter(id, event, channel)) {
+                        Acteur err = Acteur.error(null, pg, thrwbl,
+                                application.getDependencies().getInstance(HttpEvent.class), true);
+
+                        System.out.println("SEND ERR TO RESPONSE");
+                        // XXX this might recurse badly
+                        receive(err, err.getState(), err.getResponse());
+                    }
+                }
+            } catch (Throwable ex) {
+                System.err.println("WHOA!");
+                ex.printStackTrace();
+            }
         }
 
         private class ResponseTrigger implements Callable<ChannelFuture> {
@@ -266,11 +291,45 @@ public class PagesImpl2 implements Pages {
         }
     }
 
+    static class CancelOnClose implements ChannelFutureListener {
+
+        private final ScheduledFuture future;
+
+        public CancelOnClose(ScheduledFuture future) {
+            this.future = future;
+        }
+
+        @Override
+        public void operationComplete(ChannelFuture f) throws Exception {
+            future.cancel(true);
+        }
+    }
+
+    static class ErrorPage extends Page {
+
+    }
+
     class ToChain implements Converter<PageChain, Page> {
+
+        private final RequestID id;
+        private final Event<?> event;
+        private final Closables clos;
+
+        private ToChain(RequestID id, Event<?> event, Closables clos) {
+            this.id = id;
+            this.event = event;
+            this.clos = clos;
+        }
 
         @Override
         public PageChain convert(Page r) {
-            PageChain result = new PageChain(application.getDependencies(), Acteur.class, r);
+            r.setApplication(application);
+            if (event instanceof HttpEvent) {
+                Path pth = ((HttpEvent) event).getPath();
+                Thread.currentThread().setName(pth + " for " + r.getClass().getName());
+            }
+            System.out.println("create page chain for " + r);
+            PageChain result = new PageChain(application.getDependencies(), Acteur.class, r, r, id, event, clos);
             return result;
         }
 
@@ -283,10 +342,21 @@ public class PagesImpl2 implements Pages {
     static class PageChain extends AbstractChain<Acteur> {
 
         private final Page page;
+        private final Object[] ctx;
 
-        public PageChain(Dependencies deps, Class<? super Acteur> type, Page page) {
+        public PageChain(Dependencies deps, Class<? super Acteur> type, Page page, Object... ctx) {
             super(deps, type, page.acteurs());
             this.page = page;
+            this.ctx = ctx;
+        }
+
+        @Override
+        public Object[] getContextContribution() {
+            return ctx;
+        }
+
+        public String toString() {
+            return "Chain for " + page;
         }
     }
 }

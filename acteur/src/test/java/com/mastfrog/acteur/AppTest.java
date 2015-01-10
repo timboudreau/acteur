@@ -12,6 +12,7 @@ import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.TypeLiteral;
 import com.google.inject.name.Names;
+import com.mastfrog.acteur.Acteur.BaseState;
 import com.mastfrog.giulius.tests.GuiceRunner;
 import com.mastfrog.giulius.tests.TestWith;
 import com.mastfrog.guicy.scope.ReentrantScope;
@@ -118,19 +119,6 @@ public class AppTest {
         assertTrue("App has no pages", app.iterator().hasNext());
         Page page = app.iterator().next();
         assertNotNull(page);
-        try (AutoCloseable cl = app.getRequestScope().enter(page)) {
-            page.setApplication(app);
-            
-            ActeursImpl ai = new ActeursImpl(Executors.newSingleThreadExecutor(), scope, page, settings);
-
-            Event event = createEvent(paths);
-
-            R r = new R();
-
-            ai.onEvent(event, r);
-
-            r.await();
-        }
     }
 
     static class App extends Application {
@@ -291,7 +279,7 @@ public class AppTest {
         }
 
         @Override
-        public void receive(Acteur action, State state, ResponseImpl response) {
+        public void receive(Acteur action, BaseState state, ResponseImpl response) {
             assertNotNull(state);
             System.err.println("Received " + state);
             synchronized (this) {

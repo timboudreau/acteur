@@ -105,7 +105,7 @@ public class Application implements Iterable<Page> {
     private ReentrantScope scope;
     private final Exception stackTrace = new Exception();
     @Inject
-    private Pages runner;
+    private PagesImpl2 runner;
     @Inject(optional = true)
     private ErrorInterceptor errorHandler;
     @Inject

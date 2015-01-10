@@ -28,6 +28,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  *
@@ -45,63 +46,86 @@ public class ChainsRunner {
         this.chainRunner = chainRunner;
     }
 
-    public <P extends Chain<? extends AbstractActeur<T, R, ?>>, T, R extends T> void run(Iterable<P> chains, ChainCallback<P, T, R> onDone, Object... initialContext) {
-        svc.submit(scope.wrap(new OneChainRun<>(svc, onDone, chains.iterator()), initialContext));
+    public <A extends AbstractActeur<T, R, S>, S extends AbstractActeur.State<T, R>, P extends Chain<? extends A>, T, R extends T>
+            void run(Iterable<P> chains, ChainCallback<A, S, P, T, R> onDone, AtomicBoolean cancelled, Object... initialContext) {
+        svc.submit(scope.wrap(new OneChainRun<>(svc, onDone, chains.iterator(), cancelled), initialContext));
     }
 
-    class OneChainRun<P extends Chain<? extends AbstractActeur<T, R, ?>>, T, R extends T> implements ChainCallback<P, T, R>, Callable<Void> {
+    class OneChainRun<A extends AbstractActeur<T, R, S>, S extends AbstractActeur.State<T, R>, P extends Chain<? extends A>, T, R extends T> implements ChainCallback<A, S, P, T, R>, Callable<Void> {
 
         private final ExecutorService svc;
 
-        private final ChainCallback<P, T, R> onDone;
+        private final ChainCallback<A, S, P, T, R> onDone;
         private final Iterator<P> iter;
+        private final AtomicBoolean cancelled;
 
-        public OneChainRun(ExecutorService svc, ChainCallback<P, T, R> onDone, Iterator<P> iter) {
+        public OneChainRun(ExecutorService svc, ChainCallback<A, S, P, T, R> onDone, Iterator<P> iter, AtomicBoolean cancelled) {
             this.svc = svc;
             this.onDone = onDone;
             this.iter = iter;
+            this.cancelled = cancelled;
         }
 
         @Override
         public void onNoResponse() {
-            if (!iter.hasNext()) {
+            boolean hasNext = iter.hasNext();
+            System.out.println("OneChainRunner onNoResponse hasNext " + hasNext);
+            if (!hasNext) {
                 this.onDone.onNoResponse();
             } else {
+                System.out.println("Resubmit chains runner");
                 svc.submit(this);
             }
         }
 
         @Override
         public Void call() throws Exception {
-            if (!iter.hasNext()) {
-                this.onDone.onNoResponse();
-            } else {
-                chainRunner.run(iter.next(), this);
+            if (cancelled.get()) {
+                return null;
+            }
+            try {
+                boolean hasNext = iter.hasNext();
+                System.out.println("ChainsRunner.call hasNext " + hasNext);
+                if (!hasNext) {
+                    System.out.println("send on no response");
+                    this.onDone.onNoResponse();
+                } else {
+                    P c = iter.next();
+                    System.out.println("Run chain " + c);
+                    chainRunner.run(c, this, cancelled);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
             }
             return null;
         }
 
         @Override
-        public void onDone(AbstractActeur.State<T, R> state, List<R> responses) {
+        public void onDone(S state, List<R> responses) {
+            System.out.println("onDone " + state);
             this.onDone.onDone(state, responses);
         }
 
         @Override
         public void onFailure(Throwable ex) {
+            System.out.println("OneChainRunner ON FAILURE");
             this.onDone.onFailure(ex);
         }
 
         @Override
-        public void onRejected(AbstractActeur.State<T, R> state) {
+        public void onRejected(S state) {
+            System.out.println("On rejected " + state);
             onNoResponse();
         }
 
         @Override
         public void onBeforeRunOne(P chain) {
+            onDone.onBeforeRunOne(chain);
         }
 
         @Override
-        public void onAfterRunOne(P chain, AbstractActeur<T, R, ?> a) {
+        public void onAfterRunOne(P chain, A a) {
+            onDone.onAfterRunOne(chain, a);
         }
     }
 }

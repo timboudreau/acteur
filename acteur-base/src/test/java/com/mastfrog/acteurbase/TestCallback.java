@@ -23,6 +23,7 @@
  */
 package com.mastfrog.acteurbase;
 
+import com.mastfrog.acteurbase.AbstractActeur.State;
 import com.mastfrog.acteurbase.impl.Response;
 import com.mastfrog.acteurbase.impl.ResponseImpl;
 import java.util.List;
@@ -34,13 +35,13 @@ import org.junit.Assert;
  *
  * @author Tim Boudreau
  */
-class TestCallback implements ChainCallback<AbstractChain<AbstractActeur<Response, ResponseImpl, AbstractActeur.State<Response, ResponseImpl>>>, Response, ResponseImpl> {
+class TestCallback implements ChainCallback<AbstractActeur<Response, ResponseImpl, State<Response, ResponseImpl>>, AbstractActeur.State<Response, ResponseImpl>, AbstractChain<AbstractActeur<Response, ResponseImpl, AbstractActeur.State<Response, ResponseImpl>>>, Response, ResponseImpl> {
 
     private final CountDownLatch latch;
     private Throwable ex;
     private Boolean done;
     private AbstractActeur.State<Response, ResponseImpl> state;
-    private List<ResponseImpl> responses;
+    List<ResponseImpl> responses;
     private Boolean rejected;
 
     TestCallback() {
@@ -154,7 +155,7 @@ class TestCallback implements ChainCallback<AbstractChain<AbstractActeur<Respons
     }
 
     @Override
-    public void onAfterRunOne(AbstractChain<AbstractActeur<Response, ResponseImpl, AbstractActeur.State<Response, ResponseImpl>>> chain, AbstractActeur<Response, ResponseImpl, ?> acteur) {
+    public void onAfterRunOne(AbstractChain<AbstractActeur<Response, ResponseImpl, State<Response, ResponseImpl>>> chain, AbstractActeur<Response, ResponseImpl, State<Response, ResponseImpl>> acteur) {
         System.out.println("On after run one " + acteur);
     }
 }
