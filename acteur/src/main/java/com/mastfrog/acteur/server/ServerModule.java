@@ -89,6 +89,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.ForkJoinWorkerThread;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -753,10 +755,12 @@ public class ServerModule<A extends Application> extends AbstractModule {
             switch (tf.name()) {
                 case BACKGROUND_THREAD_POOL_NAME:
 //                    return LoggingExecutorService.wrap(tf.name(), Executors.newCachedThreadPool(tf));
-                    return Executors.newCachedThreadPool(tf);
+                    return new ForkJoinPool(count.get(), tf, tf, true);
+//                    return Executors.newCachedThreadPool(tf);
                 default:
 //                    return LoggingExecutorService.wrap(tf.name(), Executors.newFixedThreadPool(count.get(), tf));
-                    return Executors.newFixedThreadPool(count.get(), tf);
+                    return new ForkJoinPool(count.get(), tf, tf, true);
+//                    return Executors.newFixedThreadPool(count.get(), tf);
             }
         }
 
@@ -773,7 +777,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
         }
     }
 
-    static final class TF implements ThreadFactory, UncaughtExceptionHandler {
+    static final class TF implements ThreadFactory, UncaughtExceptionHandler, ForkJoinPool.ForkJoinWorkerThreadFactory {
 
         private final String name;
         private final Provider<ApplicationControl> app;
@@ -812,6 +816,28 @@ public class ServerModule<A extends Application> extends AbstractModule {
 
         public String toString() {
             return "ThreadFactory " + name;
+        }
+
+        @Override
+        public ForkJoinWorkerThread newThread(ForkJoinPool pool) {
+            FWT t = new FWT(pool);
+            if ("event".equals(tg.getName())) {
+                t.setPriority(Thread.MAX_PRIORITY);
+            } else {
+                t.setPriority(Thread.NORM_PRIORITY - 1);
+            }
+            t.setUncaughtExceptionHandler(this);
+            String nm = name + "-" + count.getAndIncrement();
+            t.setName(nm);
+            return t;
+        }
+
+        static class FWT extends java.util.concurrent.ForkJoinWorkerThread {
+
+            public FWT(ForkJoinPool pool) {
+                super(pool);
+            }
+
         }
     }
 
