@@ -38,7 +38,7 @@ public final class RequestID {
     public final long time = System.currentTimeMillis();
     // A trivial unique per run id to uniquify id strings
     private static final String RUN_ID = Long.toString(
-            (System.currentTimeMillis() - 1420954494414L) / 60000, 36);
+            (System.currentTimeMillis() - 142097304385L) / 60000, 36);
 
     private RequestID(int index) {
         this.index = index;
@@ -53,12 +53,12 @@ public final class RequestID {
     }
 
     public String stringValue() {
-        return RUN_ID + "-" + index;
+        return RUN_ID + ":" + index;
     }
 
     @Override
     public String toString() {
-        return RUN_ID + "-" + index + "/" + getDuration().getMillis() + "ms";
+        return RUN_ID + ":" + index + "/" + getDuration().getMillis() + "ms";
     }
 
     @Singleton
