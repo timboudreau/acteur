@@ -277,7 +277,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
         setState(new RespondWith(status, msg));
         return this;
     }
-    
+
     protected final Acteur reply(Err err) {
         setState(new RespondWith(err));
         return this;
@@ -386,7 +386,6 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
      * request.
      */
     protected class RejectedState extends BaseState {
-
 
         public RejectedState() {
             super(true);
