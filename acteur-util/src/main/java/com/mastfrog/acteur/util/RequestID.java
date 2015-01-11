@@ -24,6 +24,7 @@
 package com.mastfrog.acteur.util;
 
 import java.util.concurrent.atomic.AtomicInteger;
+import javax.inject.Singleton;
 import org.joda.time.Duration;
 
 /**
@@ -35,7 +36,10 @@ public final class RequestID {
 
     public final int index;
     public final long time = System.currentTimeMillis();
-    
+    // A trivial unique per run id to uniquify id strings
+    private static final String RUN_ID = Long.toString(
+            (System.currentTimeMillis() - 1420954494414L) / 60000, 36);
+
     private RequestID(int index) {
         this.index = index;
     }
@@ -48,12 +52,18 @@ public final class RequestID {
         return new Duration(System.currentTimeMillis() - time);
     }
 
+    public String stringValue() {
+        return RUN_ID + "-" + index;
+    }
+
     @Override
     public String toString() {
-        return index + "/" + getDuration().getMillis() + "ms";
+        return RUN_ID + "-" + index + "/" + getDuration().getMillis() + "ms";
     }
-    
+
+    @Singleton
     public static final class Factory {
+
         private final AtomicInteger indexSource = new AtomicInteger();
 
         public RequestID next() {

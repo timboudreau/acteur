@@ -50,6 +50,7 @@ import com.mastfrog.acteur.server.ServerModule.TF;
 import com.mastfrog.acteur.spi.ApplicationControl;
 import com.mastfrog.acteur.util.BasicCredentials;
 import com.mastfrog.acteur.util.HttpMethod;
+import com.mastfrog.acteur.util.RequestID;
 import com.mastfrog.acteur.util.Server;
 import com.mastfrog.acteur.util.ServerControl;
 import com.mastfrog.acteurbase.ActeurBaseModule;
@@ -269,7 +270,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
                 binder().getProvider(Settings.class),
                 binder().getProvider(ByteBufAllocator.class)));
 
-        scope.bindTypes(binder(), Event.class, HttpEvent.class,
+        scope.bindTypes(binder(), Event.class, HttpEvent.class, RequestID.class,
                 Page.class, BasicCredentials.class, Closables.class);
 
         ImplicitBindings implicit = appType.getAnnotation(ImplicitBindings.class);
