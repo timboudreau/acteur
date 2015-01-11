@@ -35,11 +35,13 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.socket.SocketChannel;
+import io.netty.handler.codec.DecoderException;
 import io.netty.handler.codec.MessageToByteEncoder;
 import io.netty.handler.codec.http.HttpContentCompressor;
 import io.netty.handler.codec.http.HttpRequestDecoder;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseEncoder;
+import java.util.List;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
@@ -73,7 +75,7 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
     public void initChannel(SocketChannel ch) throws Exception {
         // Create a default pipeline implementation.
         ChannelPipeline pipeline = ch.pipeline();
-        ChannelHandler decoder = new HttpRequestDecoder();
+        ChannelHandler decoder = new HackHttpRequestDecoder();
         ChannelHandler encoder = new HttpResponseEncoder();
 //        SSLEngine engine = SecureChatSslContextFactory.getServerContext().createSSLEngine();
 //        engine.setUseClientMode(false);
@@ -114,6 +116,45 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
                 return null;
             }
             return super.beginEncode(headers, acceptEncoding);
+        }
+    }
+
+    static class HackHttpRequestDecoder extends HttpRequestDecoder {
+
+        // See https://github.com/netty/netty/issues/3247
+
+        protected void callDecode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) {
+            try {
+                while (in.isReadable()) {
+                    int outSize = out.size();
+                    int oldInputLength = in.readableBytes();
+                    decode(ctx, in, out);
+
+                    // Check if this handler was removed before continuing the loop.
+                    // If it was removed, it is not safe to continue to operate on the buffer.
+                    //
+                    // See https://github.com/netty/netty/issues/1664
+                    if (ctx.isRemoved()) {
+                        break;
+                    }
+
+                    if (outSize == out.size()) {
+                        if (oldInputLength == in.readableBytes()) {
+                            break;
+                        } else {
+                            continue;
+                        }
+                    }
+
+                    if (isSingleDecode()) {
+                        break;
+                    }
+                }
+            } catch (DecoderException e) {
+                throw e;
+            } catch (Throwable cause) {
+                throw new DecoderException(cause);
+            }
         }
     }
 }
