@@ -6,6 +6,7 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import java.util.List;
+import java.util.Timer;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
@@ -21,6 +22,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public final class Closables {
 
     private final List<AutoCloseable> closeables = new CopyOnWriteArrayList<>();
+    private final List<Timer> timers = new CopyOnWriteArrayList<>();
     private final CloseWhenChannelCloses closeListener = new CloseWhenChannelCloses();
     private final ApplicationControl application;
 
@@ -35,6 +37,14 @@ public final class Closables {
             closeables.add(closable);
         }
         return closable;
+    }
+
+    public final <T extends Timer> T add(T timer) {
+        Checks.notNull("timer", timer);
+        if (!timers.contains(timer)) {
+            timers.add(timer);
+        }
+        return timer;
     }
 
     public final Closables add(Runnable run) {
@@ -79,6 +89,13 @@ public final class Closables {
                 ac.close();
             } catch (Exception e1) {
                 application.internalOnError(e1);
+            }
+        }
+        for (Timer t : timers) {
+            try {
+                t.cancel();
+            } catch (Exception e2) {
+                application.internalOnError(e2);
             }
         }
     }
