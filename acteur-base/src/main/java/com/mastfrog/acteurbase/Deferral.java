@@ -48,6 +48,6 @@ public interface Deferral {
          *
          * @throws IllegalStateException if resume() has already been called.
          */
-        public void resume();
+        public void resume(Object... addToContext);
     }
 }

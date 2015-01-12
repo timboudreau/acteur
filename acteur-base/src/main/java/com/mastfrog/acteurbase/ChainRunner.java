@@ -41,11 +41,11 @@ import javax.inject.Inject;
  * Runs a chain of AbstractActeurs, invoking the callback when the chain has
  * been exhausted.
  * <p>
- * This class involves a sadly complex generic signature, which is necessary
- * in order to preserve the types in question.  If you are creating an acteur-based
+ * This class involves a sadly complex generic signature, which is necessary in
+ * order to preserve the types in question. If you are creating an acteur-based
  * framework, it is best to write specific, parameterized subclasses of this,
- * AbstractActeur, State and StateCallback, so that it is clear what someone
- * is supposed to pass.
+ * AbstractActeur, State and StateCallback, so that it is clear what someone is
+ * supposed to pass.
  *
  * @author Tim Boudreau
  */
@@ -63,18 +63,18 @@ public final class ChainRunner {
     }
 
     /**
-     * Run one {@link Chain} of {@link AbstractActeur}s, constructing
-     * each and retrieving its state, and calling the passed callback
-     * with the results.
-     * 
+     * Run one {@link Chain} of {@link AbstractActeur}s, constructing each and
+     * retrieving its state, and calling the passed callback with the results.
+     *
      * @param <A> The AbstractActeur subtype
      * @param <S> The State subtype
      * @param <P> The Chain subtype
      * @param <T> The public type the AbstractActeur subtype is parameterized on
-     * @param <R> The implementation type the AbstractActeur subtype is parameterized on
+     * @param <R> The implementation type the AbstractActeur subtype is
+     * parameterized on
      * @param chain The chain
      * @param onDone The callback
-     * @param cancelled Set this to true if execution should be silently 
+     * @param cancelled Set this to true if execution should be silently
      * cancelled
      */
     public <A extends AbstractActeur<T, R, S>, S extends ActeurState<T, R>, P extends Chain<? extends A>, T, R extends T>
@@ -126,13 +126,17 @@ public final class ChainRunner {
         }
 
         private void addToContext(ActeurState state) {
-            if (state.context() != null && state.context().length > 0) {
-                synchronized (this) {
-                    Object[] nue = new Object[this.state.length + state.context().length];
-                    System.arraycopy(this.state, 0, nue, 0, this.state.length);
-                    System.arraycopy(state.context(), 0, nue, this.state.length, state.context().length);
-                    this.state = nue;
-                }
+            synchronized (this) {
+                addToContext(state.context());
+            }
+        }
+
+        private synchronized void addToContext(Object[] ctx) {
+            if (ctx != null && ctx.length > 0) {
+                Object[] nue = new Object[this.state.length + ctx.length];
+                System.arraycopy(this.state, 0, nue, 0, this.state.length);
+                System.arraycopy(ctx, 0, nue, this.state.length, ctx.length);
+                this.state = nue;
             }
         }
 
@@ -207,12 +211,10 @@ public final class ChainRunner {
 //                    try (QuietAutoCloseable qac = scope.enter(state)) {
                         next = scope.wrap(this);
 //                    }
-                    } else {
-                        // Re-wrap "this" in the current scope and tee it up
-                        // to be run
-                        if (!cancelled.get()) {
-                            svc.submit(scope.wrap(this));
-                        }
+                    } else // Re-wrap "this" in the current scope and tee it up
+                    // to be run
+                    if (!cancelled.get()) {
+                        svc.submit(scope.wrap(this));
                     }
                 } else {
                     onDone.onDone(newState, responses);
@@ -226,11 +228,12 @@ public final class ChainRunner {
         }
 
         @Override
-        public void resume() {
+        public void resume(Object... addToContext) {
             if (cancelled.get()) {
                 return;
             }
             if (deferred.compareAndSet(true, false)) {
+                addToContext(addToContext);
                 Callable<?> next = this.next;
                 svc.submit(next);
             } else {
