@@ -629,6 +629,8 @@ public final class URL implements URLComponent, Validating, Comparable<URL> {
                     } catch (NullArgumentException e) {
                         throw new IllegalStateException (h.toString() + " reports itself invalid but returns no problems", e);
                     }
+                } else if (h == null) {
+                    problems.append("Host not set: " + toString());
                 }
             }
             Path p = getPath();

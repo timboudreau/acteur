@@ -6,6 +6,7 @@ import java.net.MalformedURLException;
 import java.net.URLEncoder;
 import org.junit.Test;
 import static org.junit.Assert.*;
+import org.netbeans.validation.api.InvalidInputException;
 import org.netbeans.validation.api.Problems;
 
 /**
@@ -28,6 +29,15 @@ public class URLTest {
         Host one = Host.parse("WWW.Test.CoM");
         Host two = Host.parse("www.test.com");
         assertEquals(one, two);
+    }
+    
+    @Test(expected = InvalidInputException.class)
+    public void testUrlWithNoHostIsInvalid() {
+        URL url = URL.builder().addPathElement("invalid").create();
+        assertFalse(url.isValid());
+        assertNotNull(url.getProblems());
+        assertTrue(url.getProblems().hasFatal());
+        url.getProblems().throwIfFatalPresent();
     }
 
     @Test
