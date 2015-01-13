@@ -31,6 +31,7 @@ import com.mastfrog.acteur.annotations.GenericApplication.GenericApplicationSett
 import com.mastfrog.acteur.annotations.GenericApplicationModule;
 import com.mastfrog.acteur.util.Server;
 import com.mastfrog.giulius.DependenciesBuilder;
+import com.mastfrog.giulius.SettingsBindings;
 import com.mastfrog.guicy.annotations.Namespace;
 import com.mastfrog.guicy.scope.ReentrantScope;
 import com.mastfrog.settings.Settings;
@@ -40,6 +41,7 @@ import com.mastfrog.util.Exceptions;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -185,6 +187,40 @@ public final class ServerBuilder {
         this.enableCors = false;
         return this;
     }
+    
+    private final Set<SettingsBindings> settingsBindings = EnumSet.noneOf(SettingsBindings.class);
+    /**
+     * Disable binding of settings to some types if you know they
+     * will not be used, to save (minimal) memory.  This is only
+     * significant if you are running in &lt; 20Mb heap.
+     * @param bindings The bindings to remove
+     * @return this
+     */
+    public ServerBuilder disableBindings(SettingsBindings... bindings) {
+        EnumSet<SettingsBindings> toRemove = EnumSet.noneOf(SettingsBindings.class);
+        for (SettingsBindings b : bindings) {
+            toRemove.add(b);
+        }
+        settingsBindings.removeAll(toRemove);
+        return this;
+    }
+    
+    /**
+     * Explicitly set the list of types that are bound to settings to
+     * save (minimal) memory.
+     * 
+     * @param bindings The types of bindings to set up
+     * @return this
+     */
+    public ServerBuilder enableOnlyBindingsFor(SettingsBindings... bindings) {
+        EnumSet<SettingsBindings> newSet = EnumSet.noneOf(SettingsBindings.class);
+        for (SettingsBindings b : bindings) {
+            newSet.add(b);
+        }
+        this.settingsBindings.clear();
+        this.settingsBindings.addAll(newSet);
+        return this;
+    }    
 
     /**
      * Build a Server object which can be started with its start() method (call
@@ -202,6 +238,7 @@ public final class ServerBuilder {
         Settings settings = sb.build();
         ScopeProvider appModule = appModule(settings);
         DependenciesBuilder db = new DependenciesBuilder().add(appModule);
+        db.enableOnlyBindingsFor(settingsBindings.toArray(new SettingsBindings[settingsBindings.size()]));
         db.add(settings, namespace);
         db.add(settings, Namespace.DEFAULT);
         for (Module m : modules) {
