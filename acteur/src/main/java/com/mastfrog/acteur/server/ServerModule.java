@@ -329,7 +329,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
         bind(Duration.class).toProvider(UptimeProvider.class);
         bind(new CKTL()).toProvider(CookiesProvider.class);
 
-//        bind(String.class).annotatedWith(Names.named("application")).toProvider(ApplicationNameProvider.class);
+        //XXX anything using this?
         bind(String.class).annotatedWith(Names.named("application")).toInstance(this.appType.getSimpleName());
 
         bind(ServerImpl.class).asEagerSingleton();
@@ -608,21 +608,6 @@ public class ServerModule<A extends Application> extends AbstractModule {
         @Override
         public Charset get() {
             return charset;
-        }
-    }
-
-    private static final class ApplicationNameProvider implements Provider<String> {
-
-        private final Provider<Application> app;
-
-        @Inject
-        ApplicationNameProvider(Provider<Application> app) {
-            this.app = app;
-        }
-
-        @Override
-        public String get() {
-            return app.get().getName();
         }
     }
 

@@ -118,6 +118,7 @@ public class Application implements Iterable<Page> {
     String corsAllowOrigin = "*";
     
     @Inject(optional = true)
+    @Named("application.name")
     String name;
 
     @Inject(optional = true)
