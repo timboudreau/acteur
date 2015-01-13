@@ -116,6 +116,9 @@ public class Application implements Iterable<Page> {
     @Inject(optional = true)
     @Named(SETTINGS_KEY_CORS_ALLOW_ORIGIN)
     String corsAllowOrigin = "*";
+    
+    @Inject(optional = true)
+    String name;
 
     @Inject(optional = true)
     @Named(SETTINGS_KEY_CORS_MAX_AGE_MINUTES)
@@ -429,7 +432,7 @@ public class Application implements Iterable<Page> {
     }
 
     public String getName() {
-        return getClass().getSimpleName();
+        return name == null ? getClass().getSimpleName() : name;
     }
 
     /**

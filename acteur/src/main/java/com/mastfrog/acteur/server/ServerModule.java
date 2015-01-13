@@ -222,13 +222,14 @@ public class ServerModule<A extends Application> extends AbstractModule {
      * Settings key if true, do CORS responses on OPTIONS requests
      */
     public static final String SETTINGS_KEY_CORS_ENABLED = "cors.enabled";
-    
+    public static final String SETTINGS_KEY_USE_FORK_JOIN_POOL = "acteur.fork.join";
+
     public static final String SETTINGS_KEY_CORS_MAX_AGE_MINUTES = "cors.max.age.minutes";
     public static final String SETTINGS_KEY_CORS_ALLOW_ORIGIN = "cors.allow.origin";
     public static final boolean DEFAULT_CORS_ENABLED = true;
     public static final long DEFAULT_CORS_MAX_AGE_MINUTES = 5;
     public static final String DEFAULT_CORS_ALLOW_ORIGIN = "*";
-    
+
     protected final Class<A> appType;
     protected final ReentrantScope scope;
     private final int eventThreads;
@@ -306,9 +307,9 @@ public class ServerModule<A extends Application> extends AbstractModule {
         bind(ThreadFactory.class).annotatedWith(Names.named(BACKGROUND_THREAD_POOL_NAME)).toInstance(backgroundThreadFactory);
 
         Provider<ExecutorService> workerProvider
-                = new ExecutorServiceProvider(workerThreadFactory, workerThreadCount);
+                = new ExecutorServiceProvider(workerThreadFactory, workerThreadCount, set);
         Provider<ExecutorService> backgroundProvider
-                = new ExecutorServiceProvider(backgroundThreadFactory, backgroundThreadCount);
+                = new ExecutorServiceProvider(backgroundThreadFactory, backgroundThreadCount, set);
 
         bind(ExecutorService.class).annotatedWith(Names.named(
                 WORKER_THREAD_POOL_NAME)).toProvider(workerProvider);
@@ -752,22 +753,29 @@ public class ServerModule<A extends Application> extends AbstractModule {
         final TF tf;
         private volatile ExecutorService svc;
         private final ThreadCount count;
+        private final Provider<Settings> settings;
 
-        public ExecutorServiceProvider(TF tf, ThreadCount count) {
+        public ExecutorServiceProvider(TF tf, ThreadCount count, Provider<Settings> settings) {
             this.tf = tf;
             this.count = count;
+            this.settings = settings;
         }
 
         private ExecutorService create() {
+            boolean useForkJoin = settings.get().getBoolean(SETTINGS_KEY_USE_FORK_JOIN_POOL, true);
             switch (tf.name()) {
                 case BACKGROUND_THREAD_POOL_NAME:
-//                    return LoggingExecutorService.wrap(tf.name(), Executors.newCachedThreadPool(tf));
-                    return new ForkJoinPool(count.get(), tf, tf, true);
-//                    return Executors.newCachedThreadPool(tf);
+                    if (useForkJoin) {
+                        return new ForkJoinPool(count.get(), tf, tf, true);
+                    } else {
+                        return Executors.newCachedThreadPool(tf);
+                    }
                 default:
-//                    return LoggingExecutorService.wrap(tf.name(), Executors.newFixedThreadPool(count.get(), tf));
-                    return new ForkJoinPool(count.get(), tf, tf, true);
-//                    return Executors.newFixedThreadPool(count.get(), tf);
+                    if (useForkJoin) {
+                        return new ForkJoinPool(count.get(), tf, tf, true);
+                    } else {
+                        return Executors.newFixedThreadPool(count.get(), tf);
+                    }
             }
         }
 
