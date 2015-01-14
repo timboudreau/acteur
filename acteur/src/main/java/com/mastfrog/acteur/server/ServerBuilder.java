@@ -188,7 +188,7 @@ public final class ServerBuilder {
         return this;
     }
     
-    private final Set<SettingsBindings> settingsBindings = EnumSet.noneOf(SettingsBindings.class);
+    private final Set<SettingsBindings> settingsBindings = EnumSet.allOf(SettingsBindings.class);
     /**
      * Disable binding of settings to some types if you know they
      * will not be used, to save (minimal) memory.  This is only
