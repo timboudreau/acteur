@@ -30,9 +30,6 @@ public class CheckIfNoneMatchHeader extends Acteur {
         if (etag != null && pageEtag != null) {
             if (etag.equals(pageEtag)) {
                 reply(NOT_MODIFIED);
-                // XXX workaround for peculiar problem with FileResource =
-                // not modified responses are leaving a hanging connection
-//                setResponseBodyWriter(ChannelFutureListener.CLOSE);
                 return;
             }
         }

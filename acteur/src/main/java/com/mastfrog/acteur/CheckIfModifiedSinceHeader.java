@@ -27,9 +27,6 @@ public class CheckIfModifiedSinceHeader extends Acteur {
         }
         if (notModified) {
             reply(NOT_MODIFIED);
-            // XXX workaround for peculiar problem with FileResource =
-            // not modified responses are leaving a hanging connection
-            setResponseBodyWriter(ChannelFutureListener.CLOSE);
             return;
         }
         next();
@@ -41,5 +38,4 @@ public class CheckIfModifiedSinceHeader extends Acteur {
                 + "is older than the date in the If-Modified-Since header "
                 + "(if any) in the current request", true);
     }
-
 }

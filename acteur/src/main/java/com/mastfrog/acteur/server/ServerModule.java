@@ -229,6 +229,8 @@ public class ServerModule<A extends Application> extends AbstractModule {
     public static final boolean DEFAULT_CORS_ENABLED = true;
     public static final long DEFAULT_CORS_MAX_AGE_MINUTES = 5;
     public static final String DEFAULT_CORS_ALLOW_ORIGIN = "*";
+    
+    public static final String SETTINGS_KEY_SYSTEM_EXIT_ON_BIND_FAILURE = "system.exit.on.bind.failure";
 
     protected final Class<A> appType;
     protected final ReentrantScope scope;
