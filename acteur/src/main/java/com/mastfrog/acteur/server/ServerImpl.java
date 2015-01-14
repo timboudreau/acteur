@@ -205,22 +205,31 @@ final class ServerImpl implements Server {
         }
 
         private void shutdown(long timeout, TimeUnit unit, boolean await) throws InterruptedException {
-            // XXX this can actually take 3x the timeout
-            Channel ch;
-            synchronized (this) {
-                ch = localChannel;
-            }
-            if (ch != null) {
-                if (ch.isOpen()) {
-                    if (await) {
-                        ch.close().await(timeout, unit);
-                    } else {
-                        ch.close();
+            try {
+                Channel ch;
+                synchronized (this) {
+                    ch = localChannel;
+                }
+                if (ch != null) {
+                    if (ch.isOpen()) {
+                        if (await) {
+                            ch.close().await(timeout, unit);
+                        } else {
+                            ch.close();
+                        }
                     }
                 }
+            } catch (InterruptedException ex) {
+                // OK
+            } finally {
+                if (await) {
+                    events.shutdownGracefully(0, timeout / 3, unit);
+                    workers.shutdownGracefully(0, timeout / 3, unit);
+                } else {
+                    events.shutdownGracefully();
+                    workers.shutdownGracefully();
+                }
             }
-            events.shutdownGracefully();
-            workers.shutdownGracefully();
         }
 
         @Override
