@@ -190,6 +190,7 @@ final class ServerImpl implements Server {
         private final int port;
         private final CountDownLatch afterStart;
         private final CountDownLatch waitClose = new CountDownLatch(1);
+        private volatile boolean shuttingDown;
 
         ServerControlImpl(int port, CountDownLatch afterStart) {
             this.port = port;
@@ -205,6 +206,12 @@ final class ServerImpl implements Server {
         }
 
         private void shutdown(long timeout, TimeUnit unit, boolean await) throws InterruptedException {
+            if (shuttingDown) {
+                // We can reenter on the shutdown hook thread
+                await(timeout, unit);
+                return;
+            }
+            shuttingDown = true;
             try {
                 Channel ch;
                 synchronized (this) {
@@ -228,6 +235,10 @@ final class ServerImpl implements Server {
                 } else {
                     events.shutdownGracefully();
                     workers.shutdownGracefully();
+                }
+                shuttingDown = false;
+                synchronized(this) {
+                    localChannel = null;
                 }
             }
         }
