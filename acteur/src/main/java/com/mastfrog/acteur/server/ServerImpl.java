@@ -40,6 +40,7 @@ import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
+import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
@@ -185,8 +186,8 @@ final class ServerImpl implements Server {
 
         private Channel localChannel;
 
-        private final NioEventLoopGroup events = new NioEventLoopGroup(eventThreadCount.get(), eventThreadFactory);
-        private final NioEventLoopGroup workers = new NioEventLoopGroup(workerThreadCount.get(), workerThreadFactory);
+        private final EventLoopGroup events = new NioEventLoopGroup(eventThreadCount.get(), eventThreadFactory);
+        private final EventLoopGroup workers = new NioEventLoopGroup(workerThreadCount.get(), workerThreadFactory);
         private final int port;
         private final CountDownLatch afterStart;
         private final CountDownLatch waitClose = new CountDownLatch(1);
