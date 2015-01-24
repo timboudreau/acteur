@@ -41,6 +41,7 @@ import io.netty.handler.codec.http.HttpContentCompressor;
 import io.netty.handler.codec.http.HttpRequestDecoder;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseEncoder;
+import io.netty.handler.logging.LoggingHandler;
 import java.util.List;
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -75,7 +76,8 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
     public void initChannel(SocketChannel ch) throws Exception {
         // Create a default pipeline implementation.
         ChannelPipeline pipeline = ch.pipeline();
-        ChannelHandler decoder = new HackHttpRequestDecoder();
+//        ChannelHandler decoder = new HackHttpRequestDecoder();
+        ChannelHandler decoder = new HttpRequestDecoder();
         ChannelHandler encoder = new HttpResponseEncoder();
 //        SSLEngine engine = SecureChatSslContextFactory.getServerContext().createSSLEngine();
 //        engine.setUseClientMode(false);
@@ -96,6 +98,7 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
             ChannelHandler compressor = new SelectiveCompressor();
             pipeline.addLast("deflater", compressor);
         }
+        pipeline.addLast("logger", new LoggingHandler());
         pipeline.addLast("handler", handler.get());
     }
 
