@@ -60,6 +60,10 @@ import org.netbeans.validation.api.Problem;
 /**
  * Factory for standard Acteur implementations, mainly used to determine if a
  * request is valid (matches a URL, is using a supported HTTP method, etc.).
+ * Usage model:  Ask for this in your {@link Page} constructor and use it to add
+ * acteurs.
+ * <i><b>Almost all methods on this class can be used via annotations, so using
+ * this class directly is rare post Acteur 1.4</b></i>.
  *
  * @author Tim Boudreau
  */

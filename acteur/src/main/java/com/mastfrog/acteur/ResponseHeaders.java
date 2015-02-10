@@ -36,8 +36,10 @@ import org.joda.time.DateTimeZone;
 import org.joda.time.Duration;
 
 /**
- * Standard HTTP headers.
+ * Standard HTTP headers, belonging to a page.
  *
+ * @deprecated Just use Acteur.add().  This class is still useful for a handful
+ * of cases, such as checking if-modified-since headers
  * @author Tim Boudreau
  */
 public class ResponseHeaders {

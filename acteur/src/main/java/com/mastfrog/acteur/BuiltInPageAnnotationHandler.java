@@ -51,12 +51,12 @@ import javax.inject.Inject;
 
 /**
  * Processes the page annotations in com.mastfrog.acteur.preconditions and adds
- * acteurs to the list appropriately.
+ * acteurs to the list appropriately. Do not use directly.
  *
  * @author Tim Boudreau
  */
 @Ordered(0)
-public class BuiltInPageAnnotationHandler extends PageAnnotationHandler {
+public final class BuiltInPageAnnotationHandler extends PageAnnotationHandler {
 
     private final Dependencies deps;
     private final ActeurFactory af;

@@ -23,11 +23,13 @@
  */
 package com.mastfrog.acteur;
 
-import com.mastfrog.acteurbase.AbstractActeur;
 import com.mastfrog.acteurbase.ActeurState;
 
 /**
- * Represents a state of event processing.
+ * The output condition of an {@link Acteur}.  An acteur must either set its state
+ * in its constructor, or override getState().  As of 1.6, Acteur has methods such
+ * as <code>next()</code>, <code>reject()</code>, <code>reply()</code> that will
+ * create one of these under-the=hood, so directly using this class is rare.
  */
 public abstract class State extends ActeurState<Response, ResponseImpl> {
 

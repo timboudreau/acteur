@@ -61,7 +61,7 @@ import java.util.List;
  * we use a ByteBuf.  The HttpResponseEncoder is getting removed from the pipeline
  * too early somehow - some sort of race condition we need to sort out.
  */
-public class HttpObjectAggregator extends MessageToMessageDecoder<HttpObject> {
+final class HttpObjectAggregator extends MessageToMessageDecoder<HttpObject> {
     public static final int DEFAULT_MAX_COMPOSITEBUFFER_COMPONENTS = 1024;
 
     private final int maxContentLength;

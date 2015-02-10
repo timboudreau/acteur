@@ -222,14 +222,46 @@ public class ServerModule<A extends Application> extends AbstractModule {
      * Settings key if true, do CORS responses on OPTIONS requests
      */
     public static final String SETTINGS_KEY_CORS_ENABLED = "cors.enabled";
+    /**
+     * If true (the default), a ForkJoinPool will be used for dispatching work
+     * to acteurs;  if not, a fixed thread ExecutorService will be used.
+     * The default is correct for most appliations; applications which require
+     * an extremely small memory footprint (7-10Mb) will reduce their memory
+     * requirements under load by turning this off.
+     */
     public static final String SETTINGS_KEY_USE_FORK_JOIN_POOL = "acteur.fork.join";
 
+    /**
+     * If the default support for CORS requests is enabled, this is the max age
+     * in minutes that the browser should regard the response as valid.
+     */
     public static final String SETTINGS_KEY_CORS_MAX_AGE_MINUTES = "cors.max.age.minutes";
+    /**
+     * If the default support for CORS requests is enabled, this is the value
+     * of what hosts the response is valid for (what sites can use scripts from
+     * this server without the browser blocking them).  The default is *.
+     */
     public static final String SETTINGS_KEY_CORS_ALLOW_ORIGIN = "cors.allow.origin";
+    /**
+     * Default value for @link(ServerModule.SETTINGS_KEY_CORS_ENABLED}
+     */
     public static final boolean DEFAULT_CORS_ENABLED = true;
+    /**
+     * Default value for @link(ServerModule.SETTINGS_KEY_CORS_MAX_AGE_MINUTES}
+     */
     public static final long DEFAULT_CORS_MAX_AGE_MINUTES = 5;
+    /**
+     * Default value for @link(ServerModule.SETTINGS_KEY_CORS_ALLOW_ORIGIN}
+     */
     public static final String DEFAULT_CORS_ALLOW_ORIGIN = "*";
     
+    /**
+     * Determine if the application should exit if an exception is thrown when binding
+     * the server socket (usually because the port is in use).  The default is
+     * true, but in cases where multiple servers are started in one JVM and the failure
+     * of one should not cause the JVM to exit, it can be set to false and the JVM
+     * will continue running if there are any live non-daemon threads.
+     */
     public static final String SETTINGS_KEY_SYSTEM_EXIT_ON_BIND_FAILURE = "system.exit.on.bind.failure";
 
     protected final Class<A> appType;
@@ -258,11 +290,17 @@ public class ServerModule<A extends Application> extends AbstractModule {
         this(appType, -1, -1, -1);
     }
 
+    /**
+     * Get the Guice scope used for injecting dynamic request-related
+     * objects into Acteur constructors.
+     * @return The scope
+     */
     public final ReentrantScope applicationScope() {
         return scope;
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     protected void configure() {
         bind(Server.class).to(ServerImpl.class);
         bind(ReentrantScope.class).toInstance(scope);
