@@ -34,6 +34,7 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 
 /**
+ * Registry of things which create error responses for exceptions.
  *
  * @author Tim Boudreau
  */
