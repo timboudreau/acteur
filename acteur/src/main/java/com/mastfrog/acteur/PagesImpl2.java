@@ -35,11 +35,13 @@ import com.mastfrog.acteurbase.ChainCallback;
 import com.mastfrog.acteurbase.ChainRunner;
 import com.mastfrog.acteurbase.ChainsRunner;
 import com.mastfrog.giulius.Dependencies;
+import com.mastfrog.guicy.scope.ReentrantScope;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.url.Path;
 import com.mastfrog.util.Exceptions;
 import com.mastfrog.util.collections.CollectionUtils;
 import com.mastfrog.util.collections.Converter;
+import com.mastfrog.util.thread.QuietAutoCloseable;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
 import io.netty.channel.Channel;
@@ -51,6 +53,7 @@ import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpVersion;
 import java.io.PrintStream;
 import java.nio.charset.Charset;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.Callable;
@@ -59,6 +62,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 import javax.inject.Inject;
 import org.joda.time.DateTime;
 import org.joda.time.Duration;
@@ -92,8 +96,9 @@ class PagesImpl2 {
 
         Closables clos = new Closables(channel, application.control());
         ChainToPageConverter chainConverter = new ChainToPageConverter(id, event, clos);
+        Iterator<Page> pageIterator = new ScopeWrapIterator<Page>(application.getRequestScope(), application.iterator(), id, event, channel, clos);
         Iterable<PageChain> pagesIterable
-                = CollectionUtils.toIterable(CollectionUtils.convertedIterator(chainConverter, application.iterator()));
+                = CollectionUtils.toIterable(CollectionUtils.convertedIterator(chainConverter, pageIterator));
 
         CB callback = new CB(id, event, latch, channel);
 
@@ -348,7 +353,7 @@ class PagesImpl2 {
                 Path pth = ((HttpEvent) event).getPath();
                 Thread.currentThread().setName(pth + " for " + r.getClass().getName());
             }
-            PageChain result = new PageChain(application.getDependencies(), Acteur.class, r, r, id, event, clos);
+            PageChain result = new PageChain(application.getDependencies(), application.getRequestScope(), Acteur.class, r, r, id, event, clos);
             return result;
         }
 
@@ -363,11 +368,13 @@ class PagesImpl2 {
         private final Page page;
         private final Object[] ctx;
         private AtomicBoolean first = new AtomicBoolean(true);
+        private final ReentrantScope scope;
 
-        public PageChain(Dependencies deps, Class<? super Acteur> type, Page page, Object... ctx) {
+        public PageChain(Dependencies deps, ReentrantScope scope, Class<? super Acteur> type, Page page, Object... ctx) {
             super(deps, type, page.acteurs());
             this.page = page;
             this.ctx = ctx;
+            this.scope = scope;
         }
 
         @Override
@@ -384,6 +391,41 @@ class PagesImpl2 {
 
         public String toString() {
             return "Chain for " + page;
+        }
+    }
+
+    static class ScopeWrapIterator<T> implements Iterator<T> {
+        private final ReentrantScope scope;
+
+        private final Iterator<T> delegate;
+        private final Object[] ctx;
+
+        public ScopeWrapIterator(ReentrantScope scope, Iterator<T> delegate, Object... ctx) {
+            this.scope = scope;
+            this.delegate = delegate;
+            this.ctx = ctx;
+        }
+
+        @Override
+        public boolean hasNext() {
+            return delegate.hasNext();
+        }
+
+        @Override
+        public T next() {
+            try (QuietAutoCloseable clos = scope.enter(ctx)) {
+                return delegate.next();
+            }
+        }
+
+        @Override
+        public void remove() {
+            delegate.remove();
+        }
+
+        @Override
+        public void forEachRemaining(Consumer<? super T> cnsmr) {
+            delegate.forEachRemaining(cnsmr);
         }
     }
 }
