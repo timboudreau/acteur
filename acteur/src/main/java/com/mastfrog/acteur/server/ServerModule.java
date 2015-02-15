@@ -689,6 +689,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
             ByteBufAllocator result = this.allocator;
             if (result == null) {
                 synchronized (this) {
+                    result = this.allocator;
                     if (result == null) {
                         switch (s) {
                             case DIRECT_OR_HEAP_BY_PLATFORM:
