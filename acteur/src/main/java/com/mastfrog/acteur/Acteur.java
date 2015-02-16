@@ -580,7 +580,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
                 return "Scope wrapper for " + listener;
             }
         }
-        getResponse().setBodyWriter(new WL());
+        response().setBodyWriter(new WL());
         return this;
     }
 

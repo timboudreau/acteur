@@ -165,7 +165,7 @@ final class HttpObjectAggregator extends MessageToMessageDecoder<HttpObject> {
                 HttpResponse header = (HttpResponse) msg;
                 this.currentMessage = currentMessage = new AggregatedFullHttpResponse(
                         header,
-                        Unpooled.compositeBuffer(maxCumulationBufferComponents), null);
+                        ctx.alloc().compositeBuffer(maxCumulationBufferComponents), null);
             } else {
                 throw new Error();
             }
