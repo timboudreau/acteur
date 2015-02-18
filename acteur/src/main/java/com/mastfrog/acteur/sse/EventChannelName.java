@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright 2014 tim.
+ * Copyright 2015 tim.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,41 +21,36 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-
 package com.mastfrog.acteur.sse;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.mastfrog.acteur.spi.ApplicationControl;
-import java.io.IOException;
-import javax.inject.Inject;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * Default implementation which just uses Jackson to convert messages to JSON.
  *
  * @author Tim Boudreau
  */
-final class DefaultMessageRenderer implements MessageRenderer {
+public final class EventChannelName {
 
-    private final ObjectMapper codec;
-    private final ApplicationControl ctrl;
+    public final String name;
+    private final AtomicLong count = new AtomicLong();
 
-    @Inject
-    DefaultMessageRenderer(ObjectMapper codec, ApplicationControl ctrl) {
-        this.codec = codec;
-        this.ctrl = ctrl;
+    public EventChannelName(String name) {
+        this.name = name;
     }
 
-    @Override
-    public String toString(Object msg) {
-        if (msg instanceof String) {
-            return msg.toString();
-        }
-        try {
-            return codec.writeValueAsString(msg);
-        } catch (IOException ex) {
-            ctrl.internalOnError(ex);
-            return null;
-        }
+    public String toString() {
+        return name;
     }
 
+    public boolean equals(Object o) {
+        return o == this ? true : o instanceof EventChannelName && ((EventChannelName) o).name.equals(name);
+    }
+
+    public int hashCode() {
+        return name.hashCode() * 47;
+    }
+    
+    public long nextId() {
+        return count.getAndIncrement();
+    }
 }

@@ -48,6 +48,7 @@ import com.mastfrog.acteur.errors.ExceptionEvaluatorRegistry;
 import com.mastfrog.acteur.headers.Method;
 import com.mastfrog.acteur.server.ServerModule.TF;
 import com.mastfrog.acteur.spi.ApplicationControl;
+import com.mastfrog.acteur.sse.EventChannelName;
 import com.mastfrog.acteur.util.BasicCredentials;
 import com.mastfrog.acteur.util.HttpMethod;
 import com.mastfrog.acteur.util.RequestID;
@@ -318,6 +319,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
         if (implicit != null) {
             scope.bindTypes(binder(), implicit.value());
         }
+        scope.bindTypesAllowingNulls(binder(), EventChannelName.class);
         // Acteurs can ask for a Deferral to pause execution while some
         // other operation completes, such as making an external HTTP request
         // to another server
