@@ -34,7 +34,8 @@ import java.util.regex.Pattern;
 
 /**
  * Implementation of byte-range headers as described in
- * <a href="http://greenbytes.de/tech/webdav/draft-ietf-httpbis-p5-range-latest.html#range.units">this spec</a>.
+ * <a href="http://greenbytes.de/tech/webdav/draft-ietf-httpbis-p5-range-latest.html#range.units">this
+ * spec</a>.
  *
  * @author Tim Boudreau
  */
@@ -73,7 +74,7 @@ public final class ByteRanges implements Iterable<Range> {
                                 valid = false;
                                 break;
                             }
-                            if (end <=start) {
+                            if (end <= start) {
                                 valid = false;
                                 break;
                             }
@@ -119,15 +120,15 @@ public final class ByteRanges implements Iterable<Range> {
         ranges = items.toArray(new Range[items.size()]);
         this.valid = valid;
     }
-    
+
     public int size() {
         return ranges.length;
     }
-    
+
     public Range first() {
         return ranges.length > 0 ? ranges[0] : null;
     }
-    
+
     public Range get(int which) {
         return ranges[which];
     }
@@ -175,7 +176,7 @@ public final class ByteRanges implements Iterable<Range> {
         public final ByteRanges build() {
             return new ByteRanges(ranges);
         }
-        
+
         public Builder add(Range range) {
             this.ranges.add(range);
             return this;
@@ -235,6 +236,11 @@ public final class ByteRanges implements Iterable<Range> {
         public String toString() {
             return start + "-" + end;
         }
+
+        @Override
+        public BoundedRange toBoundedRange(long max) {
+            return new BoundedRange(start(max), end(max), max);
+        }
     }
 
     private static final class EndRange implements Range {
@@ -265,6 +271,11 @@ public final class ByteRanges implements Iterable<Range> {
         public String toString() {
             return "-" + endOffset;
         }
+
+        @Override
+        public BoundedRange toBoundedRange(long max) {
+            return new BoundedRange(start(max), end(max), max);
+        }
     }
 
     public static final class StartRange implements Range {
@@ -291,6 +302,10 @@ public final class ByteRanges implements Iterable<Range> {
         public String toString() {
             return startpoint + "-";
         }
-    }
 
+        @Override
+        public BoundedRange toBoundedRange(long max) {
+            return new BoundedRange(start(max), end(max), max);
+        }
+    }
 }

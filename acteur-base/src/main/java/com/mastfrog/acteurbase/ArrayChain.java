@@ -99,4 +99,9 @@ public class ArrayChain<T> implements Chain<T> {
     public Iterator<T> iterator() {
         return (Iterator<T>) new InstantiatingIterators(deps).iterable(types, type).iterator();
     }
+
+    @Override
+    public Object[] getContextContribution() {
+        return new Object[0];
+    }
 }

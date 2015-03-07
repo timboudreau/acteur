@@ -89,5 +89,10 @@ public final class InstantiatingIterators {
         public T next() {
             return objs.get(ix++);
         }
+
+        @Override
+        public void remove() {
+            throw new UnsupportedOperationException("Not supported.");
+        }
     }
 }

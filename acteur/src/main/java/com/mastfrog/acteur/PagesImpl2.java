@@ -62,7 +62,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Consumer;
 import javax.inject.Inject;
 import org.joda.time.DateTime;
 import org.joda.time.Duration;
@@ -422,10 +421,10 @@ class PagesImpl2 {
         public void remove() {
             delegate.remove();
         }
-
-        @Override
-        public void forEachRemaining(Consumer<? super T> cnsmr) {
-            delegate.forEachRemaining(cnsmr);
-        }
+//
+//        @Override
+//        public void forEachRemaining(Consumer<? super T> cnsmr) {
+//            delegate.forEachRemaining(cnsmr);
+//        }
     }
 }

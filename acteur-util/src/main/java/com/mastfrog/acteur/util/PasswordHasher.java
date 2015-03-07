@@ -31,9 +31,10 @@ import java.nio.charset.Charset;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
-import java.util.Base64;
+//import java.util.Base64;
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import org.apache.commons.codec.binary.Base64;
 
 /**
  * Hashes passwords into hashes which can be tested for matching but which the
@@ -98,7 +99,8 @@ public final class PasswordHasher {
             if (saltAndPassAndAlgorithm.length == 1) {
                 // Backward compatibility
                 byte[] bytes = hash(unhashed, algorithm);
-                byte[] check = Base64.getDecoder().decode(hashed);
+                byte[] check = org.apache.commons.codec.binary.Base64.decodeBase64(hashed);
+//                byte[] check = Base64.getDecoder().decode(hashed);
                 return Arrays.equals(bytes, check);
             }
             if (saltAndPassAndAlgorithm.length != 3) {
@@ -128,12 +130,14 @@ public final class PasswordHasher {
     }
 
     private String encryptPassword(String password, String randomSalt, String algorithm) throws NoSuchAlgorithmException {
-        return encodeAlgorithm(algorithm) + ":" + randomSalt + ":" + Base64.getEncoder().encodeToString(hash(password + randomSalt, algorithm));
+//        return encodeAlgorithm(algorithm) + ":" + randomSalt + ":" + Base64.getEncoder().encodeToString(hash(password + randomSalt, algorithm));
+        return encodeAlgorithm(algorithm) + ":" + randomSalt + ":" + Base64.encodeBase64String(hash(password + randomSalt, algorithm));
     }
     
     public String hash(String s) {
         try {
-            return Base64.getEncoder().encodeToString(hash(s, algorithm));
+//            return Base64.getEncoder().encodeToString(hash(s, algorithm));
+            return org.apache.commons.codec.binary.Base64.encodeBase64String(hash(s, algorithm));
         } catch (NoSuchAlgorithmException ex) {
             return Exceptions.chuck(ex);
         }

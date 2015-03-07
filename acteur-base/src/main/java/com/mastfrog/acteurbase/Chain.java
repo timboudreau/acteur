@@ -58,7 +58,8 @@ public interface Chain<T> extends Iterable<T> {
      *
      * @return an array of objects
      */
-    default Object[] getContextContribution() {
-        return new Object[0];
-    }
+//    default Object[] getContextContribution() {
+//        return new Object[0];
+//    }
+    Object[] getContextContribution();
 }
