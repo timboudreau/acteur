@@ -1,19 +1,14 @@
 package com.mastfrog.acteur.mongo.util;
 
-import com.google.common.collect.ImmutableSet;
-import com.google.inject.ImplementedBy;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.mastfrog.acteur.HttpEvent;
-import com.mastfrog.util.Exceptions;
 import com.mongodb.BasicDBObject;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
-import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.bson.types.ObjectId;
