@@ -15,6 +15,7 @@ import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.acteur.headers.Method;
 import com.mastfrog.acteur.server.ServerModule;
 import com.mastfrog.acteur.util.ErrorInterceptor;
+import com.mastfrog.acteurbase.Chain;
 import com.mastfrog.netty.http.test.harness.TestHarness;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFuture;
@@ -43,12 +44,12 @@ public class CompApp extends Application {
         add(Branch.class);
         add(Fails.class);
         add(NoContentPage.class);
+        add(DynPage.class);
     }
 
     @Override
     public void onError(Throwable err) {
         System.out.println("OUCH! ");
-        err.printStackTrace();
         this.err = err;
     }
 
@@ -82,10 +83,11 @@ public class CompApp extends Application {
 
         @Override
         public ErrorResponse evaluate(Throwable t, Acteur acteur, Page page, HttpEvent evt) {
+            System.out.println("EVALUATE " + t.getClass().getName());
             if (t instanceof ConfigurationException) {
-                if (page instanceof Fails) {
-                    return Err.conflict("werg");
-                }
+//                if (page instanceof Fails) {
+                return Err.conflict("werg");
+//                }
             }
             return null;
         }
@@ -161,7 +163,7 @@ public class CompApp extends Application {
             @Inject
             ABranch() {
                 System.out.println("abranch");
-                setState(new RespondWith(200, "A"));
+                ok("A");
             }
         }
 
@@ -170,7 +172,7 @@ public class CompApp extends Application {
             @Inject
             BBranch() {
                 System.out.println("bbranch");
-                setState(new RespondWith(200, "B"));
+                ok("B");
             }
         }
     }
@@ -294,7 +296,7 @@ public class CompApp extends Application {
             @Override
             public void operationComplete(final ChannelFuture future) throws Exception {
                 if (entryCount > 0) {
-                    svc.submit(new Callable<Void>(){
+                    svc.submit(new Callable<Void>() {
 
                         @Override
                         public Void call() throws Exception {
@@ -386,6 +388,42 @@ public class CompApp extends Application {
             NoActeur() {
                 setState(new RespondWith(HttpResponseStatus.PAYMENT_REQUIRED));
             }
+        }
+    }
+
+    public static class DynPage extends Page {
+
+        @Inject
+        DynPage(ActeurFactory af) {
+            add(af.matchPath("dyn$"));
+            add(af.matchMethods(Method.GET));
+            add(FirstActeur.class);
+        }
+    }
+
+    public static class FirstActeur extends Acteur {
+
+        @Inject
+        FirstActeur(Chain<Acteur> chain) {
+            chain.add(SecondActeur.class);
+            next();
+        }
+    }
+
+    public static class SecondActeur extends Acteur {
+
+        @Inject
+        SecondActeur(Chain<Acteur> chain) {
+            chain.add(ThirdActeur.class);
+            next();
+        }
+    }
+
+    public static class ThirdActeur extends Acteur {
+
+        @Inject
+        ThirdActeur() {
+            ok("Dynamic acteur");
         }
     }
 }

@@ -25,6 +25,7 @@ package com.mastfrog.acteur;
 
 import com.mastfrog.acteur.auth.AuthenticationActeur;
 import com.mastfrog.acteur.preconditions.Authenticated;
+import com.mastfrog.acteur.preconditions.AuthenticatedIf;
 import com.mastfrog.acteur.preconditions.BannedUrlParameters;
 import com.mastfrog.acteur.preconditions.BasicAuth;
 import com.mastfrog.acteur.preconditions.InjectRequestBodyAs;
@@ -46,22 +47,24 @@ import com.mastfrog.acteur.preconditions.UrlParametersMayNotBeCombined;
 import com.mastfrog.acteur.preconditions.UrlParametersMayNotBeCombinedSets;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.giulius.Ordered;
+import com.mastfrog.settings.Settings;
 import java.util.List;
 import javax.inject.Inject;
 
 /**
  * Processes the page annotations in com.mastfrog.acteur.preconditions and adds
- * acteurs to the list appropriately.
+ * acteurs to the list appropriately. Do not use directly.
  *
  * @author Tim Boudreau
  */
 @Ordered(0)
-public class BuiltInPageAnnotationHandler extends PageAnnotationHandler {
+public final class BuiltInPageAnnotationHandler extends PageAnnotationHandler {
 
     private final Dependencies deps;
     private final ActeurFactory af;
+    private final Settings settings;
 
-    private static Class<?>[] TYPES = new Class<?>[]{Authenticated.class,
+    private static Class<?>[] TYPES = new Class<?>[]{Authenticated.class, AuthenticatedIf.class,
         Path.class, Methods.class, MaximumPathLength.class, BannedUrlParameters.class,
         RequireAtLeastOneUrlParameterFrom.class, RequiredUrlParameters.class,
         RequireParametersIfMethodMatches.class, ParametersMustBeNumbersIfPresent.class,
@@ -71,10 +74,11 @@ public class BuiltInPageAnnotationHandler extends PageAnnotationHandler {
     };
 
     @Inject
-    BuiltInPageAnnotationHandler(Registry registry, Dependencies deps, ActeurFactory af) {
+    BuiltInPageAnnotationHandler(Registry registry, Dependencies deps, ActeurFactory af, Settings settings) {
         super(registry, TYPES);
         this.deps = deps;
         this.af = af;
+        this.settings = settings;
     }
 
     @Override
@@ -150,13 +154,20 @@ public class BuiltInPageAnnotationHandler extends PageAnnotationHandler {
             Class<?> type = paramsIface.value();
             acteurs.add(af.injectRequestParametersAs(type));
         }
+        boolean hasAuth = false;
         BasicAuth auth = c.getAnnotation(BasicAuth.class);
         if (auth != null) {
             acteurs.add(Acteur.wrap(AuthenticationActeur.class, deps));
         }
         Authenticated auth2 = c.getAnnotation(Authenticated.class);
-        if (auth2 != null) {
+        if (!hasAuth && auth2 != null) {
             acteurs.add(Acteur.wrap(AuthenticationActeur.class, deps));
+        }
+        AuthenticatedIf authIf = c.getAnnotation(AuthenticatedIf.class);
+        if (!hasAuth && authIf != null) {
+            if (settings.getBoolean(authIf.setting(), false)) {
+                acteurs.add(Acteur.wrap(AuthenticationActeur.class, deps));
+            }
         }
         InjectRequestBodyAs as = c.getAnnotation(InjectRequestBodyAs.class);
         if (as != null) {

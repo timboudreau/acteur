@@ -31,6 +31,7 @@ import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.ByteBufOutputStream;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
+import io.netty.handler.codec.http.HttpContent;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
@@ -85,7 +86,9 @@ public abstract class ResponseWriter {
 
         Output write(ByteBuffer buf) throws IOException;
 
-        Output write(ByteBuf buf) throws IOException;
+        Output write(ByteBuf buf) throws IOException
+                ;
+        Output write(HttpContent chunk) throws IOException;
 
         <T> Output trailer(HeaderValueType<T> type, T value);
         

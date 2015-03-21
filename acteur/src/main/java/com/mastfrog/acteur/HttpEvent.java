@@ -25,7 +25,6 @@ package com.mastfrog.acteur;
 
 import com.google.common.base.Optional;
 import com.mastfrog.acteur.headers.HeaderValueType;
-import com.mastfrog.acteur.headers.Method;
 import com.mastfrog.acteur.util.HttpMethod;
 import com.mastfrog.url.Path;
 import io.netty.handler.codec.http.HttpRequest;

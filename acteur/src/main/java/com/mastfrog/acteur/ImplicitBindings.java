@@ -23,27 +23,39 @@
  */
 package com.mastfrog.acteur;
 
+import com.mastfrog.acteur.annotations.HttpCall;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Annotation which can be placed on instances of Application to add bindings
- * in that application's scope.  If you write Acteurs which will include new
- * objects for injection into subsequent acteurs in the chain, you need
- * to annotation your Application subclass with this annotation and specify
- * what types will be injected.
+ * Annotation which can be placed on instances of Application to add bindings in
+ * that application's scope. If you write Acteurs which will include new objects
+ * for injection into subsequent acteurs in the chain, you need to annotation
+ * your Application subclass with this annotation and specify what types will be
+ * injected.
  * <p/>
- * <b>Note:</b> If you are using the &#064;HttpCall annotation, you can 
- * specify these classes there.
+ * <b>Note:</b> If you are using the &#064;HttpCall annotation, you can specify
+ * these classes there.
+ *
+ * @deprecated - With Acteur 1.5 and ServerBuilder, you are not subclassing
+ * application anymore, so this class is less useful as it can only appear on
+ * the application class. Instead, use {@link HttpCall} with the
+ * <code>scopeTypes</code> parameter register types on the acteurs that use
+ * them;  or use ServerBuilder.withType().
  *
  * @author Tim Boudreau
  */
+@Deprecated
 @Target(value = ElementType.TYPE)
 @Retention(value = RetentionPolicy.RUNTIME)
 public @interface ImplicitBindings {
 
+    /**
+     * A list of types which Acteurs will pass in their state, which should
+     * be injectable into subsequent acteurs.
+     * @return The list of classes
+     */
     public Class<?>[] value();
-    
 }

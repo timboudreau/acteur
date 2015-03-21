@@ -23,23 +23,26 @@
  */
 package com.mastfrog.acteur.errors;
 
-import com.google.common.collect.Lists;
 import com.mastfrog.acteur.Acteur;
 import com.mastfrog.acteur.HttpEvent;
 import com.mastfrog.acteur.Page;
 import com.mastfrog.settings.Settings;
 import java.util.Collections;
+import java.util.LinkedList;
 import java.util.List;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
 /**
+ * Registry of things which create error responses for exceptions.
  *
  * @author Tim Boudreau
  */
 @Singleton
 public final class ExceptionEvaluatorRegistry {
-    private final List<ExceptionEvaluator> evaluators = Lists.newCopyOnWriteArrayList();
+    // JDK 8
+//    private final List<ExceptionEvaluator> evaluators = Lists.newCopyOnWriteArrayList();
+    private final List<ExceptionEvaluator> evaluators = Collections.synchronizedList(new LinkedList<ExceptionEvaluator>());
     public static final String SETTINGS_KEY_DEFAULT_EXCEPTION_HANDLING = "default.exception.handling";
     @Inject
     ExceptionEvaluatorRegistry(Settings settings) {

@@ -70,10 +70,13 @@ public final class Headers {
     public static final HeaderValueType<MediaType> CONTENT_TYPE = new MediaTypeHeader();
     public static final HeaderValueType<CharSequence> SERVER = new StringHeader(HttpHeaderNames.SERVER.toString());
     public static final HeaderValueType<HeaderValueType[]> VARY = new VaryHeader();
+    public static final HeaderValueType<ByteRanges> RANGE = new ByteRangeHeader(HttpHeaders.Names.RANGE.toString());
+    public static final HeaderValueType<BoundedRange> CONTENT_RANGE = new ContentRangeHeader(HttpHeaders.Names.CONTENT_RANGE.toString());
     public static final HeaderValueType<CharSequence> ACCEPT = new StringHeader(HttpHeaderNames.ACCEPT.toString());
     public static final HeaderValueType<CharSequence> ACCEPT_ENCODING = new StringHeader(HttpHeaderNames.ACCEPT_ENCODING.toString());
     public static final HeaderValueType<CharSequence> CONTENT_ENCODING = new StringHeader(HttpHeaderNames.CONTENT_ENCODING.toString());
     public static final HeaderValueType<CharSequence> USER_AGENT = new StringHeader(HttpHeaderNames.USER_AGENT.toString());
+    public static final HeaderValueType<String> ACCEPT_RANGES = new StringHeader(HttpHeaders.Names.ACCEPT_RANGES.toString());
     public static final HeaderValueType<Connection> CONNECTION = new ConnectionHeader();
     public static final HeaderValueType<Long> CONTENT_LENGTH = new LongHeader(HttpHeaderNames.CONTENT_LENGTH.toString());
     public static final HeaderValueType<URI> CONTENT_LOCATION = new UriHeader(HttpHeaderNames.CONTENT_LOCATION.toString());

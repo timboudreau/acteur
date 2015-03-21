@@ -1,0 +1,26 @@
+
+Bits of history that could be discarded:
+
+ - Odd that decororateResponse, create404response take a Netty HttpResponse,
+rather than an acteur Response - just an artifact of the early days
+
+ - Etag and LastModified checking annotations only work if you set the
+header on the page - should create a communication path for the partially
+built responses before they are coalesced - right now each acteur only
+sees its own empty response
+
+ - Page.getResponseHeaders() is duplicative and violates the DRY principle,
+but needed until the above is fixed
+
+ - Can no longer inject an HttpEvent into a page constructor because it is
+not in-scope during page instantiation.  Easy fix in acteur-base, but would
+prefer to make Page less necessary rather than encourage subclassing it
+
+ - HackHttpHeaders is problematic - Netty 3 allowed for sending raw ByteBufs
+down the pipe;  Netty 4 requires chunked encoding for incremental responses.
+Hacking this support back in meant some fussing with Netty's HTTP codec.
+This means we go to war with Netty's HTTP codec which wants to set incorrect
+values for transfer-encoding;  and sending ByteBufs wreaks havoc with the
+HttpContentCompressor, and forces us to have a fork of HttpObjectAggregator.
+Supposedly this will improve in a threatened rewrite of Netty's HTTP codec,
+so support is still there - but that hasn't happened yet.

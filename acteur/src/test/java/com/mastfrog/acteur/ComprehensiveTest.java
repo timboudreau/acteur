@@ -89,6 +89,10 @@ public class ComprehensiveTest {
                 .assertStatus(CONFLICT)
                 .assertContent("Hoober");
 
+        harness.get("dyn").log().setTimeout(Duration.standardSeconds(10)).go()
+                .await()
+                .assertStatus(OK)
+                .assertContent("Dynamic acteur");
     }
 
     private String iter(String msg, int count) {

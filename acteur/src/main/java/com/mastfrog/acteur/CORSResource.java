@@ -29,6 +29,10 @@ import com.mastfrog.acteur.headers.Method;
 import static com.mastfrog.acteur.headers.Method.OPTIONS;
 import com.mastfrog.acteur.preconditions.Description;
 import com.mastfrog.acteur.preconditions.Methods;
+import static com.mastfrog.acteur.server.ServerModule.DEFAULT_CORS_ALLOW_ORIGIN;
+import static com.mastfrog.acteur.server.ServerModule.DEFAULT_CORS_MAX_AGE_MINUTES;
+import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_CORS_ALLOW_ORIGIN;
+import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_CORS_MAX_AGE_MINUTES;
 import com.mastfrog.acteur.util.CacheControl;
 import com.mastfrog.acteur.util.CacheControlTypes;
 import com.mastfrog.settings.Settings;
@@ -45,12 +49,6 @@ import org.joda.time.Duration;
 @Description("Answers CORS preflight HTTP OPTIONS requests - see the ajax spec")
 @Methods(OPTIONS)
 final class CORSResource extends Page {
-
-    public static final String SETTINGS_KEY_CORS_MAX_AGE_MINUTES = "cors.max.age.minutes";
-    public static final String SETTINGS_KEY_CORS_ALLOW_ORIGIN = "cors.allow.origin";
-    public static final boolean DEFAULT_CORS_ENABLED = true;
-    public static final long DEFAULT_CORS_MAX_AGE_MINUTES = 5;
-    public static final String DEFAULT_CORS_ALLOW_ORIGIN = "*";
 
     private static final HeaderValueType<?>[] hdrs = new HeaderValueType<?>[]{
         Headers.CONTENT_TYPE,

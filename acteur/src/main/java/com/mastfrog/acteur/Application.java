@@ -39,21 +39,23 @@ import com.mastfrog.guicy.scope.ReentrantScope;
 import com.mastfrog.acteur.util.CacheControl;
 import com.mastfrog.acteur.util.CacheControlTypes;
 import com.mastfrog.acteur.server.ServerModule;
+import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_CORS_ALLOW_ORIGIN;
+import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_CORS_MAX_AGE_MINUTES;
 import com.mastfrog.acteur.util.ErrorInterceptor;
 import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.acteur.headers.Method;
 import com.mastfrog.acteur.spi.ApplicationControl;
 import com.mastfrog.acteur.util.RequestID;
+import com.mastfrog.acteurbase.InstantiatingIterators;
 import com.mastfrog.parameters.Param;
 import com.mastfrog.parameters.Params;
 import com.mastfrog.url.Path;
 import com.mastfrog.util.ConfigurationError;
 import com.mastfrog.util.Checks;
-import com.mastfrog.util.Invokable;
 import com.mastfrog.util.perf.Benchmark;
 import com.mastfrog.util.perf.Benchmark.Kind;
+import com.mastfrog.util.thread.QuietAutoCloseable;
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
@@ -118,17 +120,21 @@ public class Application implements Iterable<Page> {
     private ReentrantScope scope;
     private final Exception stackTrace = new Exception();
     @Inject
-    private Pages runner;
+    private PagesImpl2 runner;
     @Inject(optional = true)
     private ErrorInterceptor errorHandler;
     @Inject
     private Charset charset;
     @Inject(optional = true)
-    @Named(CORSResource.SETTINGS_KEY_CORS_ALLOW_ORIGIN)
+    @Named(SETTINGS_KEY_CORS_ALLOW_ORIGIN)
     String corsAllowOrigin = "*";
+    
+    @Inject(optional = true)
+    @Named("application.name")
+    String name;
 
     @Inject(optional = true)
-    @Named(CORSResource.SETTINGS_KEY_CORS_MAX_AGE_MINUTES)
+    @Named(SETTINGS_KEY_CORS_MAX_AGE_MINUTES)
     long corsMaxAgeMinutes = 5;
 
     @Inject(optional = true)
@@ -157,6 +163,10 @@ public class Application implements Iterable<Page> {
             add(helpPageType());
         }
     }
+    
+    List<Object> rawPages() {
+        return this.pages;
+    }
 
     /**
      * Get the type of the built in help page class, which uses
@@ -175,7 +185,7 @@ public class Application implements Iterable<Page> {
         return corsEnabled;
     }
 
-    final void enableDefaultCorsHandling() {
+    protected final void enableDefaultCorsHandling() {
         if (!corsEnabled) {
             corsEnabled = true;
             pages.add(0, CORSResource.class);
@@ -195,9 +205,9 @@ public class Application implements Iterable<Page> {
 
         @Override
         public void internalOnError(Throwable err) {
+            Checks.notNull("err", err);
             Application.this.internalOnError(err);
         }
-
     };
 
     ApplicationControl control() {
@@ -226,7 +236,7 @@ public class Application implements Iterable<Page> {
     ExecutorService getWorkerThreadPool() {
         return exe;
     }
-    
+
     private static String deConstantNameify(String name) {
         StringBuilder sb = new StringBuilder();
         boolean capitalize = true;
@@ -435,7 +445,7 @@ public class Application implements Iterable<Page> {
     }
 
     public String getName() {
-        return getClass().getSimpleName();
+        return name == null ? getClass().getSimpleName() : name;
     }
 
     /**
@@ -479,9 +489,11 @@ public class Application implements Iterable<Page> {
      * @return
      */
     protected HttpResponse createNotFoundResponse(Event<?> event) {
-        ByteBuf buf = Unpooled.copiedBuffer("<html><head>"
+        ByteBuf buf = event.getChannel().alloc().buffer(90);
+        String msg = "<html><head>"
                 + "<title>Not Found</title></head><body><h1>Not Found</h1>"
-                + event + " was not found\n<body></html>\n", charset);
+                + event + " was not found\n<body></html>\n";
+        buf.writeBytes(msg.getBytes(charset));
         DefaultFullHttpResponse resp = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1,
                 HttpResponseStatus.NOT_FOUND, buf);
         Headers.write(Headers.CONTENT_TYPE, MediaType.HTML_UTF_8.withCharset(charset), resp);
@@ -538,6 +550,7 @@ public class Application implements Iterable<Page> {
      */
     @Benchmark(value = "uncaughtExceptions", publish = Kind.CALL_COUNT)
     final void internalOnError(Throwable err) {
+        Checks.notNull("err", err);
         try {
             if (errorHandler != null) {
                 errorHandler.onError(err);
@@ -553,6 +566,7 @@ public class Application implements Iterable<Page> {
      * @param err
      */
     public void onError(Throwable err) {
+        Checks.notNull("err", err);
         err.printStackTrace(System.err);
     }
 
@@ -569,21 +583,15 @@ public class Application implements Iterable<Page> {
         // Create a new incremented id for this request
         final RequestID id = ids.next();
         // Enter request scope with the id and the event
-        // XXX is the scope entry here actually needed anymore?
-        return scope.run(new Invokable<Event<?>, CountDownLatch, RuntimeException>() {
-            @Override
-            public CountDownLatch run(Event<?> argument) {
-                // Set the thread name
-//                Thread.currentThread().setName(event.getPath() + " " + event.getRemoteAddress());
-                onBeforeEvent(id, event);
-                try {
-                    return runner.onEvent(id, event, channel);
-                } catch (Exception e) {
-                    internalOnError(e);
-                }
-                return null;
-            }
-        }, event, id);
+        try (QuietAutoCloseable cl = scope.enter(event, id)) {
+            onBeforeEvent(id, event);
+            return runner.onEvent(id, event, channel);
+        } catch (Exception e) {
+            internalOnError(e);
+            CountDownLatch latch = new CountDownLatch(1);
+            latch.countDown();
+            return latch;
+        }
     }
 
     @SuppressWarnings({"unchecked", "ThrowableInstanceNotThrown", "ThrowableInstanceNeverThrown"})
@@ -609,8 +617,11 @@ public class Application implements Iterable<Page> {
      */
     @Override
     public Iterator<Page> iterator() {
-        return new InstantiatingIterators(deps).iterable(pages, Page.class).iterator();
+        return iterators.iterable(pages, Page.class).iterator();
     }
+    
+    @Inject
+    private InstantiatingIterators iterators;
 
     protected void send404(RequestID id, Event<?> event, Channel channel) {
         HttpResponse response = createNotFoundResponse(event);

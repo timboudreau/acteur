@@ -28,10 +28,10 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
-import com.google.inject.name.Named;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.url.*;
 import com.mastfrog.util.Checks;
+import com.mastfrog.util.ConfigurationError;
 import com.mastfrog.util.Exceptions;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
@@ -41,20 +41,13 @@ import java.util.regex.Pattern;
  *
  * @author Tim Boudreau
  */
-//@SettingValues({DefaultPathFactory.HOSTNAME_SETTINGS_KEY + "=localhost",
-//DefaultPathFactory.BASE_PATH_SETTINGS_KEY + "="})
 @Singleton
 class DefaultPathFactory implements PathFactory {
 
-    int port = 80;
-    int securePort = 443;
-    private @Inject(optional = true)
-    @Named(HOSTNAME_SETTINGS_KEY)
-    String hostname = "localhost";
-    private @Inject(optional = true)
-    @Named(BASE_PATH_SETTINGS_KEY)
-    String path = "";
-    private volatile Path pth;
+    private final int port;
+    private final int securePort;
+    private final String hostname;
+    private final Path pth;
 
     @Inject
     DefaultPathFactory(Settings settings) {
@@ -67,17 +60,19 @@ class DefaultPathFactory implements PathFactory {
         if (securePort == -1) {
             securePort = settings.getInt("securePort", 443);
         }
+        if (securePort < 0) {
+            throw new ConfigurationError(EXTERNAL_SECURE_PORT + " cannot be negative: " + securePort);
+        }
+        if (port < 0) {
+            throw new ConfigurationError(EXTERNAL_PORT + " cannot be negative: " + securePort);
+        }
         this.securePort = securePort;
+        hostname = settings.getString(HOSTNAME_SETTINGS_KEY, "localhost");
+        String path = settings.getString(BASE_PATH_SETTINGS_KEY, "");
+        pth = Path.parse(path);
     }
 
     private Path basePath() {
-        if (pth == null) {
-            synchronized (this) {
-                if (pth == null) {
-                    pth = Path.parse(path);
-                }
-            }
-        }
         return pth;
     }
     private static final Pattern STRIP_QUERY = Pattern.compile("(.*?)\\?.*");

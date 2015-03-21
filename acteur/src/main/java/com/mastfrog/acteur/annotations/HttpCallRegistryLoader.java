@@ -46,10 +46,15 @@ public final class HttpCallRegistryLoader implements Iterable<Class<? extends Pa
                 try (final InputStream in = url.openStream()) {
                     String[] lines = Streams.readString(in, "UTF-8").split("\n");
                     for (String line : lines) {
+                        // CRLF issues if build was done on Windows
+                        // gives us class names ending in a \r
+                        line = line.trim();
                         if (line.isEmpty() || line.startsWith("#")) {
                             continue;
                         }
-                        types.add(Class.forName(line));
+//                        types.add(Class.forName(line));
+                        System.err.println("Numble load '" + line + "'");
+                        types.add(cl.loadClass(line));
                     }
                 } catch (ClassNotFoundException ex) {
                     return Exceptions.chuck(ex);

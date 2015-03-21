@@ -23,11 +23,13 @@
  */
 package com.mastfrog.acteur;
 
+import com.mastfrog.acteur.Acteur.BaseState;
+
 /**
  * Actually sends the response to a request
  *
  * @author Tim Boudreau
  */
 interface ResponseSender extends Thread.UncaughtExceptionHandler {
-    void receive(Acteur action, State state, ResponseImpl response);
+    void receive(Acteur action, com.mastfrog.acteur.State state, ResponseImpl response);
 }

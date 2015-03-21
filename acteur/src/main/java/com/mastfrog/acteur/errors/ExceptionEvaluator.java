@@ -29,6 +29,9 @@ import com.mastfrog.acteur.Page;
 import javax.inject.Singleton;
 
 /**
+ * Converts exceptions thrown inside Acteurs into error messages.  
+ * Multiple ones can be registered.  To register, simply bind your
+ * implementation as an eager singleton in your Guice module.
  *
  * @author Tim Boudreau
  */

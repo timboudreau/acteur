@@ -29,10 +29,20 @@ import com.mastfrog.url.Path;
 import org.joda.time.DateTime;
 
 /**
+ * Determines the value of the Expires header for various files
  *
  * @author Tim Boudreau
  */
 @ImplementedBy(DefaultExpiresPolicy.class)
 public interface ExpiresPolicy {
+    /**
+     * Determine the latest date when markup should be cached for
+     * the passed path - used in constructing cache control and
+     * expires headers.
+     * 
+     * @param mimeType The mime type being used
+     * @param path The url path
+     * @return A DateTime, or null if none should be used
+     */
     public DateTime get(MediaType mimeType, Path path);
 }

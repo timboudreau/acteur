@@ -23,21 +23,25 @@
  */
 package com.mastfrog.acteur.server;
 
-import com.google.inject.AbstractModule;
+import com.google.inject.Binder;
 import com.google.inject.Module;
 import com.mastfrog.acteur.Application;
 import com.mastfrog.acteur.annotations.GenericApplication;
+import com.mastfrog.acteur.annotations.GenericApplication.GenericApplicationSettings;
 import com.mastfrog.acteur.annotations.GenericApplicationModule;
 import com.mastfrog.acteur.util.Server;
 import com.mastfrog.giulius.DependenciesBuilder;
+import com.mastfrog.giulius.SettingsBindings;
 import com.mastfrog.guicy.annotations.Namespace;
 import com.mastfrog.guicy.scope.ReentrantScope;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.settings.SettingsBuilder;
+import com.mastfrog.util.Checks;
 import com.mastfrog.util.Exceptions;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -57,6 +61,20 @@ public final class ServerBuilder {
     private final List<Module> modules = new LinkedList<>();
     private final List<Class<? extends Module>> moduleClasses = new LinkedList<>();
     private final Set<Class<?>> types = new HashSet<>();
+    private final ReentrantScope scope;
+    private boolean enableCors = true;
+    private boolean enableHelp = false;
+
+    public ServerBuilder(ReentrantScope scope) {
+        this(Namespace.DEFAULT, scope);
+    }
+
+    public ServerBuilder(String namespace, ReentrantScope scope) {
+        Checks.notNull("namespace", namespace);
+        Checks.notNull("scope", scope);
+        this.namespace = namespace;
+        this.scope = scope;
+    }
 
     /**
      * Create a ServerBuilder with Namespace.DEFAULT as its namespace. That
@@ -76,7 +94,9 @@ public final class ServerBuilder {
      * separators
      */
     public ServerBuilder(String namespace) {
+        Checks.notNull("namespace", namespace);
         this.namespace = namespace;
+        this.scope = new ReentrantScope();
     }
 
     /**
@@ -144,6 +164,64 @@ public final class ServerBuilder {
         return this;
     }
 
+    public ReentrantScope scope() {
+        return scope;
+    }
+
+    public ServerBuilder enableHelp() {
+        this.enableHelp = true;
+        return this;
+    }
+
+    public ServerBuilder disableHelp() {
+        this.enableHelp = false;
+        return this;
+    }
+
+    public ServerBuilder enableCORS() {
+        this.enableCors = true;
+        return this;
+    }
+
+    public ServerBuilder disableCORS() {
+        this.enableCors = false;
+        return this;
+    }
+    
+    private final Set<SettingsBindings> settingsBindings = EnumSet.allOf(SettingsBindings.class);
+    /**
+     * Disable binding of settings to some types if you know they
+     * will not be used, to save (minimal) memory.  This is only
+     * significant if you are running in &lt; 20Mb heap.
+     * @param bindings The bindings to remove
+     * @return this
+     */
+    public ServerBuilder disableBindings(SettingsBindings... bindings) {
+        EnumSet<SettingsBindings> toRemove = EnumSet.noneOf(SettingsBindings.class);
+        for (SettingsBindings b : bindings) {
+            toRemove.add(b);
+        }
+        settingsBindings.removeAll(toRemove);
+        return this;
+    }
+    
+    /**
+     * Explicitly set the list of types that are bound to settings to
+     * save (minimal) memory.
+     * 
+     * @param bindings The types of bindings to set up
+     * @return this
+     */
+    public ServerBuilder enableOnlyBindingsFor(SettingsBindings... bindings) {
+        EnumSet<SettingsBindings> newSet = EnumSet.noneOf(SettingsBindings.class);
+        for (SettingsBindings b : bindings) {
+            newSet.add(b);
+        }
+        this.settingsBindings.clear();
+        this.settingsBindings.addAll(newSet);
+        return this;
+    }    
+
     /**
      * Build a Server object which can be started with its start() method (call
      * await() on the resulting ServerControl object to keep it running).
@@ -160,6 +238,7 @@ public final class ServerBuilder {
         Settings settings = sb.build();
         ScopeProvider appModule = appModule(settings);
         DependenciesBuilder db = new DependenciesBuilder().add(appModule);
+        db.enableOnlyBindingsFor(settingsBindings.toArray(new SettingsBindings[settingsBindings.size()]));
         db.add(settings, namespace);
         db.add(settings, Namespace.DEFAULT);
         for (Module m : modules) {
@@ -168,6 +247,7 @@ public final class ServerBuilder {
         for (Class<? extends Module> m : moduleClasses) {
             db.add(instantiateModule(m, appModule, settings));
         }
+        db.add(new CorsAndHelpModule(enableCors, enableHelp));
         return db.build().getInstance(Server.class);
     }
 
@@ -176,20 +256,32 @@ public final class ServerBuilder {
         if (appType == null || GenericApplication.class.isAssignableFrom(appType)) {
             return createGenericApplicationModule(settings, types);
         } else {
-            return createModule(appType, types);
+            return createModule(scope, appType, types);
         }
     }
 
-    private static <T extends Application> TS<T> createModule(Class<T> appType, Set<Class<?>> toBind) {
-        return new TS<>(appType, toBind);
+    private static <T extends Application> TS<T> createModule(ReentrantScope scope, Class<T> appType, Set<Class<?>> toBind) {
+        return new TS<>(scope, appType, toBind);
+    }
+
+    static class CorsAndHelpModule extends GenericApplicationSettings implements Module {
+
+        public CorsAndHelpModule(boolean corsEnabled, boolean helpEnabled) {
+            super(corsEnabled, helpEnabled);
+        }
+
+        @Override
+        public void configure(Binder binder) {
+            binder.bind(GenericApplicationSettings.class).toInstance(this);
+        }
     }
 
     private static final class TS<T extends Application> extends ServerModule<T> implements ScopeProvider {
 
         private final Set<Class<?>> toBind;
 
-        TS(Class<T> appType, Set<Class<?>> toBind) {
-            super(appType);
+        TS(ReentrantScope scope, Class<T> appType, Set<Class<?>> toBind) {
+            super(scope, appType, -1, -1, -1);
             this.toBind = toBind;
         }
 
@@ -208,19 +300,19 @@ public final class ServerBuilder {
     @SuppressWarnings("unchecked")
     private GS<?> createGenericApplicationModule(Settings settings, Set<Class<?>> toBind) {
         Class<? extends GenericApplication> c = appType == null ? GenericApplication.class : (Class<? extends GenericApplication>) appType;
-        return createGenericApplicationModule(c, settings, toBind);
+        return createGenericApplicationModule(scope, c, settings, toBind);
     }
 
-    private static <T extends GenericApplication> GS<T> createGenericApplicationModule(Class<T> type, Settings settings, Set<Class<?>> toBind) {
-        return new GS<>(type, settings, toBind);
+    private static <T extends GenericApplication> GS<T> createGenericApplicationModule(ReentrantScope scope, Class<T> type, Settings settings, Set<Class<?>> toBind) {
+        return new GS<>(scope, type, settings, toBind);
     }
 
     private static final class GS<T extends GenericApplication> extends GenericApplicationModule<T> implements ScopeProvider {
 
         private final Set<Class<?>> toBind;
 
-        public GS(Class<T> appType, Settings settings, Set<Class<?>> toBind) {
-            super(settings, appType, new Class<?>[0]);
+        public GS(ReentrantScope scope, Class<T> appType, Settings settings, Set<Class<?>> toBind) {
+            super(scope, settings, appType, new Class<?>[0]);
             this.toBind = toBind;
         }
 

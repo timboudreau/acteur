@@ -48,10 +48,14 @@ import com.mastfrog.acteur.errors.ExceptionEvaluatorRegistry;
 import com.mastfrog.acteur.headers.Method;
 import com.mastfrog.acteur.server.ServerModule.TF;
 import com.mastfrog.acteur.spi.ApplicationControl;
+import com.mastfrog.acteur.sse.EventChannelName;
 import com.mastfrog.acteur.util.BasicCredentials;
 import com.mastfrog.acteur.util.HttpMethod;
+import com.mastfrog.acteur.util.RequestID;
 import com.mastfrog.acteur.util.Server;
 import com.mastfrog.acteur.util.ServerControl;
+import com.mastfrog.acteurbase.ActeurBaseModule;
+import com.mastfrog.acteurbase.Chain;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.guicy.annotations.Defaults;
 import com.mastfrog.guicy.scope.ReentrantScope;
@@ -59,7 +63,6 @@ import com.mastfrog.parameters.KeysValues;
 import com.mastfrog.settings.MutableSettings;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.settings.SettingsBuilder;
-import com.mastfrog.treadmill.Treadmill;
 import com.mastfrog.url.Path;
 import com.mastfrog.util.Codec;
 import com.mastfrog.util.ConfigurationError;
@@ -89,17 +92,18 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.ForkJoinWorkerThread;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.Condition;
 import javax.inject.Inject;
 import org.joda.time.DateTime;
 import org.joda.time.Duration;
 import org.netbeans.validation.api.InvalidInputException;
 
 /**
- * Guice module for creating a server;  also defines settings keys which can
+ * Guice module for creating a server; also defines settings keys which can
  * affect behavior.
  *
  * @author Tim Boudreau
@@ -182,20 +186,21 @@ public class ServerModule<A extends Application> extends AbstractModule {
      * The port to run on
      */
     public static final String PORT = "port";
-    
+
     /**
      * Settings key for enabling HTTP compression.
      */
     public static final String HTTP_COMPRESSION = "httpCompression";
-    
+
     /**
      * Settings key for the maximum content length.
      */
     public static final String MAX_CONTENT_LENGTH = "maxContentLength";
     /**
-     * Guice binding for <code>&#064;Named(DELAY_EXECUTOR) ScheduledExecutorService</code>
-     * to get a scheduled executor service which shares a ThreadFactory with the
-     * worker thread pool.
+     * Guice binding for
+     * <code>&#064;Named(DELAY_EXECUTOR) ScheduledExecutorService</code> to get
+     * a scheduled executor service which shares a ThreadFactory with the worker
+     * thread pool.
      */
     public static final String DELAY_EXECUTOR = "delayExecutor";
     /**
@@ -208,7 +213,6 @@ public class ServerModule<A extends Application> extends AbstractModule {
      */
     private static final int DEFAULT_DELAY_THREADS = 2;
 
-
     /**
      * If true, the return value of Event.getRemoteAddress() will prefer the
      * headers X-Forwarded-For or X-Real-IP if present, so that running an
@@ -220,14 +224,60 @@ public class ServerModule<A extends Application> extends AbstractModule {
      * Settings key if true, do CORS responses on OPTIONS requests
      */
     public static final String SETTINGS_KEY_CORS_ENABLED = "cors.enabled";
+    /**
+     * If true (the default), a ForkJoinPool will be used for dispatching work
+     * to acteurs;  if not, a fixed thread ExecutorService will be used.
+     * The default is correct for most appliations; applications which require
+     * an extremely small memory footprint (7-10Mb) will reduce their memory
+     * requirements under load by turning this off.
+     */
+    public static final String SETTINGS_KEY_USE_FORK_JOIN_POOL = "acteur.fork.join";
+
+    /**
+     * If the default support for CORS requests is enabled, this is the max age
+     * in minutes that the browser should regard the response as valid.
+     */
+    public static final String SETTINGS_KEY_CORS_MAX_AGE_MINUTES = "cors.max.age.minutes";
+    /**
+     * If the default support for CORS requests is enabled, this is the value
+     * of what hosts the response is valid for (what sites can use scripts from
+     * this server without the browser blocking them).  The default is *.
+     */
+    public static final String SETTINGS_KEY_CORS_ALLOW_ORIGIN = "cors.allow.origin";
+    /**
+     * Default value for @link(ServerModule.SETTINGS_KEY_CORS_ENABLED}
+     */
+    public static final boolean DEFAULT_CORS_ENABLED = true;
+    /**
+     * Default value for @link(ServerModule.SETTINGS_KEY_CORS_MAX_AGE_MINUTES}
+     */
+    public static final long DEFAULT_CORS_MAX_AGE_MINUTES = 5;
+    /**
+     * Default value for @link(ServerModule.SETTINGS_KEY_CORS_ALLOW_ORIGIN}
+     */
+    public static final String DEFAULT_CORS_ALLOW_ORIGIN = "*";
+    
+    /**
+     * Determine if the application should exit if an exception is thrown when binding
+     * the server socket (usually because the port is in use).  The default is
+     * true, but in cases where multiple servers are started in one JVM and the failure
+     * of one should not cause the JVM to exit, it can be set to false and the JVM
+     * will continue running if there are any live non-daemon threads.
+     */
+    public static final String SETTINGS_KEY_SYSTEM_EXIT_ON_BIND_FAILURE = "system.exit.on.bind.failure";
+
     protected final Class<A> appType;
-    protected final ReentrantScope scope = new ReentrantScope();
+    protected final ReentrantScope scope;
     private final int eventThreads;
     private final int workerThreads;
     private final int backgroundThreads;
     private final List<Module> otherModules = new ArrayList<>();
 
     public ServerModule(Class<A> appType, int workerThreadCount, int eventThreadCount, int backgroundThreadCount) {
+        this(new ReentrantScope(), appType, workerThreadCount, eventThreadCount, backgroundThreadCount);
+    }
+
+    public ServerModule(ReentrantScope scope, Class<A> appType, int workerThreadCount, int eventThreadCount, int backgroundThreadCount) {
         if (!Application.class.isAssignableFrom(appType)) {
             throw new ClassCastException(appType.getName() + " is not a subclass of " + Application.class.getName());
         }
@@ -235,17 +285,24 @@ public class ServerModule<A extends Application> extends AbstractModule {
         this.workerThreads = workerThreadCount;
         this.eventThreads = eventThreadCount;
         this.backgroundThreads = backgroundThreadCount;
+        this.scope = scope;
     }
 
     public ServerModule(Class<A> appType) {
         this(appType, -1, -1, -1);
     }
 
+    /**
+     * Get the Guice scope used for injecting dynamic request-related
+     * objects into Acteur constructors.
+     * @return The scope
+     */
     public final ReentrantScope applicationScope() {
         return scope;
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     protected void configure() {
         bind(Server.class).to(ServerImpl.class);
         bind(ReentrantScope.class).toInstance(scope);
@@ -256,19 +313,19 @@ public class ServerModule<A extends Application> extends AbstractModule {
                 binder().getProvider(Settings.class),
                 binder().getProvider(ByteBufAllocator.class)));
 
-        scope.bindTypes(binder(), Event.class, HttpEvent.class,
+        scope.bindTypes(binder(), Event.class, HttpEvent.class, RequestID.class,
                 Page.class, BasicCredentials.class, Closables.class);
 
         ImplicitBindings implicit = appType.getAnnotation(ImplicitBindings.class);
         if (implicit != null) {
             scope.bindTypes(binder(), implicit.value());
         }
+        scope.bindTypesAllowingNulls(binder(), EventChannelName.class);
         // Acteurs can ask for a Deferral to pause execution while some
         // other operation completes, such as making an external HTTP request
         // to another server
-        scope.bindTypes(binder(), Treadmill.Deferral.class);
+        install(new ActeurBaseModule(scope));
 
-        Provider<Application> appProvider = binder().getProvider(Application.class);
         Provider<ApplicationControl> appControlProvider = binder().getProvider(ApplicationControl.class);
         Provider<Settings> set = binder().getProvider(Settings.class);
 
@@ -293,9 +350,9 @@ public class ServerModule<A extends Application> extends AbstractModule {
         bind(ThreadFactory.class).annotatedWith(Names.named(BACKGROUND_THREAD_POOL_NAME)).toInstance(backgroundThreadFactory);
 
         Provider<ExecutorService> workerProvider
-                = new ExecutorServiceProvider(workerThreadFactory, workerThreadCount);
+                = new ExecutorServiceProvider(workerThreadFactory, workerThreadCount, set);
         Provider<ExecutorService> backgroundProvider
-                = new ExecutorServiceProvider(backgroundThreadFactory, backgroundThreadCount);
+                = new ExecutorServiceProvider(backgroundThreadFactory, backgroundThreadCount, set);
 
         bind(ExecutorService.class).annotatedWith(Names.named(
                 WORKER_THREAD_POOL_NAME)).toProvider(workerProvider);
@@ -315,7 +372,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
         bind(Duration.class).toProvider(UptimeProvider.class);
         bind(new CKTL()).toProvider(CookiesProvider.class);
 
-//        bind(String.class).annotatedWith(Names.named("application")).toProvider(ApplicationNameProvider.class);
+        //XXX anything using this?
         bind(String.class).annotatedWith(Names.named("application")).toInstance(this.appType.getSimpleName());
 
         bind(ServerImpl.class).asEagerSingleton();
@@ -337,8 +394,33 @@ public class ServerModule<A extends Application> extends AbstractModule {
         bind(BuiltInPageAnnotationHandler.class).asEagerSingleton();
         bind(ResponseHeaders.class).toProvider(ResponseHeadersProvider.class);
         bind(ScheduledExecutorService.class).annotatedWith(Names.named(DELAY_EXECUTOR)).toProvider(DelayExecutorProvider.class);
+        // allow Chain<Acteur> to be injected
+        bind(new CL()).toProvider(ChainProvider.class);
     }
-    
+
+    static class CL extends TypeLiteral<Chain<Acteur>> {
+
+    }
+
+    static class ChainProvider implements Provider<Chain<Acteur>> {
+
+        @SuppressWarnings("unchecked")
+        private final Provider<Chain> chain;
+
+        @SuppressWarnings("unchecked")
+        @Inject
+        ChainProvider(Provider<Chain> chain) {
+            this.chain = chain;
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public Chain<Acteur> get() {
+            return chain.get();
+        }
+
+    }
+
     @Singleton
     private static final class DelayExecutorProvider implements Provider<ScheduledExecutorService> {
 
@@ -374,7 +456,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
         public ResponseHeadersProvider(Provider<Page> page) {
             this.page = page;
         }
-        
+
         @Override
         public ResponseHeaders get() {
             return page.get().getResponseHeaders();
@@ -411,7 +493,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
         }
 
     }
-    
+
     private static final class MethodProvider2 implements Provider<Method> {
 
         private final Provider<HttpEvent> evt;
@@ -430,7 +512,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
             return e == null || !(e.getMethod() instanceof Method) ? null : (Method) evt.get().getMethod();
         }
 
-    }    
+    }
 
     private static final class ChannelProvider implements Provider<Channel> {
 
@@ -572,21 +654,6 @@ public class ServerModule<A extends Application> extends AbstractModule {
         }
     }
 
-    private static final class ApplicationNameProvider implements Provider<String> {
-
-        private final Provider<Application> app;
-
-        @Inject
-        ApplicationNameProvider(Provider<Application> app) {
-            this.app = app;
-        }
-
-        @Override
-        public String get() {
-            return app.get().getName();
-        }
-    }
-
     /**
      * Add another module to be installed with this one
      *
@@ -625,6 +692,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
             ByteBufAllocator result = this.allocator;
             if (result == null) {
                 synchronized (this) {
+                    result = this.allocator;
                     if (result == null) {
                         switch (s) {
                             case DIRECT_OR_HEAP_BY_PLATFORM:
@@ -714,20 +782,29 @@ public class ServerModule<A extends Application> extends AbstractModule {
         final TF tf;
         private volatile ExecutorService svc;
         private final ThreadCount count;
+        private final Provider<Settings> settings;
 
-        public ExecutorServiceProvider(TF tf, ThreadCount count) {
+        public ExecutorServiceProvider(TF tf, ThreadCount count, Provider<Settings> settings) {
             this.tf = tf;
             this.count = count;
+            this.settings = settings;
         }
 
         private ExecutorService create() {
+            boolean useForkJoin = settings.get().getBoolean(SETTINGS_KEY_USE_FORK_JOIN_POOL, true);
             switch (tf.name()) {
                 case BACKGROUND_THREAD_POOL_NAME:
-//                    return LoggingExecutorService.wrap(tf.name(), Executors.newCachedThreadPool(tf));
-                    return Executors.newCachedThreadPool(tf);
+                    if (useForkJoin) {
+                        return new ForkJoinPool(count.get(), tf, tf, true);
+                    } else {
+                        return Executors.newCachedThreadPool(tf);
+                    }
                 default:
-//                    return LoggingExecutorService.wrap(tf.name(), Executors.newFixedThreadPool(count.get(), tf));
-                    return Executors.newFixedThreadPool(count.get(), tf);
+                    if (useForkJoin) {
+                        return new ForkJoinPool(count.get(), tf, tf, true);
+                    } else {
+                        return Executors.newFixedThreadPool(count.get(), tf);
+                    }
             }
         }
 
@@ -744,7 +821,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
         }
     }
 
-    static final class TF implements ThreadFactory, UncaughtExceptionHandler {
+    static final class TF implements ThreadFactory, UncaughtExceptionHandler, ForkJoinPool.ForkJoinWorkerThreadFactory {
 
         private final String name;
         private final Provider<ApplicationControl> app;
@@ -768,7 +845,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
             if ("event".equals(tg.getName())) {
                 t.setPriority(Thread.MAX_PRIORITY);
             } else {
-                t.setPriority(Thread.NORM_PRIORITY - 1);
+                t.setPriority(Thread.NORM_PRIORITY);
             }
             t.setUncaughtExceptionHandler(this);
             String nm = name + "-" + count.getAndIncrement();
@@ -783,6 +860,28 @@ public class ServerModule<A extends Application> extends AbstractModule {
 
         public String toString() {
             return "ThreadFactory " + name;
+        }
+
+        @Override
+        public ForkJoinWorkerThread newThread(ForkJoinPool pool) {
+            FWT t = new FWT(pool);
+            if ("event".equals(tg.getName())) {
+                t.setPriority(Thread.MAX_PRIORITY);
+            } else {
+                t.setPriority(Thread.NORM_PRIORITY - 1);
+            }
+            t.setUncaughtExceptionHandler(this);
+            String nm = name + "-" + count.getAndIncrement();
+            t.setName(nm);
+            return t;
+        }
+
+        static class FWT extends java.util.concurrent.ForkJoinWorkerThread {
+
+            public FWT(ForkJoinPool pool) {
+                super(pool);
+            }
+
         }
     }
 
@@ -812,9 +911,8 @@ public class ServerModule<A extends Application> extends AbstractModule {
 
     /**
      * Start a server
-     * 
-     * @return an object to wait on, which can be used to shut down
-     * the server
+     *
+     * @return an object to wait on, which can be used to shut down the server
      * @throws IOException if something goes wrong
      * @throws InterruptedException if something goes wrong
      * @deprecated Use ServerBuilder instead
@@ -826,10 +924,9 @@ public class ServerModule<A extends Application> extends AbstractModule {
 
     /**
      * Start a server
-     * 
+     *
      * @param port The port to start on
-     * @return an object to wait on, which can be used to shut down
-     * the server
+     * @return an object to wait on, which can be used to shut down the server
      * @throws IOException if something goes wrong
      * @throws InterruptedException if something goes wrong
      * @deprecated Use ServerBuilder instead

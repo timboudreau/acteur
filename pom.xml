@@ -5,7 +5,7 @@
     <parent>
         <groupId>com.mastfrog</groupId>
         <artifactId>mastfrog-parent</artifactId>
-        <version>1.5.2</version>
+        <version>1.6.1.2-netty-5</version>
         <relativePath/>
     </parent>
     <name>Acteur Parent</name>
@@ -20,5 +20,7 @@
         <module>deprecated</module>
         <module>acteur-headers</module>
         <module>acteur-jdbc</module>
+        <module>acteur-cookie-auth</module>
+        <module>acteur-base</module>
     </modules>
 </project>

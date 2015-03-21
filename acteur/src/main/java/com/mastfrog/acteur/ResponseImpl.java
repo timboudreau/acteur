@@ -39,7 +39,6 @@ import com.mastfrog.util.Codec;
 import com.mastfrog.util.Exceptions;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
-import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
@@ -51,6 +50,7 @@ import io.netty.handler.codec.http.DefaultHttpHeaders;
 import io.netty.handler.codec.http.DefaultHttpResponse;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaderValues;
+import io.netty.handler.codec.http.HttpContent;
 import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpMessage;
 import io.netty.handler.codec.http.HttpResponse;
@@ -89,7 +89,7 @@ final class ResponseImpl extends Response {
 
     private volatile boolean modified;
     HttpResponseStatus status;
-    private final List<Entry<?>> headers = Collections.synchronizedList(new ArrayList<Entry<?>>());
+    private final List<Entry<?>> headers = new ArrayList<Entry<?>>(2);
     private String message;
     ChannelFutureListener listener;
     private boolean chunked;
@@ -107,6 +107,7 @@ final class ResponseImpl extends Response {
     }
 
     void merge(ResponseImpl other) {
+        Checks.notNull("other", other);
         this.modified |= other.modified;
         if (other.modified) {
             for (Entry<?> e : other.headers) {
@@ -172,8 +173,7 @@ final class ResponseImpl extends Response {
         return delay;
     }
 
-/*
-    static class HackHttpHeaders implements HttpHeaders {
+    static class HackHttpHeaders extends HttpHeaders {
 
         private final HttpHeaders orig;
 
@@ -190,6 +190,11 @@ final class ResponseImpl extends Response {
         @Override
         public String get(CharSequence name) {
             return orig.get(name);
+        }
+
+        @Override
+        public List<String> getAll(String name) {
+            return orig.getAll(name);
         }
 
         @Override
@@ -286,7 +291,7 @@ final class ResponseImpl extends Response {
         @Override
         public String get(String name) {
             return get((CharSequence) name);
-        }
+    }
 
         @Override
         public List<String> getAll(String name) {
@@ -543,6 +548,16 @@ final class ResponseImpl extends Response {
         public ChannelFuture future() {
             return future;
         }
+
+        @Override
+        public Output write(HttpContent chunk) throws IOException {
+            if (!chunked) {
+                ResponseWriterListener.this.future = ResponseWriterListener.this.future.channel().writeAndFlush(chunk.content());
+            } else {
+                ResponseWriterListener.this.future = ResponseWriterListener.this.future.channel().writeAndFlush(chunk);
+            }
+            return this;
+        }
     }
 
     /**
@@ -588,7 +603,8 @@ final class ResponseImpl extends Response {
         String msg = getMessage();
         HttpResponse resp;
         if (msg != null) {
-            ByteBuf buf = Unpooled.copiedBuffer(msg, charset);
+            ByteBuf buf = evt.getChannel().alloc().buffer(msg.length());
+            buf.writeBytes(msg.getBytes(charset));
             long size = buf.readableBytes();
             add(Headers.CONTENT_LENGTH, size);
             DefaultFullHttpResponse r = new DefaultFullHttpResponse(
@@ -643,8 +659,7 @@ final class ResponseImpl extends Response {
 
         Entry(HeaderValueType<T> decorator, T value) {
             Checks.notNull("decorator", decorator);
-//            assert value == null || decorator.type().isInstance(value) :
-//                    value + " of type " + value.getClass() + " is not a " + decorator.type();
+            Checks.notNull(decorator.name().toString(), value);
             this.decorator = decorator;
             this.value = value;
         }

@@ -70,7 +70,7 @@ public class TestMultiplePages {
 
         ActA() {
             System.out.println("ActA on " + Thread.currentThread());
-            setState(new ConsumedLockedState());
+            next();
         }
     }
 

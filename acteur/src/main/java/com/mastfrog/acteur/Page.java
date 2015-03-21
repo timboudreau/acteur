@@ -49,11 +49,11 @@ import org.joda.time.DateTime;
 import org.joda.time.Duration;
 
 /**
- * Really an aggregation of Acteurs and a place to set header values;  in recent
+ * Really an aggregation of Acteurs and a place to set header values; in recent
  * versions of Acteur it is rarely necessary to implement this - instead, simply
- * annotate your entry-point Acteur with &#064;HttpCall and one will be generated
- * for you under-the-hood.
- * 
+ * annotate your entry-point Acteur with &#064;HttpCall and one will be
+ * generated for you under-the-hood.
+ *
  * To implement, simply subclass and add zero or more
  * <code><a href="Acteur.html">Acteur</a></code> classes or instances using the
  * <code>add()</code> method. Each Acteur is called in succession and can do one
@@ -98,7 +98,9 @@ public abstract class Page implements Iterable<Acteur> {
     }
 
     Iterable<Object> contents() {
-        return CollectionUtils.toIterable(this.acteurs.iterator());
+        List<Object> result = new ArrayList<Object>(annotations());
+        result.addAll(this.acteurs);
+        return result;
     }
 
     void describeYourself(Map<String, Object> into) {
@@ -129,6 +131,10 @@ public abstract class Page implements Iterable<Acteur> {
 
     static Page get() {
         return CURRENT_PAGE.get();
+    }
+
+    static void clear() {
+        CURRENT_PAGE.clear();
     }
 
     protected final void add(Class<? extends Acteur> action) {
@@ -162,6 +168,14 @@ public abstract class Page implements Iterable<Acteur> {
 
     final List<Object> getActeurs() {
         return Collections.unmodifiableList(acteurs);
+    }
+
+    List<Object> acteurs() {
+        List<Acteur> annos = this.annotations();
+        List<Object> l = new ArrayList<>(annos.size() + acteurs.size());
+        l.addAll(this.annotations());
+        l.addAll(acteurs);
+        return l;
     }
 
     final Acteur getActeur(int ix) {
@@ -198,6 +212,9 @@ public abstract class Page implements Iterable<Acteur> {
 
     protected void decorateResponse(Event<?> event, Acteur acteur, HttpResponse response) {
         final ResponseHeaders properties = getResponseHeaders();
+        if (!properties.modified()) {
+            return;
+        }
 
         List<HeaderValueType<?>> vary = new LinkedList<>();
         properties.getVaryHeaders(vary);
@@ -227,17 +244,22 @@ public abstract class Page implements Iterable<Acteur> {
 
     @SuppressWarnings("deprecation")
     private Iterator<Acteur> annotationActeurs() {
+        return annotations().iterator();
+    }
+
+    private List<Acteur> annotations() {
         PageAnnotationHandler.Registry handler = getApplication().getDependencies().getInstance(PageAnnotationHandler.Registry.class);
         List<Acteur> results = new LinkedList<>();
         handler.processAnnotations(this, results);
-        return results.iterator();
+        return results;
     }
 
     @Override
+    @Deprecated
     public Iterator<Acteur> iterator() {
         assert getApplication() != null : "Application is null - called outside request?";
-        PageAnnotationHandler.Registry registry = 
-                getApplication().getDependencies().getInstance(
+        PageAnnotationHandler.Registry registry
+                = getApplication().getDependencies().getInstance(
                         PageAnnotationHandler.Registry.class);
         if (registry.hasAnnotations(this)) {
             return CollectionUtils.combine(annotationActeurs(), new I());

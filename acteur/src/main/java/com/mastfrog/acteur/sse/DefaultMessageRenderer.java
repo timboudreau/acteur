@@ -51,7 +51,7 @@ final class DefaultMessageRenderer implements MessageRenderer {
             return msg.toString();
         }
         try {
-            return codec.writeValueAsString(codec);
+            return codec.writeValueAsString(msg);
         } catch (IOException ex) {
             ctrl.internalOnError(ex);
             return null;

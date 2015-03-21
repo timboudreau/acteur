@@ -1,125 +1,92 @@
+/*
+ * The MIT License
+ *
+ * Copyright 2015 Tim Boudreau.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
 package com.mastfrog.acteur.mongo;
 
 import com.google.inject.AbstractModule;
-import com.google.inject.name.Names;
-import com.mastfrog.acteur.mongo.util.InvalidParameterException;
-import com.mastfrog.util.ConfigurationError;
-import com.mongodb.DB;
-import com.mongodb.DBCollection;
-import com.mongodb.MongoClient;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import com.google.inject.Inject;
+import com.mastfrog.acteur.Acteur;
+import com.mastfrog.acteur.HttpEvent;
+import com.mastfrog.acteur.Page;
+import com.mastfrog.acteur.errors.Err;
+import com.mastfrog.acteur.errors.ErrorResponse;
+import com.mastfrog.acteur.errors.ExceptionEvaluator;
+import com.mastfrog.acteur.errors.ExceptionEvaluatorRegistry;
 
+/**
 /**
  * Simple bindings for MongoDB
  *
  * @author Tim Boudreau
  */
-public final class MongoModule extends AbstractModule implements MongoConfig<MongoModule> {
+public class MongoModule extends AbstractModule implements MongoConfig<MongoModule> {
 
-    public static final String MONGO_HOST = "mongoHost";
-    public static final String MONGO_PORT = "mongoPort";
-    public static final String DATABASE_NAME = "_dbName";
-    public static final String SETTINGS_KEY_MONGO_USER = "mongo.user";
-    public static final String SETTINGS_KEY_MONGO_PASSWORD = "mongo.password";
-    public static final String SETTINGS_KEY_MAX_WAIT_MILLIS = "mongo.max.wait.millis";
-    public static final int DEFAULT_MAX_WAIT_MILLIS = 20000;
-    public static final String SETTINGS_KEY_MAX_CONNECTIONS = "mongo.max.connections";
-    public static final int DEFAULT_MAX_CONNECTIONS = 1500;
-
-    
-    private boolean configured;
-    private final Map<String, String> collectionForName = new HashMap<>();
-    private final String databaseName;
-    private final Set<Class<? extends MongoInitializer>> initializers = new HashSet<>();
-
-    /**
-     * Create a new module, attempting to find the main class name and use that
-     * as the database name.
-     */
-    public MongoModule() {
-        this(getMainClassName());
-    }
-
-    /**
-     * Create a new module, and use the specified database name
-     *
-     * @param databaseName
-     */
-    public MongoModule(String databaseName) {
-        this.databaseName = databaseName;
-    }
-
-    public MongoModule addInitializer(Class<? extends MongoInitializer> type) {
-        initializers.add(type);
-        return this;
-    }
-
-    private static String getMainClassName() {
-        Exception e = new Exception();
-        StackTraceElement[] els = e.getStackTrace();
-        String className = els[els.length - 1].getClassName();
-        if (className.contains(".")) {
-            int ix = className.lastIndexOf(".");
-            if (ix < className.length() - 1) {
-                className = className.substring(ix + 1);
-            }
-        }
-        System.out.println("Using MongoDB database " + className.toLowerCase());
-        return className.toLowerCase();
-    }
-
-    /**
-     * Bind a collection so it can be injected using &#064;Named, using the same
-     * name in code and as a collection name
-     *
-     * @param bindingName The name that will be used in code
-     * @return this
-     */
-    public final MongoModule bindCollection(String bindingName) {
-        return bindCollection(bindingName, bindingName);
-    }
-
-    /**
-     * Bind a collection so it can be injected using &#064;Named
-     *
-     * @param bindingName The name that will be used in code
-     * @param collectionName The name of the actual collection
-     * @return this
-     */
-    public final MongoModule bindCollection(String bindingName, String collectionName) {
-        if (configured) {
-            throw new ConfigurationError("Cannot add bindings after application is started");
-        }
-        collectionForName.put(bindingName, collectionName);
-        return this;
-    }
-
-    public final String getDatabaseName() {
-        return databaseName;
-    }
+    private final GiuliusMongoModule giuliusModule;
 
     @Override
     protected void configure() {
-        configured = true;
-        bind(String.class).annotatedWith(Names.named(DATABASE_NAME)).toInstance(databaseName);
-        // We want to bail during startup if we can't contact the
-        // database, so use eager singleton to ensure we'll be
-        bind(MongoClient.class).toProvider(MongoClientProvider.class);
-        bind(DB.class).toProvider(DatabaseProvider.class);
-        bind(MongoInitializer.Registry.class).toInstance(new MongoInitializer.Registry());
+        install(giuliusModule);
+        bind(InvalidParamterExceptionEvaluator.class).asEagerSingleton();
+    }
 
-        for (Class<? extends MongoInitializer> c : initializers) {
-            bind(c).asEagerSingleton();
+    public MongoModule() {
+        giuliusModule = new GiuliusMongoModule();
+
+    }
+
+    public MongoModule(String databaseName) {
+        giuliusModule = new GiuliusMongoModule(databaseName);
+    }
+
+    @Override
+    public MongoModule addInitializer(Class<? extends MongoInitializer> type) {
+        giuliusModule.addInitializer(type);
+        return this;
+    }
+
+    @Override
+    public MongoModule bindCollection(String bindingName) {
+        giuliusModule.bindCollection(bindingName);
+        return this;
+    }
+
+    @Override
+    public MongoModule bindCollection(String bindingName, String collectionName) {
+        giuliusModule.bindCollection(bindingName, collectionName);
+        return this;
+    }
+
+    static class InvalidParamterExceptionEvaluator extends ExceptionEvaluator {
+
+        @Inject
+        InvalidParamterExceptionEvaluator(ExceptionEvaluatorRegistry registry) {
+            super(registry);
         }
 
-        for (Map.Entry<String, String> e : collectionForName.entrySet()) {
-            bind(DBCollection.class).annotatedWith(Names.named(e.getKey())).toProvider(
-                    new CollectionProvider(binder().getProvider(DB.class),
-                    e.getValue(), binder().getProvider(MongoInitializer.Registry.class)));
+        @Override
+        public ErrorResponse evaluate(Throwable t, Acteur acteur, Page page, HttpEvent evt) {
+            String msg = t.getMessage() == null ? t.getClass().getSimpleName() : t.getMessage();
+            return Err.badRequest(msg);
         }
-        bind(InvalidParameterException.Evaluator.class).asEagerSingleton();
     }
 }

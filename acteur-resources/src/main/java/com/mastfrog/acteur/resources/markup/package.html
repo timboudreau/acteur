@@ -1,0 +1,96 @@
+<html>
+    <head>
+        <title>Markup Files API</title>
+    </head>
+    <body>
+
+        The Guice module in this package makes it easy to bind static markup and have
+        an Acteur-based application serve it.
+
+        It uses several strategies to look up markup, in order to provide an optimal
+        experience both in development and in production:
+        <ul>
+            <li>Look up markup relative to the JAR a particular file is in.  Finds the
+                JAR file or classpath root for the Class object it is passed, and
+                looks for an <code>html</code> directory (you can set the exact name;
+                the default is "html") following the following
+                algorithm:
+                <ul>
+                    <li>If the classpath root directory is named target, skip up one
+                        directory, then</li>
+                    <li>Look for the html directory there;  if it does not exist</li>
+                    <li>Look for it in <code>src/main/html</code> (or src/main/$NAME_YOU_SPECIFIED)</li>
+                </ul>
+            <li>Look for an tar.gz archive of sources next to the specified class, and if it
+                exists, unpack it to the system temporary directory and serve markup from there</li>
+        </ul>
+
+        This means it is possible to edit and serve live markup files, and also distribute
+        a single JAR file that is a self-contained application with all its dependencies
+        <i>and</i> markup.
+
+        <h2>Using This Library</h2>
+        Using this is as simple as 
+
+        <pre>
+public class MyApplicationModule extends AbstractModule {
+    public void configure() {
+        //... do other configuration tasks
+        install(new MarkupFilesModule(SomeClass.class));
+    }
+}</pre>
+
+        Setting up Maven to archive your markup is a little more complicated.  In your
+        <code>pom.xml</code> file, set up the Maven Assembly Plugin to archive your
+        markup into the right place (you can copy and paste this, but replace
+        <code>/target/classes/com/mastfrog/healthtracker</code> with an appropriate
+        path to the package of the class you're going to pass to <code>MarkupFilesModule</code>.
+        <pre>
+&lt;plugin&gt;
+    &lt;artifactId&gt;maven-assembly-plugin&lt;/artifactId&gt;
+    &lt;version&gt;2.5.3&lt;/version&gt;
+    &lt;executions&gt;
+        &lt;execution&gt;
+            &lt;!--&lt;phase&gt;process-resources&lt;/phase&gt;--&gt;
+            &lt;!--&lt;phase&gt;site&lt;/phase&gt;--&gt;
+            &lt;!--&lt;phase&gt;package&lt;/phase&gt;--&gt;
+            &lt;phase&gt;compile&lt;/phase&gt;
+            &lt;id&gt;compile&lt;/id&gt;
+            &lt;goals&gt;
+                &lt;goal&gt;single&lt;/goal&gt;
+            &lt;/goals&gt;
+            &lt;configuration&gt;
+                &lt;descriptor&gt;src/assembly/compress-html.xml&lt;/descriptor&gt;
+                &lt;attach&gt;false&lt;/attach&gt;
+                &lt;!--&lt;archiveBaseDirectory&gt;/&lt;/archiveBaseDirectory&gt;--&gt;
+                &lt;finalName&gt;html&lt;/finalName&gt;
+                &lt;outputDirectory&gt;${project.basedir}/target/classes/com/mastfrog/healthtracker&lt;/outputDirectory&gt;
+            &lt;/configuration&gt;
+        &lt;/execution&gt;
+    &lt;/executions&gt;
+&lt;/plugin&gt;
+        </pre>
+
+        And the source for <code>src/assembly/compress-html.xml</code>, the archive descriptor:
+        <pre>
+&lt;assembly xmlns=&quot;http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.2&quot; 
+          xmlns:xsi=&quot;http://www.w3.org/2001/XMLSchema-instance&quot;
+          xsi:schemaLocation=&quot;http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.2 http://maven.apache.org/xsd/assembly-1.1.2.xsd&quot;&gt;
+    &lt;id&gt;files&lt;/id&gt;
+    &lt;formats&gt;
+        &lt;format&gt;tar.gz&lt;/format&gt;
+    &lt;/formats&gt;
+    &lt;baseDirectory/&gt;
+    &lt;fileSets&gt;
+        &lt;fileSet&gt;
+            &lt;directory&gt;${project.basedir}/html&lt;/directory&gt;
+            &lt;outputDirectory/&gt;
+            &lt;includes&gt;
+                &lt;include&gt;**&lt;/include&gt;
+            &lt;/includes&gt;
+        &lt;/fileSet&gt;
+    &lt;/fileSets&gt;
+&lt;/assembly&gt;
+        </pre>
+    </body>
+</html>

@@ -25,6 +25,7 @@
 package com.mastfrog.acteur.sse;
 
 import com.google.common.net.MediaType;
+import com.google.inject.Provider;
 import com.mastfrog.acteur.Acteur;
 import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.acteur.util.CacheControl;
@@ -58,28 +59,34 @@ public class SseActeur extends Acteur {
     private static final MediaType TYPE = MediaType.parse("text/event-stream; charset=UTF-8");
 
     @Inject
-    public SseActeur(EventSink sink) {
+    public SseActeur(EventSink sink, Provider<EventChannelName> name) {
         add(Headers.CONTENT_TYPE, TYPE);
         add(Headers.CACHE_CONTROL, CacheControl.PRIVATE_NO_CACHE_NO_STORE);
         add(Headers.CONNECTION, Connection.keep_alive);
         setState(new RespondWith(OK));
-        setResponseBodyWriter(new L(sink));
+        setResponseBodyWriter(new L(sink, name.get()));
         setChunked(true);
     }
 
     private static class L implements ChannelFutureListener {
 
         private final EventSink sink;
+        private final EventChannelName name;
 
-        public L(EventSink sink) {
+        public L(EventSink sink, EventChannelName name) {
             this.sink = sink;
+            this.name = name;
         }
 
         @Override
         public void operationComplete(ChannelFuture future) throws Exception {
             // At this point we know the headers have been sent, so it is
             // safe to start sending events
-            sink.register(future.channel());
+            if (name == null) {
+                sink.register(future.channel());
+            } else {
+                sink.register(name, future.channel());
+            }
         }
     }
 }

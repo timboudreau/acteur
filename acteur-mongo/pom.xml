@@ -5,7 +5,7 @@
     <parent>
         <artifactId>mastfrog-parent</artifactId>
         <groupId>com.mastfrog</groupId>
-        <version>1.5.2</version>
+        <version>1.6.1.2-netty-5</version>
         <relativePath/>
     </parent>
 
@@ -29,6 +29,16 @@
             <type>jar</type>
         </dependency>
         <dependency>
+            <groupId>com.mastfrog</groupId>
+            <artifactId>giulius-mongodb</artifactId>
+            <type>jar</type>
+        </dependency>
+        <dependency>
+            <groupId>com.mastfrog</groupId>
+            <artifactId>jackson-mongodb</artifactId>
+            <type>jar</type>
+        </dependency>        
+        <dependency>
             <groupId>org.mongodb</groupId>
             <artifactId>mongo-java-driver</artifactId>
             <type>jar</type>
@@ -44,13 +54,18 @@
             <scope>test</scope>
             <type>jar</type>
         </dependency>
+        <dependency>
+            <groupId>com.mastfrog</groupId>
+            <artifactId>jackson</artifactId>
+            <type>jar</type>
+        </dependency>
     </dependencies>
     <build>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
-                <version>2.4</version>
+                <version>2.5</version>
                 <executions>
                     <execution>
                         <goals>

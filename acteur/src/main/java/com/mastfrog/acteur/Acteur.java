@@ -24,14 +24,14 @@
 package com.mastfrog.acteur;
 
 import com.google.common.net.MediaType;
-import com.google.inject.ProvisionException;
+import com.mastfrog.acteur.Acteur.BaseState;
 import com.mastfrog.acteur.errors.Err;
 import com.mastfrog.acteur.errors.ErrorRenderer;
 import com.mastfrog.acteur.errors.ErrorResponse;
-import com.mastfrog.acteur.errors.ExceptionEvaluatorRegistry;
-import com.mastfrog.acteur.errors.ResponseException;
 import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.acteur.headers.Headers;
+import com.mastfrog.acteurbase.AbstractActeur;
+import com.mastfrog.acteurbase.ActeurResponseFactory;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.guicy.scope.ReentrantScope;
 import com.mastfrog.settings.Settings;
@@ -96,10 +96,34 @@ import java.util.concurrent.atomic.AtomicReference;
  *
  * @author Tim Boudreau
  */
-public abstract class Acteur {
+public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, State> {
 
-    private State state;
-    Throwable creationStackTrace;
+    class BaseState extends com.mastfrog.acteur.State {
+
+        protected final Page page;
+
+        public BaseState(Object... context) {
+            super(context);
+            page = Page.get();
+            if (page == null) {
+                throw new IllegalStateException("Page not set");
+            }
+        }
+
+        public BaseState(boolean rejected) {
+            super(rejected);
+            page = Page.get();
+            if (page == null) {
+                throw new IllegalStateException("Page not set");
+            }
+        }
+
+        @Override
+        public final Acteur getActeur() {
+            return Acteur.this;
+        }
+
+    }
 
     /**
      * Create an acteur.
@@ -108,11 +132,39 @@ public abstract class Acteur {
      * action asynchronously
      */
     protected Acteur() {
-        boolean asserts = false;
-        assert asserts = true;
-        if (asserts) {
-            creationStackTrace = new Throwable();
+        super(INSTANCE);
+    }
+    private static final RT INSTANCE = new RT();
+
+    protected com.mastfrog.acteur.State getState() {
+        return super.getState();
+    }
+
+    public Object[] getContextContribution() {
+        return new Object[0];
+    }
+
+    final Throwable creationStackTrace() {
+        return creationStackTrace;
+    }
+
+    static class RT extends ActeurResponseFactory<Response, ResponseImpl> {
+
+        @Override
+        protected ResponseImpl create() {
+            return new ResponseImpl();
         }
+
+        @Override
+        protected boolean isFinished(ResponseImpl obj) {
+            return obj != null && obj.status != null;
+        }
+
+        @Override
+        protected boolean isModified(ResponseImpl obj) {
+            return obj != null && obj.isModified();
+        }
+
     }
 
     /**
@@ -131,49 +183,42 @@ public abstract class Acteur {
         Acteur getDelegate();
     }
 
-    private volatile ResponseImpl response;
-
-    protected <T> void add(HeaderValueType<T> decorator, T value) {
-        getResponse().add(decorator, value);
+    protected <T> Acteur add(HeaderValueType<T> decorator, T value) {
+        response().add(decorator, value);
+        return this;
     }
 
-    ResponseImpl getResponse() {
+    protected ResponseImpl getResponse() {
         if (this instanceof Delegate) {
             return ((Delegate) this).getDelegate().getResponse();
         }
-        if (response == null) {
-            synchronized (this) {
-                if (response == null) {
-                    response = new ResponseImpl();
-                }
-            }
-        }
-        return response;
+        return super.getResponse();
     }
 
     protected <T> T get(HeaderValueType<T> header) {
-        return getResponse().get(header);
+        return response().get(header);
     }
 
-    public void setResponseCode(HttpResponseStatus status) {
-        getResponse().setResponseCode(status);
+    public final Acteur setResponseCode(HttpResponseStatus status) {
+        response().setResponseCode(status);
+        return this;
     }
 
-    public void setMessage(String message) {
-        getResponse().setMessage(message);
+    public final Acteur setMessage(String message) {
+        response().setMessage(message);
+        return this;
     }
 
-    protected void setState(State state) {
-        Checks.notNull("state", state);
-        this.state = state;
+    public final Acteur setChunked(boolean chunked) {
+        response().setChunked(chunked);
+        return this;
     }
 
-    public void setChunked(boolean chunked) {
-        getResponse().setChunked(chunked);
-    }
-
-    protected Response response() {
-        return getResponse();
+    protected final Response response() {
+        if (this instanceof Delegate) {
+            return ((Delegate) this).getDelegate().response();
+        }
+        return super.response();
     }
 
     static Acteur error(Acteur errSource, Page page, Throwable t, HttpEvent evt, boolean log) {
@@ -192,80 +237,75 @@ public abstract class Acteur {
     public void describeYourself(Map<String, Object> into) {
     }
 
-    protected void noContent() {
+    protected final Acteur noContent() {
         setState(new RespondWith(NO_CONTENT));
+        return this;
     }
 
-    protected void badRequest() {
+    protected final Acteur badRequest() {
         setState(new RespondWith(BAD_REQUEST));
+        return this;
     }
 
-    protected void badRequest(Object msg) {
+    protected final Acteur badRequest(Object msg) {
         setState(new RespondWith(BAD_REQUEST, msg));
+        return this;
     }
 
-    protected void notFound() {
+    protected final Acteur notFound() {
         setState(new RespondWith(NOT_FOUND));
+        return this;
     }
 
-    protected void notFound(Object msg) {
+    protected final Acteur notFound(Object msg) {
         setState(new RespondWith(NOT_FOUND, msg));
+        return this;
     }
 
-    protected void ok(Object msg) {
+    protected final Acteur ok(Object msg) {
         setState(new RespondWith(OK, msg));
+        return this;
     }
 
-    protected void ok() {
+    protected final Acteur ok() {
         setState(new RespondWith(OK));
+        return this;
     }
 
-    static final class ErrorActeur extends Acteur {
+    protected final Acteur reply(HttpResponseStatus status) {
+        setState(new RespondWith(status));
+        return this;
+    }
 
-        ErrorActeur(Acteur errSource, HttpEvent evt, Page page, Throwable t, boolean tryErrResponse, boolean log) throws IOException {
-            while (t.getCause() != null) {
-                t = t.getCause();
-            }
-            if (t instanceof ResponseException) {
-                ResponseException rt = (ResponseException) t;
-                setState(new RespondWith(new Err(rt.status(), rt.getMessage())));
-                return;
-            }
-            if (tryErrResponse) {
-                Dependencies deps = page.application.getDependencies();
-                if (t instanceof ProvisionException) {
-                    t = t.getCause();
-                }
-                ExceptionEvaluatorRegistry reg = deps.getInstance(ExceptionEvaluatorRegistry.class);
-                ErrorResponse resp = reg.evaluate(t, errSource, page, evt);
-                if (log && resp instanceof Err && ((Err) resp).unhandled) {
-                    page.application.control().internalOnError(t);
-                }
-                if (resp != null) {
-                    ErrorRenderer ren = deps.getInstance(ErrorRenderer.class);
-                    ren.render(resp, response(), evt);
-                    setState(new RespondWith(resp.status()));
-                    return;
-                }
-            }
-            StringBuilder sb = new StringBuilder("Page " + page + " (" + page.getClass().getName() + " threw " + t.getMessage() + '\n');
-            try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-                t.printStackTrace(new PrintStream(out));
-                sb.append(new String(out.toByteArray()));
-            } catch (IOException ioe) {
-            }
-            setState(new RespondWith(HttpResponseStatus.INTERNAL_SERVER_ERROR,
-                    sb.toString()));
+    protected final Acteur reply(HttpResponseStatus status, Object msg) {
+        setState(new RespondWith(status, msg));
+        return this;
+    }
+
+    protected final Acteur reply(Err err) {
+        setState(new RespondWith(err));
+        return this;
+    }
+
+    protected final Acteur reject() {
+        setState(new RejectedState());
+        return this;
+    }
+
+    protected final Acteur next(Object... context) {
+        if (context == null || context.length == 0) {
+            setState(new ConsumedState());
+        } else {
+            setState(new ConsumedLockedState(context));
         }
+        return this;
     }
 
     /**
      * A shorthand state for responding with a particular http response code and
      * optional message, which if non-string, will be rendered as JSON.
      */
-    public class RespondWith extends State {
-
-        private final Page page;
+    public class RespondWith extends BaseState {
 
         public RespondWith(int status) {
             this(HttpResponseStatus.valueOf(status));
@@ -280,7 +320,7 @@ public abstract class Acteur {
         }
 
         public RespondWith(ErrorResponse err) {
-            page = Page.get();
+            super(false);
             setResponseCode(err.status());
             ErrorRenderer ren = getLockedPage().getApplication().getDependencies().getInstance(ErrorRenderer.class);
             String s;
@@ -296,21 +336,17 @@ public abstract class Acteur {
         }
 
         /**
-         * Response which uses JSON
+         * Acteur.this; Response which uses JSON
          *
          * @param status
          * @param msg
          */
         public RespondWith(HttpResponseStatus status, Object msg) {
-            page = Page.get();
+            super(false);
             if (msg instanceof String) {
                 setResponseCode(status);
                 setMessage((String) msg);
             } else if (msg != null) {
-                if (page == null) {
-                    throw new IllegalStateException("No page set");
-                }
-                Codec mapper = page.getApplication().getDependencies().getInstance(Codec.class);
                 setResponseCode(status);
                 setMessage(msgToString(msg));
             }
@@ -331,7 +367,6 @@ public abstract class Acteur {
         }
 
         public RespondWith(HttpResponseStatus status, String msg) {
-            page = Page.get();
             if (page == null) {
                 IllegalStateException e = new IllegalStateException("Called outside ActionsImpl.onEvent");
                 e.printStackTrace();
@@ -341,26 +376,6 @@ public abstract class Acteur {
             if (msg != null) {
                 setMessage(msg);
             }
-        }
-
-        @Override
-        protected boolean isLockedInChain() {
-            return false;
-        }
-
-        @Override
-        protected boolean isConsumed() {
-            return false;
-        }
-
-        @Override
-        protected Page getLockedPage() {
-            return page;
-        }
-
-        @Override
-        protected Acteur getActeur() {
-            return Acteur.this;
         }
 
         @Override
@@ -374,43 +389,18 @@ public abstract class Acteur {
      * A state indicating the acteur neither accepts nor definitively refuses a
      * request.
      */
-    protected class RejectedState extends State {
-
-        private final Page page;
+    protected class RejectedState extends BaseState {
 
         public RejectedState() {
-            page = Page.get();
+            super(true);
             if (page == null) {
                 throw new IllegalStateException("Called outside ActionsImpl.onEvent");
             }
         }
 
         public RejectedState(HttpResponseStatus status) {
-            page = Page.get();
-            if (page == null) {
-                throw new IllegalStateException("Called outside ActionsImpl.onEvent");
-            }
+            super(true);
             setResponseCode(status);
-        }
-
-        @Override
-        protected boolean isLockedInChain() {
-            return false;
-        }
-
-        @Override
-        protected boolean isConsumed() {
-            return false;
-        }
-
-        @Override
-        protected Page getLockedPage() {
-            return page;
-        }
-
-        @Override
-        protected Acteur getActeur() {
-            return Acteur.this;
         }
     }
 
@@ -419,81 +409,31 @@ public abstract class Acteur {
      * responding to the request. It may optionally include objects which should
      * be available for injection into subsequent acteurs.
      */
-    protected class ConsumedState extends State {
+    protected class ConsumedState extends BaseState {
 
         private final Page page;
         private final Object[] context;
 
         public ConsumedState(Object... context) {
+            super(false);
             page = Page.get();
             if (page == null) {
                 throw new IllegalStateException("Called outside ActionsImpl.onEvent");
             }
             this.context = context;
-        }
-
-        @Override
-        protected Object[] getContext() {
-            return context;
-        }
-
-        @Override
-        protected boolean isLockedInChain() {
-            return false;
-        }
-
-        @Override
-        protected boolean isConsumed() {
-            return true;
-        }
-
-        @Override
-        protected Page getLockedPage() {
-            return page;
-        }
-
-        @Override
-        protected Acteur getActeur() {
-            return Acteur.this;
         }
     }
 
-    protected class ConsumedLockedState extends State {
+    protected class ConsumedLockedState extends BaseState {
 
         private final Page page;
-        private final Object[] context;
 
         public ConsumedLockedState(Object... context) {
+            super(context);
             page = Page.get();
             if (page == null) {
                 throw new IllegalStateException("Called outside ActionsImpl.onEvent");
             }
-            this.context = context;
-        }
-
-        @Override
-        protected Object[] getContext() {
-            return context;
-        }
-
-        @Override
-        protected boolean isLockedInChain() {
-            return true;
-        }
-
-        @Override
-        protected boolean isConsumed() {
-            return true;
-        }
-
-        @Override
-        protected Page getLockedPage() {
-            return page;
-        }
-
-        @Override
-        protected Acteur getActeur() {
-            return Acteur.this;
         }
     }
 
@@ -505,11 +445,13 @@ public abstract class Acteur {
      * @param <T> The type of writer
      * @param writerType The writer class
      */
-    protected <T extends ResponseWriter> void setResponseWriter(Class<T> writerType) {
+    protected final <T extends ResponseWriter> Acteur setResponseWriter(Class<T> writerType) {
         Page page = Page.get();
         Dependencies deps = page.getApplication().getDependencies();
         HttpEvent evt = deps.getInstance(HttpEvent.class);
+        response();
         getResponse().setWriter(writerType, deps, evt);
+        return this;
     }
 
     /**
@@ -519,11 +461,13 @@ public abstract class Acteur {
      * @param <T> The type of writer
      * @param writer The writer
      */
-    protected <T extends ResponseWriter> void setResponseWriter(T writer) {
+    protected final <T extends ResponseWriter> Acteur setResponseWriter(T writer) {
         Page page = Page.get();
         Dependencies deps = page.getApplication().getDependencies();
         HttpEvent evt = deps.getInstance(HttpEvent.class);
+        response();
         getResponse().setWriter(writer, deps, evt);
+        return this;
     }
 
     /**
@@ -540,7 +484,7 @@ public abstract class Acteur {
      * @param <T> a type
      * @param type The type of listener
      */
-    protected final <T extends ChannelFutureListener> void setResponseBodyWriter(final Class<T> type) {
+    protected final <T extends ChannelFutureListener> Acteur setResponseBodyWriter(final Class<T> type) {
         final Page page = Page.get();
         final Dependencies deps = page.getApplication().getDependencies();
         ReentrantScope scope = page.getApplication().getRequestScope();
@@ -592,9 +536,10 @@ public abstract class Acteur {
 
         ChannelFutureListener l = new C();
         setResponseBodyWriter(l);
+        return this;
     }
 
-    protected Dependencies dependencies() {
+    protected final Dependencies dependencies() {
         final Page p = Page.get();
         final Application app = p.getApplication();
         return app.getDependencies();
@@ -609,12 +554,13 @@ public abstract class Acteur {
      *
      * @param listener
      */
-    public final void setResponseBodyWriter(final ChannelFutureListener listener) {
+    public final Acteur setResponseBodyWriter(final ChannelFutureListener listener) {
         if (listener == ChannelFutureListener.CLOSE || listener == ChannelFutureListener.CLOSE_ON_FAILURE) {
+            response();
             getResponse().setBodyWriter(listener);
-            return;
+            return this;
         }
-        final Page p = Page.get();
+        Page p = Page.get();
         final Application app = p.getApplication();
         class WL implements ChannelFutureListener, Callable<Void> {
 
@@ -638,13 +584,13 @@ public abstract class Acteur {
                 return "Scope wrapper for " + listener;
             }
         }
-        getResponse().setBodyWriter(new WL());
+        response().setBodyWriter(new WL());
+        return this;
     }
 
-    public State getState() {
-        return state;
-    }
-
+//    public <T extends State & com.mastfrog.acteur.State> State getState() {
+//        return super.getState();
+//    }
     public static Acteur wrap(final Class<? extends Acteur> type, final Dependencies deps) {
         Checks.notNull("type", type);
         final Charset charset = deps.getInstance(Charset.class);
@@ -677,14 +623,6 @@ public abstract class Acteur {
             }
         }
 
-        @Override
-        ResponseImpl getResponse() {
-            if (acteur != null) {
-                return acteur.getResponse();
-            }
-            return super.getResponse();
-        }
-
         boolean inOnError;
 
         protected void onError(Throwable t) throws UnsupportedEncodingException {
@@ -704,7 +642,7 @@ public abstract class Acteur {
                 inOnError = false;
             }
         }
-        private State cachedState;
+        private com.mastfrog.acteur.State cachedState;
 
         Acteur delegate() {
             if (acteur == null) {
@@ -723,7 +661,7 @@ public abstract class Acteur {
         }
 
         @Override
-        public State getState() {
+        public com.mastfrog.acteur.State getState() {
             return cachedState == null ? cachedState = delegate().getState() : cachedState;
         }
 

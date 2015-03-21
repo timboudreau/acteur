@@ -36,8 +36,10 @@ import org.joda.time.DateTimeZone;
 import org.joda.time.Duration;
 
 /**
- * Standard HTTP headers.
+ * Standard HTTP headers, belonging to a page.
  *
+ * @deprecated Just use Acteur.add().  This class is still useful for a handful
+ * of cases, such as checking if-modified-since headers
  * @author Tim Boudreau
  */
 public class ResponseHeaders {
@@ -50,14 +52,20 @@ public class ResponseHeaders {
     private Locale locale;
     private URI contentLocation;
     private MediaType contentType;
-    private CacheControl cacheControl = new CacheControl();
-    private List<HeaderValueType<?>> varyHeaders = new LinkedList<>();
+    private final CacheControl cacheControl = new CacheControl();
+    private final List<HeaderValueType<?>> varyHeaders = new LinkedList<>();
     private ContentLengthProvider contentLengthProvider;
     private ETagProvider etagProvider;
     private DateTime expires;
     private String transferEncoding;
+    private boolean modified;
+    
+    private void modify() {
+        modified = true;
+    }
 
     public void setExpires(DateTime expires) {
+        modify();
         this.expires = expires;
     }
 
@@ -66,46 +74,57 @@ public class ResponseHeaders {
     }
 
     public void addVaryHeader(HeaderValueType<?> header) {
+        modify();
         varyHeaders.add(header);
     }
 
     public void addCacheControl(CacheControlTypes type, Duration value) {
+        modify();
         cacheControl.add(type, value);
     }
 
     public void addCacheControl(CacheControlTypes type) {
+        modify();
         cacheControl.add(type);
     }
 
     public void setAge(Duration age) {
+        modify();
         this.age = age;
     }
 
     public void setContentLocation(URI contentLocation) {
+        modify();
         this.contentLocation = contentLocation;
     }
 
     public void setContentType(MediaType contentType) {
+        modify();
         this.contentType = contentType;
     }
 
     public void setEtag(String etag) {
+        modify();
         this.etag = etag;
     }
 
     public void setLastModified(DateTime lastModified) {
+        modify();
         this.lastModified = lastModified;
     }
 
     public void setLocale(Locale locale) {
+        modify();
         this.locale = locale;
     }
 
     public void setLocation(URI location) {
+        modify();
         this.location = location;
     }
 
     public void setMaxAge(Duration maxAge) {
+        modify();
         this.maxAge = maxAge;
     }
 
@@ -114,6 +133,7 @@ public class ResponseHeaders {
     }
 
     public void setContentLength(long len) {
+        modify();
         setContentLengthProvider(new TrivialContentLengthProvider(len));
     }
 
@@ -127,10 +147,12 @@ public class ResponseHeaders {
     }
     
     public void setContentEncoding(String contentEncoding) {
+        modify();
         this.contentEncoding = contentEncoding;
     }
 
     public void setTransferEncoding(String gzip) {
+        modify();
         this.transferEncoding = gzip;
     }
     
@@ -153,10 +175,12 @@ public class ResponseHeaders {
     }
 
     public void setContentLengthProvider(ContentLengthProvider provider) {
+        modify();
         this.contentLengthProvider = provider;
     }
 
     public void setETag(final String etag) {
+        modify();
         setETagProvider(new TrivialETagProvider(etag));
     }
 
@@ -179,6 +203,7 @@ public class ResponseHeaders {
     }
 
     public void setETagProvider(ETagProvider provider) {
+        modify();
         this.etagProvider = provider;
     }
 
@@ -236,5 +261,9 @@ public class ResponseHeaders {
 
     protected URI getLocation() {
         return location;
+    }
+    
+    boolean modified() {
+        return modified;
     }
 }

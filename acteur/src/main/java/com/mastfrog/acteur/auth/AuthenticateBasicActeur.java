@@ -86,7 +86,7 @@ public class AuthenticateBasicActeur extends AuthenticationActeur {
                 unauthorized(r, event, decorator, page, response());
             } else {
                 decorator.onAuthenticationSucceeded(event, page, response(), stuff);
-                setState(new ConsumedLockedState(stuff));
+                next(stuff);
             }
         }
     }

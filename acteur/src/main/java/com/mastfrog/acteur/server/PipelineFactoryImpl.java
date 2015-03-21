@@ -56,9 +56,11 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
     private final int maxContentLength;
     private final boolean httpCompression;
     private final Provider<ApplicationControl> app;
+    private final PipelineDecorator decorator;
 
     @Inject
-    PipelineFactoryImpl(Provider<ChannelHandler> handler, Provider<ApplicationControl> app, Settings settings) {
+    PipelineFactoryImpl(Provider<ChannelHandler> handler, Provider<ApplicationControl> app, Settings settings, PipelineDecorator decorator) {
+        this.decorator = decorator;
         this.handler = handler;
         this.app = app;
         aggregateChunks = settings.getBoolean("aggregateChunks", DEFAULT_AGGREGATE_CHUNKS);
@@ -75,25 +77,30 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
     public void initChannel(SocketChannel ch) throws Exception {
         // Create a default pipeline implementation.
         ChannelPipeline pipeline = ch.pipeline();
+        decorator.onCreatePipeline(pipeline);
         ChannelHandler decoder = new HackHttpRequestDecoder();
         ChannelHandler encoder = new HttpResponseEncoder();
+//        SSLEngine engine = SecureChatSslContextFactory.getServerContext().createSSLEngine();
+//        engine.setUseClientMode(false);
+//        pipeline.addLast("ssl", new SslHandler(engine));
 
-        pipeline.addLast("decoder", decoder);
+        pipeline.addLast(PipelineDecorator.DECODER, decoder);
         // Uncomment the following line if you don't want to handle HttpChunks.
         if (aggregateChunks) {
             ChannelHandler aggregator = new HttpObjectAggregator(maxContentLength);
-            pipeline.addLast("aggregator", aggregator);
+            pipeline.addLast(PipelineDecorator.AGGREGATOR, aggregator);
         }
 
-        pipeline.addLast("bytes", new MessageBufEncoder());
-        pipeline.addLast("encoder", encoder);
+        pipeline.addLast(PipelineDecorator.BYTES, new MessageBufEncoder());
+        pipeline.addLast(PipelineDecorator.ENCODER, encoder);
 
         // Remove the following line if you don't want automatic content compression.
         if (httpCompression) {
             ChannelHandler compressor = new SelectiveCompressor();
-            pipeline.addLast("deflater", compressor);
+            pipeline.addLast(PipelineDecorator.COMPRESSOR, compressor);
         }
-        pipeline.addLast("handler", handler.get());
+        pipeline.addLast(PipelineDecorator.HANDLER, handler.get());
+        decorator.onPipelineInitialized(pipeline);
     }
 
     private static class MessageBufEncoder extends MessageToByteEncoder<ByteBuf> {
@@ -117,7 +124,9 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
     }
 
     static class HackHttpRequestDecoder extends HttpRequestDecoder {
+
         // See https://github.com/netty/netty/issues/3247
+
         protected void callDecode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) {
             try {
                 while (in.isReadable()) {
@@ -125,7 +134,7 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
                     int oldInputLength = in.readableBytes();
                     decode(ctx, in, out);
 
-                // Check if this handler was removed before continuing the loop.
+                    // Check if this handler was removed before continuing the loop.
                     // If it was removed, it is not safe to continue to operate on the buffer.
                     //
                     // See https://github.com/netty/netty/issues/1664
