@@ -75,10 +75,9 @@ import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.socket.SocketChannel;
+import io.netty.handler.codec.http.ClientCookieDecoder;
 import io.netty.handler.codec.http.Cookie;
-import io.netty.handler.codec.http.CookieDecoder;
 import io.netty.handler.codec.http.HttpHeaderNames;
-import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.util.CharsetUtil;
 import java.io.IOException;
 import java.io.InputStream;
@@ -87,9 +86,10 @@ import java.lang.Thread.UncaughtExceptionHandler;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ForkJoinPool;
@@ -336,6 +336,11 @@ public class ServerModule<A extends Application> extends AbstractModule {
         bind(ThreadGroup.class).annotatedWith(Names.named(BACKGROUND_THREAD_POOL_NAME)).toInstance(backgroundThreadFactory.tg);
         bind(ThreadGroup.class).annotatedWith(Names.named(WORKER_THREADS)).toInstance(workerThreadFactory.tg);
         bind(ThreadGroup.class).annotatedWith(Names.named(EVENT_THREADS)).toInstance(eventThreadFactory.tg);
+        
+        bind(Executor.class).annotatedWith(Names.named(BACKGROUND_THREAD_POOL_NAME)).toInstance(backgroundThreadFactory);
+        bind(Executor.class).annotatedWith(Names.named(WORKER_THREADS)).toInstance(workerThreadFactory);
+        bind(Executor.class).annotatedWith(Names.named(EVENT_THREADS)).toInstance(eventThreadFactory);
+        
 
         ThreadCount workerThreadCount = new ThreadCount(set, 8, workerThreads, WORKER_THREADS);
         ThreadCount eventThreadCount = new ThreadCount(set, 8, eventThreads, EVENT_THREADS);
@@ -766,14 +771,12 @@ public class ServerModule<A extends Application> extends AbstractModule {
         @Override
         public Set<Cookie> get() {
             HttpEvent evt = ev.get();
-            String h = evt.getHeader(HttpHeaderNames.COOKIE);
-            if (h != null) {
-                Set<Cookie> result = CookieDecoder.decode(h);
-                if (result != null) {
-                    return result;
-                }
+            Set<Cookie> result = new HashSet<>();
+            for (CharSequence h : evt.getRequest().headers().getAll(HttpHeaderNames.COOKIE)) {
+                Cookie ck = ClientCookieDecoder.decode(h.toString());
+                result.add(ck);
             }
-            return Collections.emptySet();
+            return result;
         }
     }
 
@@ -821,7 +824,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
         }
     }
 
-    static final class TF implements ThreadFactory, UncaughtExceptionHandler, ForkJoinPool.ForkJoinWorkerThreadFactory {
+    static final class TF implements ThreadFactory, UncaughtExceptionHandler, ForkJoinPool.ForkJoinWorkerThreadFactory, Executor {
 
         private final String name;
         private final Provider<ApplicationControl> app;
@@ -874,6 +877,11 @@ public class ServerModule<A extends Application> extends AbstractModule {
             String nm = name + "-" + count.getAndIncrement();
             t.setName(nm);
             return t;
+        }
+
+        @Override
+        public void execute(Runnable r) {
+            newThread(r).start();
         }
 
         static class FWT extends java.util.concurrent.ForkJoinWorkerThread {

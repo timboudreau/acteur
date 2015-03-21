@@ -51,7 +51,7 @@ final class AuthCookieWriter {
         Cookie cookie = null;
         if (cookies != null && cookies.length > 0) {
             for (Cookie ck : cookies) {
-                if (cookieName.equals(ck.getName())) {
+                if (cookieName.equals(ck.name())) {
                     cookie = ck;
                     break;
                 }

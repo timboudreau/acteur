@@ -52,7 +52,7 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.Date;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -66,9 +66,9 @@ final class ServerImpl implements Server {
 
     private final ChannelInitializer<SocketChannel> pipelineFactory;
     private int port = 8123;
-    private final ThreadFactory eventThreadFactory;
+    private final Executor eventThreadFactory;
     private final ThreadCount eventThreadCount;
-    private final ThreadFactory workerThreadFactory;
+    private final Executor workerThreadFactory;
     private final ThreadCount workerThreadCount;
     private final String applicationName;
     private final ShutdownHookRegistry registry;
@@ -79,9 +79,9 @@ final class ServerImpl implements Server {
     @Inject
     ServerImpl(
             ChannelInitializer<SocketChannel> pipelineFactory,
-            @Named(EVENT_THREADS) ThreadFactory eventThreadFactory,
+            @Named(EVENT_THREADS) Executor eventThreadFactory,
             @Named(EVENT_THREADS) ThreadCount eventThreadCount,
-            @Named(WORKER_THREADS) ThreadFactory workerThreadFactory,
+            @Named(WORKER_THREADS) Executor workerThreadFactory,
             @Named(WORKER_THREADS) ThreadCount workerThreadCount,
             @Named("application") String applicationName,
             Provider<ServerBootstrap> bootstrapProvider,

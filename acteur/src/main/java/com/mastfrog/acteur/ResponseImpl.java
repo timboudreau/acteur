@@ -173,7 +173,8 @@ final class ResponseImpl extends Response {
         return delay;
     }
 
-    static class HackHttpHeaders extends HttpHeaders {
+    /*
+    static class HackHttpHeaders implements HttpHeaders {
 
         private final HttpHeaders orig;
 
@@ -198,7 +199,7 @@ final class ResponseImpl extends Response {
         }
 
         @Override
-        public List<Map.Entry<CharSequence, CharSequence>> entries() {
+        public List<Map.Entry<String, String>> entries() {
             return orig.entries();
         }
 
@@ -213,7 +214,7 @@ final class ResponseImpl extends Response {
         }
 
         @Override
-        public Set<CharSequence> names() {
+        public Set<String> names() {
             return orig.names();
         }
 
@@ -291,11 +292,6 @@ final class ResponseImpl extends Response {
         @Override
         public String get(String name) {
             return get((CharSequence) name);
-    }
-
-        @Override
-        public List<String> getAll(String name) {
-            return orig.getAll(name);
         }
 
         @Override
@@ -323,7 +319,6 @@ final class ResponseImpl extends Response {
             return set((CharSequence) name, values);
         }
     }
-    */
 
     private static class HackHttpResponse extends DefaultHttpResponse {
 
@@ -340,7 +335,22 @@ final class ResponseImpl extends Response {
             return hdrs;
         }
     }
+    */
+    private static class HackHttpResponse extends DefaultHttpResponse {
 
+        private final HttpHeaders hdrs;
+        // Workaround for https://github.com/netty/netty/issues/1326
+
+        HackHttpResponse(HttpResponseStatus status, boolean chunked) {
+            super(HttpVersion.HTTP_1_1, status);
+            hdrs = new HackHttpHeaders(super.headers(), chunked);
+        }
+
+        @Override
+        public HttpHeaders headers() {
+            return hdrs;
+        }
+    }
     @SuppressWarnings("unchecked")
     public <T> void add(HeaderValueType<T> decorator, T value) {
         List<Entry<?>> old = new LinkedList<>();
@@ -607,10 +617,12 @@ final class ResponseImpl extends Response {
             buf.writeBytes(msg.getBytes(charset));
             long size = buf.readableBytes();
             add(Headers.CONTENT_LENGTH, size);
+            System.out.println("SEND DFHR");
             DefaultFullHttpResponse r = new DefaultFullHttpResponse(
                     HttpVersion.HTTP_1_1, getResponseCode(), buf);
             resp = r;
         } else {
+            System.out.println("SEND HACK RESP");
             resp = new HackHttpResponse(getResponseCode(), this.status == NOT_MODIFIED ? false : chunked);
         }
         for (Entry<?> e : headers) {

@@ -61,7 +61,7 @@ class DefaultRequestLogger implements RequestLogger {
             if (referrer != null) {
                 sb.append('\t').append(referrer);
             }
-            String userAgent = ((HttpEvent) event).getHeader(Headers.USER_AGENT);
+            CharSequence userAgent = ((HttpEvent) event).getHeader(Headers.USER_AGENT);
             if (userAgent != null) {
                 sb.append('\t').append(userAgent);
             }            

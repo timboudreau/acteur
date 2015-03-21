@@ -43,7 +43,7 @@ final class AuthHeader extends AbstractHeader<Realm> {
 
     @Override
     public Realm toValue(CharSequence value) {
-        return Realm.createSimple(value);
+        return Realm.createSimple(value.toString());
     }
 
 }

@@ -30,7 +30,7 @@ final class CookieAuthenticatorImpl implements CookieAuthenticator {
         Object[] result = null;
         Cookie ck = writer.findCookie(evt);
         if (ck != null) {
-            String cookieValue = ck.getValue();
+            String cookieValue = ck.value();
             if (cookieValue != null && !cookieValue.isEmpty()) {
                 Object user = userFinder.findUser(evt, cookieValue);
                 if (user != null) {
