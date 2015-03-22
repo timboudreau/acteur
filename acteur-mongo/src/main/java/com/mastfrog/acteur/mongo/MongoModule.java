@@ -76,7 +76,7 @@ public class MongoModule extends AbstractModule implements MongoConfig<MongoModu
         return this;
     }
 
-    static class InvalidParamterExceptionEvaluator extends ExceptionEvaluator {
+    public static class InvalidParamterExceptionEvaluator extends ExceptionEvaluator {
 
         @Inject
         InvalidParamterExceptionEvaluator(ExceptionEvaluatorRegistry registry) {
