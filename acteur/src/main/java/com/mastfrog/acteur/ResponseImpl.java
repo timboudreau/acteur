@@ -617,12 +617,10 @@ final class ResponseImpl extends Response {
             buf.writeBytes(msg.getBytes(charset));
             long size = buf.readableBytes();
             add(Headers.CONTENT_LENGTH, size);
-            System.out.println("SEND DFHR");
             DefaultFullHttpResponse r = new DefaultFullHttpResponse(
                     HttpVersion.HTTP_1_1, getResponseCode(), buf);
             resp = r;
         } else {
-            System.out.println("SEND HACK RESP");
             resp = new HackHttpResponse(getResponseCode(), this.status == NOT_MODIFIED ? false : chunked);
         }
         for (Entry<?> e : headers) {

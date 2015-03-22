@@ -30,6 +30,7 @@ import com.mastfrog.acteur.annotations.GenericApplication;
 import com.mastfrog.acteur.annotations.GenericApplication.GenericApplicationSettings;
 import com.mastfrog.acteur.annotations.GenericApplicationModule;
 import com.mastfrog.acteur.util.Server;
+import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.giulius.DependenciesBuilder;
 import com.mastfrog.giulius.SettingsBindings;
 import com.mastfrog.guicy.annotations.Namespace;
@@ -230,6 +231,10 @@ public final class ServerBuilder {
      * @throws IOException if something goes wrong
      */
     public Server build() throws IOException {
+        return buildInjector().getInstance(Server.class);
+    }
+
+    public Dependencies buildInjector() throws IOException {
         SettingsBuilder sb = new SettingsBuilder(namespace);
         sb.addDefaultLocations();
         for (Settings s : settingsList) {
@@ -248,7 +253,7 @@ public final class ServerBuilder {
             db.add(instantiateModule(m, appModule, settings));
         }
         db.add(new CorsAndHelpModule(enableCors, enableHelp));
-        return db.build().getInstance(Server.class);
+        return db.build();
     }
 
     @SuppressWarnings("unchecked")
