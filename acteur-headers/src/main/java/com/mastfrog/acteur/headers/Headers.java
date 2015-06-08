@@ -92,8 +92,12 @@ public final class Headers {
     public static final HeaderValueType<Realm> WWW_AUTHENTICATE = new AuthHeader();
     public static final HeaderValueType<Method[]> ALLOW = new AllowHeader(false);
     public static final HeaderValueType<Method[]> ACCESS_CONTROL_ALLOW = new AllowHeader(true);
+    @Deprecated
     public static final HeaderValueType<Cookie> SET_COOKIE = new SetCookieHeader();
+    public static final HeaderValueType<io.netty.handler.codec.http.cookie.Cookie> SET_COOKIE_B = new SetCookieHeaderNetty428(HttpHeaders.Names.SET_COOKIE);
+    @Deprecated
     public static final HeaderValueType<Cookie[]> COOKIE = new CookieHeader();
+    public static final HeaderValueType<io.netty.handler.codec.http.cookie.Cookie[]> COOKIE_B = new CookieHeaderNetty428();
     public static final HeaderValueType<String[]> WEBSOCKET_PROTOCOLS = new WebSocketProtocolsHeader();
     public static final HeaderValueType<String> WEBSOCKET_PROTOCOL = new StringHeader(HttpHeaders.Names.WEBSOCKET_PROTOCOL);
 //    public static final HeaderValueType<URL> WEBSOCKET_LOCATION = new WebSocketLocationHeader();

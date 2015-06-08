@@ -1,7 +1,7 @@
-/* 
+/*
  * The MIT License
  *
- * Copyright 2013 Tim Boudreau.
+ * Copyright 2015 Tim Boudreau
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,35 +23,29 @@
  */
 package com.mastfrog.acteur.headers;
 
-import io.netty.handler.codec.http.Cookie;
-import io.netty.handler.codec.http.CookieDecoder;
-import io.netty.handler.codec.http.HttpHeaders;
-import io.netty.handler.codec.http.ServerCookieEncoder;
+import io.netty.handler.codec.http.cookie.ClientCookieDecoder;
+import io.netty.handler.codec.http.cookie.Cookie;
+import io.netty.handler.codec.http.cookie.ServerCookieDecoder;
+import io.netty.handler.codec.http.cookie.ServerCookieEncoder;
 import java.util.Set;
 
 /**
  *
  * @author Tim Boudreau
  */
-final class SetCookieHeader extends AbstractHeader<Cookie> {
+final class SetCookieHeaderNetty428 extends AbstractHeader<Cookie> {
 
-    SetCookieHeader() {
-        super(Cookie.class, HttpHeaders.Names.SET_COOKIE.toString());
+    public SetCookieHeaderNetty428(String name) {
+        super(Cookie.class, name);
     }
 
     @Override
     public String toString(Cookie value) {
-        return ServerCookieEncoder.encode(value);
+        return ServerCookieEncoder.LAX.encode(value);
     }
 
     @Override
     public Cookie toValue(String value) {
-        Set<Cookie> ck = CookieDecoder.decode(value);
-        if (ck.isEmpty()) {
-            new NullPointerException("Does not decode to cookies: '" + value + "'").printStackTrace();
-            return null;
-        }
-        return ck.iterator().next();
+        return ClientCookieDecoder.LAX.decode(value);
     }
-
 }

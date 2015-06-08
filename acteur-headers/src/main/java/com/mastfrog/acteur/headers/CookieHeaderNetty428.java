@@ -23,35 +23,31 @@
  */
 package com.mastfrog.acteur.headers;
 
-import io.netty.handler.codec.http.Cookie;
-import io.netty.handler.codec.http.CookieDecoder;
+import io.netty.handler.codec.http.cookie.ClientCookieEncoder;
+import io.netty.handler.codec.http.cookie.Cookie;
 import io.netty.handler.codec.http.HttpHeaders;
-import io.netty.handler.codec.http.ServerCookieEncoder;
-import java.util.Set;
+import io.netty.handler.codec.http.cookie.ClientCookieDecoder;
 
 /**
  *
  * @author Tim Boudreau
  */
-final class SetCookieHeader extends AbstractHeader<Cookie> {
+final class CookieHeaderNetty428 extends AbstractHeader<Cookie[]> {
 
-    SetCookieHeader() {
-        super(Cookie.class, HttpHeaders.Names.SET_COOKIE.toString());
+    CookieHeaderNetty428() {
+        super(Cookie[].class, HttpHeaders.Names.COOKIE);
     }
 
     @Override
-    public String toString(Cookie value) {
-        return ServerCookieEncoder.encode(value);
+    public String toString(Cookie[] value) {
+        return ClientCookieEncoder.LAX.encode(value);
     }
 
     @Override
-    public Cookie toValue(String value) {
-        Set<Cookie> ck = CookieDecoder.decode(value);
-        if (ck.isEmpty()) {
-            new NullPointerException("Does not decode to cookies: '" + value + "'").printStackTrace();
-            return null;
-        }
-        return ck.iterator().next();
+    public Cookie[] toValue(String value) {
+        Cookie result = ClientCookieDecoder.LAX.decode(value);
+        return result == null ? EMPTY : new Cookie[]{result};
     }
+    private static final Cookie[] EMPTY = new Cookie[0];
 
 }

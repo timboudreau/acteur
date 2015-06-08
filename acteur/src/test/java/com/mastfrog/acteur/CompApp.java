@@ -315,8 +315,7 @@ public class CompApp extends Application {
                         f.addListener(this);
                     } else {
                         System.out.println("Close channel");
-//                        future.addListener(CLOSE);
-                        f.channel().close();
+                        future.addListener(CLOSE);
                     }
                 } finally {
                     entryCount--;

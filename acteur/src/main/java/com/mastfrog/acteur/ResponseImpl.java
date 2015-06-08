@@ -23,6 +23,7 @@
  */
 package com.mastfrog.acteur;
 
+import com.google.common.base.Objects;
 import com.google.inject.Key;
 import com.google.inject.name.Names;
 import com.mastfrog.acteur.ResponseWriter.AbstractOutput;
@@ -54,6 +55,7 @@ import io.netty.handler.codec.http.HttpResponseStatus;
 import static io.netty.handler.codec.http.HttpResponseStatus.NOT_MODIFIED;
 import io.netty.handler.codec.http.HttpVersion;
 import io.netty.handler.codec.http.LastHttpContent;
+import io.netty.handler.codec.http.cookie.Cookie;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
@@ -296,6 +298,20 @@ final class ResponseImpl extends Response {
             return hdrs;
         }
     }
+    
+    private String cookieName(Object o) {
+        if (o instanceof Cookie) {
+            return ((Cookie) o).name();
+        } else if (o instanceof io.netty.handler.codec.http.Cookie) {
+            return ((io.netty.handler.codec.http.Cookie)o).name();
+        } else {
+            return null;
+        }
+    }
+    
+    private boolean compareCookies(Object old, Object nue) {
+        return Objects.equal(cookieName(old), cookieName(nue));
+    }
 
     @SuppressWarnings("unchecked")
     public <T> void add(HeaderValueType<T> decorator, T value) {
@@ -303,8 +319,14 @@ final class ResponseImpl extends Response {
         // XXX set cookie!
         for (Iterator<Entry<?>> it = headers.iterator(); it.hasNext();) {
             Entry<?> e = it.next();
-            if (e.decorator.equals(Headers.SET_COOKIE)) {
-                continue;
+            // Do prune setting the same cookie twice
+            if (decorator.name().equals(HttpHeaders.Names.SET_COOKIE) && e.decorator.name().equals(HttpHeaders.Names.SET_COOKIE)) {
+                if (compareCookies(e.value, value)) {
+                    it.remove();
+                    continue;
+                } else {
+                    continue;
+                }
             }
             if (e.match(decorator) != null) {
                 old.add(e);
