@@ -94,7 +94,7 @@ public class AbstractActeur<T, R extends T, S extends ActeurState<T, R>> {
      */
     protected S getState() {
         if (state == null) {
-            throw new IllegalStateException("State not set");
+            throw new IllegalStateException("State not set in " + getClass().getName());
         }
         return state;
     }

@@ -217,10 +217,18 @@ public final class URL implements URLComponent, Validating, Comparable<URL> {
      * Determine if the domain is the same as the passed internet domain.
      * For example, "foo.com" and "www.foo.com" have the same domain.  
      * @param domain
-     * @return
+     * @return True if the domain matches
      */
     public boolean isSameDomain (String domain) {
         return host == null ? false : host.isDomain(domain);
+    }
+    
+    /**
+     * Get an aggregate of the host and port.
+     * @return A host and port
+     */
+    public HostAndPort getHostAndPort() {
+        return new HostAndPort(getHost(), getPort());
     }
 
     /**

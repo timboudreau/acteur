@@ -549,7 +549,7 @@ public class URLTest {
         URL url = URL.parse(u);
         String s = url.toString();
         assertEquals(s, url.toString());
-        assertEquals(decombobulate(url, expect), expect, url.toString());
+        assertEquals("Expected '" + expect + "' got '" + url.toString() + "' - " + decombobulate(url, expect), expect, url.toString());
         if ("http://food.com".equals(u)) {
             u = "http://food.com/";
         }
