@@ -44,9 +44,6 @@ final class URLParser {
     private static final Pattern ANCHOR_SPLIT = Pattern.compile("(.*)\\#(.*)");
     private static final Pattern USERINFO_SPLIT = Pattern.compile("(.*)\\@(.*)", Pattern.DOTALL);
     private static final Pattern USER_PASSWORD_SPLIT = Pattern.compile("(.*?)\\:(.*)");
-//    private static final Pattern HOST_PORT_SPLIT = Pattern.compile("(.*)\\:(.\\n?)");
-
-//    private static final Pattern HOST_PORT_SPLIT = Pattern.compile("(.*?)\\:(\\d*)([/\\S$].*)", Pattern.DOTALL);
     private static final Pattern HOST_PORT_SPLIT = Pattern.compile("(.*?)\\:(\\d*)");
 
     private static final Pattern PARAMETER_ELEMENT_SPLIT = Pattern.compile("(.*?)[\\;\\&$]");

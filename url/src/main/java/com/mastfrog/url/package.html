@@ -1,0 +1,20 @@
+<h1>URL API</h1>
+
+This is a small library for parsing URLs, which provides an actual object model
+of the elements of URLs and their component objects.
+
+Unlike <code>java.net.url</code>, URLs and all of their components can be invalid and provide human-friendly
+localized messages as to what's wrong with them - no <code>MalformedURLException</code>s and nothing
+that will unexpectedly make a network connection if you use it as a <code>HashMap</code> key.
+
+URLs also do minimal self-normalizing when parsed (handling <code>..</code> in paths, replacing
+"localhost" with 127.0.0.1 or ::1 - very minimal, but sufficient to de-duplicate equivalent
+URLs.  A <b>lot</b> of work went into reading RFCs to get things right here, and it has
+an exhaustive test-suite.  URLs can be parsed or built with builders.
+
+<code>java.net.URL</code> was developed for HotJava in the 90s, and was probably
+great for that use case - and that use case only.  This is a library for doing
+modern Java coding with URLs.
+
+
+

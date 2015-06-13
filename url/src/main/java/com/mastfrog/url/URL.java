@@ -255,6 +255,7 @@ public final class URL implements URLComponent, Validating, Comparable<URL> {
             sb.append ('@');
         }
         if (host != null && host.length() == 0 && host.isLocalhost() && !Protocols.FILE.match(protocol)) {
+            // XXX ipv6?
             sb.append ("127.0.0.1");
         } else {
             if (host != null) {
