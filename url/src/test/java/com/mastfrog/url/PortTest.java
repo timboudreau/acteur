@@ -52,6 +52,5 @@ public class PortTest {
         Port p = new Port("foo");
         assertFalse(p.isValid());
         assertEquals(-1, p.intValue());
-        
     }
 }

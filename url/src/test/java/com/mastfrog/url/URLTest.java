@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URLEncoder;
+import java.util.Arrays;
 import org.junit.Test;
 import static org.junit.Assert.*;
 import org.netbeans.validation.api.InvalidInputException;
@@ -501,7 +502,7 @@ public class URLTest {
     public void testDifferentiateIPandNot() {
         URL url = URL.parse("http://127.0.0.1:8080/foo.txt");
         Host h = url.getHost();
-        assertTrue(h.isIpAddress());
+        assertTrue(h + " claims it is not an IP address and has " + h.getLabels().length + " labels: " + Arrays.asList(h.getLabels()), h.isIpAddress());
         assertNull("Domain should be null but is " + h.getDomain(), h.getDomain());
 
         url = URL.parse("http://foo.com:8080/foo.txt");
@@ -585,8 +586,8 @@ public class URLTest {
         assertInvalid("http://foo.com:00badPort");
 
         URL url = URL.parse("http://localhost:8080/?kind=anything&recipient=moe@foo.com&url=http://food.com/food.com");
-        assertEquals("localhost", url.getHost().toString());
-        assertFalse(url.getHost().isIpAddress());
+        assertEquals("127.0.0.1", url.getHost().toString());
+        assertTrue(url.getHost().isIpAddress());
         assertEquals(Host.parse("127.0.0.1"), url.getHost());
         assertNull(url.getHost().getTopLevelDomain());
         assertNull(url.getHost().getDomain());
@@ -870,4 +871,5 @@ public class URLTest {
         assertEquals("/foo/bar?quux=baz&money=gone", q);
         assertEquals("http://timboudreau.com/foo/bar?quux=baz&money=gone", url.toString());
     }
+    
 }

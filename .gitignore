@@ -8,5 +8,5 @@
 *.iml
 .idea/
 target/
-/nb-configuration.xml
+nb-configuration.xml
 
