@@ -58,6 +58,7 @@ public class MimeTypes {
         add("svg", MediaType.SVG_UTF_8);
         add("ico", MediaType.ICO);
         add("xml", MediaType.XML_UTF_8.withCharset(charset));
+        add("txt", MediaType.PLAIN_TEXT_UTF_8.withCharset(charset));
         add("xhtml", MediaType.XHTML_UTF_8.withCharset(charset));
         add("jpeg", MediaType.JPEG);
         add("json", MediaType.JSON_UTF_8.withCharset(charset), true);
@@ -67,6 +68,14 @@ public class MimeTypes {
         add("html", MediaType.HTML_UTF_8.withCharset(charset), true);
         add("css", MediaType.CSS_UTF_8.withCharset(charset), true);
         add("swf", MediaType.SHOCKWAVE_FLASH);
+        add("md", MediaType.parse("text/x-markdown").withCharset(charset));
+        add("bz2", MediaType.parse("application/x-bzip2"));
+        add("gz", MediaType.parse("application/x-gzip"));
+        add("tar", MediaType.parse("application/x-tar"));
+        add("doc", MediaType.parse("application/msword"));
+        add("pdf", MediaType.parse("application/pdf"));
+        add("ppt", MediaType.parse("application/powerpoint"));
+        add("rtf", MediaType.parse("text/richtext"));
         add("woff", MediaType.create("application", "x-font-woff"));
     }
 
