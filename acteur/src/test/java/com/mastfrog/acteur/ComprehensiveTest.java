@@ -20,7 +20,7 @@ import org.junit.runner.RunWith;
 @TestWith(CompApp.Module.class)
 public class ComprehensiveTest {
 
-    @Test
+    @Test(timeout = 20000)
     public void testGets(TestHarness harness) throws Exception, Throwable {
         System.out.println("A");
         harness.post("echo").log().setBody("Echo this back to me", PLAIN_TEXT_UTF_8)
@@ -49,21 +49,18 @@ public class ComprehensiveTest {
         System.out.println("C");
         harness.get("nothing").log().setTimeout(Duration.standardSeconds(39)).go()
                 .throwIfError()
-                .await()
                 .assertStatus(HttpResponseStatus.PAYMENT_REQUIRED)
                 .assertStateSeen(Closed);
 
         System.out.println("D");
         harness.get("branch").log().setTimeout(Duration.standardSeconds(50)).addQueryPair("a", "true").go()
                 .throwIfError()
-                .await()
                 .assertStatus(OK)
                 .assertContent("A");
 
         System.out.println("E");
         harness.get("branch").log().setTimeout(Duration.standardSeconds(50)).go()
                 .throwIfError()
-                .await()
                 .assertStatus(OK)
                 .assertContent("B");
 
@@ -79,18 +76,15 @@ public class ComprehensiveTest {
         System.out.println("A");
         harness.post("echo").log().setBody("Echo this back to me", PLAIN_TEXT_UTF_8)
                 .setTimeout(Duration.standardSeconds(30)).go()
-//                .throwIfError()
                 .assertStatus(OK)
                 .assertContent("Echo this back to me");
 
         System.out.println("F");
         harness.get("fail").log().setTimeout(Duration.standardSeconds(50)).go()
-                .await()
                 .assertStatus(CONFLICT)
                 .assertContent("Hoober");
 
         harness.get("dyn").log().setTimeout(Duration.standardSeconds(10)).go()
-                .await()
                 .assertStatus(OK)
                 .assertContent("Dynamic acteur");
     }

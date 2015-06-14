@@ -38,11 +38,10 @@ public class PutTest {
         }
     }
 
-    @Test(timeout = 20000L)
+    @Test(timeout = 5000L)
     public void testPuts(TestHarness harn) throws Throwable {
         harn.get("foo/bar/baz").go().assertStatus(OK).assertContent("Hello world");
         harn.get("/").go().assertStatus(OK).assertContent("Hello world");
-
         for (int i = 0; i < 20; i++) {
             harn.put("/").addHeader(Headers.stringHeader("X-Iteration"), "" + i)
                     .setBody("Test " + i + " iter", MediaType.PLAIN_TEXT_UTF_8).go()

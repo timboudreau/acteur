@@ -209,7 +209,7 @@ class PagesImpl2 {
                             c.call();
                         } else {
                             if (debug) {
-                                System.out.println("Response will be delayed for " + delay);
+                                System.err.println("Response will be delayed for " + delay);
                             }
                             final ScheduledFuture<?> s = scheduler.schedule(c, response.getDelay().getMillis(), TimeUnit.MILLISECONDS);
                             // Ensure the task is discarded if the connection is broken
