@@ -29,7 +29,7 @@ import com.mastfrog.acteur.util.CacheControl;
 import com.mastfrog.acteur.util.Connection;
 import com.mastfrog.acteur.util.Realm;
 import com.mastfrog.util.Checks;
-import io.netty.handler.codec.http.Cookie;
+import io.netty.handler.codec.http.cookie.Cookie;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpMessage;
 import java.net.URI;

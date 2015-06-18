@@ -24,6 +24,7 @@
 package com.mastfrog.acteur.headers;
 
 import io.netty.handler.codec.http.HttpHeaderNames;
+import io.netty.util.AsciiString;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -63,5 +64,4 @@ final class AllowHeader extends AbstractHeader<Method[]> {
         }
         return result;
     }
-
 }

@@ -50,7 +50,7 @@ public enum Method implements com.mastfrog.acteur.util.HttpMethod {
         return new UnknownMethodImpl(methodName);
     }
     
-    public static Method valueOf(AsciiString string) {
+    public static Method valueFor(AsciiString string) {
         string = string.toUpperCase();
         for (Method mm : values()) {
             if (string.contentEquals(mm.name())) {
