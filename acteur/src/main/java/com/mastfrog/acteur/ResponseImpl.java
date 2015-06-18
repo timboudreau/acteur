@@ -23,6 +23,7 @@
  */
 package com.mastfrog.acteur;
 
+import com.google.common.base.Objects;
 import com.google.inject.Key;
 import com.google.inject.name.Names;
 import com.mastfrog.acteur.ResponseWriter.AbstractOutput;
@@ -43,38 +44,32 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import static io.netty.channel.ChannelFutureListener.CLOSE;
-import io.netty.handler.codec.TextHeaders;
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
 import io.netty.handler.codec.http.DefaultHttpContent;
-import io.netty.handler.codec.http.DefaultHttpHeaders;
 import io.netty.handler.codec.http.DefaultHttpResponse;
-import io.netty.handler.codec.http.HttpHeaderNames;
-import io.netty.handler.codec.http.HttpHeaderValues;
 import io.netty.handler.codec.http.HttpContent;
 import io.netty.handler.codec.http.HttpHeaders;
+import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpMessage;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import static io.netty.handler.codec.http.HttpResponseStatus.NOT_MODIFIED;
 import io.netty.handler.codec.http.HttpVersion;
 import io.netty.handler.codec.http.LastHttpContent;
+import io.netty.handler.codec.http.cookie.Cookie;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.Spliterator;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Consumer;
 import org.joda.time.Duration;
 
 /**
@@ -181,15 +176,15 @@ final class ResponseImpl extends Response {
         public HackHttpHeaders(HttpHeaders orig, boolean chunked) {
             this.orig = orig;
             if (chunked) {
-                orig.set(HttpHeaderNames.TRANSFER_ENCODING, HttpHeaderValues.CHUNKED);
-                orig.remove(HttpHeaderNames.CONTENT_LENGTH);
+                orig.set(Names.TRANSFER_ENCODING, Values.CHUNKED);
+                orig.remove(Names.CONTENT_LENGTH);
             } else {
-                orig.remove(HttpHeaderNames.TRANSFER_ENCODING);
+                orig.remove(Names.TRANSFER_ENCODING);
             }
         }
 
         @Override
-        public String get(CharSequence name) {
+        public String get(String name) {
             return orig.get(name);
         }
 
@@ -204,7 +199,7 @@ final class ResponseImpl extends Response {
         }
 
         @Override
-        public boolean contains(CharSequence name) {
+        public boolean contains(String name) {
             return orig.contains(name);
         }
 
@@ -214,20 +209,20 @@ final class ResponseImpl extends Response {
         }
 
         @Override
-        public Set<String> names() {
+        public Set<CharSequence> names() {
             return orig.names();
         }
 
         @Override
-        public HttpHeaders add(CharSequence name, Object value) {
-            if (HttpHeaderNames.TRANSFER_ENCODING.equals(name)) {
+        public HttpHeaders add(String name, Object value) {
+            if (Names.TRANSFER_ENCODING.equals(name)) {
                 return this;
             }
             return orig.add(name, value);
         }
 
         @Override
-        public HttpHeaders add(CharSequence name, Iterable<?> values) {
+        public HttpHeaders add(String name, Iterable<?> values) {
             if (Names.TRANSFER_ENCODING.equals(name)) {
                 return this;
             }
@@ -238,7 +233,7 @@ final class ResponseImpl extends Response {
         }
 
         @Override
-        public HttpHeaders set(CharSequence name, Object value) {
+        public HttpHeaders set(String name, Object value) {
             if (Names.TRANSFER_ENCODING.equals(name)) {
                 return this;
             }
@@ -252,7 +247,7 @@ final class ResponseImpl extends Response {
         }
 
         @Override
-        public HttpHeaders set(CharSequence name, Iterable<?> values) {
+        public HttpHeaders set(String name, Iterable<?> values) {
             if (Names.TRANSFER_ENCODING.equals(name)) {
                 return this;
             }
@@ -336,29 +331,32 @@ final class ResponseImpl extends Response {
         }
     }
     */
-    private static class HackHttpResponse extends DefaultHttpResponse {
-
-        private final HttpHeaders hdrs;
-        // Workaround for https://github.com/netty/netty/issues/1326
-
-        HackHttpResponse(HttpResponseStatus status, boolean chunked) {
-            super(HttpVersion.HTTP_1_1, status);
-            hdrs = new HackHttpHeaders(super.headers(), chunked);
-        }
-
-        @Override
-        public HttpHeaders headers() {
-            return hdrs;
+    private String cookieName(Object o) {
+        if (o instanceof Cookie) {
+            return ((Cookie) o).name();
+        } else {
+            return null;
         }
     }
+    
+    private boolean compareCookies(Object old, Object nue) {
+        return Objects.equal(cookieName(old), cookieName(nue));
+    }
+
     @SuppressWarnings("unchecked")
     public <T> void add(HeaderValueType<T> decorator, T value) {
         List<Entry<?>> old = new LinkedList<>();
         // XXX set cookie!
         for (Iterator<Entry<?>> it = headers.iterator(); it.hasNext();) {
             Entry<?> e = it.next();
-            if (e.decorator.equals(Headers.SET_COOKIE)) {
-                continue;
+            // Do prune setting the same cookie twice
+            if (HttpHeaderNames.SET_COOKIE.equals(decorator.name())) {
+                if (compareCookies(e.value, value)) {
+                    it.remove();
+                    continue;
+                } else {
+                    continue;
+                }
             }
             if (e.match(decorator) != null) {
                 old.add(e);

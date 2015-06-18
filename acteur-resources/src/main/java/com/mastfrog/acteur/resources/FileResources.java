@@ -91,6 +91,7 @@ public final class FileResources implements StaticResources {
     private final ByteBufAllocator allocator;
     private final boolean internalGzip;
     private final File dir;
+    private final boolean debug;
 
     public static final String RESOURCES_BASE_PATH = "resources.base.path";
 
@@ -108,7 +109,7 @@ public final class FileResources implements StaticResources {
         List<String> l = new ArrayList<>();
         scan(dir, "", l);
         patterns = l.toArray(new String[0]);
-        boolean debug = settings.getBoolean("acteur.debug", false);
+        debug = settings.getBoolean("acteur.debug", false);
         String resourcesBasePath = settings.getString(RESOURCES_BASE_PATH, "");
         for (String name : l) {
             String pth = Strings.join(resourcesBasePath,name);
@@ -275,8 +276,8 @@ public final class FileResources implements StaticResources {
             h.setEtag(hash);
 //            page.getReponseHeaders().setContentLength(getLength());
             MediaType type = getContentType();
-            if (type == null) {
-                new NullPointerException("Null content type for " + name).printStackTrace();
+            if (type == null && debug) {
+                System.err.println("Null content type for " + name);
             }
             if (type != null) {
                 h.setContentType(type);

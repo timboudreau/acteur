@@ -3,7 +3,7 @@ package com.mastfrog.acteur.resources;
 import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.giulius.tests.GuiceRunner;
 import com.mastfrog.giulius.tests.TestWith;
-import static com.mastfrog.netty.http.client.StateType.Closed;
+import static com.mastfrog.netty.http.client.StateType.FullContentReceived;
 import com.mastfrog.netty.http.test.harness.TestHarness;
 import com.mastfrog.netty.http.test.harness.TestHarnessModule;
 import static io.netty.handler.codec.http.HttpResponseStatus.NOT_MODIFIED;
@@ -88,7 +88,7 @@ public class StaticResourcesTest {
             assertEquals(helloLastModified, aLastModified);
         } else {
             DateTime subLastModified = har.get("static/sub/subfile.txt").go()
-                    .assertStateSeen(Closed)
+                    .assertStateSeen(FullContentReceived)
                     .assertHasContent()
                     .assertStatus(OK)
                     .assertHasHeader(Headers.LAST_MODIFIED.name().toString())

@@ -252,7 +252,13 @@ final class ServerImpl implements Server {
 
         @Override
         public void await() throws InterruptedException {
-            waitClose.await();
+            try {
+                // Can be interrupted if the JVM starts running shutdown hooks
+                // and we are already waiting
+                waitClose.await();
+            } catch (InterruptedException ex) {
+                return;
+            }
         }
 
         @Override

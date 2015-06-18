@@ -23,9 +23,8 @@
  */
 package com.mastfrog.acteur.headers;
 
-import io.netty.handler.codec.AsciiString;
-import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpRequest;
+import io.netty.util.AsciiString;
 
 /**
  * Enum of standard HTTP methods

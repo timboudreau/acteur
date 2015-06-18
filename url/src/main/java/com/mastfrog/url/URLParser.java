@@ -44,12 +44,11 @@ final class URLParser {
     private static final Pattern ANCHOR_SPLIT = Pattern.compile("(.*)\\#(.*)");
     private static final Pattern USERINFO_SPLIT = Pattern.compile("(.*)\\@(.*)", Pattern.DOTALL);
     private static final Pattern USER_PASSWORD_SPLIT = Pattern.compile("(.*?)\\:(.*)");
-//    private static final Pattern HOST_PORT_SPLIT = Pattern.compile("(.*)\\:(.\\n?)");
-
-//    private static final Pattern HOST_PORT_SPLIT = Pattern.compile("(.*?)\\:(\\d*)([/\\S$].*)", Pattern.DOTALL);
     private static final Pattern HOST_PORT_SPLIT = Pattern.compile("(.*?)\\:(\\d*)");
 
     private static final Pattern PARAMETER_ELEMENT_SPLIT = Pattern.compile("(.*?)[\\;\\&$]");
+    
+    private static final Pattern IPV6_HOST_AND_PORT = Pattern.compile("^\\[([0-9A-Za-z\\:]+)\\]\\:(\\d+)$");
 
     URLParser(CharSequence url) {
         Checks.notNull("url", url);
@@ -85,6 +84,8 @@ final class URLParser {
                 remainder = m.group(3);
             }
         }
+        String port = null;
+        boolean isIpV6 = false;
         if (host == null) {
             m = SLASH_SPLIT.matcher(remainder);
             if (m.find()) {
@@ -112,14 +113,24 @@ final class URLParser {
                 password = m.group(2);
             }
         }
-        String port = null;
-        m = HOST_PORT_SPLIT.matcher(host);
-        if (m.lookingAt()) {
-            host = m.group(1);
-            if (m.groupCount() > 1) {
-                port = m.group(2);
-            } else {
-                port = null;
+        Matcher hm = IPV6_HOST_AND_PORT.matcher(host);
+        if (hm.find()) {
+            host = hm.group(1);
+            port = hm.group(2);
+            isIpV6 = true;
+        } else {
+            hm = Host.IPV6_REGEX.matcher(host);
+            isIpV6 = hm.lookingAt();
+        }
+        if (port == null && !isIpV6) {
+            m = HOST_PORT_SPLIT.matcher(host);
+            if (m.lookingAt()) {
+                host = m.group(1);
+                if (m.groupCount() > 1) {
+                    port = m.group(2);
+                } else {
+                    port = null;
+                }
             }
         }
         if (remainder == null) {
@@ -164,6 +175,9 @@ final class URLParser {
         }
         Port prt = port == null ? null : port.trim().length() == 0 ? null : new Port (port);
         Host hst = host == null ? null : Host.parse(host);
+        if (host != null && !host.isEmpty()) {
+            hst = hst.canonicalize();
+        }
         Protocol proto = protocol == null ? null : Protocols.forName(protocol);
         Path pth = path == null ? null : Path.parse(path);
         if (pth != null) {

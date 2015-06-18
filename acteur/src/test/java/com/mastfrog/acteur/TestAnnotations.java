@@ -34,7 +34,7 @@ import org.junit.runner.RunWith;
 @TestWith(M.class)
 public class TestAnnotations {
 
-    @Test
+    @Test(timeout=8000)
     public void test(TestHarness harn) throws IOException, Throwable {
         harn.get("one").go().assertStatus(BAD_REQUEST);
         assertTrue(annotationHandlerCalled);

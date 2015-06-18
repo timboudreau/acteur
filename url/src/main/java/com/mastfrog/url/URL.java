@@ -35,6 +35,7 @@ import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
 import org.netbeans.validation.api.Problems;
 import org.netbeans.validation.api.Severity;
 import org.openide.util.NbBundle;
@@ -217,10 +218,18 @@ public final class URL implements URLComponent, Validating, Comparable<URL> {
      * Determine if the domain is the same as the passed internet domain.
      * For example, "foo.com" and "www.foo.com" have the same domain.  
      * @param domain
-     * @return
+     * @return True if the domain matches
      */
     public boolean isSameDomain (String domain) {
         return host == null ? false : host.isDomain(domain);
+    }
+    
+    /**
+     * Get an aggregate of the host and port.
+     * @return A host and port
+     */
+    public HostAndPort getHostAndPort() {
+        return new HostAndPort(getHost(), getPort());
     }
 
     /**
@@ -246,9 +255,18 @@ public final class URL implements URLComponent, Validating, Comparable<URL> {
             sb.append ('@');
         }
         if (host != null && host.length() == 0 && host.isLocalhost() && !Protocols.FILE.match(protocol)) {
+            // XXX ipv6?
             sb.append ("127.0.0.1");
         } else {
-            appendIfNotNull (sb, host);
+            if (host != null) {
+                Host hst = host.canonicalize();
+                // Use brackets if we have an IP address and a port, per the spec
+                if (hst.isIpv6() && (port != null && protocol != null && !port.equals(protocol.getDefaultPort()))) {
+                    sb.append('[').append(hst).append(']');
+                } else {
+                    sb.append(hst);
+                }
+            }
         }
         if (port != null) {
             int val = port.intValue();
@@ -574,17 +592,28 @@ public final class URL implements URLComponent, Validating, Comparable<URL> {
             return true;
         }
         final URL other = (URL) obj;
-        URLComponent[] ac = components();
-        URLComponent[] bc = other.components();
-        if (ac.length != bc.length) {
-            return toString().equals(obj.toString());
+        boolean result = Objects.equals(protocol, other.protocol) && 
+                Objects.equals(anchor, other.anchor) &&
+                Objects.equals(host, other.host) &&
+                Objects.equals(path, other.path) &&
+                Objects.equals(parameters, other.parameters) &&
+                Objects.equals(userName, other.userName) &&
+                Objects.equals(password, other.password);
+        if (!result && toString().equals(obj.toString())) {
+            result = true;
         }
-        for (int i= 0; i < ac.length; i++) {
-            if (!ac[i].equals(bc[i])) {
-                return false;
-            }
-        }
-        return true;
+        return result;
+//        URLComponent[] ac = components();
+//        URLComponent[] bc = other.components();
+//        if (ac.length != bc.length) {
+//            return toString().equals(obj.toString());
+//        }
+//        for (int i= 0; i < ac.length; i++) {
+//            if (!ac[i].equals(bc[i])) {
+//                return false;
+//            }
+//        }
+//        return true;
     }
 
     @Override

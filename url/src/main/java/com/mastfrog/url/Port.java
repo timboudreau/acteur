@@ -26,28 +26,33 @@ package com.mastfrog.url;
 import org.openide.util.NbBundle;
 
 /**
- * A TCP port.  Represents the optional port portion of a URL, such as
+ * A TCP port. Represents the optional port portion of a URL, such as
  * <code>https://www.timboudreau.com:<b>8443</b>/management/</code>
  *
  * @author Tim Boudreau
  */
 public final class Port implements URLComponent {
+
     private static final long serialVersionUID = 1L;
-    private String port;
+    private final short port;
     private boolean valid;
-    public Port (int port) {
-        this.port = Integer.toString(port);
+
+    public Port(int port) {
+        // My kingdom for an unsigned short
+        this.port = (short) (port + Short.MIN_VALUE);
         valid = true;
     }
 
-    public Port (String port) {
+    public Port(String port) {
+        int portValue;
         try {
-            this.port = Integer.toString(Integer.parseInt(port));
+            portValue = Integer.parseInt(port) + Short.MIN_VALUE;
             valid = true;
         } catch (NumberFormatException nfe) {
-            this.port = port;
+            portValue = Short.MIN_VALUE;
             valid = false;
         }
+        this.port = (short) portValue;
     }
 
     boolean isIllegalChars() {
@@ -56,20 +61,22 @@ public final class Port implements URLComponent {
 
     /**
      * Get the integer value of this port
+     *
      * @return
      */
     public int intValue() {
-        return valid ? Integer.parseInt(port) : -1;
+        return valid ? ((int) port) + (int) Short.MAX_VALUE + 1: -1;
     }
 
     @Override
     public String toString() {
-        return port;
+        return Integer.toString(intValue());
     }
 
     /**
-     * Determine if this is a valid port according to specification (i.e.
-     * port is non-negative and value is between 1 and 65535).
+     * Determine if this is a valid port according to specification (i.e. port
+     * is non-negative and value is between 1 and 65535).
+     *
      * @return
      */
     public boolean isValid() {
@@ -87,16 +94,25 @@ public final class Port implements URLComponent {
 
     @Override
     public void appendTo(StringBuilder sb) {
-        sb.append (port);
+        sb.append(intValue());
     }
 
     @Override
     public boolean equals(Object obj) {
-        return obj instanceof Port && (((Port) obj).port == null ? port == null : ((Port) obj).port.equals(port));
+        if (obj == this) {
+            return true;
+        } else if (obj == null) {
+            return false;
+        } else if (obj instanceof Port) {
+            if (((Port) obj).intValue() == intValue()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
     public int hashCode() {
-        return toString().hashCode();
+        return port;
     }
 }

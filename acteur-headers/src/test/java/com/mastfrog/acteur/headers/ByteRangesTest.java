@@ -23,7 +23,9 @@
  */
 package com.mastfrog.acteur.headers;
 
-import com.mastfrog.acteur.headers.Range;
+import io.netty.handler.codec.http.cookie.ClientCookieDecoder;
+import io.netty.handler.codec.http.cookie.Cookie;
+import java.util.Set;
 import org.junit.Test;
 import static org.junit.Assert.*;
 
@@ -104,5 +106,14 @@ public class ByteRangesTest {
         br = new BoundedRange("bytes */1234");
         assertTrue(br.isValid());
         assertTrue(br.isRangeNotSatisfiable());
+    }
+    
+    @Test
+    public void sanityCheckNettyCookieParser() {
+        
+        String s = "fk=eAh0JMiaiaqtoHXYQCulxFp26I956Dqbchf7Z06d1KnTGfir1j6aVes29cLp4vWhgH94jDBNgbU3kFtI7wOhxw==:user2; Max-Age=10800000; Expires=Sun, 11 Oct 2015 05:47:58 GMT; Path=/; Domain=localhost";
+        Cookie ck = ClientCookieDecoder.LAX.decode(s);
+        assertEquals("fk", ck.name());
+        assertEquals("eAh0JMiaiaqtoHXYQCulxFp26I956Dqbchf7Z06d1KnTGfir1j6aVes29cLp4vWhgH94jDBNgbU3kFtI7wOhxw==:user2", ck.value());
     }
 }

@@ -49,12 +49,10 @@ public enum Protocols implements Protocol {
     public Port getDefaultPort() {
         switch(this) {
             case HTTP :
-                return new Port(80);
-            case HTTPS :
-                return new Port(443);
             case WS : 
                 return new Port(80);
             case WSS :
+            case HTTPS :
                 return new Port(443);
             case FTP :
                 return new Port(21);
@@ -65,7 +63,7 @@ public enum Protocols implements Protocol {
 
     @Override
     public boolean isSecure() {
-        return this == HTTPS ? true : false;
+        return this == HTTPS;
     }
 
     public boolean match(Protocol protocol) {

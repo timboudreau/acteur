@@ -1,7 +1,7 @@
-/* 
+/*
  * The MIT License
  *
- * Copyright 2013 Tim Boudreau.
+ * Copyright 2015 tim.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,30 +21,36 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.mastfrog.acteur.headers;
+package com.mastfrog.url;
 
-import io.netty.handler.codec.http.HttpHeaderNames;
-import io.netty.handler.codec.http.cookie.ClientCookieDecoder;
-import io.netty.handler.codec.http.cookie.Cookie;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import org.junit.Test;
 
 /**
  *
- * @author Tim Boudreau
+ * @author tim
  */
-final class SetCookieHeader extends AbstractHeader<Cookie> {
+public class PortTest {
 
-    public SetCookieHeader() {
-        super(io.netty.handler.codec.http.cookie.Cookie.class, HttpHeaderNames.SET_COOKIE);
+    @Test
+    public void testValue() {
+        for (int i = 1; i < 65535; i++) {
+            Port port = new Port(i);
+            assertEquals(i, port.intValue());
+            assertEquals("At " + i, Integer.toString(i), port.toString());
+            URL u = URL.builder(Protocols.HTTPS).setHost("foo.com").setPort(i).create();
+            assertEquals(port, u.getPort());
+            URL u1 = URL.parse(u.toString());
+            assertEquals(u, u1);
+        }
+        for (int i = 1; i < 65535; i++) {
+            Port port = new Port(Integer.toString(i));
+            assertEquals("Failed at " + i, i, port.intValue());
+            assertEquals(Integer.toString(i), port.toString());
+        }
+        Port p = new Port("foo");
+        assertFalse(p.isValid());
+        assertEquals(-1, p.intValue());
     }
-
-    @Override
-    public String toString(io.netty.handler.codec.http.cookie.Cookie value) {
-        return io.netty.handler.codec.http.cookie.ServerCookieEncoder.LAX.encode(value);
-    }
-
-    @Override
-    public Cookie toValue(CharSequence value) {
-        return ClientCookieDecoder.LAX.decode(value.toString());
-    }
-
 }

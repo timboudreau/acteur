@@ -247,12 +247,7 @@ public final class URLBuilder extends AbstractBuilder<PathElement, URL> {
 
     public URLBuilder setHost (String host) {
         Checks.notNull("host", host);
-        String[] labels = host.split("\\" + LABEL_DELIMITER);
-        List<Label> lbls = new LinkedList<>();
-        for (String label : labels) {
-            lbls.add(new Label(label));
-        }
-        setHost (new Host(lbls.toArray(new Label[lbls.size()])));
+        setHost(Host.parse(host));
         return this;
     }
 

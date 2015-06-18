@@ -22,6 +22,7 @@ import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
+import org.joda.time.Duration;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
@@ -58,13 +59,14 @@ public class GenericApplicationTest {
         assertTrue("GOT " + types, types.equals(expect));
     }
 
-    @Test
+    @Test(timeout = 7000)
     @SuppressWarnings("unchecked")
     public void testNumble(TestHarness harn, ObjectMapper mapper) throws IOException, Throwable {
         Map<String, Object> m = new MapBuilder().put("host", "timboudreau.com")
                 .put("port", 8080).put("bool", false).build();
 
-        CallResult res = harn.put("/numble").setBody(m, MediaType.JSON_UTF_8).go().await().assertCode(200);
+        CallResult res = harn.put("/numble").log().setTimeout(Duration.standardSeconds(20))
+                .setBody(m, MediaType.JSON_UTF_8).go().await().assertCode(200);
         Map<String, Object> nue = res.content(Map.class);
         assertEquals(m, nue);
     }
