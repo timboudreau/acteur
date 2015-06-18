@@ -314,6 +314,7 @@ final class ResponseImpl extends Response {
             return set((CharSequence) name, values);
         }
     }
+    */
 
     private static class HackHttpResponse extends DefaultHttpResponse {
 
@@ -330,7 +331,7 @@ final class ResponseImpl extends Response {
             return hdrs;
         }
     }
-    */
+
     private String cookieName(Object o) {
         if (o instanceof Cookie) {
             return ((Cookie) o).name();

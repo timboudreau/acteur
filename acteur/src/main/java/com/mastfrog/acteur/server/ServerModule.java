@@ -773,7 +773,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
             HttpEvent evt = ev.get();
             Set<Cookie> result = new HashSet<>();
             for (CharSequence h : evt.getRequest().headers().getAll(HttpHeaderNames.COOKIE)) {
-                Cookie ck = ClientCookieDecoder.decode(h.toString());
+                Cookie ck = ClientCookieDecoder.LAX.decode(h.toString());
                 result.add(ck);
             }
             return result;
