@@ -24,7 +24,6 @@
 package com.mastfrog.acteurbase;
 
 import com.mastfrog.util.Checks;
-import java.util.Arrays;
 
 /**
  * Base class for Acteurs. Implementations should implement ResponseFactory and
