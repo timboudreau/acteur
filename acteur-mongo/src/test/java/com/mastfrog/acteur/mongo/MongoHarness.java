@@ -175,7 +175,7 @@ public class MongoHarness {
                     Thread.sleep(50);
                     break;
                 } catch (ConnectException e) {
-                    if (i > 750) {
+                    if (i > 1750) {
                         throw new IOException("Could not connect to mongodb "
                                 + "after " + i + " attempts.  Assuming it's dead.");
                     }
