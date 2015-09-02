@@ -70,8 +70,7 @@ public class ComprehensiveTest {
                 .assertCode(200)
                 .assertContent(iter("Iteration", 7))
                 .throwIfError()
-                .await()
-                ;
+                .await();
 
         System.out.println("A");
         harness.post("echo").log().setBody("Echo this back to me", PLAIN_TEXT_UTF_8)

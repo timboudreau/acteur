@@ -39,7 +39,7 @@ import com.mastfrog.acteur.errors.ExceptionEvaluatorRegistry;
  *
  * @author Tim Boudreau
  */
-public class MongoModule extends AbstractModule implements MongoConfig<MongoModule> {
+public class MongoModule extends AbstractModule implements MongoConfigModule {
 
     private final GiuliusMongoModule giuliusModule;
 
@@ -74,6 +74,11 @@ public class MongoModule extends AbstractModule implements MongoConfig<MongoModu
     public MongoModule bindCollection(String bindingName, String collectionName) {
         giuliusModule.bindCollection(bindingName, collectionName);
         return this;
+    }
+
+    @Override
+    public String getDatabaseName() {
+        return giuliusModule.getDatabaseName();
     }
 
     public static class InvalidParamterExceptionEvaluator extends ExceptionEvaluator {

@@ -27,7 +27,6 @@ import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.util.collections.CollectionUtils;
 import com.mastfrog.util.collections.Converter;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import javax.inject.Inject;
 

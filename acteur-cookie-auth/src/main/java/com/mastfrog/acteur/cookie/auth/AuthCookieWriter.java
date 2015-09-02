@@ -11,8 +11,8 @@ import static com.mastfrog.acteur.cookie.auth.CookieAuthenticator.SETTINGS_KEY_C
 import static com.mastfrog.acteur.cookie.auth.CookieAuthenticator.SETTINGS_KEY_USE_COOKIE_HOST;
 import static com.mastfrog.acteur.cookie.auth.CookieAuthenticator.SETTINGS_KEY_USE_COOKIE_PORTS;
 import com.mastfrog.settings.Settings;
-import io.netty.handler.codec.http.Cookie;
-import io.netty.handler.codec.http.DefaultCookie;
+import io.netty.handler.codec.http.cookie.Cookie;
+import io.netty.handler.codec.http.cookie.DefaultCookie;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -25,7 +25,6 @@ final class AuthCookieWriter {
 
     private final String cookieName;
     private final boolean useCookieHost;
-    private final boolean useCookiePorts;
     private final boolean cookieHttpOnly;
     private final String cookieHost;
     private final SessionTimeout timeout;
@@ -35,7 +34,6 @@ final class AuthCookieWriter {
     AuthCookieWriter(Settings settings, SessionTimeout timeout) {
         cookieName = settings.getString(SETTINGS_KEY_COOKIE_NAME, DEFAULT_COOKIE_NAME);
         useCookieHost = settings.getBoolean(SETTINGS_KEY_USE_COOKIE_HOST, true);
-        useCookiePorts = settings.getBoolean(SETTINGS_KEY_USE_COOKIE_PORTS, true);
         cookieHttpOnly = settings.getBoolean(SETTINGS_KEY_COOKIE_HTTP_ONLY, true);
         cookieHost = settings.getString(SETTINGS_KEY_COOKIE_HOST);
         port = settings.getInt("port");
@@ -102,9 +100,6 @@ final class AuthCookieWriter {
             if (cookieHttpOnly) {
                 cookie.setHttpOnly(true);
             }
-            if (useCookiePorts) {
-                cookie.setPorts(cookiePorts());
-            }
         }
     }
 
@@ -127,7 +122,6 @@ final class AuthCookieWriter {
     public void discardCookie(HttpEvent evt, Response on) {
         DefaultCookie cookie = new DefaultCookie(cookieName(), "");
         configureCookie(evt, cookie);
-        cookie.setDiscard(true);
         cookie.setMaxAge(0);
         on.add(Headers.SET_COOKIE, cookie);
     }

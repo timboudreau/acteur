@@ -4,11 +4,14 @@
     <parent>
         <groupId>com.mastfrog</groupId>
         <artifactId>mastfrog-parent</artifactId>
-        <version>1.6.2-netty-5</version>
+        <version>1.6.3-netty-5</version>
         <relativePath/>
     </parent>
     <artifactId>acteur</artifactId>
     <name>Acteur</name>
+    <properties>
+        <maven.test.skip.exec>true</maven.test.skip.exec>
+    </properties>
     <dependencies>
         <dependency>
             <groupId>${project.groupId}</groupId>
@@ -66,7 +69,7 @@
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>numble</artifactId>
+            <version>${project.version}</version>
         </dependency>
     </dependencies>
 </project>
-

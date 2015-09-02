@@ -24,7 +24,6 @@
 package com.mastfrog.acteur;
 
 import io.netty.handler.codec.Headers;
-import io.netty.handler.codec.TextHeaders;
 import io.netty.handler.codec.http.DefaultHttpHeaders;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaderValues;
@@ -224,22 +223,6 @@ public class HackHttpHeaders implements HttpHeaders {
     }
 
     @Override
-    public HttpHeaders add(TextHeaders headers) {
-        TextHeaders th = new DefaultHttpHeaders();
-        for (CharSequence key : th.names()) {
-            if (HttpHeaderNames.TRANSFER_ENCODING.equals(key)) {
-                continue;
-            }
-            if (HttpHeaderNames.CONTENT_LENGTH.equals(key)) {
-                continue;
-            }
-            th.add(key, th.getAll(key));
-        }
-        orig.add(headers);
-        return this;
-    }
-
-    @Override
     public HttpHeaders set(CharSequence name, CharSequence value) {
         if (HttpHeaderNames.TRANSFER_ENCODING.equals(name)) {
             return this;
@@ -408,63 +391,8 @@ public class HackHttpHeaders implements HttpHeaders {
     }
 
     @Override
-    public HttpHeaders set(TextHeaders headers) {
-        return orig.set(headers);
-    }
-
-    @Override
-    public HttpHeaders setAll(TextHeaders headers) {
-        return orig.setAll(headers);
-    }
-
-    @Override
     public HttpHeaders clear() {
         return orig.clear();
-    }
-
-    @Override
-    public String getAndConvert(CharSequence name) {
-        return orig.getAndConvert(name);
-    }
-
-    @Override
-    public String getAndConvert(CharSequence name, String defaultValue) {
-        return orig.getAndConvert(name, defaultValue);
-    }
-
-    @Override
-    public String getAndRemoveAndConvert(CharSequence name) {
-        return orig.getAndRemoveAndConvert(name);
-    }
-
-    @Override
-    public String getAndRemoveAndConvert(CharSequence name, String defaultValue) {
-        return orig.getAndRemoveAndConvert(name, defaultValue);
-    }
-
-    @Override
-    public List<String> getAllAndConvert(CharSequence name) {
-        return orig.getAllAndConvert(name);
-    }
-
-    @Override
-    public List<String> getAllAndRemoveAndConvert(CharSequence name) {
-        return orig.getAllAndRemoveAndConvert(name);
-    }
-
-    @Override
-    public List<Map.Entry<String, String>> entriesConverted() {
-        return orig.entriesConverted();
-    }
-
-    @Override
-    public Iterator<Map.Entry<String, String>> iteratorConverted() {
-        return orig.iteratorConverted();
-    }
-
-    @Override
-    public Set<String> namesAndConvert(Comparator<String> comparator) {
-        return orig.namesAndConvert(comparator);
     }
 
     @Override
@@ -530,11 +458,6 @@ public class HackHttpHeaders implements HttpHeaders {
     @Override
     public Short getShort(CharSequence name) {
         return orig.getShort(name);
-    }
-
-    @Override
-    public short getInt(CharSequence name, short defaultValue) {
-        return orig.getInt(name, defaultValue);
     }
 
     @Override
@@ -677,11 +600,6 @@ public class HackHttpHeaders implements HttpHeaders {
     }
 
     @Override
-    public List<Map.Entry<CharSequence, CharSequence>> entries() {
-        return orig.entries();
-    }
-
-    @Override
     public boolean contains(CharSequence name) {
         return orig.contains(name);
     }
@@ -742,26 +660,6 @@ public class HackHttpHeaders implements HttpHeaders {
     }
 
     @Override
-    public boolean contains(CharSequence name, CharSequence value, Comparator<? super CharSequence> comparator) {
-        return orig.contains(name, value, comparator);
-    }
-
-    @Override
-    public boolean contains(CharSequence name, CharSequence value, Comparator<? super CharSequence> keyComparator, Comparator<? super CharSequence> valueComparator) {
-        return orig.contains(name, value, keyComparator, valueComparator);
-    }
-
-    @Override
-    public boolean containsObject(CharSequence name, Object value, Comparator<? super CharSequence> comparator) {
-        return orig.containsObject(name, value, comparator);
-    }
-
-    @Override
-    public boolean containsObject(CharSequence name, Object value, Comparator<? super CharSequence> keyComparator, Comparator<? super CharSequence> valueComparator) {
-        return orig.containsObject(name, value, keyComparator, valueComparator);
-    }
-
-    @Override
     public int size() {
         return orig.size();
     }
@@ -774,26 +672,6 @@ public class HackHttpHeaders implements HttpHeaders {
     @Override
     public Set<CharSequence> names() {
         return orig.names();
-    }
-
-    @Override
-    public List<CharSequence> namesList() {
-        return orig.namesList();
-    }
-
-    @Override
-    public io.netty.handler.codec.Headers<CharSequence> add(io.netty.handler.codec.Headers<CharSequence> headers) {
-        return orig.add(headers);
-    }
-
-    @Override
-    public io.netty.handler.codec.Headers<CharSequence> set(io.netty.handler.codec.Headers<CharSequence> headers) {
-        return orig.set(headers);
-    }
-
-    @Override
-    public io.netty.handler.codec.Headers<CharSequence> setAll(io.netty.handler.codec.Headers<CharSequence> headers) {
-        return orig.setAll(headers);
     }
 
     @Override
@@ -821,11 +699,6 @@ public class HackHttpHeaders implements HttpHeaders {
     }
 
     @Override
-    public boolean containsObject(CharSequence name, Object value, boolean ignoreCase) {
-        return orig.containsObject(name, value, ignoreCase);
-    }
-
-    @Override
     public HttpHeaders addTimeMillis(CharSequence name, long value) {
         orig.addTimeMillis(name, value);
         return this;
@@ -838,12 +711,45 @@ public class HackHttpHeaders implements HttpHeaders {
     }
 
     @Override
-    public Map.Entry<CharSequence, CharSequence> forEachEntry(Headers.EntryVisitor<CharSequence> visitor) throws Exception {
-        return orig.forEachEntry(visitor);
+    public HttpHeaders add(Headers<? extends CharSequence> headers) {
+        for (Map.Entry<? extends CharSequence, ? extends CharSequence> e : headers) {
+            add(e.getKey(), e.getValue());
+        }
+        return this;
     }
 
     @Override
-    public CharSequence forEachName(Headers.NameVisitor<CharSequence> visitor) throws Exception {
-        return orig.forEachName(visitor);
+    public HttpHeaders set(Headers<? extends CharSequence> headers) {
+        for (Map.Entry<? extends CharSequence, ? extends CharSequence> e : headers) {
+            set(e.getKey(), e.getValue());
+        }
+        return this;
+    }
+
+    @Override
+    public HttpHeaders setAll(Headers<? extends CharSequence> headers) {
+        set(headers);
+        return this;
+    }
+
+    @Override
+    public String getAsString(CharSequence name) {
+        CharSequence result = get(name);
+        return result == null ? null : result.toString();
+    }
+
+    @Override
+    public List<String> getAllAsString(CharSequence name) {
+        return orig.getAllAsString(name);
+    }
+
+    @Override
+    public Iterator<Map.Entry<String, String>> iteratorAsString() {
+        return orig.iteratorAsString();
+    }
+
+    @Override
+    public short getShort(CharSequence name, short defaultValue) {
+        return orig.getShort(name, defaultValue);
     }
 }

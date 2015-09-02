@@ -48,7 +48,14 @@ public class ArrayChain<T> implements Chain<T> {
     public ArrayChain(Dependencies deps, Class<? super T> type, List<Object> objs) {
         this(deps, type);
         for (Object o : objs) {
+            if (o == null) {
+                throw new ConfigurationError("Null in acteur list");
+            }
             if (o instanceof Class<?>) {
+                Class<?> c = (Class<?>) o;
+                if (!type.isAssignableFrom(c)) {
+                    throw new ConfigurationError(c.getName() + " is not a subtype of " + type.getName());
+                }
                 this.add((Class<? extends T>) o);
             } else {
                 T t = (T) type.cast(o);

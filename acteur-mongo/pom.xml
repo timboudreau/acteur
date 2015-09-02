@@ -5,7 +5,7 @@
     <parent>
         <artifactId>mastfrog-parent</artifactId>
         <groupId>com.mastfrog</groupId>
-        <version>1.6.2-netty-5</version>
+        <version>1.6.3-netty-5</version>
         <relativePath/>
     </parent>
 

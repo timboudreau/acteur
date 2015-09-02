@@ -40,9 +40,9 @@ public enum Method implements com.mastfrog.acteur.util.HttpMethod {
 
     public static com.mastfrog.acteur.util.HttpMethod get(HttpRequest req) {
         io.netty.handler.codec.http.HttpMethod m = req.method();
-        AsciiString methodName = m.name().toUpperCase();
+        AsciiString methodName = m.asciiName();
         for (Method mm : values()) {
-            if (methodName.contentEquals(mm.name())) {
+            if (methodName.contentEqualsIgnoreCase(mm.name())) {
                 return mm;
             }
         }
@@ -71,6 +71,5 @@ public enum Method implements com.mastfrog.acteur.util.HttpMethod {
         public String name() {
             return name.toString();
         }
-
     }
 }
