@@ -28,7 +28,10 @@ import static com.mastfrog.acteur.server.ServerModule.HTTP_COMPRESSION;
 import static com.mastfrog.acteur.server.ServerModule.MAX_CONTENT_LENGTH;
 import com.mastfrog.acteur.spi.ApplicationControl;
 import com.mastfrog.settings.Settings;
+import com.mastfrog.util.Exceptions;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufUtil;
+import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
@@ -37,11 +40,25 @@ import io.netty.channel.ChannelPipeline;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.codec.DecoderException;
 import io.netty.handler.codec.MessageToByteEncoder;
+import io.netty.handler.codec.http.DefaultFullHttpResponse;
+import io.netty.handler.codec.http.FullHttpResponse;
+import static io.netty.handler.codec.http.HttpConstants.CR;
+import static io.netty.handler.codec.http.HttpConstants.LF;
+import static io.netty.handler.codec.http.HttpConstants.SP;
 import io.netty.handler.codec.http.HttpContentCompressor;
+import io.netty.handler.codec.http.HttpExpectationFailedEvent;
+import io.netty.handler.codec.http.HttpHeaders;
+import io.netty.handler.codec.http.HttpMessage;
 import io.netty.handler.codec.http.HttpRequestDecoder;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseEncoder;
+import io.netty.handler.codec.http.HttpResponseStatus;
+import io.netty.handler.codec.http.HttpUtil;
+import static io.netty.handler.codec.http.HttpUtil.getContentLength;
+import io.netty.handler.codec.http.HttpVersion;
+import io.netty.util.AsciiString;
 import java.util.List;
+import java.util.Map;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
@@ -73,44 +90,72 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
         app.get().internalOnError(cause);
     }
 
+//    static class LoggingChannelPipeline extends WrapperChannelPipeline {
+//
+//        public LoggingChannelPipeline(WrapperChannel channel, ChannelPipeline real) {
+//            super(channel, real);
+//        }
+//
+//        @Override
+//        protected void onRemove(ChannelHandler h) {
+//            new Exception("Handler removed: " + h).printStackTrace();
+//            System.out.println("Handlers now: " + this);
+//        }
+//
+//        @Override
+//        protected void onAdd(ChannelHandler handler) {
+//            System.out.println("Add handler " + handler);
+//        }
+//    }
+//    
+//    private SocketChannel wrap(SocketChannel orig) {
+//        WrapperSocketChannel channel = new WrapperSocketChannel(orig);
+//        WrapperChannelPipeline pipeline = new LoggingChannelPipeline(channel, orig.pipeline());
+//        channel.setPipeline(pipeline);
+//        return channel;
+//    }
+    final MessageBufEncoder messageBufEncoder = new MessageBufEncoder();
+
     @Override
     public void initChannel(SocketChannel ch) throws Exception {
+//        ch = wrap(ch);
         // Create a default pipeline implementation.
         ChannelPipeline pipeline = ch.pipeline();
         decorator.onCreatePipeline(pipeline);
         ChannelHandler decoder = new HackHttpRequestDecoder();
-        ChannelHandler encoder = new HttpResponseEncoder();
-//        SSLEngine engine = SecureChatSslContextFactory.getServerContext().createSSLEngine();
-//        engine.setUseClientMode(false);
-//        pipeline.addLast("ssl", new SslHandler(engine));
+        HttpResponseEncoder encoder = new HttpResponseEncoder();
 
         pipeline.addLast(PipelineDecorator.DECODER, decoder);
         // Uncomment the following line if you don't want to handle HttpChunks.
         if (aggregateChunks) {
-            ChannelHandler aggregator = new HttpObjectAggregator(maxContentLength);
+            ChannelHandler aggregator = new HackAggregator(maxContentLength);
             pipeline.addLast(PipelineDecorator.AGGREGATOR, aggregator);
         }
 
-        pipeline.addLast(PipelineDecorator.BYTES, new MessageBufEncoder());
+        pipeline.addLast(PipelineDecorator.BYTES, messageBufEncoder);
         pipeline.addLast(PipelineDecorator.ENCODER, encoder);
 
-        // Remove the following line if you don't want automatic content compression.
         if (httpCompression) {
-            ChannelHandler compressor = new SelectiveCompressor();
-            pipeline.addLast(PipelineDecorator.COMPRESSOR, compressor);
+            pipeline.addLast(PipelineDecorator.COMPRESSOR, new SelectiveCompressor());
         }
         pipeline.addLast(PipelineDecorator.HANDLER, handler.get());
         decorator.onPipelineInitialized(pipeline);
     }
 
+    @Sharable
     private static class MessageBufEncoder extends MessageToByteEncoder<ByteBuf> {
 
+        MessageBufEncoder() {
+            super(ByteBuf.class);
+        }
+        
         @Override
         protected void encode(ChannelHandlerContext ctx, ByteBuf msg, ByteBuf out) throws Exception {
             out.writeBytes(msg);
         }
     }
 
+    @Sharable
     private static class SelectiveCompressor extends HttpContentCompressor {
 
         @Override
@@ -126,7 +171,6 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
     static class HackHttpRequestDecoder extends HttpRequestDecoder {
 
         // See https://github.com/netty/netty/issues/3247
-
         protected void callDecode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) {
             try {
                 while (in.isReadable()) {
@@ -159,6 +203,111 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
             } catch (Throwable cause) {
                 throw new DecoderException(cause);
             }
+        }
+    }
+
+    static class HackAggregator extends io.netty.handler.codec.http.HttpObjectAggregator {
+
+        private static final FullHttpResponse CONTINUE
+                = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.CONTINUE, Unpooled.EMPTY_BUFFER);
+        private static final FullHttpResponse EXPECTATION_FAILED = new DefaultFullHttpResponse(
+                HttpVersion.HTTP_1_1, HttpResponseStatus.EXPECTATION_FAILED, Unpooled.EMPTY_BUFFER);
+
+        public HackAggregator(int maxContentLength) {
+            super(maxContentLength);
+        }
+
+        public HackAggregator(int maxContentLength, boolean closeOnExpectationFailed) {
+            super(maxContentLength, closeOnExpectationFailed);
+        }
+
+        private static final byte[] CRLF = {CR, LF};
+
+        @Override
+        protected Object newContinueResponse(HttpMessage start, int maxContentLength, ChannelPipeline pipeline) {
+            if (HttpUtil.is100ContinueExpected(start)) {
+                if (getContentLength(start, -1) <= maxContentLength) {
+                    try {
+                        ByteBuf buf = pipeline.channel().alloc().buffer();
+                        FullHttpResponse m = CONTINUE.duplicate().retain();
+                        encodeInitialLine(buf, m);
+                        encodeHeaders(m.headers(), buf);
+                        buf.writeBytes(CRLF);
+                        return buf;
+                    } catch (Exception ex) {
+                        Exceptions.chuck(ex);
+                    }
+                }
+
+                pipeline.fireUserEventTriggered(HttpExpectationFailedEvent.INSTANCE);
+                return EXPECTATION_FAILED.duplicate().retain();
+            }
+            return null;
+        }
+
+        protected void encodeInitialLine(ByteBuf buf, HttpResponse response) throws Exception {
+            AsciiString version = response.protocolVersion().text();
+            ByteBufUtil.copy(version, version.arrayOffset(), buf, version.length());
+            buf.writeByte(SP);
+
+            AsciiString code = response.status().codeAsText();
+            ByteBufUtil.copy(code, code.arrayOffset(), buf, code.length());
+            buf.writeByte(SP);
+
+            AsciiString reasonPhrase = response.status().reasonPhrase();
+            ByteBufUtil.copy(reasonPhrase, reasonPhrase.arrayOffset(), buf, reasonPhrase.length());
+            buf.writeBytes(CRLF);
+        }
+
+        protected void encodeHeaders(HttpHeaders headers, ByteBuf buf) throws Exception {
+            for (Map.Entry<CharSequence, CharSequence> header : headers) {
+                encoderHeader(header.getKey(), header.getValue(), buf);
+            }
+        }
+
+        public static void encoderHeader(CharSequence name, CharSequence value, ByteBuf buf) throws Exception {
+            final int nameLen = name.length();
+            final int valueLen = value.length();
+            final int entryLen = nameLen + valueLen + 4;
+            int offset = buf.writerIndex();
+            buf.ensureWritable(entryLen);
+            writeAscii(buf, offset, name, nameLen);
+            offset += nameLen;
+            buf.setByte(offset++, ':');
+            buf.setByte(offset++, ' ');
+            writeAscii(buf, offset, value, valueLen);
+            offset += valueLen;
+            buf.setByte(offset++, '\r');
+            buf.setByte(offset++, '\n');
+            buf.writerIndex(offset);
+        }
+
+        @Override
+        protected boolean ignoreContentAfterContinueResponse(Object msg) {
+            return msg instanceof HttpResponse
+                    && ((HttpResponse) msg).status().code() == HttpResponseStatus.EXPECTATION_FAILED.code();
+        }
+
+        private static void writeAscii(ByteBuf buf, int offset, CharSequence value, int valueLen) {
+            if (value instanceof AsciiString) {
+                writeAsciiString(buf, offset, (AsciiString) value, valueLen);
+            } else {
+                writeCharSequence(buf, offset, value, valueLen);
+            }
+        }
+
+        private static void writeAsciiString(ByteBuf buf, int offset, AsciiString value, int valueLen) {
+            ByteBufUtil.copy(value, 0, buf, offset, valueLen);
+        }
+
+        private static void writeCharSequence(ByteBuf buf, int offset, CharSequence value, int valueLen) {
+            for (int i = 0; i < valueLen; i++) {
+                buf.setByte(offset++, c2b(value.charAt(i)));
+            }
+        }
+
+        private static int c2b(char ch) {
+            return ch < 256 ? (byte) ch : '?';
         }
     }
 }

@@ -9,9 +9,6 @@
     </parent>
     <artifactId>acteur</artifactId>
     <name>Acteur</name>
-    <properties>
-        <maven.test.skip.exec>true</maven.test.skip.exec>
-    </properties>
     <dependencies>
         <dependency>
             <groupId>${project.groupId}</groupId>
@@ -37,6 +34,11 @@
             <groupId>${project.groupId}</groupId>
             <artifactId>scopes</artifactId>
         </dependency>
+<!--        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>netty-debug</artifactId>
+            <version>${mastfrog.version}</version>
+        </dependency>        -->
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>netty-http-test-harness</artifactId>

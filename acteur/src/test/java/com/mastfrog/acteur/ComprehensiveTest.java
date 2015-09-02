@@ -26,16 +26,19 @@ public class ComprehensiveTest {
         harness.post("echo").log().setBody("Echo this back to me", PLAIN_TEXT_UTF_8)
                 .setTimeout(Duration.standardSeconds(30)).go()
                 .throwIfError()
+                .await()
                 .assertStatus(OK)
                 .assertContent("Echo this back to me");
 
         harness.get("iter").log().addQueryPair("iters", "5").setTimeout(Duration.standardSeconds(30)).go()
                 .assertContent(iter("Iteration", 5))
+                .await()
                 .assertCode(200)
                 .throwIfError();
 
         harness.get("iter").log().addQueryPair("iters", "7")
                 .addQueryPair("msg", "Hello ").setTimeout(Duration.standardSeconds(30)).go()
+                .await()
                 .assertCode(200)
                 .assertContent(iter("Hello", 7))
                 .throwIfError();
@@ -75,6 +78,7 @@ public class ComprehensiveTest {
         System.out.println("A");
         harness.post("echo").log().setBody("Echo this back to me", PLAIN_TEXT_UTF_8)
                 .setTimeout(Duration.standardSeconds(30)).go()
+                .await()
                 .assertStatus(OK)
                 .assertContent("Echo this back to me");
 
