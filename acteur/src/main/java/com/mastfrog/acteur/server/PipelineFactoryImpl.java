@@ -49,6 +49,7 @@ import io.netty.handler.codec.http.HttpContentCompressor;
 import io.netty.handler.codec.http.HttpExpectationFailedEvent;
 import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpMessage;
+import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpRequestDecoder;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseEncoder;
@@ -127,13 +128,13 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
 
         pipeline.addLast(PipelineDecorator.DECODER, decoder);
         // Uncomment the following line if you don't want to handle HttpChunks.
+        pipeline.addLast(PipelineDecorator.ENCODER, encoder);
         if (aggregateChunks) {
-            ChannelHandler aggregator = new HackAggregator(maxContentLength);
+            ChannelHandler aggregator = new HttpObjectAggregator(maxContentLength);
             pipeline.addLast(PipelineDecorator.AGGREGATOR, aggregator);
         }
 
         pipeline.addLast(PipelineDecorator.BYTES, messageBufEncoder);
-        pipeline.addLast(PipelineDecorator.ENCODER, encoder);
 
         if (httpCompression) {
             pipeline.addLast(PipelineDecorator.COMPRESSOR, new SelectiveCompressor());
@@ -203,111 +204,6 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
             } catch (Throwable cause) {
                 throw new DecoderException(cause);
             }
-        }
-    }
-
-    static class HackAggregator extends io.netty.handler.codec.http.HttpObjectAggregator {
-
-        private static final FullHttpResponse CONTINUE
-                = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.CONTINUE, Unpooled.EMPTY_BUFFER);
-        private static final FullHttpResponse EXPECTATION_FAILED = new DefaultFullHttpResponse(
-                HttpVersion.HTTP_1_1, HttpResponseStatus.EXPECTATION_FAILED, Unpooled.EMPTY_BUFFER);
-
-        public HackAggregator(int maxContentLength) {
-            super(maxContentLength);
-        }
-
-        public HackAggregator(int maxContentLength, boolean closeOnExpectationFailed) {
-            super(maxContentLength, closeOnExpectationFailed);
-        }
-
-        private static final byte[] CRLF = {CR, LF};
-
-        @Override
-        protected Object newContinueResponse(HttpMessage start, int maxContentLength, ChannelPipeline pipeline) {
-            if (HttpUtil.is100ContinueExpected(start)) {
-                if (getContentLength(start, -1) <= maxContentLength) {
-                    try {
-                        ByteBuf buf = pipeline.channel().alloc().buffer();
-                        FullHttpResponse m = CONTINUE.duplicate().retain();
-                        encodeInitialLine(buf, m);
-                        encodeHeaders(m.headers(), buf);
-                        buf.writeBytes(CRLF);
-                        return buf;
-                    } catch (Exception ex) {
-                        Exceptions.chuck(ex);
-                    }
-                }
-
-                pipeline.fireUserEventTriggered(HttpExpectationFailedEvent.INSTANCE);
-                return EXPECTATION_FAILED.duplicate().retain();
-            }
-            return null;
-        }
-
-        protected void encodeInitialLine(ByteBuf buf, HttpResponse response) throws Exception {
-            AsciiString version = response.protocolVersion().text();
-            ByteBufUtil.copy(version, version.arrayOffset(), buf, version.length());
-            buf.writeByte(SP);
-
-            AsciiString code = response.status().codeAsText();
-            ByteBufUtil.copy(code, code.arrayOffset(), buf, code.length());
-            buf.writeByte(SP);
-
-            AsciiString reasonPhrase = response.status().reasonPhrase();
-            ByteBufUtil.copy(reasonPhrase, reasonPhrase.arrayOffset(), buf, reasonPhrase.length());
-            buf.writeBytes(CRLF);
-        }
-
-        protected void encodeHeaders(HttpHeaders headers, ByteBuf buf) throws Exception {
-            for (Map.Entry<CharSequence, CharSequence> header : headers) {
-                encoderHeader(header.getKey(), header.getValue(), buf);
-            }
-        }
-
-        public static void encoderHeader(CharSequence name, CharSequence value, ByteBuf buf) throws Exception {
-            final int nameLen = name.length();
-            final int valueLen = value.length();
-            final int entryLen = nameLen + valueLen + 4;
-            int offset = buf.writerIndex();
-            buf.ensureWritable(entryLen);
-            writeAscii(buf, offset, name, nameLen);
-            offset += nameLen;
-            buf.setByte(offset++, ':');
-            buf.setByte(offset++, ' ');
-            writeAscii(buf, offset, value, valueLen);
-            offset += valueLen;
-            buf.setByte(offset++, '\r');
-            buf.setByte(offset++, '\n');
-            buf.writerIndex(offset);
-        }
-
-        @Override
-        protected boolean ignoreContentAfterContinueResponse(Object msg) {
-            return msg instanceof HttpResponse
-                    && ((HttpResponse) msg).status().code() == HttpResponseStatus.EXPECTATION_FAILED.code();
-        }
-
-        private static void writeAscii(ByteBuf buf, int offset, CharSequence value, int valueLen) {
-            if (value instanceof AsciiString) {
-                writeAsciiString(buf, offset, (AsciiString) value, valueLen);
-            } else {
-                writeCharSequence(buf, offset, value, valueLen);
-            }
-        }
-
-        private static void writeAsciiString(ByteBuf buf, int offset, AsciiString value, int valueLen) {
-            ByteBufUtil.copy(value, 0, buf, offset, valueLen);
-        }
-
-        private static void writeCharSequence(ByteBuf buf, int offset, CharSequence value, int valueLen) {
-            for (int i = 0; i < valueLen; i++) {
-                buf.setByte(offset++, c2b(value.charAt(i)));
-            }
-        }
-
-        private static int c2b(char ch) {
-            return ch < 256 ? (byte) ch : '?';
         }
     }
 }
