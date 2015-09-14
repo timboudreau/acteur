@@ -22,5 +22,6 @@
         <module>acteur-jdbc</module>
         <module>acteur-cookie-auth</module>
         <module>acteur-base</module>
+        <module>acteur-mongo-async</module>
     </modules>
 </project>
