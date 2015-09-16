@@ -30,6 +30,7 @@ import com.mastfrog.util.Codec;
 import com.mongodb.async.AsyncBatchCursor;
 import com.mongodb.async.SingleResultCallback;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.CompositeByteBuf;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.handler.codec.http.DefaultHttpContent;
@@ -70,6 +71,12 @@ final class CursorWriter<T> implements ChannelFutureListener, SingleResultCallba
         future.set(channel);
         return channel;
     }
+    
+    private void addBuf(CompositeByteBuf buf, ByteBuf toAdd) {
+        int writerIndex = buf.writerIndex();
+        buf.addComponent(toAdd.retain());
+        buf.writerIndex(writerIndex + toAdd.readableBytes());
+    }
 
     @Override
     @SuppressWarnings("unchecked")
@@ -82,36 +89,39 @@ final class CursorWriter<T> implements ChannelFutureListener, SingleResultCallba
             cursor.close();
             return;
         }
-        // XXX use ComposeiteByteBuffer
-        ByteBuf buf = f.channel().alloc().buffer();
+        List<Object> results = new LinkedList<>();
+        // Buffer count will be size + a comma for each, plus potential open and close marks and a leading comma
+        int maxComponents = (results.size() * 2) + 5;
+        // Use a composite byte buf for zero copy if using ByteBufCodec (which shares the
+        // allocator with the application, so they are drawn from the same pool)
+        CompositeByteBuf buf = f.channel().alloc().compositeBuffer(maxComponents);
         boolean first = this.first.compareAndSet(false, true);
         if (first) {
-            buf.writeBytes(constant.open());
+            addBuf(buf, constant.open());
         }
-        List<Object> results = new LinkedList<>();
         synchronized (this) {
             results.addAll(collectedResults);
             collectedResults.clear();
         }
         if (!results.isEmpty()) {
             if (resultWritten) {
-                buf.writeBytes(constant.comma());
+                addBuf(buf, constant.comma());
             }
             for (Iterator<Object> it = results.iterator(); it.hasNext();) {
                 resultWritten = true;
                 Object next = it.next();
                 if (next instanceof ByteBuf) {
-                    buf.writeBytes((ByteBuf) next);
+                    addBuf(buf, (ByteBuf) next);
                 } else {
-                    buf.writeBytes(codec.writeValueAsBytes(next));
+                    addBuf(buf, f.channel().alloc().buffer().writeBytes(codec.writeValueAsBytes(next)));
                 }
                 if (it.hasNext()) {
-                    buf.writeBytes(constant.comma());
+                    addBuf(buf, constant.comma());
                 }
             }
         }
         if (results.isEmpty() && done) {
-            buf.writeBytes(constant.close());
+            addBuf(buf, constant.close());
         }
         if (buf.writerIndex() > 0) {
             future(f.channel().writeAndFlush(new DefaultHttpContent(buf)));
