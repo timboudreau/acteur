@@ -172,12 +172,14 @@ public class ActeurAsyncTest {
     @HttpCall
     @Path("/oneThing")
     @Methods(GET)
-    @Concluders(WriteCursorContentsAsJSON.class)
+    @Concluders(QueryActeur.class)
     static class GetOneStuff extends Acteur {
 
         @Inject
         GetOneStuff(@Named("stuff") MongoCollection<Document> stuff) {
-            next(stuff.withDocumentClass(ByteBuf.class).find(), new CursorControl().findOne(true).projection(
+//            next(stuff.withDocumentClass(ByteBuf.class).find(), new CursorControl().findOne(true).projection(
+//                    new Document("name", 1).append("rand", 1).append("_id", 0)));
+            next(stuff, new Document(), new CursorControl().findOne(true).projection(
                     new Document("name", 1).append("rand", 1).append("_id", 0)));
         }
     }

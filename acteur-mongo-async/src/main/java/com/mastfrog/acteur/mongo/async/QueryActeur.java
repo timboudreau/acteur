@@ -23,6 +23,7 @@
  */
 package com.mastfrog.acteur.mongo.async;
 
+import com.google.inject.Inject;
 import com.mastfrog.acteur.Acteur;
 import com.mastfrog.acteurbase.Chain;
 import com.mongodb.async.client.FindIterable;
@@ -40,10 +41,9 @@ import org.bson.conversions.Bson;
  */
 public class QueryActeur extends Acteur {
 
-    // We are getting MongoCollection from the scope, so it must have no
-    // type parameter
     @SuppressWarnings("unchecked")
-    QueryActeur(Bson query, CursorControl ctrl, MongoCollection collection, Chain chain) {
+    @Inject
+    QueryActeur(Bson query, CursorControl ctrl, MongoCollection<?> collection, Chain<Acteur> chain) {
         FindIterable<ByteBuf> find = collection.find(query, ByteBuf.class);
         chain.add(WriteCursorContentsAsJSON.class);
         next(find);

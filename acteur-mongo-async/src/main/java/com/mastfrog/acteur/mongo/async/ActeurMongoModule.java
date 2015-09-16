@@ -98,6 +98,7 @@ public class ActeurMongoModule extends AbstractModule implements MongoAsyncConfi
         Provider<CursorControl> ctrlProvider = scope.provider(CursorControl.class, Providers.<CursorControl>of(CursorControl.DEFAULT));
         bind(CursorControl.class).toProvider(ctrlProvider);
         bind(GenerifiedFindIterable.literal).toProvider(GenerifiedFindIterable.class);
+        bind(GenerifiedMongoCollection.literal).toProvider(GenerifiedMongoCollection.class);
     }
 
     @Override
@@ -120,11 +121,13 @@ public class ActeurMongoModule extends AbstractModule implements MongoAsyncConfi
 
     private static class GenerifiedFindIterable implements Provider<FindIterable<?>> {
 
+        @SuppressWarnings("unchecked")
         private final Provider<FindIterable> find;
         private static final TypeLiteral<FindIterable<?>> literal = new TypeLiteral<FindIterable<?>>() {
         };
 
         @Inject
+        @SuppressWarnings("unchecked")
         public GenerifiedFindIterable(Provider<FindIterable> find) {
             this.find = find;
         }
@@ -134,4 +137,21 @@ public class ActeurMongoModule extends AbstractModule implements MongoAsyncConfi
             return find.get();
         }
     }
+    
+    private static class GenerifiedMongoCollection implements Provider<MongoCollection<?>> {
+
+        private final Provider<MongoCollection> find;
+        private static final TypeLiteral<MongoCollection<?>> literal = new TypeLiteral<MongoCollection<?>>() {
+        };
+
+        @Inject
+        public GenerifiedMongoCollection(Provider<MongoCollection> find) {
+            this.find = find;
+        }
+
+        @Override
+        public MongoCollection<?> get() {
+            return find.get();
+        }
+    }    
 }
