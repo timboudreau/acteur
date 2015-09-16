@@ -48,7 +48,7 @@ public abstract class Response {
      * 
      * @param message A message
      */
-    public abstract void setMessage(String message);
+    public abstract void setMessage(Object message);
 
     /**
      * Set the response code

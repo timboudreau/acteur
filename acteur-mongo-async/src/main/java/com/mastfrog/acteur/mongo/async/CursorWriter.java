@@ -99,7 +99,12 @@ final class CursorWriter<T> implements ChannelFutureListener, SingleResultCallba
             }
             for (Iterator<Object> it = results.iterator(); it.hasNext();) {
                 resultWritten = true;
-                buf.writeBytes(codec.writeValueAsBytes(it.next()));
+                Object next = it.next();
+                if (next instanceof ByteBuf) {
+                    buf.writeBytes((ByteBuf) next);
+                } else {
+                    buf.writeBytes(codec.writeValueAsBytes(next));
+                }
                 if (it.hasNext()) {
                     buf.writeBytes(constant.comma());
                 }

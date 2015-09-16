@@ -204,7 +204,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
         return this;
     }
 
-    public final Acteur setMessage(String message) {
+    public final Acteur setMessage(Object message) {
         response().setMessage(message);
         return this;
     }
@@ -323,13 +323,10 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
             super(false);
             setResponseCode(err.status());
             ErrorRenderer ren = getLockedPage().getApplication().getDependencies().getInstance(ErrorRenderer.class);
-            String s;
+            Object message;
             try {
-                s = ren.render(err, getLockedPage().getApplication().getDependencies().getInstance(HttpEvent.class));
-                if (s != null) {
-                    s = msgToString(err.message());
-                }
-                setMessage(s);
+                message = ren.render(err, getLockedPage().getApplication().getDependencies().getInstance(HttpEvent.class));
+                setMessage(message);
             } catch (IOException ex) {
                 Exceptions.chuck(ex);
             }
@@ -343,30 +340,6 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
          */
         public RespondWith(HttpResponseStatus status, Object msg) {
             super(false);
-            if (msg instanceof String) {
-                setResponseCode(status);
-                setMessage((String) msg);
-            } else if (msg != null) {
-                setResponseCode(status);
-                setMessage(msgToString(msg));
-            }
-        }
-
-        private String msgToString(Object msg) {
-            try {
-                Codec mapper = page.getApplication().getDependencies().getInstance(Codec.class);
-                String m = msg instanceof String ? msg.toString() : msg != null
-                        ? mapper.writeValueAsString(msg) + '\n' : null;
-                if (m != null) {
-                    return m;
-                }
-                return null;
-            } catch (IOException ioe) {
-                return Exceptions.chuck(ioe);
-            }
-        }
-
-        public RespondWith(HttpResponseStatus status, String msg) {
             if (page == null) {
                 IllegalStateException e = new IllegalStateException("Called outside ActionsImpl.onEvent");
                 e.printStackTrace();

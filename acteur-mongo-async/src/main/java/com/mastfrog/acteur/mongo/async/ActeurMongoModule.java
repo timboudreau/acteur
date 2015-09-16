@@ -53,6 +53,7 @@ public class ActeurMongoModule extends AbstractModule implements MongoAsyncConfi
 
     public ActeurMongoModule(ReentrantScope scope) {
         this.scope = scope;
+        withCodec(ByteBufCodec.class);
     }
 
     public ActeurMongoModule withCodecProvider(CodecProvider prov) {

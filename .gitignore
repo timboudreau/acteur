@@ -10,3 +10,4 @@
 target/
 nb-configuration.xml
 
+/acteur-mongo-async/nbproject/

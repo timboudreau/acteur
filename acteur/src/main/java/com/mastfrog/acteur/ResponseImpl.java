@@ -40,6 +40,8 @@ import com.mastfrog.util.Codec;
 import com.mastfrog.util.Exceptions;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
+import io.netty.buffer.ByteBufOutputStream;
+import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
@@ -57,6 +59,8 @@ import io.netty.handler.codec.http.HttpVersion;
 import io.netty.handler.codec.http.LastHttpContent;
 import io.netty.handler.codec.http.cookie.Cookie;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -84,7 +88,7 @@ final class ResponseImpl extends Response {
     private volatile boolean modified;
     HttpResponseStatus status;
     private final List<Entry<?>> headers = new ArrayList<Entry<?>>(2);
-    private String message;
+    private Object message;
     ChannelFutureListener listener;
     private boolean chunked;
     private Duration delay;
@@ -129,7 +133,7 @@ final class ResponseImpl extends Response {
         add(e.decorator, e.value);
     }
 
-    public void setMessage(String message) {
+    public void setMessage(Object message) {
         modify();
         this.message = message;
     }
@@ -298,17 +302,17 @@ final class ResponseImpl extends Response {
             return hdrs;
         }
     }
-    
+
     private String cookieName(Object o) {
         if (o instanceof Cookie) {
             return ((Cookie) o).name();
         } else if (o instanceof io.netty.handler.codec.http.Cookie) {
-            return ((io.netty.handler.codec.http.Cookie)o).name();
+            return ((io.netty.handler.codec.http.Cookie) o).name();
         } else {
             return null;
         }
     }
-    
+
     private boolean compareCookies(Object old, Object nue) {
         return Objects.equal(cookieName(old), cookieName(nue));
     }
@@ -554,7 +558,7 @@ final class ResponseImpl extends Response {
         this.listener = listener;
     }
 
-    public String getMessage() {
+    public Object getMessage() {
         return message;
     }
 
@@ -569,6 +573,36 @@ final class ResponseImpl extends Response {
         }
     }
 
+    private ByteBuf writeMessage(Event<?> evt, Charset charset) {
+        Object message = getMessage();
+        if (message == null) {
+            return null;
+        }
+        if (message instanceof ByteBuf) {
+            return (ByteBuf) message;
+        }
+        if (message instanceof byte[]) {
+            return Unpooled.wrappedBuffer((byte[]) message);
+        }
+        if (message instanceof ByteBuffer) {
+            return Unpooled.wrappedBuffer(((ByteBuffer) message));
+        }
+        if (message instanceof CharSequence) {
+            return evt.getChannel().alloc().buffer().writeBytes(message.toString().getBytes(charset));
+        }
+        Page p = Page.get();
+        Application app = p.getApplication();
+        Dependencies deps = app.getDependencies();
+        Codec codec = deps.getInstance(Codec.class);
+        ByteBuf result = evt.getChannel().alloc().buffer();
+        try (OutputStream out = new ByteBufOutputStream(result)) {
+            codec.writeValue(message, out);
+            return result;
+        } catch (IOException ex) {
+            return Exceptions.chuck(ex);
+        }
+    }
+
     public HttpResponse toResponse(Event<?> evt, Charset charset) {
         if (!canHaveBody(getResponseCode()) && (message != null || listener != null)) {
             if (listener != ChannelFutureListener.CLOSE) {
@@ -578,11 +612,9 @@ final class ResponseImpl extends Response {
                         + " - " + listener);
             }
         }
-        String msg = getMessage();
+        ByteBuf buf = writeMessage(evt, charset);
         HttpResponse resp;
-        if (msg != null) {
-            ByteBuf buf = evt.getChannel().alloc().buffer(msg.length());
-            buf.writeBytes(msg.getBytes(charset));
+        if (buf != null) {
             long size = buf.readableBytes();
             add(Headers.CONTENT_LENGTH, size);
             DefaultFullHttpResponse r = new DefaultFullHttpResponse(

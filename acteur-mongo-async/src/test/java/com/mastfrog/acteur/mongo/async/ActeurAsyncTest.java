@@ -50,6 +50,7 @@ import com.mastfrog.settings.Settings;
 import com.mastfrog.util.Exceptions;
 import com.mongodb.async.SingleResultCallback;
 import com.mongodb.async.client.MongoCollection;
+import io.netty.buffer.ByteBuf;
 import static io.netty.handler.codec.http.HttpResponseStatus.OK;
 import java.util.Arrays;
 import java.util.LinkedList;
@@ -60,7 +61,6 @@ import java.util.concurrent.TimeUnit;
 import javax.inject.Inject;
 import org.bson.Document;
 import org.joda.time.Duration;
-import static org.junit.Assert.assertEquals;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import static org.junit.Assert.assertEquals;
@@ -164,7 +164,7 @@ public class ActeurAsyncTest {
 
         @Inject
         GetAllStuff(@Named("stuff") MongoCollection<Document> stuff) {
-            next(stuff.find(), new CursorControl().batchSize(20).projection(
+            next(stuff.withDocumentClass(ByteBuf.class).find(), new CursorControl().batchSize(20).projection(
                     new Document("name", 1).append("rand", 1).append("_id", 0)));
         }
     }
@@ -177,7 +177,7 @@ public class ActeurAsyncTest {
 
         @Inject
         GetOneStuff(@Named("stuff") MongoCollection<Document> stuff) {
-            next(stuff.find(), new CursorControl().findOne(true).projection(
+            next(stuff.withDocumentClass(ByteBuf.class).find(), new CursorControl().findOne(true).projection(
                     new Document("name", 1).append("rand", 1).append("_id", 0)));
         }
     }
