@@ -90,6 +90,10 @@ final class CursorWriter<T> implements ChannelFutureListener, SingleResultCallba
             return;
         }
         List<Object> results = new LinkedList<>();
+        synchronized (this) {
+            results.addAll(collectedResults);
+            collectedResults.clear();
+        }
         // Buffer count will be size + a comma for each, plus potential open and close marks and a leading comma
         int maxComponents = (results.size() * 2) + 5;
         // Use a composite byte buf for zero copy if using ByteBufCodec (which shares the
@@ -98,10 +102,6 @@ final class CursorWriter<T> implements ChannelFutureListener, SingleResultCallba
         boolean first = this.first.compareAndSet(false, true);
         if (first) {
             addBuf(buf, constant.open());
-        }
-        synchronized (this) {
-            results.addAll(collectedResults);
-            collectedResults.clear();
         }
         if (!results.isEmpty()) {
             if (resultWritten) {

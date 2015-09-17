@@ -178,7 +178,7 @@ class PagesImpl2 {
         public void receive(final Acteur acteur, final com.mastfrog.acteur.State state, final ResponseImpl response) {
             if (response.isModified() && response.status != null) {
                 // Actually send the response
-                try {
+                try (QuietAutoCloseable clos = Page.set(application.getDependencies().getInstance(Page.class))){
                     // Abort if the client disconnected
                     if (!channel.isOpen()) {
                         latch.countDown();

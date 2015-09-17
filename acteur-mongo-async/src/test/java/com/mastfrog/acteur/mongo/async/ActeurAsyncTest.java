@@ -38,7 +38,10 @@ import static com.mastfrog.acteur.headers.Method.GET;
 import com.mastfrog.acteur.mongo.async.ActeurAsyncTest.M;
 import com.mastfrog.acteur.preconditions.Methods;
 import com.mastfrog.acteur.preconditions.Path;
+import com.mastfrog.acteur.server.ServerBuilder;
 import com.mastfrog.acteur.util.ErrorInterceptor;
+import com.mastfrog.acteur.util.Server;
+import com.mastfrog.giulius.mongodb.async.GiuliusMongoAsyncModule;
 import com.mastfrog.giulius.mongodb.async.MongoAsyncInitializer;
 import com.mastfrog.giulius.mongodb.async.MongoHarness;
 import com.mastfrog.giulius.tests.GuiceRunner;
@@ -47,11 +50,13 @@ import com.mastfrog.guicy.scope.ReentrantScope;
 import com.mastfrog.netty.http.test.harness.TestHarness;
 import com.mastfrog.netty.http.test.harness.TestHarnessModule;
 import com.mastfrog.settings.Settings;
+import com.mastfrog.settings.SettingsBuilder;
 import com.mastfrog.util.Exceptions;
 import com.mongodb.async.SingleResultCallback;
 import com.mongodb.async.client.MongoCollection;
 import io.netty.buffer.ByteBuf;
 import static io.netty.handler.codec.http.HttpResponseStatus.OK;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
@@ -80,18 +85,18 @@ public class ActeurAsyncTest {
                 .setTimeout(Duration.standardSeconds(18))
                 .go().assertStatus(OK).throwIfError().content(Thing[].class);
         System.out.println("\n\nCT IS " + Arrays.toString(objs) + "\n\n");
-        
+
         assertEquals(objs.length, 200);
         maybeFail();
-        
+
         Thing one = harn.get("/oneThing")
                 .setTimeout(Duration.standardSeconds(18))
                 .go().assertStatus(OK).throwIfError().content(Thing.class);
-        
+
         System.out.println("THING ONE: " + one);
-        
+
     }
-    
+
     private static void maybeFail() throws Throwable {
         if (failure != null) {
             throw failure;
@@ -113,6 +118,23 @@ public class ActeurAsyncTest {
             install(new GenericApplicationModule<>(scope, settings, GenericApplication.class));
             bind(ErrorInterceptor.class).to(TestHarness.class);
         }
+    }
+
+    public static void main(String[] args) throws IOException, InterruptedException {
+        ReentrantScope scope = new ReentrantScope();
+        Settings settings = new SettingsBuilder("async")
+                .add(GiuliusMongoAsyncModule.SETTINGS_KEY_DATABASE_NAME, "demo")
+                .add(GiuliusMongoAsyncModule.SETTINGS_KEY_MONGO_HOST, "localhost")
+                .add(GiuliusMongoAsyncModule.SETTINGS_KEY_MONGO_PORT, 27001)
+                .build();
+
+        Server server = new ServerBuilder("async", scope)
+                .add(new ActeurMongoModule(scope)
+                        .bindCollection("stuff", "stuff")
+                        .withInitializer(Populator.class))
+                .add(settings)
+                .build();
+        server.start().await();
     }
 
     static Throwable failure;
@@ -194,16 +216,18 @@ public class ActeurAsyncTest {
             ok("Hello world");
         }
     }
-    
+
     public static class Thing {
+
         public final String name;
         public final int rand;
+
         @JsonCreator
         public Thing(@JsonProperty("name") String name, @JsonProperty("rand") int rand) {
             this.name = name;
             this.rand = rand;
         }
-        
+
         public String toString() {
             return name + ":" + rand;
         }

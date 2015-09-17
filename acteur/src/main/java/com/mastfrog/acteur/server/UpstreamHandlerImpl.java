@@ -91,7 +91,7 @@ final class UpstreamHandlerImpl extends ChannelInboundHandlerAdapter {
                     hdr = request.headers().get("X-Forwarded-For");
                 }
                 if (hdr != null) {
-                    addr = new InetSocketAddress(hdr, addr instanceof InetSocketAddress ? ((InetSocketAddress) addr).getPort() : 80);
+                    addr = InetSocketAddress.createUnresolved(hdr, addr instanceof InetSocketAddress ? ((InetSocketAddress) addr).getPort() : 80);
                 }
             }
             EventImpl evt = new EventImpl(request, addr, ctx.channel(), paths, converter);

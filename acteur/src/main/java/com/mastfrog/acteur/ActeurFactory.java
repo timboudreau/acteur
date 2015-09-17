@@ -24,13 +24,15 @@
 package com.mastfrog.acteur;
 
 import com.google.common.net.MediaType;
-import com.mastfrog.acteur.Acteur.Delegate;
+import com.google.inject.Provider;
+import com.google.inject.Singleton;
 import com.mastfrog.acteur.ResponseHeaders.ETagProvider;
 import com.mastfrog.acteur.errors.Err;
 import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.acteur.headers.Method;
 import com.mastfrog.acteur.preconditions.Description;
 import com.mastfrog.acteur.server.PathFactory;
+import com.mastfrog.acteur.util.HttpMethod;
 import com.mastfrog.acteurbase.Chain;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.url.Path;
@@ -50,8 +52,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.regex.Pattern;
 import javax.inject.Inject;
 import org.netbeans.validation.api.InvalidInputException;
@@ -60,24 +60,25 @@ import org.netbeans.validation.api.Problem;
 /**
  * Factory for standard Acteur implementations, mainly used to determine if a
  * request is valid (matches a URL, is using a supported HTTP method, etc.).
- * Usage model:  Ask for this in your {@link Page} constructor and use it to add
+ * Usage model: Ask for this in your {@link Page} constructor and use it to add
  * acteurs.
  * <i><b>Almost all methods on this class can be used via annotations, so using
  * this class directly is rare post Acteur 1.4</b></i>.
  *
  * @author Tim Boudreau
  */
+@Singleton
 public class ActeurFactory {
 
-    private final Dependencies deps;
-    private final Charset charset;
+    @Inject
+    private Dependencies deps;
+    @Inject
+    private Charset charset;
+    @Inject
+    private PatternAndGlobCache cache;
 
     @Inject
-    ActeurFactory(Dependencies deps, Charset charset) {
-        this.deps = deps;
-        this.charset = charset;
-    }
-
+    private Provider<HttpEvent> event;
     /**
      * Reject the request if it is not one of the passed HTTP methods
      *
@@ -101,34 +102,99 @@ public class ActeurFactory {
      * @return An Acteur
      */
     public Acteur matchMethods(final boolean notSupp, final Method... methods) {
-        class MatchMethods extends Acteur {
-
-            @Override
-            public com.mastfrog.acteur.State getState() {
-                HttpEvent event = deps.getInstance(HttpEvent.class);
-                boolean hasMethod = Arrays.asList(methods).contains(event.getMethod());
-                add(Headers.ALLOW, methods);
-                if (notSupp && !hasMethod) {
-                    add(Headers.CONTENT_TYPE, MediaType.PLAIN_TEXT_UTF_8.withCharset(charset));
-                    return new RespondWith(new Err(HttpResponseStatus.METHOD_NOT_ALLOWED, "405 Method "
-                            + event.getMethod() + " not allowed.  Accepted methods are "
-                            + Headers.ALLOW.toString(methods) + "\n"));
-                }
-                com.mastfrog.acteur.State result = hasMethod ? new ConsumedState() : new RejectedState();
-                return result;
-            }
-
-            @Override
-            public String toString() {
-                return "Match Methods " + Arrays.asList(methods);
-            }
-
-            @Override
-            public void describeYourself(Map<String, Object> into) {
-                into.put("Methods", methods);
-            }
+        if (methods.length == 1) {
+            return new MatchMethod(event, notSupp, charset, methods[0]);
         }
-        return new MatchMethods();
+        return new MatchMethods(event, notSupp, charset, methods);
+    }
+
+    private static class MatchMethods extends Acteur {
+
+        private final Provider<HttpEvent> deps;
+        private final boolean notSupp;
+        private final Charset charset;
+        private final Method[] methods;
+
+        public MatchMethods(Provider<HttpEvent> deps, boolean notSupp, Charset charset, Method... methods) {
+            this.deps = deps;
+            this.notSupp = notSupp;
+            this.charset = charset;
+            this.methods = methods;
+        }
+        
+        private boolean hasMethod(HttpMethod m) {
+            for (Method mm : methods) {
+                if (mm == m || mm.equals(m)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        @Override
+        public com.mastfrog.acteur.State getState() {
+            HttpEvent event = deps.get();
+            boolean hasMethod = hasMethod(event.getMethod());
+            add(Headers.ALLOW, methods);
+            if (notSupp && !hasMethod) {
+                add(Headers.CONTENT_TYPE, MediaType.PLAIN_TEXT_UTF_8.withCharset(charset));
+                return new Acteur.RespondWith(new Err(HttpResponseStatus.METHOD_NOT_ALLOWED, "405 Method "
+                        + event.getMethod() + " not allowed.  Accepted methods are "
+                        + Headers.ALLOW.toString(methods) + "\n"));
+            }
+            com.mastfrog.acteur.State result = hasMethod ? new Acteur.ConsumedState() : new Acteur.RejectedState();
+            return result;
+        }
+
+        @Override
+        public String toString() {
+            return "Match Methods " + Arrays.asList(methods);
+        }
+
+        @Override
+        public void describeYourself(Map<String, Object> into) {
+            into.put("Methods", methods);
+        }
+    }
+
+    private static class MatchMethod extends Acteur {
+        private final Provider<HttpEvent> deps;
+        private final boolean notSupp;
+        private final Charset charset;
+        private final Method[] method;
+
+        public MatchMethod(Provider<HttpEvent> deps, boolean notSupp, Charset charset, Method... method) {
+            this.deps = deps;
+            this.notSupp = notSupp;
+            this.charset = charset;
+            this.method = method;
+        }
+
+        @Override
+        public com.mastfrog.acteur.State getState() {
+            HttpEvent event = deps.get();
+            HttpMethod mth = event.getMethod();
+            boolean hasMethod = mth == method[0] || method[0].equals(event.getMethod());
+            add(Headers.ALLOW, method);
+            if (notSupp && !hasMethod) {
+                add(Headers.CONTENT_TYPE, MediaType.PLAIN_TEXT_UTF_8.withCharset(charset));
+                return new Acteur.RespondWith(new Err(HttpResponseStatus.METHOD_NOT_ALLOWED, "405 Method "
+                        + event.getMethod() + " not allowed.  Accepted methods are "
+                        + Headers.ALLOW.toString(method) + "\n"));
+            }
+            com.mastfrog.acteur.State result = hasMethod ? new Acteur.ConsumedState() : new Acteur.RejectedState();
+            return result;
+        }
+
+        @Override
+        public String toString() {
+            return "Match Method " + method;
+        }
+
+        @Override
+        public void describeYourself(Map<String, Object> into) {
+            into.put("Method", method);
+        }
     }
 
     public Acteur exactPathLength(final int length) {
@@ -136,7 +202,7 @@ public class ActeurFactory {
         return new Acteur() {
             @Override
             public com.mastfrog.acteur.State getState() {
-                HttpEvent event = deps.getInstance(HttpEvent.class);
+                HttpEvent event = ActeurFactory.this.event.get();
                 if (event.getPath().getElements().length == length) {
                     return new RejectedState();
                 } else {
@@ -157,7 +223,7 @@ public class ActeurFactory {
         return new Acteur() {
             @Override
             public com.mastfrog.acteur.State getState() {
-                HttpEvent event = deps.getInstance(HttpEvent.class);
+                HttpEvent event = ActeurFactory.this.event.get();
                 if (event.getPath().getElements().length < length) {
                     return new RejectedState();
                 } else {
@@ -178,7 +244,7 @@ public class ActeurFactory {
         return new Acteur() {
             @Override
             public com.mastfrog.acteur.State getState() {
-                HttpEvent event = deps.getInstance(HttpEvent.class);
+                HttpEvent event = ActeurFactory.this.event.get();
                 if (event.getPath().getElements().length > length) {
                     return new Acteur.RejectedState();
                 } else {
@@ -240,43 +306,52 @@ public class ActeurFactory {
      * @return An acteur
      */
     public <T> Acteur injectRequestBodyAsJSON(final Class<T> type) {
-        @Description("Injects the body as a specific type")
-        class InjectBody extends Acteur {
-
-            @Override
-            public com.mastfrog.acteur.State getState() {
-                final ContentConverter converter = deps.getInstance(ContentConverter.class);
-                HttpEvent evt = deps.getInstance(HttpEvent.class);
-                try {
-                    MediaType mt = evt.getHeader(Headers.CONTENT_TYPE);
-                    if (mt == null) {
-                        mt = MediaType.ANY_TYPE;
-                    }
-                    try {
-                        T obj = converter.readObject(evt.getContent(), mt, type);
-                        return new ConsumedLockedState(obj);
-                    } catch (InvalidInputException e) {
-                        List<String> pblms = new LinkedList<>();
-                        for (Problem p : e.getProblems()) {
-                            pblms.add(p.getMessage());
-                        }
-                        return new RespondWith(Err.badRequest("Invalid data").put("problems", pblms));
-                    }
-                } catch (IOException ex) {
-                    Logger.getLogger(ActeurFactory.class.getName()).log(Level.SEVERE, null, ex);
-                    return new RespondWith(Err.badRequest("Bad or no JSON\n" + stackTrace(ex)));
-                }
-            }
-
-            @Override
-            public void describeYourself(Map<String, Object> into) {
-                into.put("Expects JSON Request Body", true);
-            }
-        }
-        return new InjectBody();
+        return new InjectBody<T>(deps, type);
     }
 
-    private String stackTrace(Throwable t) {
+    @Description("Injects the body as a specific type")
+    private static final class InjectBody<T> extends Acteur {
+
+        private final Dependencies deps;
+        private final Class<T> type;
+
+        InjectBody(Dependencies deps, Class<T> type) {
+            this.deps = deps;
+            this.type = type;
+        }
+
+        @Override
+        public com.mastfrog.acteur.State getState() {
+            final ContentConverter converter = deps.getInstance(ContentConverter.class);
+            HttpEvent evt = deps.getInstance(HttpEvent.class);
+            try {
+                MediaType mt = evt.getHeader(Headers.CONTENT_TYPE);
+                if (mt == null) {
+                    mt = MediaType.ANY_TYPE;
+                }
+                try {
+                    T obj = converter.readObject(evt.getContent(), mt, type);
+                    return new Acteur.ConsumedLockedState(obj);
+                } catch (InvalidInputException e) {
+                    List<String> pblms = new LinkedList<>();
+                    for (Problem p : e.getProblems()) {
+                        pblms.add(p.getMessage());
+                    }
+                    return new Acteur.RespondWith(Err.badRequest("Invalid data").put("problems", pblms));
+                }
+            } catch (IOException ex) {
+//                Logger.getLogger(ActeurFactory.class.getName()).log(Level.SEVERE, null, ex);
+                return new Acteur.RespondWith(Err.badRequest("Bad or no JSON\n" + stackTrace(ex)));
+            }
+        }
+
+        @Override
+        public void describeYourself(Map<String, Object> into) {
+            into.put("Expects JSON Request Body", true);
+        }
+    }
+
+    private static String stackTrace(Throwable t) {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         PrintStream ps = new PrintStream(baos);
         t.printStackTrace(ps);
@@ -296,25 +371,43 @@ public class ActeurFactory {
      * exactly to the parameter names desired.
      */
     public <T> Acteur injectRequestParametersAs(final Class<T> type) {
-        @Description("Inject request parameters as a type")
-        class InjectParams extends Acteur {
+        return new InjectParams<T>(deps, type);
+    }
 
-            @Override
-            public com.mastfrog.acteur.State getState() {
-                HttpEvent evt = deps.getInstance(HttpEvent.class);
-                ContentConverter converter = deps.getInstance(ContentConverter.class);
-                try {
-                    T obj = converter.createObjectFor(evt.getParametersAsMap(), type);
-                    if (obj != null) {
-                        return new ConsumedLockedState(obj);
-                    }
-                } catch (InvalidInputException ex) {
-                    setState(new RespondWith(Err.badRequest(ex.getProblems().toString())));
-                }
-                return new RejectedState();
-            }
+    @Description("Inject request parameters as a type")
+    static class InjectParams<T> extends Acteur {
+
+        private final Dependencies deps;
+        private final Class<T> type;
+
+        InjectParams(Dependencies deps, Class<T> type) {
+            this.deps = deps;
+            this.type = type;
         }
-        return new InjectParams();
+
+        @Override
+        public com.mastfrog.acteur.State getState() {
+            HttpEvent evt = deps.getInstance(HttpEvent.class);
+            ContentConverter converter = deps.getInstance(ContentConverter.class);
+            try {
+                T obj = converter.createObjectFor(evt.getParametersAsMap(), type);
+                if (obj != null) {
+                    return new Acteur.ConsumedLockedState(obj);
+                }
+            } catch (InvalidInputException ex) {
+                setState(new Acteur.RespondWith(Err.badRequest(ex.getProblems().toString())));
+            }
+            return new Acteur.RejectedState();
+        }
+
+        @Override
+        public void describeYourself(Map<String, Object> into) {
+            into.put("type", type.getName());
+        }
+
+        public String toString() {
+            return "Inject request parameters as " + type.getName();
+        }
     }
 
     /**
@@ -347,33 +440,43 @@ public class ActeurFactory {
      * @return An acteur
      */
     public Acteur requireParameters(final String... names) {
-        @Description("Requires specific parameters")
-        class RequireParameters extends Acteur {
+        return new RequireParameters(event, charset, names);
+    }
 
-            @Override
-            public com.mastfrog.acteur.State getState() {
-                HttpEvent event = deps.getInstance(HttpEvent.class);
-                for (String nm : names) {
-                    String val = event.getParameter(nm);
-                    if (val == null) {
-                        add(Headers.CONTENT_TYPE, MediaType.PLAIN_TEXT_UTF_8.withCharset(charset));
-                        return new RespondWith(Err.badRequest("Missing URL parameter '" + nm + "'\n"));
-                    }
-                }
-                return new ConsumedState();
-            }
+    static class RequireParameters extends Acteur {
 
-            @Override
-            public String toString() {
-                return "Require Parameters " + Arrays.asList(names);
-            }
+        private final Provider<HttpEvent> deps;
+        private final Charset charset;
+        private final String[] names;
 
-            @Override
-            public void describeYourself(Map<String, Object> into) {
-                into.put("requiredParameters", names);
-            }
+        public RequireParameters(Provider<HttpEvent> deps, Charset charset, String... names) {
+            this.deps = deps;
+            this.charset = charset;
+            this.names = names;
         }
-        return new RequireParameters();
+
+        @Override
+        public com.mastfrog.acteur.State getState() {
+            HttpEvent event = deps.get();
+            for (String nm : names) {
+                String val = event.getParameter(nm);
+                if (val == null) {
+                    add(Headers.CONTENT_TYPE, MediaType.PLAIN_TEXT_UTF_8.withCharset(charset));
+                    return new Acteur.RespondWith(Err.badRequest("Missing URL parameter '" + nm + "'\n"));
+                }
+            }
+            return new Acteur.ConsumedState();
+        }
+
+        @Override
+        public String toString() {
+            return "Require Parameters " + Arrays.asList(names);
+        }
+
+        @Override
+        public void describeYourself(Map<String, Object> into) {
+            into.put("requiredParameters", names);
+        }
     }
 
     public Acteur parametersMayNotBeCombined(final String... names) {
@@ -382,7 +485,7 @@ public class ActeurFactory {
 
             @Override
             public com.mastfrog.acteur.State getState() {
-                HttpEvent event = deps.getInstance(HttpEvent.class);
+                HttpEvent event = ActeurFactory.this.event.get();
                 String first = null;
                 for (String nm : names) {
                     String val = event.getParameter(nm);
@@ -425,7 +528,7 @@ public class ActeurFactory {
             }
 
             public com.mastfrog.acteur.State getState() {
-                HttpEvent evt = deps.getInstance(HttpEvent.class);
+                HttpEvent evt = event.get();
                 for (String name : names) {
                     String p = evt.getParameter(name);
                     if (p != null) {
@@ -479,7 +582,7 @@ public class ActeurFactory {
         class BanParameters extends Acteur {
 
             public com.mastfrog.acteur.State getState() {
-                HttpEvent evt = deps.getInstance(HttpEvent.class);
+                HttpEvent evt = event.get();
                 for (Map.Entry<String, String> e : evt.getParametersAsMap().entrySet()) {
                     if (Arrays.binarySearch(names, e.getKey()) >= 0) {
                         return new RespondWith(Err.badRequest(
@@ -509,7 +612,7 @@ public class ActeurFactory {
 
             @Override
             public com.mastfrog.acteur.State getState() {
-                HttpEvent event = deps.getInstance(HttpEvent.class);
+                HttpEvent event = ActeurFactory.this.event.get();
                 for (String nm : names) {
                     String val = event.getParameter(nm);
                     if (val != null) {
@@ -538,16 +641,6 @@ public class ActeurFactory {
         }
         return new RequireAtLeastOneParameter();
     }
-    private static Map<String, Pattern> patternCache = new ConcurrentHashMap<>();
-
-    private static Pattern getPattern(String regex) {
-        Pattern result = patternCache.get(regex);
-        if (result == null) {
-            result = Pattern.compile(regex);
-            patternCache.put(regex, result);
-        }
-        return result;
-    }
 
     /**
      * Reject the request if HttpEvent.getPath().toString() does not match one
@@ -559,32 +652,181 @@ public class ActeurFactory {
      */
     @Deprecated
     public Acteur matchPath(final String... regexen) {
-        class MatchPath extends Acteur {
-
-            @Override
-            public com.mastfrog.acteur.State getState() {
-                HttpEvent event = deps.getInstance(HttpEvent.class);
-                for (String regex : regexen) {
-                    Pattern p = getPattern(regex);
-                    boolean matches = p.matcher(event.getPath().toString()).matches();
-                    if (matches) {
-                        return new ConsumedState();
-                    }
-                }
-                return new RejectedState();
-            }
-
-            @Override
-            public void describeYourself(Map<String, Object> into) {
-                into.put("URL Patterns", regexen);
-            }
-
-            @Override
-            public String toString() {
-                return "Match path " + Arrays.asList(regexen);
+        if (regexen.length == 1) {
+            String exactPath = cache.exactPathForRegex(regexen[0]);
+            if (exactPath != null) {
+                return new ExactMatchPath(event, exactPath);
             }
         }
-        return new MatchPath();
+        return new MatchPath(event, cache, regexen);
+    }
+
+    static class ExactMatchPath extends Acteur {
+
+        private final String path;
+        private final Provider<HttpEvent> deps;
+
+        ExactMatchPath(Provider<HttpEvent> deps, String path) {
+            this.path = path.length() > 1 && path.charAt(0) == '/' ? path.substring(1) : path;
+            this.deps = deps;
+        }
+
+        @Override
+        public com.mastfrog.acteur.State getState() {
+            HttpEvent event = deps.get();
+            if (path.equals(event.getPath().toString())) {
+                return new ConsumedState();
+            }
+            return new RejectedState();
+        }
+
+        @Override
+        public void describeYourself(Map<String, Object> into) {
+            into.put("Exactly match the URL path", path);
+        }
+
+        @Override
+        public String toString() {
+            return "Exactly match the URL path " + path;
+        }
+    }
+
+    static final class MatchPath extends Acteur {
+
+        private final Provider<HttpEvent> deps;
+        private final PatternAndGlobCache cache;
+        private final String[] regexen;
+
+        MatchPath(Provider<HttpEvent> deps, PatternAndGlobCache cache, String... regexen) {
+            if (regexen.length == 0) {
+                throw new IllegalArgumentException("No regular expressions provided");
+            }
+            this.deps = deps;
+            this.cache = cache;
+            this.regexen = regexen;
+        }
+
+        @Override
+        public com.mastfrog.acteur.State getState() {
+            HttpEvent event = deps.get();
+            for (String regex : regexen) {
+                Pattern p = cache.getPattern(regex);
+                boolean matches = p.matcher(event.getPath().toString()).matches();
+                if (matches) {
+                    return new ConsumedState();
+                }
+            }
+            return new RejectedState();
+        }
+
+        @Override
+        public void describeYourself(Map<String, Object> into) {
+            into.put("URL Patterns", regexen);
+        }
+
+        @Override
+        public String toString() {
+            return "Match path " + Arrays.asList(regexen);
+        }
+    }
+
+    @Singleton
+    static class PatternAndGlobCache {
+
+        private final Map<String, Boolean> matchCache = new ConcurrentHashMap<>();
+        private final Map<String, String> exactPathForRegex = new ConcurrentHashMap<>();
+        private static final String INVALID = "::////";
+
+        String exactPathForRegex(String regex) {
+            String result = exactPathForRegex.get(regex);
+            if (result != null) {
+                if (!INVALID.equals(result)) {
+                    return result;
+                } else {
+                    return null;
+                }
+            }
+            StringBuilder sb = new StringBuilder();
+            char[] chars = regex.toCharArray();
+            boolean precedingWasBackslash = false;
+            boolean endMarkerFound = false;
+            boolean startMarkerFound = false;
+            loop:
+            for (int i = 0; i < chars.length; i++) {
+                char c = chars[i];
+                if (i == 0 && c == '^') {
+                    continue;
+                }
+                if (i == chars.length - 1 && c == '$') {
+                    endMarkerFound = true;
+                    continue;
+                }
+                if (i == 0 && c == '^') {
+                    startMarkerFound = true;
+                }
+                switch (c) {
+                    case '\\':
+                        if (i != chars.length - 1) {
+                            precedingWasBackslash = true;
+                        }
+                        break;
+                    case '*':
+                        if (precedingWasBackslash) {
+                            sb.append(c);
+                            continue;
+                        }
+                    case '[':
+                    case '+':
+                    case '?':
+                    case '^':
+                    case '$':
+                    case '&':
+                        exactPathForRegex.put(regex, INVALID);
+                        return null;
+                    default :
+                        sb.append(c);
+                }
+                precedingWasBackslash = c == '\\';
+            }
+            if (!endMarkerFound || !startMarkerFound) {
+                        exactPathForRegex.put(regex, INVALID);
+                        return null;
+            }
+            if (sb.length() > 0 && sb.charAt(0) == '/') {
+                result = sb.substring(1);
+            } else {
+                result = sb.toString();
+            }
+            exactPathForRegex.put(regex, result);
+            return result;
+        }
+
+        boolean isExactGlob(String s) {
+            Boolean match = matchCache.get(s);
+            if (match != null) {
+                return match.booleanValue();
+            }
+            boolean result = true;
+            for (char c : s.toCharArray()) {
+                if ('*' == c) {
+                    result = false;
+                    break;
+                }
+            }
+            matchCache.put(s, result);
+            return result;
+        }
+
+        private final Map<String, Pattern> patternCache = new ConcurrentHashMap<>();
+
+        Pattern getPattern(String regex) {
+            Pattern result = patternCache.get(regex);
+            if (result == null) {
+                result = Pattern.compile(regex);
+                patternCache.put(regex, result);
+            }
+            return result;
+        }
     }
 
     /**
@@ -636,6 +878,13 @@ public class ActeurFactory {
     }
 
     public Acteur globPathMatch(String... patterns) {
+        if (patterns.length == 1 && cache.isExactGlob(patterns[0])) {
+            String pattern = patterns[0];
+            if (pattern.length() > 0 && pattern.charAt(0) == '/') {
+                pattern = pattern.substring(1);
+            }
+            return new ExactMatchPath(event, patterns[0]);
+        }
         String[] rexen = new String[patterns.length];
         for (int i = 0; i < rexen.length; i++) {
             rexen[i] = patternFromGlob(patterns[i]);
@@ -727,7 +976,7 @@ public class ActeurFactory {
             @Override
             public com.mastfrog.acteur.State getState() {
                 try {
-                    int val = deps.getInstance(HttpEvent.class).getContent().readableBytes();
+                    int val = event.get().getContent().readableBytes();
                     if (val < length) {
                         return new RespondWith(Err.badRequest("Request body must be > " + length + " characters"));
                     }
@@ -745,7 +994,7 @@ public class ActeurFactory {
             @Override
             public com.mastfrog.acteur.State getState() {
                 try {
-                    int val = deps.getInstance(HttpEvent.class).getContent().readableBytes();
+                    int val = event.get().getContent().readableBytes();
                     if (val > length) {
                         return new Acteur.RespondWith(new Err(HttpResponseStatus.REQUEST_ENTITY_TOO_LARGE,
                                 "Request body must be < " + length + " characters"));
@@ -805,7 +1054,7 @@ public class ActeurFactory {
         class RequireParametersIfMethodMatches extends Acteur {
 
             public com.mastfrog.acteur.State getState() {
-                HttpEvent evt = deps.getInstance(HttpEvent.class);
+                HttpEvent evt = event.get();
                 if (method.equals(evt.getMethod())) {
                     if (!evt.getParametersAsMap().keySet().containsAll(Arrays.asList(params))) {
                         return new RespondWith(Err.badRequest("Required parameters: "
@@ -827,7 +1076,7 @@ public class ActeurFactory {
         class MatchNothing extends Acteur {
 
             public com.mastfrog.acteur.State getState() {
-                HttpEvent evt = deps.getInstance(HttpEvent.class);
+                HttpEvent evt = event.get();
                 if (evt.getPath().toString().isEmpty()) {
                     PathFactory pf = deps.getInstance(PathFactory.class);
                     add(Headers.LOCATION, pf.toExternalPath(to).toURI());
@@ -842,10 +1091,11 @@ public class ActeurFactory {
 
     public Acteur branch(final Class<? extends Acteur> ifTrue, final Class<? extends Acteur> ifFalse, final Test test) {
         class Brancher extends Acteur {
+
             @Override
             @SuppressWarnings("unchecked")
             public com.mastfrog.acteur.State getState() {
-                boolean result = test.test(deps.getInstance(HttpEvent.class));
+                boolean result = test.test(event.get());
                 Chain<Acteur> chain = deps.getInstance(Chain.class);
                 if (result) {
                     chain.add(ifTrue);

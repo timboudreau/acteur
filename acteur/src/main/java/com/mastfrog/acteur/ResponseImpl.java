@@ -591,6 +591,9 @@ final class ResponseImpl extends Response {
             return evt.getChannel().alloc().buffer().writeBytes(message.toString().getBytes(charset));
         }
         Page p = Page.get();
+        if (p == null) {
+            throw new IllegalStateException("Call to write message outside request scope");
+        }
         Application app = p.getApplication();
         Dependencies deps = app.getDependencies();
         Codec codec = deps.getInstance(Codec.class);

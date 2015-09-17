@@ -6,6 +6,7 @@ import com.google.inject.AbstractModule;
 import com.google.inject.TypeLiteral;
 import com.google.inject.name.Names;
 import com.mastfrog.acteur.Page;
+import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.acteur.server.ServerBuilder;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.giulius.tests.GuiceRunner;
@@ -36,6 +37,10 @@ import org.junit.runner.RunWith;
 @TestWith({GenericApplicationModule.class, TestHarnessModule.class})
 @RunWith(GuiceRunner.class)
 public class GenericApplicationTest {
+    
+    static {
+        System.setProperty("acteur.debug", "true");
+    }
 
     public static void main(String[] args) throws IOException, InterruptedException {
         Settings s = new SettingsBuilder().add("acteur.debug", "true").build();
@@ -67,6 +72,8 @@ public class GenericApplicationTest {
 
         CallResult res = harn.put("/numble").log().setTimeout(Duration.standardSeconds(20))
                 .setBody(m, MediaType.JSON_UTF_8).go().await().assertCode(200);
+        System.out.println("ACTEUR: " + res.getHeader(Headers.stringHeader("X-Acteur")));
+        System.out.println("PAGE: " + res.getHeader(Headers.stringHeader("X-Page")));
         Map<String, Object> nue = res.content(Map.class);
         assertEquals(m, nue);
     }
