@@ -69,7 +69,7 @@ final class UpstreamHandlerImpl extends ChannelInboundHandlerAdapter {
         this.mapper = mapper;
         this.converter = converter;
         aggregateChunks = settings.getBoolean("aggregateChunks", PipelineFactoryImpl.DEFAULT_AGGREGATE_CHUNKS);
-        neverKeepAlive = settings.getBoolean("neverKeepAlive", true);
+        neverKeepAlive = settings.getBoolean("neverKeepAlive", false);
         decodeRealIP = settings.getBoolean(SETTINGS_KEY_DECODE_REAL_IP, true);
     }
 
