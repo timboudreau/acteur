@@ -140,8 +140,9 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
         return super.getState();
     }
 
+    private static final Object[] EMPTY = new Object[0];
     public Object[] getContextContribution() {
-        return new Object[0];
+        return EMPTY;
     }
 
     final Throwable creationStackTrace() {

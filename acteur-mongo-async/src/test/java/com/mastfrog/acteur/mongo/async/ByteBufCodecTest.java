@@ -160,7 +160,7 @@ public class ByteBufCodecTest {
         }
     }
 
-    private static class CB<T> implements SingleResultCallback<T> {
+    static class CB<T> implements SingleResultCallback<T> {
 
         private T result;
         private volatile boolean done;

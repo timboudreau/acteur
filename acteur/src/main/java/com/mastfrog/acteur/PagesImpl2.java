@@ -368,6 +368,7 @@ class PagesImpl2 {
         private final Object[] ctx;
         private AtomicBoolean first = new AtomicBoolean(true);
         private final ReentrantScope scope;
+        private static final Object[] EMPTY = new Object[0];
 
         public PageChain(Dependencies deps, ReentrantScope scope, Class<? super Acteur> type, Page page, Object... ctx) {
             super(deps, type, page.acteurs());
@@ -384,7 +385,7 @@ class PagesImpl2 {
             if (first.compareAndSet(true, false)) {
                 return ctx;
             } else {
-                return new Object[0];
+                return EMPTY;
             }
         }
 

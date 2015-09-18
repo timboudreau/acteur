@@ -73,6 +73,7 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
         app.get().internalOnError(cause);
     }
 
+    private final MessageBufEncoder messageBufEncoder = new MessageBufEncoder();
     @Override
     public void initChannel(SocketChannel ch) throws Exception {
         // Create a default pipeline implementation.
@@ -91,7 +92,7 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
             pipeline.addLast(PipelineDecorator.AGGREGATOR, aggregator);
         }
 
-        pipeline.addLast(PipelineDecorator.BYTES, new MessageBufEncoder());
+        pipeline.addLast(PipelineDecorator.BYTES, messageBufEncoder);
         pipeline.addLast(PipelineDecorator.ENCODER, encoder);
 
         // Remove the following line if you don't want automatic content compression.
@@ -103,6 +104,7 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
         decorator.onPipelineInitialized(pipeline);
     }
 
+    @Sharable
     private static class MessageBufEncoder extends MessageToByteEncoder<ByteBuf> {
 
         @Override

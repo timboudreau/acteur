@@ -1,0 +1,85 @@
+/*
+ * The MIT License
+ *
+ * Copyright 2015 Tim Boudreau.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+package com.mastfrog.acteur.mongo.async;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.inject.Inject;
+import static com.mastfrog.util.Exceptions.chuck;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufInputStream;
+import io.netty.buffer.Unpooled;
+import java.io.IOException;
+import javax.inject.Provider;
+import org.bson.BsonReader;
+import org.bson.BsonWriter;
+import org.bson.codecs.Codec;
+import org.bson.codecs.DecoderContext;
+import org.bson.codecs.EncoderContext;
+
+/**
+ * Uses Jackson to enable MongoDB to support types without writing custom
+ * codecs for them.
+ *
+ * @author Tim Boudreau
+ * @param <T>The type
+ */
+final class JacksonCodec<T> implements Codec<T> {
+
+    private final Provider<ObjectMapper> mapper;
+    private final Provider<ByteBufCodec> json;
+    private final Class<T> type;
+
+    @Inject
+    JacksonCodec(Provider<ObjectMapper> mapper, Provider<ByteBufCodec> json, Class<T> type) {
+        this.mapper = mapper;
+        this.json = json;
+        this.type = type;
+    }
+
+    @Override
+    public void encode(BsonWriter writer, T t, EncoderContext ec) {
+        try {
+            byte[] bytes = mapper.get().writeValueAsBytes(t);
+            json.get().encode(writer, Unpooled.wrappedBuffer(bytes), ec);
+        } catch (JsonProcessingException ex) {
+            chuck(ex);
+        }
+    }
+
+    @Override
+    public Class<T> getEncoderClass() {
+        return type;
+    }
+
+    @Override
+    public T decode(BsonReader reader, DecoderContext dc) {
+        ByteBuf buf = json.get().decode(reader, dc);
+        try {
+            return mapper.get().readValue(new ByteBufInputStream(buf), type);
+        } catch (IOException ex) {
+            return chuck(ex);
+        }
+    }
+}

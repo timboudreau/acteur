@@ -32,6 +32,7 @@ import com.mastfrog.giulius.mongodb.async.MongoAsyncConfig;
 import com.mastfrog.guicy.scope.ReentrantScope;
 import com.mastfrog.acteur.mongo.async.WriteCursorContentsAsJSON.CursorResult;
 import com.mastfrog.acteur.mongo.async.WriteCursorContentsAsJSON.SingleResult;
+import com.mastfrog.giulius.mongodb.async.DynamicCodecs;
 import com.mastfrog.giulius.mongodb.async.MongoAsyncInitializer;
 import com.mongodb.async.client.FindIterable;
 import com.mongodb.async.client.MongoClientSettings;
@@ -46,14 +47,15 @@ import org.bson.conversions.Bson;
  *
  * @author Tim Boudreau
  */
-public class ActeurMongoModule extends AbstractModule implements MongoAsyncConfig<ActeurMongoModule> {
+public final class ActeurMongoModule extends AbstractModule implements MongoAsyncConfig<ActeurMongoModule> {
 
     private final GiuliusMongoAsyncModule base = new GiuliusMongoAsyncModule();
     private final ReentrantScope scope;
 
     public ActeurMongoModule(ReentrantScope scope) {
         this.scope = scope;
-        withCodec(ByteBufCodec.class);
+        base.withCodec(ByteBufCodec.class);
+        base.withDynamicCodecs(JacksonCodecs.class);
     }
 
     public ActeurMongoModule withCodecProvider(CodecProvider prov) {
@@ -117,6 +119,11 @@ public class ActeurMongoModule extends AbstractModule implements MongoAsyncConfi
     public ActeurMongoModule withInitializer(Class<? extends MongoAsyncInitializer> initializerType) {
         base.withInitializer(initializerType);
         return this;
+    }
+
+    @Override
+    public ActeurMongoModule withDynamicCodecs(Class<? extends DynamicCodecs> codecs) {
+        throw new UnsupportedOperationException("Already using Jackson codecs.");
     }
 
     private static class GenerifiedFindIterable implements Provider<FindIterable<?>> {
