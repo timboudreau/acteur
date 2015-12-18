@@ -817,7 +817,22 @@ public class URLTest {
         b.addPathElement("xyz");
         URL y = b.create();
         assertTrue (y.getProblems() + "", y.isValid());
+        
+        f = new File("/tmp/spaces in name");
+        url = f.toURI().toURL();
+        mine = URL.parse("file:/tmp/spaces in name");
+        assertEquals (url, mine.toJavaURL());
     }
+//    
+//    @Test
+//    public void testSpaces() {
+//        URL a = URL.parse("http://foo.com/hey+you");
+//        URL b = URL.parse("http://foo.com/hey%20you");
+//        URL c = URL.parse("http://foo.com/hey you");
+//        assertEquals(a, b);
+//        assertEquals(b, c);
+//        assertEquals(a, c);
+//    }
 
     @Test
     public void testPathDecoding() throws UnsupportedEncodingException {
