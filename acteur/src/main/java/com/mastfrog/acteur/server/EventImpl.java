@@ -34,32 +34,22 @@ import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.acteur.headers.Method;
 import com.mastfrog.acteur.util.Connection;
-import com.mastfrog.parameters.validation.ParamChecker;
 import com.mastfrog.url.Path;
 import com.mastfrog.util.Codec;
-import com.mastfrog.util.Streams;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufHolder;
-import io.netty.buffer.ByteBufInputStream;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
-import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.QueryStringDecoder;
 import io.netty.util.CharsetUtil;
 import java.io.IOException;
-import java.io.InputStream;
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.Proxy;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.charset.Charset;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.joda.time.DateTime;
-import org.joda.time.Duration;
 
 /**
  *
@@ -207,8 +197,11 @@ final class EventImpl implements HttpEvent {
         if (neverKeepAlive) {
             return false;
         }
-        Connection c = getHeader(Headers.CONNECTION);
-        return c == null ? false : c == Connection.keep_alive;
+        String hdr = req.headers().get("Connection");
+        if (hdr == null) {
+            return false;
+        }
+        return "keep-alive".equalsIgnoreCase(hdr);
     }
 
     @Override
