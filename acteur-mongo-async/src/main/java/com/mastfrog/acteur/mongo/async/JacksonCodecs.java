@@ -27,10 +27,13 @@ package com.mastfrog.acteur.mongo.async;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.inject.Inject;
 import com.google.inject.util.Providers;
+import static com.mastfrog.acteur.mongo.async.ActeurMongoModule.JACKSON_BINDING_NAME;
 import com.mastfrog.giulius.mongodb.async.DynamicCodecs;
+import javax.inject.Named;
 import javax.inject.Provider;
 import org.bson.codecs.Codec;
 import org.bson.codecs.configuration.CodecConfigurationException;
+import org.bson.types.ObjectId;
 
 /**
  *
@@ -41,14 +44,16 @@ class JacksonCodecs implements DynamicCodecs {
     private final ByteBufCodec bufCodec;
     
     @Inject
-    JacksonCodecs(Provider<ObjectMapper> mapper, ByteBufCodec bufCodec) {
+    JacksonCodecs(@Named(JACKSON_BINDING_NAME) Provider<ObjectMapper> mapper, ByteBufCodec bufCodec) {
         this.mapper = mapper;
         this.bufCodec = bufCodec;
-        
     }
 
     @Override
     public <T> Codec<T> createCodec(Class<T> type, CodecConfigurationException ex) {
-        return new JacksonCodec<T>(mapper, Providers.of(bufCodec), type);
+        if (ObjectId.class == type) { // Don't let jackson take over objectids and store them as strings
+            return null;
+        }
+        return new JacksonCodec<>(mapper, Providers.of(bufCodec), type);
     }
 }

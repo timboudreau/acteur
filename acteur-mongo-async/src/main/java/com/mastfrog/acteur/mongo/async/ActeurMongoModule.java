@@ -23,9 +23,11 @@
  */
 package com.mastfrog.acteur.mongo.async;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 import com.google.inject.TypeLiteral;
+import com.google.inject.name.Names;
 import com.google.inject.util.Providers;
 import com.mastfrog.giulius.mongodb.async.GiuliusMongoAsyncModule;
 import com.mastfrog.giulius.mongodb.async.MongoAsyncConfig;
@@ -34,13 +36,20 @@ import com.mastfrog.acteur.mongo.async.WriteCursorContentsAsJSON.CursorResult;
 import com.mastfrog.acteur.mongo.async.WriteCursorContentsAsJSON.SingleResult;
 import com.mastfrog.giulius.mongodb.async.DynamicCodecs;
 import com.mastfrog.giulius.mongodb.async.MongoAsyncInitializer;
+import com.mastfrog.jackson.JacksonConfigurer;
+import com.mastfrog.jackson.JacksonModule;
+import com.mastfrog.jackson.jodatime.JodeTimeJacksonConfigurer;
 import com.mongodb.async.client.FindIterable;
 import com.mongodb.async.client.MongoClientSettings;
 import com.mongodb.async.client.MongoCollection;
+import java.util.HashSet;
+import java.util.Set;
+import javax.inject.Named;
 import javax.inject.Provider;
 import org.bson.Document;
 import org.bson.codecs.Codec;
 import org.bson.codecs.configuration.CodecProvider;
+import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.conversions.Bson;
 
 /**
@@ -49,13 +58,33 @@ import org.bson.conversions.Bson;
  */
 public final class ActeurMongoModule extends AbstractModule implements MongoAsyncConfig<ActeurMongoModule> {
 
+    public static final String JACKSON_BINDING_NAME = "mongo";
     private final GiuliusMongoAsyncModule base = new GiuliusMongoAsyncModule();
     private final ReentrantScope scope;
+    private final Set<Class<?>> jacksonCodecs = new HashSet<>();
+    private final JacksonModule jacksonModule = new JacksonModule(JACKSON_BINDING_NAME, false);
 
     public ActeurMongoModule(ReentrantScope scope) {
         this.scope = scope;
         base.withCodec(ByteBufCodec.class);
         base.withDynamicCodecs(JacksonCodecs.class);
+        base.withCodecProvider(AdditionalJacksonCodecs.class);
+        withJacksonConfigurer(ObjectIdJacksonConfigurer.class).withJacksonConfigurer(JodeTimeJacksonConfigurer.class);
+    }
+
+    public ActeurMongoModule withJacksonConfigurer(JacksonConfigurer configurer) {
+        jacksonModule.withConfigurer(configurer);
+        return this;
+    }
+
+    public ActeurMongoModule withJacksonConfigurer(Class<? extends JacksonConfigurer> configurer) {
+        jacksonModule.withConfigurer(configurer);
+        return this;
+    }
+
+    public ActeurMongoModule registerJacksonType(Class<?> type) {
+        jacksonCodecs.add(type);
+        return this;
     }
 
     public ActeurMongoModule withCodecProvider(CodecProvider prov) {
@@ -101,6 +130,31 @@ public final class ActeurMongoModule extends AbstractModule implements MongoAsyn
         bind(CursorControl.class).toProvider(ctrlProvider);
         bind(GenerifiedFindIterable.literal).toProvider(GenerifiedFindIterable.class);
         bind(GenerifiedMongoCollection.literal).toProvider(GenerifiedMongoCollection.class);
+        bind(new TypeLiteral<Set<Class<?>>>() {
+        }).annotatedWith(Names.named("__jm")).toInstance(jacksonCodecs);
+        install(jacksonModule);
+    }
+
+    static class AdditionalJacksonCodecs implements CodecProvider {
+
+        final Set<Class<?>> types;
+        private final Provider<ObjectMapper> mapper;
+        private final Provider<ByteBufCodec> codec;
+
+        @Inject
+        public AdditionalJacksonCodecs(@Named("__jm") Set<Class<?>> types, @Named(JACKSON_BINDING_NAME) Provider<ObjectMapper> mapper, Provider<ByteBufCodec> codec) {
+            this.types = types;
+            this.mapper = mapper;
+            this.codec = codec;
+        }
+
+        @Override
+        public <T> Codec<T> get(Class<T> type, CodecRegistry cr) {
+            if (types.contains(type)) {
+                return new JacksonCodec<T>(mapper, codec, type);
+            }
+            return null;
+        }
     }
 
     @Override
@@ -144,7 +198,7 @@ public final class ActeurMongoModule extends AbstractModule implements MongoAsyn
             return find.get();
         }
     }
-    
+
     private static class GenerifiedMongoCollection implements Provider<MongoCollection<?>> {
 
         private final Provider<MongoCollection> find;
@@ -160,5 +214,5 @@ public final class ActeurMongoModule extends AbstractModule implements MongoAsyn
         public MongoCollection<?> get() {
             return find.get();
         }
-    }    
+    }
 }

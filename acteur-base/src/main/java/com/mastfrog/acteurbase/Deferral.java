@@ -39,6 +39,18 @@ public interface Deferral {
      * a corresponding call to resume().
      */
     public Resumer defer();
+    public Resumer defer(DeferredCode code);
+    
+    /**
+     * Code that should run <i>after</i> the acteur currently being run has
+     * exited.  It is possible for code that launches a background thread
+     * to complete and call resume() before the acteur constructor defer was
+     * called from completes running.  Using deferredCode guarantees that the
+     * code is run after the method defer was called from exits.
+     */
+    public interface DeferredCode {
+        void run(Resumer resume) throws Exception;
+    }
 
     public interface Resumer {
 

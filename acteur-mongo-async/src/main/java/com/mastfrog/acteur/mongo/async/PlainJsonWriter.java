@@ -21,7 +21,6 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-
 package com.mastfrog.acteur.mongo.async;
 
 import com.mastfrog.util.Checks;
@@ -48,6 +47,7 @@ import org.openide.util.Exceptions;
  * @author Tim Boudreau
  */
 class PlainJsonWriter extends AbstractBsonWriter {
+
     private final CharsetEncoder enc = CharsetUtil.UTF_8.newEncoder();
     private final ByteBuf buf;
     private final byte[] TRUE = "true".getBytes(CharsetUtil.US_ASCII);
@@ -121,10 +121,21 @@ class PlainJsonWriter extends AbstractBsonWriter {
             case '"':
                 buf.writeByte('\\').writeByte('"');
                 break;
+            case '\n':
+                buf.writeByte('\\').writeByte('n');
+                break;
+            case '\t':
+                buf.writeByte('\\').writeByte('t');
+                break;
             default:
                 if (c <= 20 || c >= 128) {
                     buf.writeByte('\\').writeByte('u');
-                    intString((int) c);
+                    String s=Integer.toHexString(c);
+                    for (int i = 0; i < 4-s.length(); i++) {
+                        buf.writeByte('0');
+                    }
+                    buf.writeBytes(s.getBytes(CharsetUtil.US_ASCII));
+//                    intString((int) c);
                 } else {
                     //                        buf.writeChar((int) c);
                     rawWriteChar(c);
@@ -154,7 +165,7 @@ class PlainJsonWriter extends AbstractBsonWriter {
 
     private void intString(int val) {
         try {
-            char[] result = new char[]{0, 0, 0, 0};
+            char[] result = new char[]{'0', '0', '0', '0'};
             char[] s = Integer.toString(val).toCharArray();
             for (int i = 0; i < s.length; i++) {
                 int index = (4 - s.length) + i;
@@ -338,11 +349,10 @@ class PlainJsonWriter extends AbstractBsonWriter {
         /**
          * Creates a new context.
          *
-         * @param parentContext the parent context that can be used for
-         * going back up to the parent level
+         * @param parentContext the parent context that can be used for going
+         * back up to the parent level
          * @param contextType the type of this context
-         * @param indentChars the String to use for indentation at this
-         * level.
+         * @param indentChars the String to use for indentation at this level.
          */
         public Context(final Context parentContext, final BsonContextType contextType, final String indentChars) {
             super(parentContext, contextType);

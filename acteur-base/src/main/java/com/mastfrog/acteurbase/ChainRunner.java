@@ -24,7 +24,7 @@
 package com.mastfrog.acteurbase;
 
 import com.google.inject.ProvisionException;
-import com.mastfrog.acteurbase.ActeurState;
+import com.mastfrog.acteurbase.Deferral.DeferredCode;
 import com.mastfrog.acteurbase.Deferral.Resumer;
 import com.mastfrog.guicy.scope.ReentrantScope;
 import com.mastfrog.util.Checks;
@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import javax.inject.Inject;
 
 /**
@@ -103,6 +104,7 @@ public final class ChainRunner {
         final Deferral deferral = new DeferralImpl();
         private final P chain;
         private final AtomicBoolean cancelled;
+        private final AtomicReference<DeferredCode> deferredCode = new AtomicReference<>();
 
         public ActeurInvoker(ExecutorService svc, ReentrantScope scope, P chain, ChainCallback<A, S, P, T, R> onDone, AtomicBoolean cancelled) {
             this.svc = svc;
@@ -118,6 +120,16 @@ public final class ChainRunner {
             @Override
             public Resumer defer() {
                 if (deferred.compareAndSet(false, true)) {
+                    return ActeurInvoker.this;
+                } else {
+                    throw new IllegalStateException("Already deferred");
+                }
+            }
+
+            @Override
+            public Resumer defer(DeferredCode code) {
+                if (deferred.compareAndSet(false, true)) {
+                    deferredCode.set(code);
                     return ActeurInvoker.this;
                 } else {
                     throw new IllegalStateException("Already deferred");
@@ -205,15 +217,12 @@ public final class ChainRunner {
                     if (!iter.hasNext()) {
                         onDone.onNoResponse();
                     } else if (deferred.get()) {
-                        // Store the next iteration with the current scope
-                        // contents, so that when resumer.resume() is called
-                        // we can go back to work
-//                    try (QuietAutoCloseable qac = scope.enter(state)) {
+                        Deferral.DeferredCode code = deferredCode.getAndSet(null);
                         next = scope.wrap(this);
-//                    }
-                    } else // Re-wrap "this" in the current scope and tee it up
-                    // to be run
-                    if (!cancelled.get()) {
+                        if (code != null) {
+                            code.run(this);
+                        }
+                    } else if (!cancelled.get()) {
                         svc.submit(scope.wrap(this));
                     }
                 } else {

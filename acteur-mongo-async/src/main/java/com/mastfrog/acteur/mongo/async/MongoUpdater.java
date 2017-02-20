@@ -147,7 +147,7 @@ public final class MongoUpdater {
         public Updates<T> withWriteConcern(WriteConcern concern);
     }
 
-    static class MongoResult {
+    public static class MongoResult {
 
         private final Object message;
         private final Throwable thrown;
