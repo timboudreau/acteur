@@ -71,7 +71,7 @@ public final class PathElement implements URLComponent {
 
     @Override
     public String toString() {
-        return noEncode ? element : URLBuilder.escape(element, '/', '+', ':', '?', '=');
+        return noEncode ? element : URLBuilder.escape(element, '/', '+', ':', '?', '=', '_');
     }
 
     @Override

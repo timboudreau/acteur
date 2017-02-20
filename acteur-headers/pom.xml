@@ -4,12 +4,11 @@
     <parent>
         <groupId>com.mastfrog</groupId>
         <artifactId>mastfrog-parent</artifactId>
-        <version>1.6.3</version>
+        <version>1.6.5</version>
         <relativePath/>
     </parent>
     <artifactId>acteur-headers</artifactId>
     <name>Acteur Headers</name>
-    <packaging>jar</packaging>
     <dependencies>
         <dependency>
             <groupId>${project.groupId}</groupId>
@@ -18,12 +17,29 @@
         <dependency>
             <groupId>io.netty</groupId>
             <artifactId>netty-codec-http</artifactId>
-            <type>jar</type>
         </dependency>
         <dependency>
             <groupId>joda-time</groupId>
             <artifactId>joda-time</artifactId>
-            <type>jar</type>
         </dependency>
     </dependencies>
+    <url>https://github.com/timboudreau/acteur</url>
+    <scm>
+        <url>https://github.com/timboudreau/acteur</url>
+        <connection>scm:git:https://github.com/timboudreau/acteur.git</connection>
+        <developerConnection>git@github.com/timboudreau/acteur.git</developerConnection>
+    </scm>
+    <licenses>
+        <license>
+            <name>MIT</name>
+            <url>http://opensource.org/licenses/MIT</url>
+        </license>
+    </licenses>
+    <developers>
+        <developer>
+            <name>Tim Boudreau</name>
+            <email>tim@timboudreau.com</email>
+            <url>https://timboudreau.com</url>
+        </developer>
+    </developers>
 </project>

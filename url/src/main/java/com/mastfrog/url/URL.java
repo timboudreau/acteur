@@ -635,7 +635,8 @@ public final class URL implements URLComponent, Validating, Comparable<URL> {
     }
 
     public java.net.URL toJavaURL() throws MalformedURLException {
-        return new java.net.URL(toString());
+        // java.net.url does not encode underscores
+        return new java.net.URL(toString().replaceAll("%5f", "_"));
     }
 
     @Override

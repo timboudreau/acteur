@@ -3,7 +3,7 @@
     <parent>
         <groupId>com.mastfrog</groupId>
         <artifactId>mastfrog-parent</artifactId>
-        <version>1.6.3</version>
+        <version>1.6.5</version>
         <relativePath/>
     </parent>
     <modelVersion>4.0.0</modelVersion>
@@ -17,7 +17,6 @@
         <dependency>
             <groupId>com.kenai</groupId>
             <artifactId>simplevalidation</artifactId>
-            <type>jar</type>
             <exclusions>
                 <exclusion>
                     <groupId>com.kenai</groupId>
@@ -28,7 +27,6 @@
         <dependency>
             <groupId>org.netbeans.api</groupId>
             <artifactId>org-openide-util</artifactId>
-            <type>jar</type>
         </dependency>
     </dependencies>
     <repositories>
@@ -46,4 +44,23 @@
             </snapshots>
         </repository>
     </repositories>
+    <url>https://github.com/timboudreau/acteur</url>
+    <scm>
+        <url>https://github.com/timboudreau/acteur</url>
+        <connection>scm:git:https://github.com/timboudreau/acteur.git</connection>
+        <developerConnection>git@github.com/timboudreau/acteur.git</developerConnection>
+    </scm>
+    <licenses>
+        <license>
+            <name>MIT</name>
+            <url>http://opensource.org/licenses/MIT</url>
+        </license>
+    </licenses>
+    <developers>
+        <developer>
+            <name>Tim Boudreau</name>
+            <email>tim@timboudreau.com</email>
+            <url>https://timboudreau.com</url>
+        </developer>
+    </developers>
 </project>

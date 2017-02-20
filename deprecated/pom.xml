@@ -4,7 +4,7 @@
     <parent>
         <groupId>com.mastfrog</groupId>
         <artifactId>mastfrog-parent</artifactId>
-        <version>1.6.3</version>
+        <version>1.6.5</version>
         <relativePath/>
     </parent>
     <artifactId>acteur-deprecated</artifactId>
@@ -17,7 +17,7 @@
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>acteur-headers</artifactId>
-        </dependency>        
+        </dependency>
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
@@ -39,4 +39,23 @@
             </snapshots>
         </repository>
     </repositories>
+    <url>https://github.com/timboudreau/acteur</url>
+    <scm>
+        <url>https://github.com/timboudreau/acteur</url>
+        <connection>scm:git:https://github.com/timboudreau/acteur.git</connection>
+        <developerConnection>git@github.com/timboudreau/acteur.git</developerConnection>
+    </scm>
+    <licenses>
+        <license>
+            <name>MIT</name>
+            <url>http://opensource.org/licenses/MIT</url>
+        </license>
+    </licenses>
+    <developers>
+        <developer>
+            <name>Tim Boudreau</name>
+            <email>tim@timboudreau.com</email>
+            <url>https://timboudreau.com</url>
+        </developer>
+    </developers>
 </project>
