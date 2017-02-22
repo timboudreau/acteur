@@ -41,20 +41,20 @@
         <dependency>
             <groupId>com.mastfrog</groupId>
             <artifactId>jackson-mongodb</artifactId>
-            <version>1.6.3-netty-5</version>
+            <version>${mastfrog.version}</version>
             <scope>test</scope>
             <type>jar</type>
         </dependency>
         <dependency>
             <groupId>com.mastfrog</groupId>
             <artifactId>jackson</artifactId>
-            <version>1.6.3</version>
+            <version>${mastfrog.version}</version>
             <type>jar</type>
         </dependency>
         <dependency>
             <groupId>com.mastfrog</groupId>
             <artifactId>jackson-jodatime</artifactId>
-            <version>1.6.3</version>
+            <version>${mastfrog.version}</version>
             <type>jar</type>
         </dependency>
     </dependencies>
