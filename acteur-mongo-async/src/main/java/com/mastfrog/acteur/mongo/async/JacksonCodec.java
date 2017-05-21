@@ -36,7 +36,7 @@ import io.netty.buffer.Unpooled;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
+import java.io.InputStream;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.inject.Named;
 import javax.inject.Provider;
@@ -103,7 +103,7 @@ final class JacksonCodec<T> implements Codec<T> {
     public T decode(BsonReader reader, DecoderContext dc) {
         ByteBuf buf = json.get().decode(reader, dc);
         try {
-            return mapper.get().readValue(new ByteBufInputStream(buf), type);
+            return mapper.get().readValue((InputStream) new ByteBufInputStream(buf), type);
         } catch (JsonMappingException ex) {
             debugWrite(buf);
             buf.resetReaderIndex();

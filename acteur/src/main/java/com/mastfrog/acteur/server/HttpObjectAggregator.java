@@ -25,6 +25,7 @@
 package com.mastfrog.acteur.server;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufHolder;
 import io.netty.buffer.CompositeByteBuf;
 import io.netty.buffer.DefaultByteBufHolder;
 import io.netty.buffer.Unpooled;
@@ -284,12 +285,13 @@ final class HttpObjectAggregator extends MessageToMessageDecoder<HttpObject> {
         return fullMsg;
     }
 
-    private abstract static class AggregatedFullHttpMessage extends DefaultByteBufHolder implements FullHttpMessage {
-        protected final HttpMessage message;
-        private HttpHeaders trailingHeaders;
+    private abstract static class AggregatedFullHttpMessage<T extends HttpMessage> implements FullHttpMessage, ByteBufHolder {
+        protected final T message;
+        protected HttpHeaders trailingHeaders;
+        protected final ByteBuf content;
 
-        private AggregatedFullHttpMessage(HttpMessage message, ByteBuf content, HttpHeaders trailingHeaders) {
-            super(content);
+        private AggregatedFullHttpMessage(T message, ByteBuf content, HttpHeaders trailingHeaders) {
+            this.content = content;
             this.message = message;
             this.trailingHeaders = trailingHeaders;
         }
@@ -330,13 +332,13 @@ final class HttpObjectAggregator extends MessageToMessageDecoder<HttpObject> {
 
         @Override
         public FullHttpMessage retain(int increment) {
-            super.retain(increment);
+            content.retain(increment);
             return this;
         }
 
         @Override
         public FullHttpMessage retain() {
-            super.retain();
+            content.retain();
             return this;
         }
 
@@ -345,9 +347,51 @@ final class HttpObjectAggregator extends MessageToMessageDecoder<HttpObject> {
 
         @Override
         public abstract FullHttpMessage duplicate();
+
+        @Override
+        public FullHttpMessage touch(Object hint) {
+            content.touch(hint);
+            return this;
+        }
+        
+        public ByteBuf content() {
+            return content;
+        }
+
+        @Override
+        public FullHttpMessage touch() {
+            content.touch();
+            return this;
+        }
+
+        @Override
+        public HttpVersion protocolVersion() {
+            return message.protocolVersion();
+        }
+
+        @Override
+        public DecoderResult decoderResult() {
+            return message.decoderResult();
+        }
+
+        @Override
+        public int refCnt() {
+            return content.refCnt();
+        }
+
+        @Override
+        public boolean release() {
+            return content.release();
+        }
+
+        @Override
+        public boolean release(int i) {
+            return content.release(i);
+        }
+        
     }
 
-    private static final class AggregatedFullHttpRequest extends AggregatedFullHttpMessage implements FullHttpRequest {
+    private static final class AggregatedFullHttpRequest extends AggregatedFullHttpMessage<HttpRequest> implements FullHttpRequest {
 
         private AggregatedFullHttpRequest(HttpRequest request, ByteBuf content, HttpHeaders trailingHeaders) {
             super(request, content, trailingHeaders);
@@ -410,9 +454,41 @@ final class HttpObjectAggregator extends MessageToMessageDecoder<HttpObject> {
             super.setProtocolVersion(version);
             return this;
         }
+
+        @Override
+        public FullHttpRequest retainedDuplicate() {
+            return new AggregatedFullHttpRequest(message, content.retainedDuplicate(), trailingHeaders);
+        }
+
+        @Override
+        public FullHttpRequest replace(ByteBuf content) {
+            return new AggregatedFullHttpRequest(message, content, trailingHeaders);
+        }
+
+        @Override
+        public FullHttpRequest touch() {
+            content.touch();
+            return this;
+        }
+
+        @Override
+        public FullHttpRequest touch(Object hint) {
+            content.touch();
+            return this;
+        }
+
+        @Override
+        public HttpMethod method() {
+            return message.method();
+        }
+
+        @Override
+        public String uri() {
+            return message.uri();
+        }
     }
 
-    private static final class AggregatedFullHttpResponse extends AggregatedFullHttpMessage
+    private static final class AggregatedFullHttpResponse extends AggregatedFullHttpMessage<HttpResponse>
             implements FullHttpResponse {
         private AggregatedFullHttpResponse(HttpResponse message, ByteBuf content, HttpHeaders trailingHeaders) {
             super(message, content, trailingHeaders);
@@ -463,6 +539,33 @@ final class HttpObjectAggregator extends MessageToMessageDecoder<HttpObject> {
         public FullHttpResponse retain() {
             super.retain();
             return this;
+        }
+
+        @Override
+        public FullHttpResponse retainedDuplicate() {
+            return new AggregatedFullHttpResponse(message, content.retainedDuplicate(), trailingHeaders);
+        }
+
+        @Override
+        public FullHttpResponse replace(ByteBuf content) {
+            return new AggregatedFullHttpResponse(message, content, trailingHeaders);
+        }
+
+        @Override
+        public FullHttpResponse touch() {
+            content.touch();
+            return this;
+        }
+
+        @Override
+        public FullHttpResponse touch(Object hint) {
+           content.touch(hint);
+           return this;
+        }
+
+        @Override
+        public HttpResponseStatus status() {
+            return message.status();
         }
     }
 }

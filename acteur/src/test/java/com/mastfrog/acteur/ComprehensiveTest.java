@@ -64,6 +64,7 @@ public class ComprehensiveTest {
                 .assertStatus(OK)
                 .assertContent("B");
 
+        /*
         harness.get("unchunked").log().addQueryPair("iters", "7")
                 .setTimeout(Duration.standardSeconds(20))
                 .go()
@@ -72,6 +73,7 @@ public class ComprehensiveTest {
                 .throwIfError()
                 .await()
                 ;
+        */
 
         System.out.println("A");
         harness.post("echo").log().setBody("Echo this back to me", PLAIN_TEXT_UTF_8)
