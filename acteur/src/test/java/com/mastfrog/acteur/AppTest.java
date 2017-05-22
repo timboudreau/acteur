@@ -234,7 +234,7 @@ public class AppTest {
         assertEquals("abcdefg", c.password);
 
         ObjectMapper m = new ObjectMapper();
-        m.writeValue(new ByteBufOutputStream(buf), new Thing());
+        m.writeValue((OutputStream)new ByteBufOutputStream(buf), new Thing());
         return EventImplFactory.newEvent(req, paths);
     }
 

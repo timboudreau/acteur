@@ -39,6 +39,7 @@ import org.bson.BsonDbPointer;
 import org.bson.BsonRegularExpression;
 import org.bson.BsonTimestamp;
 import org.bson.json.JsonWriterSettings;
+import org.bson.types.Decimal128;
 import org.bson.types.ObjectId;
 import org.openide.util.Exceptions;
 
@@ -338,7 +339,14 @@ class PlainJsonWriter extends AbstractBsonWriter {
 
     @Override
     protected void doWriteUndefined() {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        writeNameHelper(getName());
+        _writeString("null");
+    }
+
+    @Override
+    protected void doWriteDecimal128(Decimal128 dcml) {
+        writeNameHelper(getName());
+        _writeString(dcml.toString());
     }
 
     class Context extends AbstractBsonWriter.Context {

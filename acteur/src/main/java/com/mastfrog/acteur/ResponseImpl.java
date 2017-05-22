@@ -74,7 +74,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicReference;
 import org.joda.time.Duration;
-
+import io.netty.handler.ssl.SslContext;
 /**
  * Aggregates the set of headers and a body writer which is used to respond to
  * an HTTP request. Each Acteur has its own which will be merged into the one
@@ -277,6 +277,42 @@ final class ResponseImpl extends Response {
         }
 
         @Override
+        public HttpHeaders addInt(CharSequence name, int i) {
+            if (Names.CONTENT_LENGTH.contentEquals(name)) {
+                return this;
+            }
+            orig.addInt(name, i);
+            return this;
+        }
+
+        @Override
+        public HttpHeaders addShort(CharSequence name, short s) {
+            if (Names.CONTENT_LENGTH.contentEquals(name)) {
+                return this;
+            }
+            orig.addShort(name, s);
+            return this;
+        }
+
+        @Override
+        public HttpHeaders setInt(CharSequence name, int s) {
+            if (Names.CONTENT_LENGTH.contentEquals(name)) {
+                return this;
+            }
+            orig.setInt(name, s);
+            return this;
+        }
+
+        @Override
+        public HttpHeaders setShort(CharSequence name, short s) {
+            if (Names.CONTENT_LENGTH.contentEquals(name)) {
+                return this;
+            }
+            orig.setShort(name, s);
+            return this;
+        }
+
+        @Override
         public HttpHeaders clear() {
             return orig.clear();
         }
@@ -284,6 +320,46 @@ final class ResponseImpl extends Response {
         @Override
         public Iterator<Map.Entry<String, String>> iterator() {
             return orig.iterator();
+        }
+
+        @Override
+        public Integer getInt(CharSequence cs) {
+            return orig.getInt(cs);
+        }
+
+        @Override
+        public int getInt(CharSequence cs, int i) {
+            return orig.getInt(cs);
+        }
+
+        @Override
+        public Short getShort(CharSequence cs) {
+            return orig.getShort(cs);
+        }
+
+        @Override
+        public short getShort(CharSequence cs, short s) {
+            return orig.getShort(cs, s);
+        }
+
+        @Override
+        public Long getTimeMillis(CharSequence cs) {
+            return orig.getTimeMillis(cs);
+        }
+
+        @Override
+        public long getTimeMillis(CharSequence cs, long l) {
+            return orig.getTimeMillis(cs, l);
+        }
+
+        @Override
+        public Iterator<Map.Entry<CharSequence, CharSequence>> iteratorCharSequence() {
+            return orig.iteratorCharSequence();
+        }
+
+        @Override
+        public int size() {
+            return orig.size();
         }
     }
 
