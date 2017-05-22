@@ -22,37 +22,37 @@
             <artifactId>acteur</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.mastfrog</groupId>
+            <groupId>${project.groupId}</groupId>
             <artifactId>netty-http-test-harness</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>com.mastfrog</groupId>
+            <groupId>${project.groupId}</groupId>
             <artifactId>giulius-mongodb-async</artifactId>
             <scope>test</scope>
             <version>${mastfrog.version}</version>
             <type>test-jar</type>
         </dependency>
         <dependency>
-            <groupId>com.mastfrog</groupId>
+            <groupId>${project.groupId}</groupId>
             <artifactId>giulius-tests</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>com.mastfrog</groupId>
+            <groupId>${project.groupId}</groupId>
             <artifactId>jackson-mongodb</artifactId>
             <version>${mastfrog.version}</version>
             <scope>test</scope>
             <type>jar</type>
         </dependency>
         <dependency>
-            <groupId>com.mastfrog</groupId>
+            <groupId>${project.groupId}</groupId>
             <artifactId>jackson</artifactId>
             <version>${mastfrog.version}</version>
             <type>jar</type>
         </dependency>
         <dependency>
-            <groupId>com.mastfrog</groupId>
+            <groupId>${project.groupId}</groupId>
             <artifactId>jackson-jodatime</artifactId>
             <version>${mastfrog.version}</version>
             <type>jar</type>

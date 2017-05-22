@@ -11,7 +11,7 @@
     <name>Acteur Resources</name>
     <dependencies>
         <dependency>
-            <groupId>com.mastfrog</groupId>
+            <groupId>${project.groupId}</groupId>
             <artifactId>acteur</artifactId>
         </dependency>
         <dependency>
@@ -20,12 +20,12 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>com.mastfrog</groupId>
+            <groupId>${project.groupId}</groupId>
             <artifactId>giulius-tests</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>com.mastfrog</groupId>
+            <groupId>${project.groupId}</groupId>
             <artifactId>netty-http-client</artifactId>
             <scope>test</scope>
         </dependency>

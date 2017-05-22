@@ -10,7 +10,7 @@
     <artifactId>acteur-jdbc</artifactId>
     <dependencies>
         <dependency>
-            <groupId>com.mastfrog</groupId>
+            <groupId>${project.groupId}</groupId>
             <artifactId>acteur</artifactId>
         </dependency>
     </dependencies>
