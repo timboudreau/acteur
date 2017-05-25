@@ -53,8 +53,7 @@ public class ResourcesPage extends Page {
     /**
      * Settings key for the url path under which static resources live.
      * <b>Important</b>: This is a regex, and it needs to end in a capture group
-     * - for example,
-     * <code>static/(.*)</code>.
+     * - for example, <code>static/(.*)</code>.
      */
     public static final String SETTINGS_KEY_STATIC_RESOURCES_BASE_URL_PATH = "static.base.url.path";
 
@@ -62,7 +61,7 @@ public class ResourcesPage extends Page {
     public ResourcesPage(ActeurFactory af, StaticResources r, Settings settings) {
         add(af.matchMethods(Method.GET, Method.HEAD));
         String base = settings.getString(SETTINGS_KEY_STATIC_RESOURCES_BASE_URL_PATH);
-        if (base != null) {
+        if (base != null && !base.isEmpty()) {
             add(af.matchPath(base));
         }
 //        add(af.matchPath(r.getPatterns()));
@@ -73,6 +72,7 @@ public class ResourcesPage extends Page {
     }
 
     static boolean chunked = true;
+
     private static final class ResourceNameMatcher extends Acteur {
 
         @Inject
@@ -87,25 +87,41 @@ public class ResourcesPage extends Page {
                 }
             }
             path = URLDecoder.decode(path, "UTF-8");
-            for (String pat : res.getPatterns()) {
-                if (path.equals(pat)) {
-                    Resource r = res.get(path);
-                    if (r == null) {
-                        reject();
-                        return;
-                    } else {
-                        r.decoratePage(page, evt, path, response(), chunked);
-                        MediaType mimeType = r.getContentType();
-                        if (mimeType != null) {
-                            DateTime dt = policy.get(mimeType, Path.parse(path));
-                            if (dt != null) {
-                                add(Headers.EXPIRES, dt);
+            String[] patterns = res.getPatterns();
+            if (patterns != null) {
+                for (String pat : res.getPatterns()) {
+                    if (path.equals(pat)) {
+                        Resource r = res.get(path);
+                        if (r == null) {
+                            reject();
+                            return;
+                        } else {
+                            r.decoratePage(page, evt, path, response(), chunked);
+                            MediaType mimeType = r.getContentType();
+                            if (mimeType != null) {
+                                DateTime dt = policy.get(mimeType, Path.parse(path));
+                                if (dt != null) {
+                                    add(Headers.EXPIRES, dt);
+                                }
                             }
+                            next(r);
+                            return;
                         }
-//                        setState(new ConsumedLockedState(r));
-                        next(r);
-                        return;
                     }
+                }
+            } else {
+                Resource r = res.get(path);
+                if (r != null) {
+                    r.decoratePage(page, evt, path, response(), chunked);
+                    MediaType mimeType = r.getContentType();
+                    if (mimeType != null) {
+                        DateTime dt = policy.get(mimeType, Path.parse(path));
+                        if (dt != null) {
+                            add(Headers.EXPIRES, dt);
+                        }
+                    }
+                    next(r);
+                    return;
                 }
             }
             reject();

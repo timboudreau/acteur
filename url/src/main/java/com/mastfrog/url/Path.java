@@ -26,6 +26,7 @@ package com.mastfrog.url;
 import com.mastfrog.util.AbstractBuilder;
 import com.mastfrog.util.Checks;
 import com.mastfrog.util.Exceptions;
+import com.mastfrog.util.collections.CollectionUtils;
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -139,7 +140,7 @@ public final class Path implements URLComponent, Iterable<PathElement> {
     }
 
     public Iterator<PathElement> iterator() {
-        return Arrays.asList(elements).iterator();
+        return CollectionUtils.toIterator(elements);
     }
 
     public Path normalize() {
@@ -283,7 +284,9 @@ public final class Path implements URLComponent, Iterable<PathElement> {
     public String toStringWithLeadingSlash() {
         StringBuilder result = new StringBuilder();
         appendTo(result);
-        if (result.charAt(0) != '/') {
+        if (result.length() == 0) {
+            return "/";
+        } else if (result.charAt(0) != '/') {
             result.insert(0, '/');
         }
         return result.toString();

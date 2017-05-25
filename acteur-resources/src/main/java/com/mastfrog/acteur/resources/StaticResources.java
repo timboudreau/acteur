@@ -31,6 +31,7 @@ import com.mastfrog.acteur.Response;
 import org.joda.time.DateTime;
 
 /**
+ * Source of static resources / files to be served.
  *
  * @author Tim Boudreau
  */
@@ -41,6 +42,12 @@ public interface StaticResources {
     public static final String RESOURCE_NAMES_PREFIX = "static.resource.names";
     public static final String RESOURCE_FOLDERS_KEY = "static.resource.folders";
 
+    /**
+     * Get a resource that should be served.
+     * 
+     * @param path The path from the base dir to the file
+     * @return A resource or null
+     */
     Resource get(String path);
 
     String[] getPatterns();

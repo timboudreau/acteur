@@ -63,6 +63,7 @@ public class MimeTypes {
         add("jpeg", MediaType.JPEG);
         add("json", MediaType.JSON_UTF_8.withCharset(charset), true);
         add("txt", MediaType.PLAIN_TEXT_UTF_8.withCharset(charset), true);
+        add("log", MediaType.PLAIN_TEXT_UTF_8.withCharset(charset), true);
         add("template", MediaType.PLAIN_TEXT_UTF_8.withCharset(charset), true);
         add("pdf", MediaType.PDF);
         add("html", MediaType.HTML_UTF_8.withCharset(charset), true);

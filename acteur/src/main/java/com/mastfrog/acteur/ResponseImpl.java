@@ -46,6 +46,7 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import static io.netty.channel.ChannelFutureListener.CLOSE;
+import io.netty.channel.FileRegion;
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
 import io.netty.handler.codec.http.DefaultHttpContent;
 import io.netty.handler.codec.http.DefaultHttpResponse;
@@ -613,6 +614,15 @@ final class ResponseImpl extends Response {
                 ResponseWriterListener.this.future = ResponseWriterListener.this.future.channel().writeAndFlush(chunk.content());
             } else {
                 ResponseWriterListener.this.future = ResponseWriterListener.this.future.channel().writeAndFlush(chunk);
+            }
+            return this;
+        }
+
+        @Override
+        public Output write(FileRegion region) throws IOException {
+            ResponseWriterListener.this.future = ResponseWriterListener.this.future.channel().writeAndFlush(region);
+            if (shouldClose) {
+                future.addListener(CLOSE);
             }
             return this;
         }

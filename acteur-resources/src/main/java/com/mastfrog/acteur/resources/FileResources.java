@@ -74,10 +74,10 @@ import org.joda.time.Duration;
 import org.openide.util.Exceptions;
 
 /**
- * Resources based on java.io.File.  Note that this implementation caches
- * all file bytes <b>in memory</b>.  In practice, sites are usually small and
- * this is a non-issue, and this performs very well (it will notice if the timestamp
- * on a file has changed and reload it).
+ * Resources based on java.io.File. Note that this implementation caches all
+ * file bytes <b>in memory</b>. In practice, sites are usually small and this is
+ * a non-issue, and this performs very well (it will notice if the timestamp on
+ * a file has changed and reload it).
  *
  * @author Tim Boudreau
  */
@@ -112,24 +112,30 @@ public final class FileResources implements StaticResources {
         debug = settings.getBoolean("acteur.debug", false);
         String resourcesBasePath = settings.getString(RESOURCES_BASE_PATH, "");
         for (String name : l) {
-            String pth = Strings.join(resourcesBasePath,name);
+            String pth = Strings.join(resourcesBasePath, name);
             if (debug) {
                 System.out.println("STATIC RES: " + name + " -> " + pth);
             }
             Path p = Path.parse(pth);
             DateTime expires = policy.get(types.get(pth), p);
-            Duration maxAge = expires == null ? Duration.standardHours(2) 
+            Duration maxAge = expires == null ? Duration.standardHours(2)
                     : new Duration(DateTime.now(), expires);
             this.names.put(pth, new FileResource2(name, maxAge));
         }
     }
 
     private void scan(File dir, String path, List<String> result) {
-        for (File f : dir.listFiles()) {
-            if (f.isFile() && f.canRead()) {
-                result.add(path + (path.isEmpty() ? "" : "/") + f.getName());
-            } else if (f.isDirectory()) {
-                scan(f, path + (path.isEmpty() ? "" : "/") + f.getName(), result);
+        if (dir == null) {
+            return;
+        }
+        File[] files = dir.listFiles();
+        if (files != null) {
+            for (File f : dir.listFiles()) {
+                if (f.isFile() && f.canRead()) {
+                    result.add(path + (path.isEmpty() ? "" : "/") + f.getName());
+                } else if (f.isDirectory()) {
+                    scan(f, path + (path.isEmpty() ? "" : "/") + f.getName(), result);
+                }
             }
         }
     }
@@ -157,9 +163,9 @@ public final class FileResources implements StaticResources {
         }
     }
 
-    static class Y extends JZlibDecoder {
+    static class SanityCheckDecoder extends JZlibDecoder {
 
-        Y() {
+        SanityCheckDecoder() {
             super(ZlibWrapper.GZIP);
             super.setSingleDecode(true);
         }
@@ -225,7 +231,7 @@ public final class FileResources implements StaticResources {
         }
 
         private boolean check() throws Exception {
-            Y y = new Y();
+            SanityCheckDecoder y = new SanityCheckDecoder();
             ByteBuf test = allocator.buffer(bytes.readableBytes());
             try {
                 y.decode(null, compressed, Collections.<Object>singletonList(test));
@@ -261,9 +267,9 @@ public final class FileResources implements StaticResources {
                 page.getResponseHeaders().addVaryHeader(Headers.ACCEPT_ENCODING);
             }
 //            if (productionMode()) {
-                page.getResponseHeaders().addCacheControl(CacheControlTypes.Public);
-                page.getResponseHeaders().addCacheControl(CacheControlTypes.max_age, maxAge);
-                page.getResponseHeaders().addCacheControl(CacheControlTypes.must_revalidate);
+            h.addCacheControl(CacheControlTypes.Public);
+            h.addCacheControl(CacheControlTypes.max_age, maxAge);
+            h.addCacheControl(CacheControlTypes.must_revalidate);
 //            } else {
 //                page.getReponseHeaders().addCacheControl(CacheControlTypes.Private);
 //                page.getReponseHeaders().addCacheControl(CacheControlTypes.no_cache);

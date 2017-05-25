@@ -12,14 +12,9 @@ import com.mastfrog.acteur.server.ServerModule;
 import com.mastfrog.netty.http.client.HttpClient;
 import com.mastfrog.util.Exceptions;
 import com.mastfrog.util.GUIDFactory;
-import com.mastfrog.util.Streams;
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.Arrays;
 import java.util.List;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -34,34 +29,29 @@ public class ResourcesApp extends Application {
     }
 
     static File tmpdir;
-    static String[] files = new String[]{
+    static String[] FILES = new String[]{
         "hello.txt", "another.txt"
     };
-    static String stuff = GUIDFactory.get().newGUID(18, 10);
+    static String STUFF = GUIDFactory.get().newGUID(18, 10);
 
     static {
         try {
             File tmp = new File(System.getProperty("java.io.tmpdir"));
             tmpdir = new File(tmp, "resources-" + Long.toString(System.currentTimeMillis(), 36));
-            System.out.println("RESOURCES IN " + tmpdir);
             assertTrue(tmpdir.mkdirs());
-            for (String file : files) {
-                File f = new File(tmpdir, file);
-                assertTrue(f.createNewFile());
-                try (InputStream in = ResourcesApp.class.getResourceAsStream(file)) {
-                    assertNotNull(file, in);
-                    try (FileOutputStream out = new FileOutputStream(f)) {
-                        Streams.copy(in, out, 128);
-                    }
-                }
-            }
-            File sub = new File(tmpdir, "sub");
-            assertTrue(sub.mkdirs());
-            File subfile = new File(sub, "subfile.txt");
-            assertTrue(subfile.createNewFile());
-            Streams.writeString(stuff, subfile);
-        } catch (IOException ex) {
+        } catch (Exception ex) {
             Exceptions.chuck(ex);
+        }
+    }
+    
+    static class DynFileResourcesModule extends AbstractModule {
+        @Override
+        protected void configure() {
+            install(new ServerModule<>(ResourcesApp.class));
+            bind(File.class).toInstance(tmpdir);
+            bind(StaticResources.class).to(DynamicFileResources.class);
+//            bind(HttpClient.class).toInstance(HttpClient.builder().noCompression().build());
+            bind(HttpClient.class).toInstance(HttpClient.builder().build());
         }
     }
 
@@ -69,9 +59,10 @@ public class ResourcesApp extends Application {
 
         @Override
         protected void configure() {
-            install(new ServerModule<ResourcesApp>(ResourcesApp.class));
+            install(new ServerModule<>(ResourcesApp.class));
             bind(File.class).toInstance(tmpdir);
             bind(StaticResources.class).to(FileResources.class);
+//            bind(HttpClient.class).toInstance(HttpClient.builder().noCompression().build());
             bind(HttpClient.class).toInstance(HttpClient.builder().build());
         }
     }
@@ -79,7 +70,7 @@ public class ResourcesApp extends Application {
 
         @Override
         protected void configure() {
-            install(new ServerModule<ResourcesApp>(ResourcesApp.class));
+            install(new ServerModule<>(ResourcesApp.class));
             bind(File.class).toInstance(tmpdir);
             bind(StaticResources.class).to(FileResources.class);
             bind(HttpClient.class).toInstance(HttpClient.builder().build());
@@ -89,7 +80,7 @@ public class ResourcesApp extends Application {
 
         @Override
         protected void configure() {
-            install(new ServerModule<ResourcesApp>(ResourcesApp.class));
+            install(new ServerModule<>(ResourcesApp.class));
             bind(StaticResources.class).to(ClasspathResources.class);
             bind(ClasspathResourceInfo.class).toInstance(new ClasspathResourceInfo(ResourcesApp.class,
                     "hello.txt", "another.txt"));
@@ -110,11 +101,11 @@ public class ResourcesApp extends Application {
             bind(HttpClient.class).toInstance(HttpClient.builder().build());
         }
 
-        static class TL extends TypeLiteral<List<StaticResources>> {
+        static final class TL extends TypeLiteral<List<StaticResources>> {
         }
 
         @Singleton
-        static class P implements Provider<List<StaticResources>> {
+        static final class P implements Provider<List<StaticResources>> {
 
             private final FileResources fr;
             private final ClasspathResources cr;
