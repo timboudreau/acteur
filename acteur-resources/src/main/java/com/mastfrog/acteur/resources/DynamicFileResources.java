@@ -34,18 +34,28 @@ import com.mastfrog.acteur.ResponseWriter;
 import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.acteur.spi.ApplicationControl;
 import com.mastfrog.acteur.util.CacheControlTypes;
+import com.mastfrog.util.Exceptions;
+import com.mastfrog.util.Streams;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
+import io.netty.buffer.ByteBufOutputStream;
 import io.netty.channel.DefaultFileRegion;
 import io.netty.channel.FileRegion;
+import io.netty.handler.codec.http.DefaultHttpContent;
+import io.netty.handler.codec.http.DefaultLastHttpContent;
+import io.netty.handler.codec.http.HttpHeaderNames;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.util.zip.GZIPOutputStream;
 import org.joda.time.DateTime;
 import org.joda.time.Duration;
 
 /**
- * Version of FileResources that does not cache bytes in-memory, just
- * uses Netty's FileRegion, and inode numbers for etags.
+ * Version of FileResources that does not cache bytes in-memory, just uses
+ * Netty's FileRegion, and inode numbers for etags.
  *
  * @author Tim Boudreau
  */
@@ -55,13 +65,15 @@ public class DynamicFileResources implements StaticResources {
     private final ExpiresPolicy policy;
     private final MimeTypes types;
     private final ApplicationControl ctrl;
+    private final ByteBufAllocator alloc;
 
     @Inject
-    DynamicFileResources(File dir, MimeTypes types, ExpiresPolicy policy, ApplicationControl ctrl) {
+    DynamicFileResources(File dir, MimeTypes types, ExpiresPolicy policy, ApplicationControl ctrl, ByteBufAllocator alloc) {
         this.dir = dir;
         this.policy = policy;
         this.types = types;
         this.ctrl = ctrl;
+        this.alloc = alloc;
     }
 
     @Override
@@ -89,7 +101,7 @@ public class DynamicFileResources implements StaticResources {
         @Override
         public void decoratePage(Page page, HttpEvent evt, String path, Response response, boolean chunked) {
             ResponseHeaders h = page.getResponseHeaders();
-            String ua = evt.getHeader("User-Agent");
+            String ua = evt.getHeader(HttpHeaderNames.USER_AGENT.toString());
             if (ua != null && !ua.contains("MSIE")) {
                 page.getResponseHeaders().addVaryHeader(Headers.ACCEPT_ENCODING);
             }
@@ -99,12 +111,20 @@ public class DynamicFileResources implements StaticResources {
             h.addCacheControl(CacheControlTypes.Public);
             h.addCacheControl(CacheControlTypes.must_revalidate);
             h.addCacheControl(CacheControlTypes.max_age, maxAge);
-            response.add(Headers.stringHeader("X-Internal-Compress"), "false");
             h.setMaxAge(maxAge);
             h.setExpires(expires);
             h.setAge(Duration.ZERO);
             h.setEtag(getEtag());
             h.setLastModified(new DateTime(file.lastModified()));
+            String acceptEncoding = evt.getHeader(Headers.ACCEPT_ENCODING);
+            boolean willCompress = acceptEncoding != null && acceptEncoding.toLowerCase().contains("gzip");
+            if (!willCompress) {
+                h.setContentLength(file.length());
+            } else {
+                response.add(Headers.stringHeader("X-Internal-Compress"), "true");
+                response.add(Headers.CONTENT_ENCODING, "gzip");
+            }
+            response.setChunked(false);
         }
 
         @Override
@@ -150,15 +170,46 @@ public class DynamicFileResources implements StaticResources {
 
         @Override
         public void attachBytes(HttpEvent evt, Response response, boolean chunked) {
-            response.setBodyWriter(new ResponseWriter(){
-                @Override
-                public ResponseWriter.Status write(Event<?> evt, ResponseWriter.Output out, int iteration) throws Exception {
-                    FileRegion reg = new DefaultFileRegion(file, 0, file.length());
-                    out.write(reg);
-                    return Status.DONE;
+            String acceptEncoding = evt.getHeader(Headers.ACCEPT_ENCODING);
+            boolean willCompress = acceptEncoding != null && acceptEncoding.toLowerCase().contains("gzip");
+            if (!willCompress) {
+                response.setBodyWriter(new ResponseWriter() {
+                    @Override
+                    public ResponseWriter.Status write(Event<?> evt, ResponseWriter.Output out, int iteration) throws Exception {
+                        FileRegion reg = new DefaultFileRegion(file, 0, file.length());
+                        out.write(reg);
+                        return Status.DONE;
+                    }
+                });
+            } else {
+                ByteBuf buf = alloc.directBuffer();
+                try (FileInputStream in = new FileInputStream(file)) {
+                    try (ByteBufOutputStream bufOut = new ByteBufOutputStream(buf)) {
+                        try (GZIPOutputStream gz = new GZIPOutputStream(bufOut, (int) (file.length() / 2))) {
+                            Streams.copy(in, gz);
+                        }
+                    }
+                } catch (Exception ex) {
+                    buf.release();
+                    Exceptions.chuck(ex);
                 }
-                
-            });
+                response.add(Headers.CONTENT_LENGTH, (long) buf.readableBytes());
+                response.setBodyWriter(new ResponseWriter() {
+                    boolean first = true;
+
+                    @Override
+                    public ResponseWriter.Status write(Event<?> evt, ResponseWriter.Output out, int iteration) throws Exception {
+                        if (!first) {
+                            out.write(new DefaultLastHttpContent());
+                            return Status.DONE;
+                        }
+                        out.write(buf);
+                        boolean wasFirst = first;
+                        first = false;
+                        return wasFirst ? Status.NOT_DONE : Status.DONE;
+                    }
+                });
+            }
         }
     }
 }
