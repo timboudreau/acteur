@@ -1,7 +1,7 @@
-/* 
+/*
  * The MIT License
  *
- * Copyright 2013 Tim Boudreau.
+ * Copyright 2017 Tim Boudreau.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,25 +21,33 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.mastfrog.acteur.headers;
+package com.mastfrog.marshallers.netty;
 
-import io.netty.handler.codec.http.HttpMethod;
-import io.netty.handler.codec.http.HttpRequest;
+import com.mastfrog.util.Streams;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufInputStream;
+import io.netty.buffer.ByteBufOutputStream;
+import java.io.InputStream;
+import com.mastfrog.marshallers.Marshaller;
 
 /**
- * Enum of standard HTTP methods
  *
  * @author Tim Boudreau
  */
-public enum Method implements com.mastfrog.acteur.util.HttpMethod {
+final class InputStreamInterpreter implements Marshaller<InputStream, ByteBuf> {
 
-    GET, PUT, POST, OPTIONS, HEAD, DELETE, TRACE, CONNECT,
-    // WEBDAV
-    PROPFIND, PROPPATCH, MKCOL, COPY, MOVE, LOCK, UNLOCK,
-    UNKNOWN;
-
-    public static Method get(HttpRequest req) {
-        HttpMethod m = req.method();
-        return Method.valueOf(m.name().toUpperCase());
+    @Override
+    public InputStream read(ByteBuf data, Object[] hints) throws Exception {
+        return new ByteBufInputStream(data);
     }
+
+    @Override
+    public void write(InputStream obj, ByteBuf into, Object[] hints) throws Exception {
+        try (final ByteBufOutputStream out = new ByteBufOutputStream(into)) {
+            try (final InputStream in = obj) {
+                Streams.copy(in, out);
+            }
+        }
+    }
+
 }

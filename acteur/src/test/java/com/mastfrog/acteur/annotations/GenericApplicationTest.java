@@ -11,6 +11,7 @@ import com.mastfrog.acteur.server.ServerBuilder;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.giulius.tests.GuiceRunner;
 import com.mastfrog.giulius.tests.TestWith;
+import com.mastfrog.netty.http.client.HttpClient;
 import com.mastfrog.netty.http.test.harness.TestHarness;
 import com.mastfrog.netty.http.test.harness.TestHarness.CallResult;
 import com.mastfrog.netty.http.test.harness.TestHarnessModule;
@@ -52,6 +53,7 @@ public class GenericApplicationTest {
         @Override
         protected void configure() {
             bind(new TypeLiteral<Class<?>[]>(){}).annotatedWith(Names.named("excluded")).toInstance(new Class[0]);
+            bind(HttpClient.class).toInstance(HttpClient.builder().build());
         }
     }
 

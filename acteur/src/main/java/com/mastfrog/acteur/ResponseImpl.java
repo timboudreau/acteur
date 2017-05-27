@@ -24,6 +24,7 @@
 package com.mastfrog.acteur;
 
 import com.google.common.base.Objects;
+import com.google.common.net.MediaType;
 import com.google.inject.Key;
 import com.google.inject.name.Names;
 import com.mastfrog.acteur.ResponseWriter.AbstractOutput;
@@ -35,13 +36,12 @@ import com.mastfrog.acteur.headers.Method;
 import com.mastfrog.acteur.server.ServerModule;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.guicy.scope.ReentrantScope;
+import com.mastfrog.marshallers.netty.NettyContentMarshallers;
 import com.mastfrog.util.Checks;
 import com.mastfrog.util.Codec;
 import com.mastfrog.util.Exceptions;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
-import io.netty.buffer.ByteBufOutputStream;
-import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
@@ -51,6 +51,8 @@ import io.netty.handler.codec.http.DefaultFullHttpResponse;
 import io.netty.handler.codec.http.DefaultHttpContent;
 import io.netty.handler.codec.http.DefaultHttpResponse;
 import io.netty.handler.codec.http.HttpContent;
+import io.netty.handler.codec.http.HttpHeaderNames;
+import io.netty.handler.codec.http.HttpHeaderValues;
 import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpMessage;
 import io.netty.handler.codec.http.HttpResponse;
@@ -60,8 +62,6 @@ import io.netty.handler.codec.http.HttpVersion;
 import io.netty.handler.codec.http.LastHttpContent;
 import io.netty.handler.codec.http.cookie.Cookie;
 import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -75,7 +75,6 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicReference;
 import org.joda.time.Duration;
-import io.netty.handler.ssl.SslContext;
 /**
  * Aggregates the set of headers and a body writer which is used to respond to
  * an HTTP request. Each Acteur has its own which will be merged into the one
@@ -179,10 +178,10 @@ final class ResponseImpl extends Response {
         public HackHttpHeaders(HttpHeaders orig, boolean chunked) {
             this.orig = orig;
             if (chunked) {
-                orig.set(Names.TRANSFER_ENCODING, Values.CHUNKED);
-                orig.remove(Names.CONTENT_LENGTH);
+                orig.set(HttpHeaderNames.TRANSFER_ENCODING, HttpHeaderValues.CHUNKED);
+                orig.remove(HttpHeaderNames.CONTENT_LENGTH);
             } else {
-                orig.remove(Names.TRANSFER_ENCODING);
+                orig.remove(HttpHeaderNames.TRANSFER_ENCODING);
             }
         }
 
@@ -218,7 +217,7 @@ final class ResponseImpl extends Response {
 
         @Override
         public HttpHeaders add(String name, Object value) {
-            if (Names.TRANSFER_ENCODING.equals(name)) {
+            if (HttpHeaderNames.TRANSFER_ENCODING.equals(name)) {
                 return this;
             }
             return orig.add(name, value);
@@ -226,10 +225,10 @@ final class ResponseImpl extends Response {
 
         @Override
         public HttpHeaders add(String name, Iterable<?> values) {
-            if (Names.TRANSFER_ENCODING.equals(name)) {
+            if (HttpHeaderNames.TRANSFER_ENCODING.equals(name)) {
                 return this;
             }
-            if (Names.CONTENT_LENGTH.equals(name)) {
+            if (HttpHeaderNames.CONTENT_LENGTH.equals(name)) {
                 return this;
             }
             return orig.add(name, values);
@@ -237,13 +236,13 @@ final class ResponseImpl extends Response {
 
         @Override
         public HttpHeaders set(String name, Object value) {
-            if (Names.TRANSFER_ENCODING.equals(name)) {
+            if (HttpHeaderNames.TRANSFER_ENCODING.equals(name)) {
                 return this;
             }
-            if (Names.CONTENT_LENGTH.equals(name)) {
+            if (HttpHeaderNames.CONTENT_LENGTH.equals(name)) {
                 return this;
             }
-//            if (Names.CONTENT_ENCODING.equals(name) && !"true".equals(orig.get("X-Internal-Compress"))) {
+//            if (HttpHeaderNames.CONTENT_ENCODING.equals(name) && !"true".equals(orig.get("X-Internal-Compress"))) {
 //                return this;
 //            }
             return orig.set(name, value);
@@ -251,13 +250,13 @@ final class ResponseImpl extends Response {
 
         @Override
         public HttpHeaders set(String name, Iterable<?> values) {
-            if (Names.TRANSFER_ENCODING.equals(name)) {
+            if (HttpHeaderNames.TRANSFER_ENCODING.equals(name)) {
                 return this;
             }
-            if (Names.CONTENT_LENGTH.equals(name)) {
+            if (HttpHeaderNames.CONTENT_LENGTH.equals(name)) {
                 return this;
             }
-            if (Names.CONTENT_ENCODING.equals(name)) {
+            if (HttpHeaderNames.CONTENT_ENCODING.equals(name)) {
                 return this;
             }
             return orig.set(name, values);
@@ -265,13 +264,13 @@ final class ResponseImpl extends Response {
 
         @Override
         public HttpHeaders remove(String name) {
-            if (Names.TRANSFER_ENCODING.equals(name)) {
+            if (HttpHeaderNames.TRANSFER_ENCODING.equals(name)) {
                 return this;
             }
-            if (Names.CONTENT_LENGTH.equals(name)) {
+            if (HttpHeaderNames.CONTENT_LENGTH.equals(name)) {
                 return this;
             }
-            if (Names.CONTENT_ENCODING.equals(name)) {
+            if (HttpHeaderNames.CONTENT_ENCODING.equals(name)) {
                 return this;
             }
             return orig.remove(name);
@@ -279,7 +278,7 @@ final class ResponseImpl extends Response {
 
         @Override
         public HttpHeaders addInt(CharSequence name, int i) {
-            if (Names.CONTENT_LENGTH.contentEquals(name)) {
+            if (HttpHeaderNames.CONTENT_LENGTH.contentEquals(name)) {
                 return this;
             }
             orig.addInt(name, i);
@@ -288,7 +287,7 @@ final class ResponseImpl extends Response {
 
         @Override
         public HttpHeaders addShort(CharSequence name, short s) {
-            if (Names.CONTENT_LENGTH.contentEquals(name)) {
+            if (HttpHeaderNames.CONTENT_LENGTH.contentEquals(name)) {
                 return this;
             }
             orig.addShort(name, s);
@@ -297,7 +296,7 @@ final class ResponseImpl extends Response {
 
         @Override
         public HttpHeaders setInt(CharSequence name, int s) {
-            if (Names.CONTENT_LENGTH.contentEquals(name)) {
+            if (HttpHeaderNames.CONTENT_LENGTH.contentEquals(name)) {
                 return this;
             }
             orig.setInt(name, s);
@@ -306,7 +305,7 @@ final class ResponseImpl extends Response {
 
         @Override
         public HttpHeaders setShort(CharSequence name, short s) {
-            if (Names.CONTENT_LENGTH.contentEquals(name)) {
+            if (HttpHeaderNames.CONTENT_LENGTH.contentEquals(name)) {
                 return this;
             }
             orig.setShort(name, s);
@@ -320,7 +319,7 @@ final class ResponseImpl extends Response {
 
         @Override
         public Iterator<Map.Entry<String, String>> iterator() {
-            return orig.iterator();
+            return orig.iteratorAsString();
         }
 
         @Override
@@ -401,7 +400,8 @@ final class ResponseImpl extends Response {
         for (Iterator<Entry<?>> it = headers.iterator(); it.hasNext();) {
             Entry<?> e = it.next();
             // Do prune setting the same cookie twice
-            if (decorator.name().equals(HttpHeaders.Names.SET_COOKIE) && e.decorator.name().equals(HttpHeaders.Names.SET_COOKIE)) {
+            if (decorator.name().equalsIgnoreCase(HttpHeaderNames.SET_COOKIE.toString()) 
+                    && e.decorator.name().equalsIgnoreCase(HttpHeaderNames.SET_COOKIE.toString())) {
                 if (compareCookies(e.value, value)) {
                     it.remove();
                     continue;
@@ -418,7 +418,7 @@ final class ResponseImpl extends Response {
         // For now, special handling for Allow:
         // Longer term, should HeaderValueType.isArray() and a way to
         // coalesce
-        if (!old.isEmpty() && decorator == Headers.ALLOW) {
+        if (!old.isEmpty() && decorator.name().equalsIgnoreCase(Headers.ALLOW.name())) {
             old.add(e);
             Set<Method> all = new HashSet<>();
             for (Entry<?> en : old) {
@@ -659,40 +659,24 @@ final class ResponseImpl extends Response {
         }
     }
 
-    private ByteBuf writeMessage(Event<?> evt, Charset charset) {
-        Object message = getMessage();
+    private ByteBuf writeMessage(Event<?> evt, Charset charset) throws Exception {
         if (message == null) {
             return null;
         }
         if (message instanceof ByteBuf) {
             return (ByteBuf) message;
         }
-        if (message instanceof byte[]) {
-            return Unpooled.wrappedBuffer((byte[]) message);
-        }
-        if (message instanceof ByteBuffer) {
-            return Unpooled.wrappedBuffer(((ByteBuffer) message));
-        }
-        if (message instanceof CharSequence) {
-            return evt.getChannel().alloc().buffer().writeBytes(message.toString().getBytes(charset));
-        }
         Page p = Page.get();
         if (p == null) {
             throw new IllegalStateException("Call to write message outside request scope");
         }
-        Application app = p.getApplication();
-        Dependencies deps = app.getDependencies();
-        Codec codec = deps.getInstance(Codec.class);
-        ByteBuf result = evt.getChannel().alloc().buffer();
-        try (OutputStream out = new ByteBufOutputStream(result)) {
-            codec.writeValue(message, out);
-            return result;
-        } catch (IOException ex) {
-            return Exceptions.chuck(ex);
-        }
+        NettyContentMarshallers marshallers = p.getApplication().getDependencies().getInstance(NettyContentMarshallers.class);
+        ByteBuf buf = evt.getChannel().alloc().ioBuffer();
+        marshallers.write(message, buf, charset);
+        return buf;
     }
 
-    public HttpResponse toResponse(Event<?> evt, Charset charset) {
+    public HttpResponse toResponse(Event<?> evt, Charset defaultCharset) throws Exception {
         if (!canHaveBody(getResponseCode()) && (message != null || listener != null)) {
             if (listener != ChannelFutureListener.CLOSE) {
                 System.err.println(evt
@@ -701,7 +685,11 @@ final class ResponseImpl extends Response {
                         + " - " + listener);
             }
         }
-        ByteBuf buf = writeMessage(evt, charset);
+        MediaType mimeType = get(Headers.CONTENT_TYPE);
+        if (mimeType != null && mimeType.charset().isPresent()) {
+            defaultCharset = mimeType.charset().get();
+        }
+        ByteBuf buf = writeMessage(evt, defaultCharset);
         HttpResponse resp;
         if (buf != null) {
             long size = buf.readableBytes();
@@ -718,7 +706,7 @@ final class ResponseImpl extends Response {
             if (this.status == NOT_MODIFIED) {
                 if (e.decorator == Headers.CONTENT_LENGTH) {
                     continue;
-                } else if (HttpHeaders.Names.CONTENT_ENCODING.equals(e.decorator.name())) {
+                } else if (HttpHeaderNames.CONTENT_ENCODING.equals(e.decorator.name())) {
                     continue;
                 } else if (Headers.TRANSFER_ENCODING.name().equals(e.decorator.name())) {
                     continue;

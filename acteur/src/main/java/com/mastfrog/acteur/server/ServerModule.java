@@ -59,6 +59,7 @@ import com.mastfrog.acteurbase.Chain;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.guicy.annotations.Defaults;
 import com.mastfrog.guicy.scope.ReentrantScope;
+import com.mastfrog.marshallers.netty.NettyContentMarshallers;
 import com.mastfrog.parameters.KeysValues;
 import com.mastfrog.settings.MutableSettings;
 import com.mastfrog.settings.Settings;
@@ -77,7 +78,7 @@ import io.netty.channel.ChannelOption;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.codec.http.Cookie;
 import io.netty.handler.codec.http.CookieDecoder;
-import io.netty.handler.codec.http.HttpHeaders;
+import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.util.CharsetUtil;
 import java.io.IOException;
 import java.io.InputStream;
@@ -395,8 +396,22 @@ public class ServerModule<A extends Application> extends AbstractModule {
         bind(ScheduledExecutorService.class).annotatedWith(Names.named(DELAY_EXECUTOR)).toProvider(DelayExecutorProvider.class);
         // allow Chain<Acteur> to be injected
         bind(new CL()).toProvider(ChainProvider.class);
+        bind(NettyContentMarshallers.class).toProvider(MarshallersProvider.class).in(Scopes.SINGLETON);
     }
 
+    private static final class MarshallersProvider implements Provider<NettyContentMarshallers> {
+        final NettyContentMarshallers marshallers;
+        @Inject
+        public MarshallersProvider(ObjectMapper mapper) {
+            marshallers = NettyContentMarshallers.getDefault(mapper);
+        }
+
+        @Override
+        public NettyContentMarshallers get() {
+            return marshallers;
+        }
+    }
+    
     static class CL extends TypeLiteral<Chain<Acteur>> {
 
     }
@@ -765,7 +780,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
         @Override
         public Set<Cookie> get() {
             HttpEvent evt = ev.get();
-            String h = evt.getHeader(HttpHeaders.Names.COOKIE);
+            String h = evt.getHeader(HttpHeaderNames.COOKIE.toString());
             if (h != null) {
                 Set<Cookie> result = CookieDecoder.decode(h);
                 if (result != null) {

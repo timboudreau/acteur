@@ -66,7 +66,7 @@ final class EventImpl implements HttpEvent {
 
     public EventImpl(HttpRequest req, PathFactory paths) {
         this.req = req;
-        this.path = paths.toPath(req.getUri());
+        this.path = paths.toPath(req.uri());
         address = new InetSocketAddress("timboudreau.com", 8985); //XXX for tests
         this.channel = null;
         Codec codec = new ServerModule.CodecImpl(Providers.of(new ObjectMapper()));
@@ -75,7 +75,7 @@ final class EventImpl implements HttpEvent {
 
     public EventImpl(HttpRequest req, SocketAddress addr, Channel channel, PathFactory paths, ContentConverter converter) {
         this.req = req;
-        this.path = paths.toPath(req.getUri());
+        this.path = paths.toPath(req.uri());
         address = addr;
         this.channel = channel;
         this.converter = converter;
@@ -83,7 +83,7 @@ final class EventImpl implements HttpEvent {
 
     @Override
     public String toString() {
-        return req.getMethod() + "\t" + req.getUri();
+        return req.method() + "\t" + req.uri();
     }
 
     public void setNeverKeepAlive(boolean val) {
@@ -172,7 +172,7 @@ final class EventImpl implements HttpEvent {
     @Override
     public synchronized Map<String, String> getParametersAsMap() {
         if (paramsMap == null) {
-            QueryStringDecoder queryStringDecoder = new QueryStringDecoder(req.getUri());
+            QueryStringDecoder queryStringDecoder = new QueryStringDecoder(req.uri());
             Map<String, List<String>> params = queryStringDecoder.parameters();
             Map<String, String> result = new HashMap<>();
             for (Map.Entry<String, List<String>> e : params.entrySet()) {

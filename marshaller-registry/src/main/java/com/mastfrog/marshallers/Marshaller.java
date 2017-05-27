@@ -1,7 +1,7 @@
-/* 
+/*
  * The MIT License
  *
- * Copyright 2013 Tim Boudreau.
+ * Copyright 2017 Tim Boudreau.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,25 +21,35 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.mastfrog.acteur.headers;
-
-import io.netty.handler.codec.http.HttpMethod;
-import io.netty.handler.codec.http.HttpRequest;
+package com.mastfrog.marshallers;
 
 /**
- * Enum of standard HTTP methods
+ * Reads and writes objects into stream-like data stores.
  *
  * @author Tim Boudreau
  */
-public enum Method implements com.mastfrog.acteur.util.HttpMethod {
+public interface Marshaller<T, R> {
 
-    GET, PUT, POST, OPTIONS, HEAD, DELETE, TRACE, CONNECT,
-    // WEBDAV
-    PROPFIND, PROPPATCH, MKCOL, COPY, MOVE, LOCK, UNLOCK,
-    UNKNOWN;
+    /**
+     * Read an object from the passed data store.
+     *
+     * @param data The data, such as a ByteBuffer
+     * @param hints Type-specific hints, such as a Charset to use for string
+     * conversion to bytes.
+     * @return An object
+     * @throws Exception If something goes wrong
+     */
+    T read(R data, Object[] hints) throws Exception;
 
-    public static Method get(HttpRequest req) {
-        HttpMethod m = req.method();
-        return Method.valueOf(m.name().toUpperCase());
-    }
+    /**
+     * Write an objecct into the passed data store.
+     *
+     * @param obj The object to write
+     * @param into The store to write it into
+     * @param hints Type-specific hints, such as a Charset to use for string
+     * conversion to bytes.
+     * @throws Exception If something goes wrong
+     */
+    void write(T obj, R into, Object[] hints) throws Exception;
+
 }

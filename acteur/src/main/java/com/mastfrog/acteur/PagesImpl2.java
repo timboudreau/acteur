@@ -267,7 +267,7 @@ class PagesImpl2 {
             } catch (Throwable ex) {
                 try {
                     if (channel.isOpen()) {
-                        ByteBuf buf = channel.alloc().buffer();
+                        ByteBuf buf = channel.alloc().ioBuffer();
                         try (PrintStream ps = new PrintStream(new ByteBufOutputStream(buf))) {
                             ex.printStackTrace(ps);
                         }

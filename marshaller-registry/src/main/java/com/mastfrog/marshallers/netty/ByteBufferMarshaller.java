@@ -1,7 +1,7 @@
-/* 
+/*
  * The MIT License
  *
- * Copyright 2013 Tim Boudreau.
+ * Copyright 2017 Tim Boudreau.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,25 +21,32 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.mastfrog.acteur.headers;
+package com.mastfrog.marshallers.netty;
 
-import io.netty.handler.codec.http.HttpMethod;
-import io.netty.handler.codec.http.HttpRequest;
+import io.netty.buffer.ByteBuf;
+import java.nio.ByteBuffer;
+import com.mastfrog.marshallers.Marshaller;
 
 /**
- * Enum of standard HTTP methods
  *
  * @author Tim Boudreau
  */
-public enum Method implements com.mastfrog.acteur.util.HttpMethod {
+final class ByteBufferMarshaller implements Marshaller<ByteBuffer, ByteBuf> {
 
-    GET, PUT, POST, OPTIONS, HEAD, DELETE, TRACE, CONNECT,
-    // WEBDAV
-    PROPFIND, PROPPATCH, MKCOL, COPY, MOVE, LOCK, UNLOCK,
-    UNKNOWN;
-
-    public static Method get(HttpRequest req) {
-        HttpMethod m = req.method();
-        return Method.valueOf(m.name().toUpperCase());
+    @Override
+    public ByteBuffer read(ByteBuf data, Object[] hints) throws Exception {
+        if (data.isDirect()) {
+            return data.internalNioBuffer(0, data.readableBytes());
+        } else {
+            ByteBuffer buffer = ByteBuffer.allocateDirect(data.readableBytes());
+            data.readBytes(buffer);
+            return (ByteBuffer) buffer.flip();
+        }
     }
+
+    @Override
+    public void write(ByteBuffer obj, ByteBuf into, Object[] hints) throws Exception {
+        into.writeBytes(obj);
+    }
+
 }
