@@ -4,7 +4,7 @@
     <parent>
         <artifactId>mastfrog-parent</artifactId>
         <groupId>com.mastfrog</groupId>
-        <version>1.7.0-dev</version>
+        <version>1.7.0</version>
         <relativePath/>
     </parent>
     <artifactId>acteur-mongo</artifactId>

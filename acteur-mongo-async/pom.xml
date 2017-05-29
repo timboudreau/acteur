@@ -4,7 +4,7 @@
     <parent>
         <groupId>com.mastfrog</groupId>
         <artifactId>acteur-parent</artifactId>
-        <version>1.7.0-dev</version>
+        <version>1.7.0</version>
     </parent>
     <artifactId>acteur-mongo-async</artifactId>
     <dependencies>
