@@ -6,7 +6,6 @@ import com.mastfrog.giulius.tests.TestWith;
 import static com.mastfrog.netty.http.client.StateType.Closed;
 import com.mastfrog.netty.http.test.harness.TestHarness;
 import io.netty.handler.codec.http.HttpResponseStatus;
-import static io.netty.handler.codec.http.HttpResponseStatus.CONFLICT;
 import static io.netty.handler.codec.http.HttpResponseStatus.OK;
 import org.joda.time.Duration;
 import org.junit.Test;

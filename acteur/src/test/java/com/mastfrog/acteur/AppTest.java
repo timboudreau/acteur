@@ -15,7 +15,7 @@ import com.google.inject.name.Names;
 import com.mastfrog.acteur.Acteur.BaseState;
 import com.mastfrog.giulius.tests.GuiceRunner;
 import com.mastfrog.giulius.tests.TestWith;
-import com.mastfrog.guicy.scope.ReentrantScope;
+import com.mastfrog.giulius.scope.ReentrantScope;
 import com.mastfrog.acteur.AppTest.M;
 import com.mastfrog.acteur.util.BasicCredentials;
 import com.mastfrog.acteur.util.CacheControl;

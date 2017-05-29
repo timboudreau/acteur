@@ -26,7 +26,7 @@ package com.mastfrog.acteur.resources.markup;
 import com.google.inject.AbstractModule;
 import com.google.inject.name.Names;
 import com.mastfrog.acteur.resources.StaticResources;
-import com.mastfrog.guicy.scope.ReentrantScope;
+import com.mastfrog.giulius.scope.ReentrantScope;
 import com.mastfrog.healthtracker.MarkupFiles;
 
 /**

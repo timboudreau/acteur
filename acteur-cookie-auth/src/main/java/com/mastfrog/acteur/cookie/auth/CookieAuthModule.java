@@ -3,7 +3,7 @@ package com.mastfrog.acteur.cookie.auth;
 import com.google.inject.AbstractModule;
 import com.google.inject.TypeLiteral;
 import com.mastfrog.acteur.auth.AuthenticationActeur;
-import com.mastfrog.guicy.scope.ReentrantScope;
+import com.mastfrog.giulius.scope.ReentrantScope;
 
 /**
  * Module which sets up bindings for Cookie authentication, if provided an

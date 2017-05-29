@@ -33,7 +33,7 @@ import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.acteurbase.AbstractActeur;
 import com.mastfrog.acteurbase.ActeurResponseFactory;
 import com.mastfrog.giulius.Dependencies;
-import com.mastfrog.guicy.scope.ReentrantScope;
+import com.mastfrog.giulius.scope.ReentrantScope;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.util.Checks;
 import com.mastfrog.util.Codec;

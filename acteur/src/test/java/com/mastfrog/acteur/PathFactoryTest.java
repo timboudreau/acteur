@@ -1,7 +1,7 @@
 package com.mastfrog.acteur;
 
 import com.google.inject.name.Names;
-import com.mastfrog.guicy.annotations.Defaults;
+import com.mastfrog.giulius.annotations.Defaults;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.giulius.tests.GuiceTest;
 import com.mastfrog.giulius.tests.TestWith;

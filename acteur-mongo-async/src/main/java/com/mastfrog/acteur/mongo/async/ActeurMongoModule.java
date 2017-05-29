@@ -31,7 +31,7 @@ import com.google.inject.name.Names;
 import com.google.inject.util.Providers;
 import com.mastfrog.giulius.mongodb.async.GiuliusMongoAsyncModule;
 import com.mastfrog.giulius.mongodb.async.MongoAsyncConfig;
-import com.mastfrog.guicy.scope.ReentrantScope;
+import com.mastfrog.giulius.scope.ReentrantScope;
 import com.mastfrog.acteur.mongo.async.WriteCursorContentsAsJSON.CursorResult;
 import com.mastfrog.acteur.mongo.async.WriteCursorContentsAsJSON.SingleResult;
 import com.mastfrog.giulius.mongodb.async.DynamicCodecs;

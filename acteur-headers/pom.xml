@@ -18,10 +18,12 @@
             <groupId>io.netty</groupId>
             <artifactId>netty-codec-http</artifactId>
         </dependency>
+        <!--
         <dependency>
             <groupId>joda-time</groupId>
             <artifactId>joda-time</artifactId>
         </dependency>
+        -->
     </dependencies>
     <url>https://github.com/timboudreau/acteur</url>
     <scm>

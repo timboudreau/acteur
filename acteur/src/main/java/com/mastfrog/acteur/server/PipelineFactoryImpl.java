@@ -38,6 +38,7 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.codec.DecoderException;
 import io.netty.handler.codec.MessageToByteEncoder;
 import io.netty.handler.codec.http.HttpContentCompressor;
+import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpRequestDecoder;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseEncoder;
@@ -79,21 +80,20 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
         // Create a default pipeline implementation.
         ChannelPipeline pipeline = ch.pipeline();
         decorator.onCreatePipeline(pipeline);
-        ChannelHandler decoder = new HackHttpRequestDecoder();
+        ChannelHandler decoder = new HttpRequestDecoder();
         ChannelHandler encoder = new HttpResponseEncoder();
 //        SSLEngine engine = SecureChatSslContextFactory.getServerContext().createSSLEngine();
 //        engine.setUseClientMode(false);
 //        pipeline.addLast("ssl", new SslHandler(engine));
 
         pipeline.addLast(PipelineDecorator.DECODER, decoder);
-        // Uncomment the following line if you don't want to handle HttpChunks.
+        pipeline.addLast(PipelineDecorator.ENCODER, encoder);
         if (aggregateChunks) {
             ChannelHandler aggregator = new HttpObjectAggregator(maxContentLength);
             pipeline.addLast(PipelineDecorator.AGGREGATOR, aggregator);
         }
 
-        pipeline.addLast(PipelineDecorator.BYTES, messageBufEncoder);
-        pipeline.addLast(PipelineDecorator.ENCODER, encoder);
+//        pipeline.addLast(PipelineDecorator.BYTES, messageBufEncoder);
 
         // Remove the following line if you don't want automatic content compression.
         if (httpCompression) {
@@ -122,45 +122,6 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
                 return null;
             }
             return super.beginEncode(headers, acceptEncoding);
-        }
-    }
-
-    static class HackHttpRequestDecoder extends HttpRequestDecoder {
-
-        // See https://github.com/netty/netty/issues/3247
-
-        protected void callDecode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) {
-            try {
-                while (in.isReadable()) {
-                    int outSize = out.size();
-                    int oldInputLength = in.readableBytes();
-                    decode(ctx, in, out);
-
-                    // Check if this handler was removed before continuing the loop.
-                    // If it was removed, it is not safe to continue to operate on the buffer.
-                    //
-                    // See https://github.com/netty/netty/issues/1664
-                    if (ctx.isRemoved()) {
-                        break;
-                    }
-
-                    if (outSize == out.size()) {
-                        if (oldInputLength == in.readableBytes()) {
-                            break;
-                        } else {
-                            continue;
-                        }
-                    }
-
-                    if (isSingleDecode()) {
-                        break;
-                    }
-                }
-            } catch (DecoderException e) {
-                throw e;
-            } catch (Throwable cause) {
-                throw new DecoderException(cause);
-            }
         }
     }
 }

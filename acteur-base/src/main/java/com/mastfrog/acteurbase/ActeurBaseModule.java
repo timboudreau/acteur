@@ -24,7 +24,7 @@
 package com.mastfrog.acteurbase;
 
 import com.google.inject.AbstractModule;
-import com.mastfrog.guicy.scope.ReentrantScope;
+import com.mastfrog.giulius.scope.ReentrantScope;
 
 /**
  *

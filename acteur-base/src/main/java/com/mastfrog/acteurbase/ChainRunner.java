@@ -26,7 +26,7 @@ package com.mastfrog.acteurbase;
 import com.google.inject.ProvisionException;
 import com.mastfrog.acteurbase.Deferral.DeferredCode;
 import com.mastfrog.acteurbase.Deferral.Resumer;
-import com.mastfrog.guicy.scope.ReentrantScope;
+import com.mastfrog.giulius.scope.ReentrantScope;
 import com.mastfrog.util.Checks;
 import com.mastfrog.util.thread.QuietAutoCloseable;
 import java.util.Iterator;

@@ -32,7 +32,7 @@ import com.mastfrog.acteurbase.Deferral.Resumer;
 import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.giulius.ShutdownHookRegistry;
-import com.mastfrog.guicy.scope.ReentrantScope;
+import com.mastfrog.giulius.scope.ReentrantScope;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import java.io.IOException;
 import java.util.LinkedList;
