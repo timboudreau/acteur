@@ -62,7 +62,10 @@ import io.netty.handler.codec.http.HttpMessage;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import static io.netty.handler.codec.http.HttpResponseStatus.NOT_MODIFIED;
+import static io.netty.handler.codec.http.HttpResponseStatus.NO_CONTENT;
 import io.netty.handler.codec.http.HttpVersion;
+import static io.netty.handler.codec.http.HttpVersion.HTTP_1_0;
+import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
 import io.netty.handler.codec.http.LastHttpContent;
 import io.netty.handler.codec.http.cookie.Cookie;
 import java.io.IOException;
@@ -174,214 +177,6 @@ final class ResponseImpl extends Response {
 
     Duration getDelay() {
         return delay;
-    }
-
-    static class HackHttpHeaders extends HttpHeaders {
-
-        private final HttpHeaders orig;
-
-        public HackHttpHeaders(HttpHeaders orig, boolean chunked) {
-            this.orig = orig;
-            if (chunked) {
-                orig.set(HttpHeaderNames.TRANSFER_ENCODING, HttpHeaderValues.CHUNKED);
-                orig.remove(HttpHeaderNames.CONTENT_LENGTH);
-            } else {
-                orig.remove(HttpHeaderNames.TRANSFER_ENCODING);
-            }
-        }
-
-        @Override
-        public String get(String name) {
-            return orig.get(name);
-        }
-
-        @Override
-        public List<String> getAll(String name) {
-            return orig.getAll(name);
-        }
-
-        @Override
-        public List<Map.Entry<String, String>> entries() {
-            return orig.entries();
-        }
-
-        @Override
-        public boolean contains(String name) {
-            return orig.contains(name);
-        }
-
-        @Override
-        public boolean isEmpty() {
-            return orig.isEmpty();
-        }
-
-        @Override
-        public Set<String> names() {
-            return orig.names();
-        }
-
-        @Override
-        public HttpHeaders add(String name, Object value) {
-            if (HttpHeaderNames.TRANSFER_ENCODING.equals(name)) {
-                return this;
-            }
-            return orig.add(name, value);
-        }
-
-        @Override
-        public HttpHeaders add(String name, Iterable<?> values) {
-            if (HttpHeaderNames.TRANSFER_ENCODING.equals(name)) {
-                return this;
-            }
-            if (HttpHeaderNames.CONTENT_LENGTH.equals(name)) {
-                return this;
-            }
-            return orig.add(name, values);
-        }
-
-        @Override
-        public HttpHeaders set(String name, Object value) {
-            if (HttpHeaderNames.TRANSFER_ENCODING.equals(name)) {
-                return this;
-            }
-            if (HttpHeaderNames.CONTENT_LENGTH.equals(name)) {
-                return this;
-            }
-//            if (HttpHeaderNames.CONTENT_ENCODING.equals(name) && !"true".equals(orig.get("X-Internal-Compress"))) {
-//                return this;
-//            }
-            return orig.set(name, value);
-        }
-
-        @Override
-        public HttpHeaders set(String name, Iterable<?> values) {
-            if (HttpHeaderNames.TRANSFER_ENCODING.equals(name)) {
-                return this;
-            }
-            if (HttpHeaderNames.CONTENT_LENGTH.equals(name)) {
-                return this;
-            }
-            if (HttpHeaderNames.CONTENT_ENCODING.equals(name)) {
-                return this;
-            }
-            return orig.set(name, values);
-        }
-
-        @Override
-        public HttpHeaders remove(String name) {
-            if (HttpHeaderNames.TRANSFER_ENCODING.equals(name)) {
-                return this;
-            }
-            if (HttpHeaderNames.CONTENT_LENGTH.equals(name)) {
-                return this;
-            }
-            if (HttpHeaderNames.CONTENT_ENCODING.equals(name)) {
-                return this;
-            }
-            return orig.remove(name);
-        }
-
-        @Override
-        public HttpHeaders addInt(CharSequence name, int i) {
-            if (HttpHeaderNames.CONTENT_LENGTH.contentEquals(name)) {
-                return this;
-            }
-            orig.addInt(name, i);
-            return this;
-        }
-
-        @Override
-        public HttpHeaders addShort(CharSequence name, short s) {
-            if (HttpHeaderNames.CONTENT_LENGTH.contentEquals(name)) {
-                return this;
-            }
-            orig.addShort(name, s);
-            return this;
-        }
-
-        @Override
-        public HttpHeaders setInt(CharSequence name, int s) {
-            if (HttpHeaderNames.CONTENT_LENGTH.contentEquals(name)) {
-                return this;
-            }
-            orig.setInt(name, s);
-            return this;
-        }
-
-        @Override
-        public HttpHeaders setShort(CharSequence name, short s) {
-            if (HttpHeaderNames.CONTENT_LENGTH.contentEquals(name)) {
-                return this;
-            }
-            orig.setShort(name, s);
-            return this;
-        }
-
-        @Override
-        public HttpHeaders clear() {
-            return orig.clear();
-        }
-
-        @Override
-        public Iterator<Map.Entry<String, String>> iterator() {
-            return orig.iteratorAsString();
-        }
-
-        @Override
-        public Integer getInt(CharSequence cs) {
-            return orig.getInt(cs);
-        }
-
-        @Override
-        public int getInt(CharSequence cs, int i) {
-            return orig.getInt(cs);
-        }
-
-        @Override
-        public Short getShort(CharSequence cs) {
-            return orig.getShort(cs);
-        }
-
-        @Override
-        public short getShort(CharSequence cs, short s) {
-            return orig.getShort(cs, s);
-        }
-
-        @Override
-        public Long getTimeMillis(CharSequence cs) {
-            return orig.getTimeMillis(cs);
-        }
-
-        @Override
-        public long getTimeMillis(CharSequence cs, long l) {
-            return orig.getTimeMillis(cs, l);
-        }
-
-        @Override
-        public Iterator<Map.Entry<CharSequence, CharSequence>> iteratorCharSequence() {
-            return orig.iteratorCharSequence();
-        }
-
-        @Override
-        public int size() {
-            return orig.size();
-        }
-    }
-
-    private static class HackHttpResponse extends DefaultHttpResponse {
-
-        private final HttpHeaders hdrs;
-        // Workaround for https://github.com/netty/netty/issues/1326
-
-        HackHttpResponse(HttpResponseStatus status, boolean chunked) {
-            super(HttpVersion.HTTP_1_1, status);
-            hdrs = new HackHttpHeaders(super.headers(), chunked);
-        }
-
-        @Override
-        public HttpHeaders headers() {
-            return hdrs;
-        }
     }
 
     private String cookieName(Object o) {
@@ -506,8 +301,28 @@ final class ResponseImpl extends Response {
         }
     }
 
-    static boolean isKeepAlive(Event<?> evt) {
-        return evt instanceof HttpEvent ? ((HttpEvent) evt).isKeepAlive() : false;
+    private boolean hasTransferEncodingChunked() {
+        for (Entry<?> entry : headers) {
+            if (Headers.TRANSFER_ENCODING.is(entry.decorator.name())) {
+                return Strings.charSequencesEqual(HttpHeaderValues.CHUNKED, entry.stringValue(), true);
+            }
+        }
+        return false;
+    }
+
+    private boolean isHttp10StyleResponse() {
+        // If no content length is set, but a listener is present, and transfer encoding
+        // is not set, then we are going to fire raw ByteBufs down the pipe and we need
+        // to close the connection to indicate that the response is finished
+        return listener != null && !chunked && !hasTransferEncodingChunked();
+    }
+
+    boolean isKeepAlive(Event<?> evt) {
+        boolean result = evt instanceof HttpEvent ? ((HttpEvent) evt).isKeepAlive() : false;
+        if (result) {
+            result = !isHttp10StyleResponse();
+        }
+        return result;
     }
 
     void setWriter(ResponseWriter w, Charset charset, ByteBufAllocator allocator, Codec mapper, Event<?> evt, ExecutorService svc) {
@@ -699,17 +514,18 @@ final class ResponseImpl extends Response {
         if (buf != null) {
             long size = buf.readableBytes();
             add(Headers.CONTENT_LENGTH, size);
-            
+
             DefaultFullHttpResponse r = new DefaultFullHttpResponse(
                     HttpVersion.HTTP_1_1, getResponseCode(), buf);
             resp = r;
         } else {
-            resp = new HackHttpResponse(getResponseCode(), this.status == NOT_MODIFIED ? false : chunked);
+            HttpVersion version = isHttp10StyleResponse() ? HTTP_1_0 : HTTP_1_1;
+            resp = new DefaultHttpResponse(version, getResponseCode(), false, false);
         }
         for (Entry<?> e : headers) {
             // Remove things which cause problems for non-modified responses -
             // browsers will hold the connection open regardless
-            if (this.status == NOT_MODIFIED) {
+            if (this.status == NOT_MODIFIED || this.status == NO_CONTENT) {
                 if (e.decorator.is(CONTENT_LENGTH)) {
                     continue;
                 } else if (e.decorator.is(CONTENT_ENCODING)) {
@@ -721,11 +537,12 @@ final class ResponseImpl extends Response {
             e.write(resp);
         }
         // Ensure a 0 content length is present for items with no content
-        if (message == null && listener == null && resp.headers() instanceof HackHttpHeaders) {
-            ((HackHttpHeaders) resp.headers()).orig.set(Headers.CONTENT_LENGTH.name(), 0);
-            ((HackHttpHeaders) resp.headers()).remove(Headers.TRANSFER_ENCODING.name());
-            ((HackHttpHeaders) resp.headers()).remove(Headers.CONTENT_ENCODING.name());
-        }
+
+//        if (message == null && listener == null && resp.headers() instanceof HackHttpHeaders) {
+//            ((HackHttpHeaders) resp.headers()).orig.set(Headers.CONTENT_LENGTH.name(), 0);
+//            ((HackHttpHeaders) resp.headers()).remove(Headers.TRANSFER_ENCODING.name());
+//            ((HackHttpHeaders) resp.headers()).remove(Headers.CONTENT_ENCODING.name());
+//        }
         return resp;
     }
 
@@ -762,6 +579,10 @@ final class ResponseImpl extends Response {
 
         public void write(HttpMessage msg) {
             Headers.write(decorator, value, msg);
+        }
+
+        public String stringValue() {
+            return decorator.toString(value);
         }
 
         @Override

@@ -614,10 +614,10 @@ public class Application implements Iterable<Page> {
     protected void send404(RequestID id, Event<?> event, Channel channel) {
         HttpResponse response = createNotFoundResponse(event);
         onBeforeRespond(id, event, response.getStatus());
-        ChannelFutureListener closer = !ResponseImpl.isKeepAlive(event) ? ChannelFutureListener.CLOSE : null;
         ChannelFuture fut = channel.writeAndFlush(response);
-        if (closer != null) {
-            fut.addListener(closer);
+        boolean keepAlive = event instanceof HttpEvent ? ((HttpEvent) event).isKeepAlive() : false;
+        if (keepAlive) {
+            fut.addListener(ChannelFutureListener.CLOSE);
         }
     }
 

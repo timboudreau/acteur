@@ -77,15 +77,15 @@ import org.joda.time.Duration;
 public abstract class Page implements Iterable<Acteur> {
 
     private static final AutoCloseThreadLocal<Page> CURRENT_PAGE = new AutoCloseThreadLocal<>();
-    protected final ResponseHeaders responseHeaders = new ResponseHeaders();
-    private final List<Object> acteurs = new ArrayList<>(15);
+    protected ResponseHeaders responseHeaders;
+    private final List<Object> acteurs = new ArrayList<>(10);
     volatile Application application;
 
     protected Page() {
     }
 
     public final ResponseHeaders getResponseHeaders() {
-        return responseHeaders;
+        return responseHeaders == null ? responseHeaders = new ResponseHeaders() : responseHeaders;
     }
 
     public final void add(Acteur action) {
@@ -211,8 +211,8 @@ public abstract class Page implements Iterable<Acteur> {
     }
 
     protected void decorateResponse(Event<?> event, Acteur acteur, HttpResponse response) {
-        final ResponseHeaders properties = getResponseHeaders();
-        if (!properties.modified()) {
+        final ResponseHeaders properties = responseHeaders;
+        if (properties == null || !properties.modified()) {
             return;
         }
 

@@ -53,7 +53,6 @@ public final class HttpCallRegistryLoader implements Iterable<Class<? extends Pa
                             continue;
                         }
 //                        types.add(Class.forName(line));
-                        System.err.println("Numble load '" + line + "'");
                         types.add(cl.loadClass(line));
                     }
                 } catch (ClassNotFoundException ex) {

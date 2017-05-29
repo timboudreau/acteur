@@ -48,8 +48,14 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
+import static io.netty.handler.codec.http.HttpHeaderNames.CONTENT_ENCODING;
+import static io.netty.handler.codec.http.HttpHeaderNames.TRANSFER_ENCODING;
+import io.netty.handler.codec.http.HttpHeaders;
+import static io.netty.handler.codec.http.HttpHeaders.Names.CONTENT_LENGTH;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
+import static io.netty.handler.codec.http.HttpResponseStatus.NOT_MODIFIED;
+import static io.netty.handler.codec.http.HttpResponseStatus.NO_CONTENT;
 import io.netty.handler.codec.http.HttpVersion;
 import java.io.PrintStream;
 import java.nio.charset.Charset;
@@ -178,7 +184,7 @@ class PagesImpl2 {
         public void receive(final Acteur acteur, final com.mastfrog.acteur.State state, final ResponseImpl response) {
             if (response.isModified() && response.status != null) {
                 // Actually send the response
-                try (QuietAutoCloseable clos = Page.set(application.getDependencies().getInstance(Page.class))){
+                try (QuietAutoCloseable clos = Page.set(application.getDependencies().getInstance(Page.class))) {
                     // Abort if the client disconnected
                     if (!channel.isOpen()) {
                         latch.countDown();
@@ -195,6 +201,17 @@ class PagesImpl2 {
 
                     // Allow the page to add headers
                     state.getLockedPage().decorateResponse(event, acteur, httpResponse);
+
+                    // As long as Page.decorateResponse exists we need to sanity check this here:
+                    switch (httpResponse.status().code()) {
+                        case 204:
+                        case 304:
+                            HttpHeaders hdrs = httpResponse.headers();
+                            hdrs.remove(CONTENT_LENGTH);
+                            hdrs.remove(TRANSFER_ENCODING);
+                            hdrs.remove(CONTENT_ENCODING);
+                    }
+
                     // Abort if the client disconnected
                     if (!channel.isOpen()) {
                         latch.countDown();
@@ -395,6 +412,7 @@ class PagesImpl2 {
     }
 
     static class ScopeWrapIterator<T> implements Iterator<T> {
+
         private final ReentrantScope scope;
 
         private final Iterator<T> delegate;
