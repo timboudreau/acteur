@@ -30,6 +30,7 @@ import com.mastfrog.acteur.util.Connection;
 import com.mastfrog.acteur.util.Realm;
 import com.mastfrog.util.Checks;
 import io.netty.handler.codec.http.Cookie;
+import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpMessage;
 import java.net.URI;
@@ -57,36 +58,36 @@ public final class Headers {
 
     private Headers() {
     }
-    public static final HeaderValueType<DateTime> DATE = new DateTimeHeader(HttpHeaders.Names.DATE.toString());
-    public static final HeaderValueType<DateTime> LAST_MODIFIED = new DateTimeHeader(HttpHeaders.Names.LAST_MODIFIED.toString());
-    public static final HeaderValueType<DateTime> EXPIRES = new DateTimeHeader(HttpHeaders.Names.EXPIRES.toString());
-    public static final HeaderValueType<DateTime> IF_MODIFIED_SINCE = new DateTimeHeader(HttpHeaders.Names.IF_MODIFIED_SINCE.toString());
-    public static final HeaderValueType<DateTime> IF_UNMODIFIED_SINCE = new DateTimeHeader(HttpHeaders.Names.IF_UNMODIFIED_SINCE.toString());
-    public static final HeaderValueType<DateTime> RETRY_AFTER_DATE = new DateTimeHeader(HttpHeaders.Names.RETRY_AFTER.toString());
-    public static final HeaderValueType<Duration> RETRY_AFTER_DURATION = new DurationHeader(HttpHeaders.Names.RETRY_AFTER.toString());
-//    public static final HeaderValueType<Host> HOST = new HostHeader(HttpHeaders.Names.HOST);
-    public static final HeaderValueType<String> HOST = new HostHeader(HttpHeaders.Names.HOST.toString());
+    public static final HeaderValueType<DateTime> DATE = new DateTimeHeader(HttpHeaderNames.DATE);
+    public static final HeaderValueType<DateTime> LAST_MODIFIED = new DateTimeHeader(HttpHeaderNames.LAST_MODIFIED);
+    public static final HeaderValueType<DateTime> EXPIRES = new DateTimeHeader(HttpHeaderNames.EXPIRES);
+    public static final HeaderValueType<DateTime> IF_MODIFIED_SINCE = new DateTimeHeader(HttpHeaderNames.IF_MODIFIED_SINCE);
+    public static final HeaderValueType<DateTime> IF_UNMODIFIED_SINCE = new DateTimeHeader(HttpHeaderNames.IF_UNMODIFIED_SINCE);
+    public static final HeaderValueType<DateTime> RETRY_AFTER_DATE = new DateTimeHeader(HttpHeaderNames.RETRY_AFTER);
+    public static final HeaderValueType<Duration> RETRY_AFTER_DURATION = new DurationHeader(HttpHeaderNames.RETRY_AFTER);
+//    public static final HeaderValueType<Host> HOST = new HostHeader(HttpHeaderNames.HOST);
+    public static final HeaderValueType<String> HOST = new HostHeader(HttpHeaderNames.HOST);
 
     public static final HeaderValueType<MediaType> CONTENT_TYPE = new MediaTypeHeader();
-    public static final HeaderValueType<String> SERVER = new StringHeader(HttpHeaders.Names.SERVER.toString());
+    public static final HeaderValueType<String> SERVER = new StringHeader(HttpHeaderNames.SERVER);
     public static final HeaderValueType<HeaderValueType[]> VARY = new VaryHeader();
-    public static final HeaderValueType<ByteRanges> RANGE = new ByteRangeHeader(HttpHeaders.Names.RANGE.toString());
-    public static final HeaderValueType<BoundedRange> CONTENT_RANGE = new ContentRangeHeader(HttpHeaders.Names.CONTENT_RANGE.toString());
-    public static final HeaderValueType<String> ACCEPT = new StringHeader(HttpHeaders.Names.ACCEPT.toString());
-    public static final HeaderValueType<String> ACCEPT_ENCODING = new StringHeader(HttpHeaders.Names.ACCEPT_ENCODING.toString());
-    public static final HeaderValueType<String> ACCEPT_RANGES = new StringHeader(HttpHeaders.Names.ACCEPT_RANGES.toString());
-    public static final HeaderValueType<String> CONTENT_ENCODING = new StringHeader(HttpHeaders.Names.CONTENT_ENCODING.toString());
-    public static final HeaderValueType<String> USER_AGENT = new StringHeader(HttpHeaders.Names.USER_AGENT.toString());
+    public static final HeaderValueType<ByteRanges> RANGE = new ByteRangeHeader(HttpHeaderNames.RANGE);
+    public static final HeaderValueType<BoundedRange> CONTENT_RANGE = new ContentRangeHeader(HttpHeaderNames.CONTENT_RANGE);
+    public static final HeaderValueType<String> ACCEPT = new StringHeader(HttpHeaderNames.ACCEPT);
+    public static final HeaderValueType<String> ACCEPT_ENCODING = new StringHeader(HttpHeaderNames.ACCEPT_ENCODING);
+    public static final HeaderValueType<String> ACCEPT_RANGES = new StringHeader(HttpHeaderNames.ACCEPT_RANGES);
+    public static final HeaderValueType<String> CONTENT_ENCODING = new StringHeader(HttpHeaderNames.CONTENT_ENCODING);
+    public static final HeaderValueType<String> USER_AGENT = new StringHeader(HttpHeaderNames.USER_AGENT);
     public static final HeaderValueType<Connection> CONNECTION = new ConnectionHeader();
-    public static final HeaderValueType<Long> CONTENT_LENGTH = new LongHeader(HttpHeaders.Names.CONTENT_LENGTH.toString());
-    public static final HeaderValueType<URI> CONTENT_LOCATION = new UriHeader(HttpHeaders.Names.CONTENT_LOCATION.toString());
-    public static final HeaderValueType<URI> LOCATION = new UriHeader(HttpHeaders.Names.LOCATION.toString());
-    public static final HeaderValueType<Charset> ACCEPT_CHARSET = new CharsetHeader(HttpHeaders.Names.ACCEPT_CHARSET.toString());
-    public static final HeaderValueType<Locale> CONTENT_LANGUAGE = new LocaleHeader(HttpHeaders.Names.CONTENT_LANGUAGE.toString());
-    public static final HeaderValueType<String> ETAG = new ETagHeader(HttpHeaders.Names.ETAG.toString());
-    public static final HeaderValueType<String> IF_NONE_MATCH = new ETagHeader(HttpHeaders.Names.IF_NONE_MATCH.toString());
-    public static final HeaderValueType<Duration> AGE = new DurationHeader(HttpHeaders.Names.AGE.toString());
-    public static final HeaderValueType<Duration> RETRY_AFTER = new DurationHeader(HttpHeaders.Names.RETRY_AFTER.toString());
+    public static final HeaderValueType<Long> CONTENT_LENGTH = new LongHeader(HttpHeaderNames.CONTENT_LENGTH);
+    public static final HeaderValueType<URI> CONTENT_LOCATION = new UriHeader(HttpHeaderNames.CONTENT_LOCATION);
+    public static final HeaderValueType<URI> LOCATION = new UriHeader(HttpHeaderNames.LOCATION);
+    public static final HeaderValueType<Charset> ACCEPT_CHARSET = new CharsetHeader(HttpHeaderNames.ACCEPT_CHARSET);
+    public static final HeaderValueType<Locale> CONTENT_LANGUAGE = new LocaleHeader(HttpHeaderNames.CONTENT_LANGUAGE);
+    public static final HeaderValueType<String> ETAG = new ETagHeader(HttpHeaderNames.ETAG);
+    public static final HeaderValueType<String> IF_NONE_MATCH = new ETagHeader(HttpHeaderNames.IF_NONE_MATCH);
+    public static final HeaderValueType<Duration> AGE = new DurationHeader(HttpHeaderNames.AGE);
+    public static final HeaderValueType<Duration> RETRY_AFTER = new DurationHeader(HttpHeaderNames.RETRY_AFTER);
     public static final HeaderValueType<BasicCredentials> AUTHORIZATION = new BasicCredentialsHeader();
     public static final HeaderValueType<CacheControl> CACHE_CONTROL = new CacheControlHeader();
     public static final HeaderValueType<Realm> WWW_AUTHENTICATE = new AuthHeader();
@@ -94,22 +95,24 @@ public final class Headers {
     public static final HeaderValueType<Method[]> ACCESS_CONTROL_ALLOW = new AllowHeader(true);
     @Deprecated
     public static final HeaderValueType<Cookie> SET_COOKIE = new SetCookieHeader();
-    public static final HeaderValueType<io.netty.handler.codec.http.cookie.Cookie> SET_COOKIE_B = new SetCookieHeaderNetty428(HttpHeaders.Names.SET_COOKIE);
+    public static final HeaderValueType<io.netty.handler.codec.http.cookie.Cookie> SET_COOKIE_B = new SetCookieHeaderNetty428(HttpHeaderNames.SET_COOKIE, false);
+    public static final HeaderValueType<io.netty.handler.codec.http.cookie.Cookie> SET_COOKIE_B_STRICT = new SetCookieHeaderNetty428(HttpHeaderNames.SET_COOKIE, false);
     @Deprecated
     public static final HeaderValueType<Cookie[]> COOKIE = new CookieHeader();
-    public static final HeaderValueType<io.netty.handler.codec.http.cookie.Cookie[]> COOKIE_B = new CookieHeaderNetty428();
+    public static final HeaderValueType<io.netty.handler.codec.http.cookie.Cookie[]> COOKIE_B = new CookieHeaderNetty428(false);
+    public static final HeaderValueType<io.netty.handler.codec.http.cookie.Cookie[]> COOKIE_B_STRICT = new CookieHeaderNetty428(true);
     public static final HeaderValueType<String[]> WEBSOCKET_PROTOCOLS = new WebSocketProtocolsHeader();
-    public static final HeaderValueType<String> WEBSOCKET_PROTOCOL = new StringHeader(HttpHeaders.Names.WEBSOCKET_PROTOCOL);
+    public static final HeaderValueType<String> WEBSOCKET_PROTOCOL = new StringHeader(HttpHeaderNames.WEBSOCKET_PROTOCOL);
 //    public static final HeaderValueType<URL> WEBSOCKET_LOCATION = new WebSocketLocationHeader();
-    public static final HeaderValueType<String> UPGRADE = stringHeader(HttpHeaders.Names.UPGRADE.toString());
-    public static final HeaderValueType<String> REFERRER = stringHeader(HttpHeaders.Names.REFERER.toString());
-    public static final HeaderValueType<String> TRANSFER_ENCODING = stringHeader(HttpHeaders.Names.TRANSFER_ENCODING.toString());
-    public static final HeaderValueType<String> ACCESS_CONTROL_ALLOW_ORIGIN = stringHeader(HttpHeaders.Names.ACCESS_CONTROL_ALLOW_ORIGIN.toString());
-    public static final HeaderValueType<String> ACCESS_CONTROL_ALLOW_METHODS = stringHeader(HttpHeaders.Names.ACCESS_CONTROL_ALLOW_METHODS.toString());
-    public static final HeaderValueType<HeaderValueType<?>[]> ACCESS_CONTROL_ALLOW_HEADERS = new HeaderNamesHeader(HttpHeaders.Names.ACCESS_CONTROL_ALLOW_HEADERS);
-    public static final HeaderValueType<Duration> ACCESS_CONTROL_MAX_AGE = new DurationHeader(HttpHeaders.Names.ACCESS_CONTROL_MAX_AGE.toString());
+    public static final HeaderValueType<String> UPGRADE = stringHeader(HttpHeaderNames.UPGRADE);
+    public static final HeaderValueType<String> REFERRER = stringHeader(HttpHeaderNames.REFERER);
+    public static final HeaderValueType<String> TRANSFER_ENCODING = stringHeader(HttpHeaderNames.TRANSFER_ENCODING);
+    public static final HeaderValueType<String> ACCESS_CONTROL_ALLOW_ORIGIN = stringHeader(HttpHeaderNames.ACCESS_CONTROL_ALLOW_ORIGIN);
+    public static final HeaderValueType<String> ACCESS_CONTROL_ALLOW_METHODS = stringHeader(HttpHeaderNames.ACCESS_CONTROL_ALLOW_METHODS);
+    public static final HeaderValueType<HeaderValueType<?>[]> ACCESS_CONTROL_ALLOW_HEADERS = new HeaderNamesHeader(HttpHeaderNames.ACCESS_CONTROL_ALLOW_HEADERS);
+    public static final HeaderValueType<Duration> ACCESS_CONTROL_MAX_AGE = new DurationHeader(HttpHeaderNames.ACCESS_CONTROL_MAX_AGE);
 
-    public static HeaderValueType<String> stringHeader(String key) {
+    public static HeaderValueType<String> stringHeader(CharSequence key) {
         return new StringHeader(key);
     }
 

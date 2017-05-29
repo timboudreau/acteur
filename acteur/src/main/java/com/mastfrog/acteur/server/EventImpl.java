@@ -33,9 +33,10 @@ import com.mastfrog.acteur.HttpEvent;
 import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.acteur.headers.Method;
-import com.mastfrog.acteur.util.Connection;
 import com.mastfrog.url.Path;
 import com.mastfrog.util.Codec;
+import com.mastfrog.util.collections.CollectionUtils;
+import com.mastfrog.util.collections.Converter;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufHolder;
 import io.netty.buffer.Unpooled;
@@ -124,7 +125,7 @@ final class EventImpl implements HttpEvent {
         }
         return converter.toString(getContent(), encoding);
     }
-    
+
     @Override
     public HttpRequest getRequest() {
         return req;
@@ -145,7 +146,7 @@ final class EventImpl implements HttpEvent {
     }
 
     @Override
-    public String getHeader(String nm) {
+    public String getHeader(CharSequence nm) {
         return req.headers().get(nm);
     }
 
@@ -157,6 +158,21 @@ final class EventImpl implements HttpEvent {
     @Override
     public Path getPath() {
         return path;
+    }
+
+    @Override
+    public <T> List<T> getHeaders(HeaderValueType<T> headerType) {
+        List<CharSequence> headers = CollectionUtils.<CharSequence>generalize(getRequest().headers().getAll(headerType.name()));
+        return CollectionUtils.convertedList(headers, headerType, CharSequence.class, headerType.type());
+    }
+
+    @Override
+    public Map<CharSequence, CharSequence> getHeadersAsMap() {
+        Map<CharSequence, CharSequence> headers = CollectionUtils.caseInsensitiveStringMap();
+        for (Map.Entry<String, String> e : getRequest().headers().entries()) {
+            headers.put(e.getKey(), e.getValue());
+        }
+        return headers;
     }
 
     @Override

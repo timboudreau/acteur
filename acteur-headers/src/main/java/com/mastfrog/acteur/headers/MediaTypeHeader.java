@@ -24,7 +24,7 @@
 package com.mastfrog.acteur.headers;
 
 import com.google.common.net.MediaType;
-import io.netty.handler.codec.http.HttpHeaders;
+import io.netty.handler.codec.http.HttpHeaderNames;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -35,7 +35,7 @@ import java.util.logging.Logger;
 final class MediaTypeHeader extends AbstractHeader<MediaType> {
 
     MediaTypeHeader() {
-        super(MediaType.class, HttpHeaders.Names.CONTENT_TYPE);
+        super(MediaType.class, HttpHeaderNames.CONTENT_TYPE);
     }
 
     @Override

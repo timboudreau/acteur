@@ -20,75 +20,91 @@ import org.junit.runner.RunWith;
 @TestWith(CompApp.Module.class)
 public class ComprehensiveTest {
 
-    @Test(timeout = 20000)
-    public void testGets(TestHarness harness) throws Exception, Throwable {
-        System.out.println("A");
+    @Test(timeout = 7000)
+    public void testEcho(TestHarness harness) throws Throwable {
         harness.post("echo").log().setBody("Echo this back to me", PLAIN_TEXT_UTF_8)
                 .setTimeout(Duration.standardSeconds(30)).go()
                 .throwIfError()
                 .assertStatus(OK)
                 .assertContent("Echo this back to me");
+    }
 
+    @Test(timeout = 7000)
+    public void testIter(TestHarness harness) throws Throwable {
         harness.get("iter").log().addQueryPair("iters", "5").setTimeout(Duration.standardSeconds(30)).go()
                 .assertContent(iter("Iteration", 5))
                 .assertCode(200)
                 .throwIfError();
+    }
 
+    @Test(timeout = 7000)
+    public void testIter2(TestHarness harness) throws Throwable {
         harness.get("iter").log().addQueryPair("iters", "7")
                 .addQueryPair("msg", "Hello ").setTimeout(Duration.standardSeconds(30)).go()
                 .assertCode(200)
                 .assertContent(iter("Hello", 7))
                 .throwIfError();
+    }
 
-        System.out.println("B");
+    @Test(timeout = 7000)
+    public void testDeferred(TestHarness harness) throws Throwable {
         harness.get("deferred").log().setTimeout(Duration.standardSeconds(10)).go()
                 .throwIfError()
                 .assertContent("I guess it's okay now")
                 .assertStatus(OK);
+    }
 
-        System.out.println("C");
+    @Test(timeout = 7000)
+    public void testNothing(TestHarness harness) throws Throwable {
         harness.get("nothing").log().setTimeout(Duration.standardSeconds(39)).go()
                 .throwIfError()
                 .assertStatus(HttpResponseStatus.PAYMENT_REQUIRED)
                 .assertStateSeen(Closed);
+    }
 
-        System.out.println("D");
+    @Test(timeout = 7000)
+    public void testBranch1(TestHarness harness) throws Throwable {
         harness.get("branch").log().setTimeout(Duration.standardSeconds(50)).addQueryPair("a", "true").go()
                 .throwIfError()
                 .assertStatus(OK)
                 .assertContent("A");
+    }
 
-        System.out.println("E");
+    @Test(timeout = 7000)
+    public void testBranch2(TestHarness harness) throws Throwable {
         harness.get("branch").log().setTimeout(Duration.standardSeconds(50)).go()
                 .throwIfError()
                 .assertStatus(OK)
                 .assertContent("B");
+    }
 
-        /*
+    @Test(timeout = 7000)
+    public void testEcho2(TestHarness harness) throws Throwable {
+        harness.post("echo").log().setBody("Echo this back to me", PLAIN_TEXT_UTF_8)
+                .setTimeout(Duration.standardSeconds(30)).go()
+                .assertStatus(OK)
+                .assertContent("Echo this back to me");
+
+    }
+
+    @Test(timeout = 7000)
+    public void testDynamicActeur(TestHarness harness) throws Throwable {
+        System.out.println("J");
+        harness.get("dyn").log().setTimeout(Duration.standardSeconds(10)).go()
+                .assertStatus(OK)
+                .assertContent("Dynamic acteur");
+
+    }
+
+    @Test(timeout = 7000)
+    public void testUnchunked(TestHarness harness) throws Exception, Throwable {
         harness.get("unchunked").log().addQueryPair("iters", "7")
                 .setTimeout(Duration.standardSeconds(20))
                 .go()
                 .assertCode(200)
                 .assertContent(iter("Iteration", 7))
                 .throwIfError()
-                .await()
-                ;
-        */
-
-        System.out.println("A");
-        harness.post("echo").log().setBody("Echo this back to me", PLAIN_TEXT_UTF_8)
-                .setTimeout(Duration.standardSeconds(30)).go()
-                .assertStatus(OK)
-                .assertContent("Echo this back to me");
-
-        System.out.println("F");
-        harness.get("fail").log().setTimeout(Duration.standardSeconds(50)).go()
-                .assertStatus(CONFLICT)
-                .assertContent("Hoober");
-
-        harness.get("dyn").log().setTimeout(Duration.standardSeconds(10)).go()
-                .assertStatus(OK)
-                .assertContent("Dynamic acteur");
+                .await();
     }
 
     private String iter(String msg, int count) {

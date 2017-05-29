@@ -23,6 +23,9 @@
  */
 package com.mastfrog.acteur.headers;
 
+import com.mastfrog.util.Strings;
+import com.mastfrog.util.collections.Converter;
+
 /**
  * Base interface for things that convert an HTTP header to an appropriate
  * Java object and back.  See <a href="./Headers.html">Headers</a> for
@@ -31,7 +34,7 @@ package com.mastfrog.acteur.headers;
  * @see HeaderValueType
  * @author Tim Boudreau
  */
-public interface HeaderValueType<T> {
+public interface HeaderValueType<T> extends Converter<T, CharSequence> {
     /**
      * The Java type
      * @return A type
@@ -42,7 +45,11 @@ public interface HeaderValueType<T> {
      * The header name as it should appear in HTTP headers
      * @return The name
      */
-    public String name();
+    public CharSequence name();
+    
+    public default boolean is(CharSequence seq) {
+        return Strings.charSequencesEqual(name(), seq, true);
+    }
 
     /**
      * Convert an object to a String suitable for inclusion in headers.
@@ -60,4 +67,14 @@ public interface HeaderValueType<T> {
      * <code>DateTime</code> for a date header.
      */
     public T toValue(String value);
+
+    @Override
+    public default T convert(CharSequence r) {
+        return toValue(r.toString());
+    }
+
+    @Override
+    public default CharSequence unconvert(T t) {
+        return toString(t);
+    }
 }

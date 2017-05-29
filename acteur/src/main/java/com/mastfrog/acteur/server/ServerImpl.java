@@ -44,6 +44,7 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
+import io.netty.handler.logging.LoggingHandler;
 import java.io.IOException;
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
@@ -129,7 +130,8 @@ final class ServerImpl implements Server {
 
             bootstrap.group(result.events, result.workers)
                     .channel(NioServerSocketChannel.class)
-                    .option(ChannelOption.TCP_NODELAY, true)
+                    .handler(new LoggingHandler())
+//                    .option(ChannelOption.TCP_NODELAY, true)
                     .childHandler(pipelineFactory);
             if (addr == null) {
                 bootstrap = bootstrap.localAddress(new InetSocketAddress(port));

@@ -30,7 +30,7 @@ package com.mastfrog.acteur.headers;
  */
 final class ContentRangeHeader extends AbstractHeader<BoundedRange> {
     
-    ContentRangeHeader(String name) {
+    ContentRangeHeader(CharSequence name) {
         super(BoundedRange.class, name);
     }
 

@@ -25,7 +25,7 @@ package com.mastfrog.acteur.headers;
 
 import io.netty.handler.codec.http.Cookie;
 import io.netty.handler.codec.http.CookieDecoder;
-import io.netty.handler.codec.http.HttpHeaders;
+import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.ServerCookieEncoder;
 import java.util.Set;
 
@@ -33,10 +33,11 @@ import java.util.Set;
  *
  * @author Tim Boudreau
  */
+@SuppressWarnings("deprecation")
 final class SetCookieHeader extends AbstractHeader<Cookie> {
 
     SetCookieHeader() {
-        super(Cookie.class, HttpHeaders.Names.SET_COOKIE.toString());
+        super(Cookie.class, HttpHeaderNames.SET_COOKIE);
     }
 
     @Override

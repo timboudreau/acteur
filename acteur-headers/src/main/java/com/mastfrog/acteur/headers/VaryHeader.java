@@ -23,7 +23,7 @@
  */
 package com.mastfrog.acteur.headers;
 
-import io.netty.handler.codec.http.HttpHeaders;
+import io.netty.handler.codec.http.HttpHeaderNames;
 
 /**
  *
@@ -32,7 +32,7 @@ import io.netty.handler.codec.http.HttpHeaders;
 final class VaryHeader extends AbstractHeader<HeaderValueType[]> {
 
     VaryHeader() {
-        super(HeaderValueType[].class, HttpHeaders.Names.VARY.toString());
+        super(HeaderValueType[].class, HttpHeaderNames.VARY);
     }
 
     @Override

@@ -30,7 +30,7 @@ package com.mastfrog.acteur.headers;
  */
 final class ByteRangeHeader extends AbstractHeader<ByteRanges> {
 
-    public ByteRangeHeader(String name) {
+    public ByteRangeHeader(CharSequence name) {
         super(ByteRanges.class, name);
     }
 

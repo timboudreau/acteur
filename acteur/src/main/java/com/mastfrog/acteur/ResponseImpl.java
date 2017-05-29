@@ -40,6 +40,7 @@ import com.mastfrog.marshallers.netty.NettyContentMarshallers;
 import com.mastfrog.util.Checks;
 import com.mastfrog.util.Codec;
 import com.mastfrog.util.Exceptions;
+import com.mastfrog.util.Strings;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.Channel;
@@ -52,6 +53,9 @@ import io.netty.handler.codec.http.DefaultHttpContent;
 import io.netty.handler.codec.http.DefaultHttpResponse;
 import io.netty.handler.codec.http.HttpContent;
 import io.netty.handler.codec.http.HttpHeaderNames;
+import static io.netty.handler.codec.http.HttpHeaderNames.CONTENT_ENCODING;
+import static io.netty.handler.codec.http.HttpHeaderNames.CONTENT_LENGTH;
+import static io.netty.handler.codec.http.HttpHeaderNames.TRANSFER_ENCODING;
 import io.netty.handler.codec.http.HttpHeaderValues;
 import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpMessage;
@@ -75,6 +79,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicReference;
 import org.joda.time.Duration;
+
 /**
  * Aggregates the set of headers and a body writer which is used to respond to
  * an HTTP request. Each Acteur has its own which will be merged into the one
@@ -400,8 +405,8 @@ final class ResponseImpl extends Response {
         for (Iterator<Entry<?>> it = headers.iterator(); it.hasNext();) {
             Entry<?> e = it.next();
             // Do prune setting the same cookie twice
-            if (decorator.name().equalsIgnoreCase(HttpHeaderNames.SET_COOKIE.toString()) 
-                    && e.decorator.name().equalsIgnoreCase(HttpHeaderNames.SET_COOKIE.toString())) {
+            if (decorator.is(HttpHeaderNames.SET_COOKIE)
+                    && e.decorator.is(HttpHeaderNames.SET_COOKIE)) {
                 if (compareCookies(e.value, value)) {
                     it.remove();
                     continue;
@@ -418,7 +423,7 @@ final class ResponseImpl extends Response {
         // For now, special handling for Allow:
         // Longer term, should HeaderValueType.isArray() and a way to
         // coalesce
-        if (!old.isEmpty() && decorator.name().equalsIgnoreCase(Headers.ALLOW.name())) {
+        if (!old.isEmpty() && decorator.is(HttpHeaderNames.ALLOW)) {
             old.add(e);
             Set<Method> all = new HashSet<>();
             for (Entry<?> en : old) {
@@ -694,6 +699,7 @@ final class ResponseImpl extends Response {
         if (buf != null) {
             long size = buf.readableBytes();
             add(Headers.CONTENT_LENGTH, size);
+            
             DefaultFullHttpResponse r = new DefaultFullHttpResponse(
                     HttpVersion.HTTP_1_1, getResponseCode(), buf);
             resp = r;
@@ -704,11 +710,11 @@ final class ResponseImpl extends Response {
             // Remove things which cause problems for non-modified responses -
             // browsers will hold the connection open regardless
             if (this.status == NOT_MODIFIED) {
-                if (e.decorator == Headers.CONTENT_LENGTH) {
+                if (e.decorator.is(CONTENT_LENGTH)) {
                     continue;
-                } else if (HttpHeaderNames.CONTENT_ENCODING.equals(e.decorator.name())) {
+                } else if (e.decorator.is(CONTENT_ENCODING)) {
                     continue;
-                } else if (Headers.TRANSFER_ENCODING.name().equals(e.decorator.name())) {
+                } else if (e.decorator.is(TRANSFER_ENCODING)) {
                     continue;
                 }
             }

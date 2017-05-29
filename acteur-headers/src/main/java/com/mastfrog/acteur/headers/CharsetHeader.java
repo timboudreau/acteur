@@ -31,7 +31,7 @@ import java.nio.charset.Charset;
  */
 class CharsetHeader extends AbstractHeader<Charset> {
 
-    CharsetHeader(String name) {
+    CharsetHeader(CharSequence name) {
         super(Charset.class, name);
     }
 

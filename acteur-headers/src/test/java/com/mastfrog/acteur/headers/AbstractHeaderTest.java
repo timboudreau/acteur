@@ -1,7 +1,7 @@
-/* 
+/*
  * The MIT License
  *
- * Copyright 2013 Tim Boudreau.
+ * Copyright 2017 Tim Boudreau.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,29 +21,29 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
+
 package com.mastfrog.acteur.headers;
 
-import com.mastfrog.acteur.util.BasicCredentials;
 import io.netty.handler.codec.http.HttpHeaderNames;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import org.junit.Test;
 
 /**
  *
  * @author Tim Boudreau
  */
-class BasicCredentialsHeader extends AbstractHeader<BasicCredentials> {
+public class AbstractHeaderTest {
 
-    BasicCredentialsHeader() {
-        super(BasicCredentials.class, HttpHeaderNames.AUTHORIZATION);
+    
+    @Test
+    public void testNames() {
+        assertTrue(Headers.SET_COOKIE_B.is(HttpHeaderNames.SET_COOKIE));
+        assertTrue(Headers.SET_COOKIE_B.is("Set-Cookie"));
+        assertTrue(Headers.SET_COOKIE_B.is("set-cookie"));
+        assertTrue(Headers.SET_COOKIE_B.is("sEt-cOoKiE"));
+        assertEquals(Headers.SET_COOKIE, Headers.SET_COOKIE_B);
+        assertEquals(Headers.SET_COOKIE, Headers.stringHeader(HttpHeaderNames.SET_COOKIE));
+        assertEquals(Headers.SET_COOKIE, Headers.stringHeader("Set-Cookie"));
     }
-
-    @Override
-    public String toString(BasicCredentials value) {
-        return value.toString();
-    }
-
-    @Override
-    public BasicCredentials toValue(String value) {
-        return BasicCredentials.parse(value);
-    }
-
 }

@@ -15,12 +15,20 @@ import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.acteur.headers.Method;
 import com.mastfrog.acteur.server.ServerModule;
 import com.mastfrog.acteur.util.ErrorInterceptor;
+import com.mastfrog.acteur.util.Server;
 import com.mastfrog.acteurbase.Chain;
+import com.mastfrog.giulius.Dependencies;
+import com.mastfrog.guicy.annotations.Namespace;
+import com.mastfrog.netty.http.client.HttpClient;
 import com.mastfrog.netty.http.test.harness.TestHarness;
+import com.mastfrog.settings.Settings;
+import com.mastfrog.settings.SettingsBuilder;
+import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.handler.codec.http.HttpResponseStatus;
+import static io.netty.handler.codec.http.HttpResponseStatus.BAD_REQUEST;
 import static io.netty.handler.codec.http.HttpResponseStatus.OK;
 import io.netty.util.CharsetUtil;
 import java.io.IOException;
@@ -42,9 +50,21 @@ public class CompApp extends Application {
         add(Echo.class);
         add(DeferredOutput.class);
         add(Branch.class);
-        add(Fails.class);
+//        add(Fails.class);
         add(NoContentPage.class);
         add(DynPage.class);
+    }
+
+    public static void main(String[] args) throws Exception {
+        System.setProperty("acteur.debug", "true");
+        Settings s = new SettingsBuilder().add("neverKeepAlive", false)
+                .add("acteur.debug", true)
+                .add("aggregateChunks", true)
+                .build();
+        Dependencies deps = Dependencies.builder().add(new ServerModule(CompApp.class)).add(s, Namespace.DEFAULT).build();
+        Server server = deps.getInstance(Server.class);
+        System.out.println("GOT SERVER " + server);
+        server.start().await();
     }
 
     @Override
@@ -67,6 +87,11 @@ public class CompApp extends Application {
 
         @Override
         protected void configure() {
+            bind(HttpClient.class).toInstance(HttpClient.builder()
+                    .noCompression()
+                    .followRedirects().resolveAllHostsToLocalhost().threadCount(4)
+                    .setUserAgent(getClass().getName()).build());
+
             install(new ServerModule<CompApp>(CompApp.class));
             bind(ErrorInterceptor.class).to(TestHarness.class);
             bind(ExceptionEval.class).asEagerSingleton();
@@ -123,6 +148,7 @@ public class CompApp extends Application {
         }
     }
 
+    /*
     private static class Fails extends Page {
 
         @Inject
@@ -140,6 +166,7 @@ public class CompApp extends Application {
             }
         }
     }
+     */
 
     private static final class Branch extends Page {
 
@@ -197,8 +224,22 @@ public class CompApp extends Application {
 //                    setState(new RespondWith(HttpResponseStatus.EXPECTATION_FAILED, "Zero byte content"));
 //                    return;
 //                }
+
                 String content = cvt.toObject(evt.getContent(), evt.getHeader(Headers.CONTENT_TYPE), String.class);
-                System.out.println("SEND MESSAGE '" + content + "'");
+//                String content = evt.getContentAsString();
+                ByteBuf buf = evt.getContent();
+//                String content = buf.readCharSequence(buf.readableBytes(), CharsetUtil.UTF_8).toString();
+
+                System.out.println("CONTENT length: " + content.length());
+                System.out.println("INBOUND CONTENT: '" + content + "' " + evt.getHeader(Headers.CONTENT_TYPE) + " length " + evt.getHeader(Headers.CONTENT_LENGTH) + " encoding " + evt.getHeader(Headers.TRANSFER_ENCODING));
+                System.out.println("BUFFER " + buf + " rb " + buf.readableBytes() + " ri " + buf.readerIndex() + " wi " + buf.writerIndex());
+
+                if (content.isEmpty()) {
+                    reply(BAD_REQUEST, "Empty content");
+                } else {
+                    System.out.println("Content is not empty: " + content.length());
+                }
+                System.out.println("ECHO MESSAGE '" + content + "'");
                 setState(new RespondWith(200, content));
             }
         }
@@ -230,7 +271,7 @@ public class CompApp extends Application {
             @Override
             public synchronized void run() {
                 try {
-                    Thread.sleep(3000);
+                    Thread.sleep(1000);
                 } catch (InterruptedException ex) {
                     Exceptions.printStackTrace(ex);
                 }
@@ -309,13 +350,14 @@ public class CompApp extends Application {
                 ChannelFuture f = future;
                 entryCount++;
                 try {
-                    System.out.println("Iteration " + iteration + "\n");
-                    f = f.channel().writeAndFlush(Unpooled.copiedBuffer(msg + iteration + "\n", CharsetUtil.UTF_8));
+                    String message = msg + iteration + "\n";
+                    System.out.println("MESSAGE: " + message + "");
+                    f = f.channel().writeAndFlush(Unpooled.copiedBuffer(message, CharsetUtil.UTF_8));
                     if (iteration++ < max) {
                         f.addListener(this);
                     } else {
                         System.out.println("Close channel");
-                        future.addListener(CLOSE);
+                        f.addListener(CLOSE);
                     }
                 } finally {
                     entryCount--;

@@ -35,17 +35,20 @@ import java.util.Set;
  */
 final class SetCookieHeaderNetty428 extends AbstractHeader<Cookie> {
 
-    public SetCookieHeaderNetty428(String name) {
+    private final boolean strict;
+
+    public SetCookieHeaderNetty428(CharSequence name, boolean strict) {
         super(Cookie.class, name);
+        this.strict = strict;
     }
 
     @Override
     public String toString(Cookie value) {
-        return ServerCookieEncoder.LAX.encode(value);
+        return strict ? ServerCookieEncoder.STRICT.encode(value) : ServerCookieEncoder.LAX.encode(value);
     }
 
     @Override
     public Cookie toValue(String value) {
-        return ClientCookieDecoder.LAX.decode(value);
+        return strict ? ClientCookieDecoder.STRICT.decode(value) : ClientCookieDecoder.LAX.decode(value);
     }
 }

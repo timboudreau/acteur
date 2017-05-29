@@ -24,7 +24,7 @@
 package com.mastfrog.acteur.headers;
 
 import com.mastfrog.acteur.util.Connection;
-import io.netty.handler.codec.http.HttpHeaders;
+import io.netty.handler.codec.http.HttpHeaderNames;
 
 /**
  *
@@ -33,7 +33,7 @@ import io.netty.handler.codec.http.HttpHeaders;
 final class ConnectionHeader extends AbstractHeader<Connection> {
 
     ConnectionHeader() {
-        super(Connection.class, HttpHeaders.Names.CONNECTION);
+        super(Connection.class, HttpHeaderNames.CONNECTION);
     }
 
     @Override

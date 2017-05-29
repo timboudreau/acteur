@@ -33,7 +33,7 @@ import org.joda.time.DateTimeZone;
  */
 class DateTimeHeader extends AbstractHeader<DateTime> {
 
-    DateTimeHeader(String name) {
+    DateTimeHeader(CharSequence name) {
         super(DateTime.class, name);
     }
 
@@ -43,6 +43,7 @@ class DateTimeHeader extends AbstractHeader<DateTime> {
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public DateTime toValue(String value) {
         long val = 0;
         if (val == 0) {

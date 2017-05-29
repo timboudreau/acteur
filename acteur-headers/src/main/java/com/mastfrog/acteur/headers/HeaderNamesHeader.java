@@ -30,7 +30,7 @@ package com.mastfrog.acteur.headers;
 class HeaderNamesHeader extends AbstractHeader<HeaderValueType<?>[]> {
 
     @SuppressWarnings(value = "unchecked")
-    HeaderNamesHeader(String name) {
+    HeaderNamesHeader(CharSequence name) {
         super((Class) HeaderValueType[].class, name);
     }
 

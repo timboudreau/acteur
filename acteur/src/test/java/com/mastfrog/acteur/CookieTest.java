@@ -48,7 +48,7 @@ import org.junit.runner.RunWith;
 @TestWith({TestHarnessModule.class, CTM.class})
 @RunWith(GuiceRunner.class)
 public class CookieTest {
-
+/*
     @Test
     public void testOneCookie(TestHarness harn) throws Exception, Throwable {
         CallResult res = harn.get("one").go().await().assertStatus(OK)
@@ -62,26 +62,6 @@ public class CookieTest {
             System.out.println("COOKIE: " + ck);
         }
     }
-
-    @Test
-    public void testMultipleCookies(TestHarness harn) throws Exception, Throwable {
-        CallResult res = harn.get("multi").go().await().assertStatus(OK)
-                .assertHasHeader(Headers.SET_COOKIE_B.name())
-                .assertContent("Set three cookies");
-        Iterable<Cookie> cookies = res.getHeaders(SET_COOKIE_B);
-        System.out.println("COOKIES: " + cookies);
-        assertTrue("No cookies found", cookies.iterator().hasNext());
-        int ct = 0;
-        for (Cookie ck : cookies) {
-            System.out.println("COOKIE: " + ck);
-            ct++;
-        }
-        assertEquals(3, ct);
-        res.assertCookieValue("a", "hey");
-        res.assertCookieValue("b", "you");
-        res.assertCookieValue("c", "thing");
-    }
-
     @Test
     public void testCookieEncoding(TestHarness harn) throws Exception, Throwable {
         CallResult res = harn.get("space").go().await().assertStatus(OK)
@@ -94,6 +74,28 @@ public class CookieTest {
         for (Cookie ck : cookies) {
             System.out.println("COOKIE: " + ck);
         }
+    }
+*/
+
+    @Test
+    public void testMultipleCookies(TestHarness harn) throws Exception, Throwable {
+        CallResult res = harn.get("multi").go().await().assertStatus(OK)
+                .assertHasHeader(Headers.SET_COOKIE_B.name())
+                .assertContent("Set three cookies");
+        Iterable<Cookie> cookies = res.getHeaders(SET_COOKIE_B);
+        System.out.println("COOKIES: " + cookies);
+        assertTrue("No cookies found", cookies.iterator().hasNext());
+        int ct = 0;
+        StringBuilder sb = new StringBuilder();
+        for (Cookie ck : cookies) {
+            System.out.println("COOKIE: " + ck);
+            sb.append(ck.name()).append('=').append(ck.value()).append(", ");
+            ct++;
+        }
+        assertEquals(sb.toString(), 3, ct);
+        res.assertCookieValue("a", "hey");
+        res.assertCookieValue("b", "you");
+        res.assertCookieValue("c", "thing");
     }
 
     static final class CTM extends ServerModule<CTApp> {

@@ -29,6 +29,7 @@ import com.mastfrog.acteur.util.HttpMethod;
 import com.mastfrog.url.Path;
 import io.netty.handler.codec.http.HttpRequest;
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -50,7 +51,7 @@ public interface HttpEvent extends Event<HttpRequest> {
      * @param nm The header name
      * @return The header
      */
-    String getHeader(String nm);
+    String getHeader(CharSequence nm);
 
     /**
      * Get a single request parameter
@@ -81,6 +82,24 @@ public interface HttpEvent extends Event<HttpRequest> {
      * @return An object or null if the header is missing or invalid
      */
     <T> T getHeader(HeaderValueType<T> value);
+    
+    /**
+     * Get all headers matching a type.
+     * 
+     * @param <T> The type
+     * @param headerType The header
+     * @return A list of headers
+     */
+    <T> List<T> getHeaders(HeaderValueType<T> headerType);
+    
+     /**
+      * Get all headers (pruning duplicate names) as a case-insensitive map
+      * of CharSequence to header value.
+      * 
+      * @return A map.
+      */
+     Map<CharSequence, CharSequence> getHeadersAsMap();
+
 
     /**
      * Gets the HTTP parameters as a flat map, ignoring duplicated keys. To be

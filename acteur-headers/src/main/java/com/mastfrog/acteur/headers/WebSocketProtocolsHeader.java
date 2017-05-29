@@ -23,7 +23,7 @@
  */
 package com.mastfrog.acteur.headers;
 
-import io.netty.handler.codec.http.HttpHeaders;
+import io.netty.handler.codec.http.HttpHeaderNames;
 
 /**
  *
@@ -32,7 +32,7 @@ import io.netty.handler.codec.http.HttpHeaders;
 final class WebSocketProtocolsHeader extends AbstractHeader<String[]> {
 
     WebSocketProtocolsHeader() {
-        super(String[].class, HttpHeaders.Names.WEBSOCKET_PROTOCOL.toString());
+        super(String[].class, HttpHeaderNames.WEBSOCKET_PROTOCOL);
     }
 
     @Override
