@@ -315,7 +315,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
 
         scope.bindTypes(binder(), Event.class, HttpEvent.class, RequestID.class,
                 Page.class, BasicCredentials.class, Closables.class);
-
+        @SuppressWarnings("deprecation")
         ImplicitBindings implicit = appType.getAnnotation(ImplicitBindings.class);
         if (implicit != null) {
             scope.bindTypes(binder(), implicit.value());
@@ -768,6 +768,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
         }
     }
 
+    @SuppressWarnings("deprecation")
     private static final class CookiesProvider implements Provider<Set<Cookie>> {
 
         private final Provider<HttpEvent> ev;
@@ -782,6 +783,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
             HttpEvent evt = ev.get();
             String h = evt.getHeader(HttpHeaderNames.COOKIE.toString());
             if (h != null) {
+                @SuppressWarnings("deprecation")
                 Set<Cookie> result = CookieDecoder.decode(h);
                 if (result != null) {
                     return result;
@@ -970,6 +972,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
     private static class CISC extends TypeLiteral<ChannelInitializer<SocketChannel>> {
     }
 
+    @SuppressWarnings("deprecation")
     private static class CKTL extends TypeLiteral<Set<Cookie>> {
     }
 }

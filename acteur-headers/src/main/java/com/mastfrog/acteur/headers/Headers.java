@@ -31,7 +31,6 @@ import com.mastfrog.acteur.util.Realm;
 import com.mastfrog.util.Checks;
 import io.netty.handler.codec.http.Cookie;
 import io.netty.handler.codec.http.HttpHeaderNames;
-import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpMessage;
 import java.net.URI;
 import java.nio.charset.Charset;
@@ -94,10 +93,12 @@ public final class Headers {
     public static final HeaderValueType<Method[]> ALLOW = new AllowHeader(false);
     public static final HeaderValueType<Method[]> ACCESS_CONTROL_ALLOW = new AllowHeader(true);
     @Deprecated
+    @SuppressWarnings("deprecation")
     public static final HeaderValueType<Cookie> SET_COOKIE = new SetCookieHeader();
     public static final HeaderValueType<io.netty.handler.codec.http.cookie.Cookie> SET_COOKIE_B = new SetCookieHeaderNetty428(HttpHeaderNames.SET_COOKIE, false);
     public static final HeaderValueType<io.netty.handler.codec.http.cookie.Cookie> SET_COOKIE_B_STRICT = new SetCookieHeaderNetty428(HttpHeaderNames.SET_COOKIE, false);
     @Deprecated
+    @SuppressWarnings("deprecation")
     public static final HeaderValueType<Cookie[]> COOKIE = new CookieHeader();
     public static final HeaderValueType<io.netty.handler.codec.http.cookie.Cookie[]> COOKIE_B = new CookieHeaderNetty428(false);
     public static final HeaderValueType<io.netty.handler.codec.http.cookie.Cookie[]> COOKIE_B_STRICT = new CookieHeaderNetty428(true);

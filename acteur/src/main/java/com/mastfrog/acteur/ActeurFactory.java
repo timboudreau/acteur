@@ -26,7 +26,6 @@ package com.mastfrog.acteur;
 import com.google.common.net.MediaType;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
-import com.mastfrog.acteur.ResponseHeaders.ETagProvider;
 import com.mastfrog.acteur.errors.Err;
 import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.acteur.headers.Method;
@@ -1007,46 +1006,6 @@ public class ActeurFactory {
         };
     }
 
-    /**
-     * Compute the etag on demand, and send a not modified header if the one in
-     * the request matches the one provided by the passed ETagComputer.
-     * <p>
-     * Note this depends on the etag being set on the Page, not just passed as
-     * an earlier header.
-     *
-     * @param computer The thing that computes an ETag
-     * @return An acteur
-     */
-    public Acteur sendNotModifiedIfETagHeaderMatches(final ETagComputer computer) {
-        class A extends Acteur implements ETagProvider {
-
-            @Override
-            public com.mastfrog.acteur.State getState() {
-                Page page = deps.getInstance(Page.class);
-                page.getResponseHeaders().setETagProvider(this);
-                CheckIfNoneMatchHeader h = deps.getInstance(CheckIfNoneMatchHeader.class);
-                com.mastfrog.acteur.State result = h.getState();
-                getResponse().merge(h.getResponse());
-                return result;
-            }
-
-            @Override
-            public String getETag() {
-                try {
-                    return computer.getETag();
-                } catch (Exception ex) {
-                    return Exceptions.<String>chuck(ex);
-                }
-            }
-
-            @Override
-            public void describeYourself(Map<String, Object> into) {
-                into.put("Supports If-None-Match", true);
-            }
-        }
-        return new A();
-    }
-
     public Acteur requireParametersIfMethodMatches(final Method method, final String... params) {
         Checks.notNull("method", method);
         Checks.notNull("params", params);
@@ -1121,19 +1080,5 @@ public class ActeurFactory {
          * @return The result of the test
          */
         public boolean test(HttpEvent evt);
-    }
-
-    /**
-     * Lazily computes a page's (or something's) etag
-     */
-    public interface ETagComputer {
-
-        /**
-         * Compute the etag for whatever context we are called in
-         *
-         * @return
-         * @throws Exception if something goes wrong
-         */
-        public String getETag() throws Exception;
     }
 }

@@ -38,6 +38,7 @@ public class GenericApplication extends Application {
     }
 
     @Inject
+    @SuppressWarnings("deprecation")
     public GenericApplication(GenericApplicationSettings settings, @Named(EXCLUDED_CLASSES) Class<?>... excludePages) {
         Set<Class<?>> excluded = new HashSet<>(Arrays.asList(excludePages));
         ImplicitBindings implicit = getClass().getAnnotation(ImplicitBindings.class);

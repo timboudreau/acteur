@@ -35,16 +35,19 @@ import io.netty.handler.codec.http.HttpHeaderNames;
 @SuppressWarnings("deprecation")
 final class CookieHeader extends AbstractHeader<Cookie[]> {
 
+    @SuppressWarnings("deprecation")
     CookieHeader() {
         super(Cookie[].class, HttpHeaderNames.COOKIE);
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public String toString(Cookie[] value) {
         return ClientCookieEncoder.encode(value);
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public Cookie[] toValue(String value) {
         return CookieDecoder.decode(value).toArray(new Cookie[0]);
     }

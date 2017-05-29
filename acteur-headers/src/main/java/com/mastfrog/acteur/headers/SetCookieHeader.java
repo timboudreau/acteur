@@ -36,16 +36,19 @@ import java.util.Set;
 @SuppressWarnings("deprecation")
 final class SetCookieHeader extends AbstractHeader<Cookie> {
 
+    @SuppressWarnings("deprecation")
     SetCookieHeader() {
         super(Cookie.class, HttpHeaderNames.SET_COOKIE);
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public String toString(Cookie value) {
         return ServerCookieEncoder.encode(value);
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public Cookie toValue(String value) {
         Set<Cookie> ck = CookieDecoder.decode(value);
         if (ck.isEmpty()) {
