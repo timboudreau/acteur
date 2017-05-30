@@ -24,6 +24,7 @@
 package com.mastfrog.acteur.util;
 
 import static com.mastfrog.acteur.util.CacheControlTypes.*;
+import com.mastfrog.util.Strings;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -148,14 +149,7 @@ public final class CacheControl {
 
     @Override
     public String toString() {
-        StringBuilder sb = new StringBuilder();
-        for (Iterator<E> it = entries.iterator(); it.hasNext();) {
-            sb.append(it.next());
-            if (it.hasNext()) {
-                sb.append(", ");
-            }
-        }
-        return sb.toString();
+        return Strings.join(',', entries);
     }
 
     public boolean isEmpty() {
