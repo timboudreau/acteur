@@ -39,7 +39,7 @@ class DateTimeHeader extends AbstractHeader<DateTime> {
 
     @Override
     public String toString(DateTime value) {
-        return Headers.toISO2822Date(value);
+        return Headers.toISO2822Date(value.withMillisOfSecond(0));
     }
 
     @Override

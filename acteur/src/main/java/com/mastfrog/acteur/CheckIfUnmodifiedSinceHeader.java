@@ -1,11 +1,29 @@
 /*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
+ * The MIT License
+ *
+ * Copyright 2013 Tim Boudreau.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
  */
-
 package com.mastfrog.acteur;
 
+import com.mastfrog.acteur.headers.Headers;
 import static com.mastfrog.acteur.headers.Headers.IF_UNMODIFIED_SINCE;
 import static io.netty.handler.codec.http.HttpResponseStatus.PRECONDITION_FAILED;
 import java.util.Map;
@@ -16,13 +34,16 @@ import org.joda.time.DateTime;
  *
  * @author Tim Boudreau
  */
-public class CheckIfUnmodifiedSinceHeader extends Acteur {
+public final class CheckIfUnmodifiedSinceHeader extends Acteur {
 
     @Inject
     CheckIfUnmodifiedSinceHeader(HttpEvent event, Page page) {
         DateTime dt = event.getHeader(IF_UNMODIFIED_SINCE);
         if (dt != null) {
             DateTime pageLastModified = page.getResponseHeaders().getLastModified();
+            if (pageLastModified == null) {
+                pageLastModified = response().get(Headers.LAST_MODIFIED);
+            }
             if (pageLastModified != null) {
                 boolean modSince = pageLastModified.getMillis() > dt.getMillis();
                 if (modSince) {
