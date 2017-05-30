@@ -283,13 +283,13 @@ public final class FileResources implements StaticResources {
             }
             if (internalGzip) {
                 // Flag it so the standard compressor ignores us
-                response.add(Headers.stringHeader("X-Internal-Compress"), "true");
+                response.add(Headers.header("X-Internal-Compress"), "true");
             }
             if (chunked) {
                 response.add(Headers.TRANSFER_ENCODING, HttpHeaderValues.CHUNKED.toString());
             }
             if (isGzip(evt)) {
-                response.add(Headers.CONTENT_ENCODING, "gzip");
+                response.add(Headers.CONTENT_ENCODING, HttpHeaderValues.GZIP);
                 if (!chunked) {
                     response.add(Headers.CONTENT_LENGTH, (long) compressed.readableBytes());
                 }

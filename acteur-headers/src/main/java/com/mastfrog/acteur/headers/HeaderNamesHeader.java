@@ -23,6 +23,8 @@
  */
 package com.mastfrog.acteur.headers;
 
+import com.mastfrog.util.Strings;
+
 /**
  *
  * @author Tim Boudreau
@@ -51,10 +53,10 @@ class HeaderNamesHeader extends AbstractHeader<HeaderValueType<?>[]> {
         if (value == null || value.isEmpty()) {
             return new HeaderValueType<?>[0];
         }
-        String[] items = value.split(",");
+        CharSequence[] items = Strings.split(',', value);
         HeaderValueType<?>[] result = new HeaderValueType<?>[items.length];
         for (int i = 0; i < items.length; i++) {
-            result[i] = Headers.stringHeader(items[i]);
+            result[i] = Headers.header(items[i]);
         }
         return result;
     }

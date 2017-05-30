@@ -43,7 +43,7 @@ public class PutTest {
         harn.get("foo/bar/baz").go().assertStatus(OK).assertContent("Hello world");
         harn.get("/").go().assertStatus(OK).assertContent("Hello world");
         for (int i = 0; i < 20; i++) {
-            harn.put("/").addHeader(Headers.stringHeader("X-Iteration"), "" + i)
+            harn.put("/").addHeader(Headers.header("X-Iteration"), "" + i)
                     .setBody("Test " + i + " iter", MediaType.PLAIN_TEXT_UTF_8).go()
                     .assertStatus(OK).assertContent("Test " + i + " iter");
         }

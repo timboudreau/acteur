@@ -173,13 +173,13 @@ public class StaticResourcesTest {
                     .go().assertStatus(NOT_MODIFIED);
         }
 
-        String etag = har.get("static/hello.txt")
+        CharSequence etag = har.get("static/hello.txt")
                 .addHeader(Headers.IF_MODIFIED_SINCE, helloLastModified)
                 .go()
                 .assertStatus(NOT_MODIFIED)
                 .getHeader(Headers.ETAG);
 
-        String etag2 = har.get("static/hello.txt")
+        CharSequence etag2 = har.get("static/hello.txt")
                 .addHeader(Headers.IF_NONE_MATCH, etag)
                 .go()
                 .assertStatus(NOT_MODIFIED)

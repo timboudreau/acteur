@@ -88,7 +88,7 @@ public class InternalsTest {
 
                 A1() {
                     add(Headers.LAST_MODIFIED, ZERO);
-                    add(Headers.stringHeader("x-expect"), Headers.ISO2822DateFormat.print(ZERO));
+                    add(Headers.header("x-expect"), Headers.ISO2822DateFormat.print(ZERO));
                     next(ZERO);
                 }
             }

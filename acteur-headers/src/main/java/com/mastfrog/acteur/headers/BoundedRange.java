@@ -23,6 +23,7 @@
  */
 package com.mastfrog.acteur.headers;
 
+import io.netty.util.AsciiString;
 import java.util.Arrays;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -125,6 +126,14 @@ public final class BoundedRange {
 
     public long of() {
         return of;
+    }
+    
+    public CharSequence toCharSequence() {
+        if (start == -1L && end == -1L) {
+            AsciiString.of("bytes */" + of);
+        }
+        return AsciiString.of("bytes " + start + "-" + end + "/" + (of == -1L ? "*" : of));
+        
     }
 
     @Override

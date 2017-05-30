@@ -57,11 +57,11 @@ class DefaultRequestLogger implements RequestLogger {
                 .append("\t").append(status)
                 .append("\t").append(event);
         if (event instanceof HttpEvent) {
-            String referrer = ((HttpEvent) event).getHeader(Headers.REFERRER);
+            CharSequence referrer = ((HttpEvent) event).getHeader(Headers.REFERRER);
             if (referrer != null) {
                 sb.append('\t').append(referrer);
             }
-            String userAgent = ((HttpEvent) event).getHeader(Headers.USER_AGENT);
+            CharSequence userAgent = ((HttpEvent) event).getHeader(Headers.USER_AGENT);
             if (userAgent != null) {
                 sb.append('\t').append(userAgent);
             }            

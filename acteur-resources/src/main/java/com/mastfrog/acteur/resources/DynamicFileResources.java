@@ -47,6 +47,7 @@ import com.mastfrog.acteur.util.CacheControl;
 import com.mastfrog.acteur.util.CacheControlTypes;
 import com.mastfrog.util.Exceptions;
 import com.mastfrog.util.Streams;
+import com.mastfrog.util.Strings;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.ByteBufOutputStream;
@@ -77,6 +78,8 @@ public class DynamicFileResources implements StaticResources {
     private final MimeTypes types;
     private final ApplicationControl ctrl;
     private final ByteBufAllocator alloc;
+    static final HeaderValueType<CharSequence> INTERNAL_COMPRESS_HEADER = 
+            Headers.header("X-Internal-Compress");
 
     @Inject
     DynamicFileResources(File dir, MimeTypes types, ExpiresPolicy policy, ApplicationControl ctrl, ByteBufAllocator alloc) {
@@ -130,9 +133,8 @@ public class DynamicFileResources implements StaticResources {
                 response.add(EXPIRES, expires);
             }
 
-//            h.setMaxAge(maxAge);
-            String acceptEncoding = evt.getHeader(Headers.ACCEPT_ENCODING);
-            boolean willCompress = acceptEncoding != null && acceptEncoding.toLowerCase().contains("gzip");
+            CharSequence acceptEncoding = evt.getHeader(Headers.ACCEPT_ENCODING);
+            boolean willCompress = acceptEncoding != null && Strings.charSequenceContains(acceptEncoding, HttpHeaderValues.GZIP, true);
             if (!willCompress) {
                 response.add(CONTENT_LENGTH, file.length());
             } else {
@@ -185,8 +187,8 @@ public class DynamicFileResources implements StaticResources {
 
         @Override
         public void attachBytes(HttpEvent evt, Response response, boolean chunked) {
-            String acceptEncoding = evt.getHeader(Headers.ACCEPT_ENCODING);
-            boolean willCompress = acceptEncoding != null && acceptEncoding.toLowerCase().contains("gzip");
+            CharSequence acceptEncoding = evt.getHeader(Headers.ACCEPT_ENCODING);
+            boolean willCompress = acceptEncoding != null && Strings.charSequenceContains(acceptEncoding, HttpHeaderValues.GZIP, true);
             if (!willCompress) {
                 response.setBodyWriter(new ResponseWriter() {
                     @Override

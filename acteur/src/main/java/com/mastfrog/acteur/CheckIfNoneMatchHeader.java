@@ -26,6 +26,7 @@ package com.mastfrog.acteur;
 import com.mastfrog.acteur.headers.Headers;
 import static com.mastfrog.acteur.headers.Headers.IF_NONE_MATCH;
 import com.mastfrog.util.Checks;
+import com.mastfrog.util.Strings;
 import static io.netty.handler.codec.http.HttpResponseStatus.NOT_MODIFIED;
 import java.util.Map;
 import javax.inject.Inject;
@@ -43,9 +44,9 @@ public final class CheckIfNoneMatchHeader extends Acteur {
     CheckIfNoneMatchHeader(HttpEvent event, Page page) throws Exception {
         Checks.notNull("event", event);
         Checks.notNull("page", page);
-        String etag = event.getHeader(IF_NONE_MATCH);
-        String pageEtag = response().get(Headers.ETAG);
-        if (etag != null && pageEtag != null && etag.equals(pageEtag)) {
+        CharSequence etag = event.getHeader(IF_NONE_MATCH);
+        CharSequence pageEtag = response().get(Headers.ETAG);
+        if (etag != null && pageEtag != null && Strings.charSequencesEqual(etag, pageEtag)) {
             reply(NOT_MODIFIED);
             return;
         }

@@ -49,8 +49,15 @@ public interface HeaderValueType<T> extends Converter<T, CharSequence> {
      */
     public CharSequence name();
     
-    public default boolean is(CharSequence seq) {
-        return Strings.charSequencesEqual(name(), seq, true);
+    /**
+     * Test if this header's name is the same as the passed name
+     * (case insensitive).
+     * 
+     * @param name A name
+     * @return True if it matches
+     */
+    public default boolean is(CharSequence name) {
+        return Strings.charSequencesEqual(name(), name, true);
     }
 
     /**
@@ -58,8 +65,23 @@ public interface HeaderValueType<T> extends Converter<T, CharSequence> {
      * 
      * @param value A value
      * @return A header value
+     * @deprecated Prefer toCharSequence
      */
-    public String toString(T value);
+    @Deprecated
+    public default String toString(T value) {
+        return toCharSequence(value).toString();
+    }
+    
+    /**
+     * Convert an object to a CharSequence suitable for inclusion in headers,
+     * typically using Netty's AsciiString.
+     * 
+     * @param value A value
+     * @return A header value
+     */
+    public default CharSequence toCharSequence(T value) {
+        return toString(value);
+    }
     
     /**
      * Parse the value of a header of this type, returning an appropriate
@@ -80,7 +102,7 @@ public interface HeaderValueType<T> extends Converter<T, CharSequence> {
         return toString(t);
     }
     
-    public default HeaderValueType<String> toStringHeader() {
-        return Headers.stringHeader(name());
+    public default HeaderValueType<CharSequence> toStringHeader() {
+        return Headers.header(name());
     }
 }

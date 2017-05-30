@@ -1,7 +1,7 @@
-/* 
+/*
  * The MIT License
  *
- * Copyright 2013 Tim Boudreau.
+ * Copyright 2017 Tim Boudreau.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,30 +21,44 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
+
 package com.mastfrog.acteur.headers;
+
+import io.netty.util.AsciiString;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import org.joda.time.Duration;
 
 /**
  *
  * @author Tim Boudreau
  */
-//class HostHeader extends AbstractHeader<Host> {
-class HostHeader extends AbstractHeader<String> {
+public class KeepAliveHeader extends AbstractHeader<Duration> {
 
-    HostHeader(CharSequence name) {
-        super(String.class, name);
+    public KeepAliveHeader() {
+        super(Duration.class, new AsciiString("keep-alive"));
+    }
+
+    private static final Pattern PAT = Pattern.compile(".*?timeout=\\s*?(\\d+)");
+    @Override
+    public Duration toValue(String value) {
+        Matcher m = PAT.matcher(value);
+        if (m.find()) {
+            String time = m.group(1);
+            try {
+                long val = Long.parseLong(time);
+                return Duration.standardSeconds(val);
+            } catch (NumberFormatException nfe) {
+                System.err.println("Invalid " + name() + " header " + value);
+            }
+        }
+        return null;
     }
 
     @Override
-//    public String toString(Host value) {
-    public String toString(String value) {
-        return value.toString();
+    public CharSequence toCharSequence(Duration value) {
+        return "timeout=" + value.toStandardSeconds();
     }
 
-    @Override
-//    public Host toValue(String value) {
-    public String toValue(String value) {
-        return value;
-//        return Host.parse(value);
-    }
-
+    
 }

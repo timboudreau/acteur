@@ -146,7 +146,7 @@ public final class CacheControl {
         entries.add(new E(type, value.toStandardSeconds().getSeconds()));
         return this;
     }
-
+    
     @Override
     public String toString() {
         return Strings.join(',', entries);

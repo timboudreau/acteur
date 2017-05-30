@@ -31,12 +31,12 @@ public class VerifyDateTimeBehavior {
 
         System.err.println(dt);
 
-        String val = Headers.DATE.toString(dt);
+        String val = Headers.DATE.toCharSequence(dt).toString();
 
         System.err.println("HDATE " + val);
 
         DateTime parsed = Headers.DATE.toValue(val);
-        String val2 = Headers.DATE.toString(parsed);
+        String val2 = Headers.DATE.toCharSequence(parsed).toString();
 
         System.err.println("HDATE " + val2);
 
@@ -52,14 +52,14 @@ public class VerifyDateTimeBehavior {
 
         DateTime withZulu = dt.withZone(DateTimeZone.UTC);
 
-        System.err.println("WITH ZULU: " + Headers.DATE.toString(withZulu));
+        System.err.println("WITH ZULU: " + Headers.DATE.toCharSequence(withZulu));
 
         DateTime withEST = zeroed.toDateTime(DateTimeZone.forID("EST"));
 
         System.err.println("EST " + withEST);
         assertEquals(zeroed.getMillis(), withEST.getMillis());
 
-        System.err.println("WITH EST: " + Headers.DATE.toString(withEST));
+        System.err.println("WITH EST: " + Headers.DATE.toCharSequence(withEST));
 
 
         String ss = "Tue, 25 Sep 1973 13:10:30 EST";

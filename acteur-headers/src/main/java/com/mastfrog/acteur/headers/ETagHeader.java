@@ -27,15 +27,23 @@ package com.mastfrog.acteur.headers;
  *
  * @author Tim Boudreau
  */
-class ETagHeader extends AbstractHeader<String> {
+class ETagHeader extends AbstractHeader<CharSequence> {
 
     ETagHeader(CharSequence name) {
-        super(String.class, name);
+        super(CharSequence.class, name);
     }
 
     @Override
-    public String toString(String value) {
-        return '"' + value + '"';
+    public CharSequence toCharSequence(CharSequence value) {
+        if (value.length() > 1) {
+            int length = value.length();
+            char first = value.charAt(0);
+            char last = value.charAt(length -1);
+            if (first == '"' && last == '"') {
+                return value.subSequence(1, length-1);
+            }
+        }
+        return value;
     }
 
     @Override

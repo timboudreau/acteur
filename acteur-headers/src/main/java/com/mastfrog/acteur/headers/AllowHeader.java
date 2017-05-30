@@ -24,6 +24,7 @@
 package com.mastfrog.acteur.headers;
 
 import io.netty.handler.codec.http.HttpHeaderNames;
+import io.netty.util.internal.AppendableCharSequence;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -38,15 +39,18 @@ final class AllowHeader extends AbstractHeader<Method[]> {
     }
 
     @Override
-    public String toString(Method[] value) {
-        StringBuilder sb = new StringBuilder();
+    public CharSequence toCharSequence(Method[] value) {
+        if (value.length == 1) {
+            return value[0].toCharSequence();
+        }
+        AppendableCharSequence append = new AppendableCharSequence(15);
         for (int i = 0; i < value.length; i++) {
-            sb.append(value[i].name());
-            if (i != value.length - 1) {
-                sb.append(", ");
+            append.append(value[i].toCharSequence());
+            if (i != value.length -1) {
+                append.append(',');
             }
         }
-        return sb.toString();
+        return append;
     }
 
     @Override

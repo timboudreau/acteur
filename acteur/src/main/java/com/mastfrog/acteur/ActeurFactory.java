@@ -139,7 +139,7 @@ public class ActeurFactory {
                 add(Headers.CONTENT_TYPE, MediaType.PLAIN_TEXT_UTF_8.withCharset(charset));
                 return new Acteur.RespondWith(new Err(HttpResponseStatus.METHOD_NOT_ALLOWED, "405 Method "
                         + event.getMethod() + " not allowed.  Accepted methods are "
-                        + Headers.ALLOW.toString(methods) + "\n"));
+                        + Headers.ALLOW.toCharSequence(methods) + "\n"));
             }
             com.mastfrog.acteur.State result = hasMethod ? new Acteur.ConsumedState() : new Acteur.RejectedState();
             return result;

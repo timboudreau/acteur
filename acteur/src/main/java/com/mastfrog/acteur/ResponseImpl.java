@@ -640,13 +640,13 @@ final class ResponseImpl extends Response {
             Headers.write(decorator, value, msg);
         }
 
-        public String stringValue() {
-            return decorator.toString(value);
+        public CharSequence stringValue() {
+            return decorator.toCharSequence(value);
         }
 
         @Override
         public String toString() {
-            return decorator.name() + ": " + decorator.toString(value);
+            return decorator.name() + ": " + decorator.toCharSequence(value);
         }
 
         @Override

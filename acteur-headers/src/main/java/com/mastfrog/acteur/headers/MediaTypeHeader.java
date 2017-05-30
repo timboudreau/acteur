@@ -23,8 +23,14 @@
  */
 package com.mastfrog.acteur.headers;
 
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import com.google.common.net.MediaType;
 import io.netty.handler.codec.http.HttpHeaderNames;
+import io.netty.util.AsciiString;
+import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -34,20 +40,40 @@ import java.util.logging.Logger;
  */
 final class MediaTypeHeader extends AbstractHeader<MediaType> {
 
+    private static final LoadingCache<MediaType, AsciiString> typeCache
+            = CacheBuilder.<MediaType, AsciiString>newBuilder().build(new CacheLoader<MediaType, AsciiString>() {
+                @Override
+                public AsciiString load(MediaType k) throws Exception {
+                    return new AsciiString(k.toString());
+                }
+            });
+    private static final LoadingCache<CharSequence, MediaType> stringCache
+            = CacheBuilder.<CharSequence, MediaType>newBuilder().build(new CacheLoader<CharSequence, MediaType>() {
+                @Override
+                public MediaType load(CharSequence k) throws Exception {
+                    return MediaType.parse(k.toString());
+                }
+            });
+
     MediaTypeHeader() {
         super(MediaType.class, HttpHeaderNames.CONTENT_TYPE);
     }
 
     @Override
-    public String toString(MediaType value) {
-        return value.toString();
+    public CharSequence toCharSequence(MediaType value) {
+        try {
+            return typeCache.get(value);
+        } catch (ExecutionException ex) {
+            Logger.getLogger(MediaTypeHeader.class.getName()).log(Level.SEVERE, null, ex);
+            return null;
+        }
     }
 
     @Override
     public MediaType toValue(String value) {
         try {
-            return MediaType.parse(value);
-        } catch (IllegalArgumentException e) {
+            return stringCache.get(value);
+        } catch (ExecutionException ex) {
             Logger.getLogger(MediaTypeHeader.class.getName()).log(Level.WARNING, "Bad media type {0}", value);
             return null;
         }

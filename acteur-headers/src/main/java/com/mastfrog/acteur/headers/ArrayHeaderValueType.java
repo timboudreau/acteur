@@ -52,13 +52,13 @@ public abstract class ArrayHeaderValueType<T, R> extends AbstractHeader<T> {
     }
 
     @SuppressWarnings("unchecked")
-    public String toStringSingle(R single) {
+    public CharSequence toStringSingle(R single) {
         R[] rs = (R[]) Array.newInstance(componentType, 1);
         rs[0] = single;
-        return toString((T) rs);
+        return toCharSequence((T) rs);
     }
 
-    public String toString(Collection<R> all) {
+    public CharSequence toString(Collection<R> all) {
         if (all.size() == 1) {
             return toStringSingle(all.iterator().next());
         }
@@ -67,6 +67,6 @@ public abstract class ArrayHeaderValueType<T, R> extends AbstractHeader<T> {
         for (int i = 0; i < rs.length; i++) {
             rs[i] = iter.next();
         }
-        return toString((T) rs);
+        return toCharSequence((T) rs);
     }
 }

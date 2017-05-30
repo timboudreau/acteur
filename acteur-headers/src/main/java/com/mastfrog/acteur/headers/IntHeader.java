@@ -34,7 +34,7 @@ class IntHeader extends AbstractHeader<Integer> {
     }
 
     @Override
-    public String toString(Integer value) {
+    public CharSequence toCharSequence(Integer value) {
         return value.toString();
     }
 

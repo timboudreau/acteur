@@ -6,4 +6,5 @@ package com.mastfrog.acteur.util;
  */
 public interface HttpMethod {
     String name();
+    CharSequence toCharSequence();
 }

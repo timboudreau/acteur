@@ -24,7 +24,9 @@
 package com.mastfrog.acteur.headers;
 
 import com.mastfrog.acteur.util.Connection;
+import com.mastfrog.util.Strings;
 import io.netty.handler.codec.http.HttpHeaderNames;
+import io.netty.util.AsciiString;
 
 /**
  *
@@ -32,21 +34,30 @@ import io.netty.handler.codec.http.HttpHeaderNames;
  */
 final class ConnectionHeader extends AbstractHeader<Connection> {
 
+    private static final AsciiString close = AsciiString.of(Connection.close.toString());
+    private static final AsciiString keep_alive = AsciiString.of(Connection.keep_alive.toString());
+
     ConnectionHeader() {
         super(Connection.class, HttpHeaderNames.CONNECTION);
     }
 
     @Override
-    public String toString(Connection value) {
+    public CharSequence toCharSequence(Connection value) {
+        switch (value) {
+            case close:
+                return ConnectionHeader.close;
+            case keep_alive:
+                return ConnectionHeader.keep_alive;
+        }
         return value.toString();
     }
 
     @Override
     public Connection toValue(String value) {
-        for (Connection c : Connection.values()) {
-            if (value.toLowerCase().equals(c.toString())) {
-                return c;
-            }
+        if (Strings.charSequencesEqual(close, value, true)) {
+            return Connection.close;
+        } else if (Strings.charSequencesEqual(keep_alive, value, true)) {
+            return Connection.keep_alive;
         }
         return null;
     }

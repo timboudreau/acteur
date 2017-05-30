@@ -25,6 +25,7 @@ package com.mastfrog.acteur.headers;
 
 import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpRequest;
+import io.netty.util.AsciiString;
 
 /**
  * Enum of standard HTTP methods
@@ -37,9 +38,23 @@ public enum Method implements com.mastfrog.acteur.util.HttpMethod {
     // WEBDAV
     PROPFIND, PROPPATCH, MKCOL, COPY, MOVE, LOCK, UNLOCK,
     UNKNOWN;
+    
+    private final AsciiString stringValue;
+    Method() {
+        stringValue = AsciiString.of(name());
+    }
 
     public static Method get(HttpRequest req) {
         HttpMethod m = req.method();
         return Method.valueOf(m.name().toUpperCase());
+    }
+
+    @Override
+    public String toString() {
+        return name();
+    }
+    
+    public CharSequence toCharSequence() {
+        return stringValue;
     }
 }

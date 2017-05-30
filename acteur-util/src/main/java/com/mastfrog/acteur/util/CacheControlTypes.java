@@ -23,6 +23,8 @@
  */
 package com.mastfrog.acteur.util;
 
+import com.mastfrog.util.Strings;
+
 /**
  * Enum of valid values for cache control
  *
@@ -62,4 +64,12 @@ public enum CacheControlTypes {
         return null;
     }
     
+    public static CacheControlTypes find(CharSequence s) {
+        for (CacheControlTypes c : values()) {
+            if (Strings.startsWith(s, c.toString())) {
+                return c;
+            }
+        }
+        return null;
+    }
 }

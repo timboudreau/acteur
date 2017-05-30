@@ -24,12 +24,13 @@
 package com.mastfrog.acteur.util;
 
 /**
+ * Enum of standard values for the HTTP Connection header.
  *
- * @author tim
+ * @author Tim Boudreau
  */
 public enum Connection {
     close, keep_alive;
-
+    
     @Override
     public String toString() {
         switch (this) {

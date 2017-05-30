@@ -11,8 +11,10 @@ import static com.mastfrog.acteur.cookie.auth.CookieAuthenticator.SETTINGS_KEY_C
 import static com.mastfrog.acteur.cookie.auth.CookieAuthenticator.SETTINGS_KEY_USE_COOKIE_HOST;
 import static com.mastfrog.acteur.cookie.auth.CookieAuthenticator.SETTINGS_KEY_USE_COOKIE_PORTS;
 import com.mastfrog.settings.Settings;
+import com.mastfrog.util.Strings;
 import io.netty.handler.codec.http.Cookie;
 import io.netty.handler.codec.http.DefaultCookie;
+import io.netty.util.AsciiString;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -78,26 +80,27 @@ final class AuthCookieWriter {
 
     private boolean logged;
 
+    private static final AsciiString LOCALHOST = new AsciiString("localhost");
     protected void configureCookie(HttpEvent evt, Cookie cookie) {
-        String cookieHost = this.cookieHost;
+        CharSequence cookieHost = this.cookieHost;
         if (cookieHost == null) {
             cookieHost = evt.getHeader(Headers.HOST);
-            if (cookieHost != null && cookieHost.lastIndexOf(":") > 0) {
-                cookieHost = cookieHost.substring(0, cookieHost.lastIndexOf(":"));
+            if (cookieHost != null && cookieHost.toString().lastIndexOf(":") > 0) {
+                cookieHost = cookieHost.subSequence(0, cookieHost.toString().lastIndexOf(":"));
             }
         }
         if (cookieHost == null) {
-            cookieHost = "localhost";
+            cookieHost = LOCALHOST;
             if (!logged) {
                 logged = true;
                 System.err.println("cookie.host not set and no host header found - using localhost");
             }
         }
-        boolean use = cookieHost == null || (cookieHost != null && !cookieHost.startsWith("localhost"));
+        boolean use = cookieHost == null || (cookieHost != null && !Strings.startsWith(cookieHost, LOCALHOST));
         if (use) {
             // these fail in chrome on localhost
             if (useCookieHost) {
-                cookie.setDomain(cookieHost);
+                cookie.setDomain(cookieHost.toString());
             }
             if (cookieHttpOnly) {
                 cookie.setHttpOnly(true);

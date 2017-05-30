@@ -1,4 +1,4 @@
-/* 
+/*
  * The MIT License
  *
  * Copyright 2013 Tim Boudreau.
@@ -58,6 +58,7 @@ public final class Headers {
 
     private Headers() {
     }
+    public static final HeaderValueType<CharSequence> EXPECT = header(HttpHeaderNames.EXPECT);
     public static final HeaderValueType<DateTime> DATE = new DateTimeHeader(HttpHeaderNames.DATE);
     public static final HeaderValueType<DateTime> LAST_MODIFIED = new DateTimeHeader(HttpHeaderNames.LAST_MODIFIED);
     public static final HeaderValueType<DateTime> EXPIRES = new DateTimeHeader(HttpHeaderNames.EXPIRES);
@@ -65,27 +66,25 @@ public final class Headers {
     public static final HeaderValueType<DateTime> IF_UNMODIFIED_SINCE = new DateTimeHeader(HttpHeaderNames.IF_UNMODIFIED_SINCE);
     public static final HeaderValueType<DateTime> RETRY_AFTER_DATE = new DateTimeHeader(HttpHeaderNames.RETRY_AFTER);
     public static final HeaderValueType<Duration> RETRY_AFTER_DURATION = new DurationHeader(HttpHeaderNames.RETRY_AFTER);
-//    public static final HeaderValueType<Host> HOST = new HostHeader(HttpHeaderNames.HOST);
-    public static final HeaderValueType<String> HOST = new HostHeader(HttpHeaderNames.HOST);
-
+    public static final HeaderValueType<CharSequence> HOST = header(HttpHeaderNames.HOST);
     public static final HeaderValueType<MediaType> CONTENT_TYPE = new MediaTypeHeader();
-    public static final HeaderValueType<String> SERVER = new StringHeader(HttpHeaderNames.SERVER);
+    public static final HeaderValueType<CharSequence> SERVER = header(HttpHeaderNames.SERVER);
     public static final HeaderValueType<HeaderValueType[]> VARY = new VaryHeader();
     public static final HeaderValueType<ByteRanges> RANGE = new ByteRangeHeader(HttpHeaderNames.RANGE);
     public static final HeaderValueType<BoundedRange> CONTENT_RANGE = new ContentRangeHeader(HttpHeaderNames.CONTENT_RANGE);
-    public static final HeaderValueType<String> ACCEPT = new StringHeader(HttpHeaderNames.ACCEPT);
-    public static final HeaderValueType<String> ACCEPT_ENCODING = new StringHeader(HttpHeaderNames.ACCEPT_ENCODING);
-    public static final HeaderValueType<String> ACCEPT_RANGES = new StringHeader(HttpHeaderNames.ACCEPT_RANGES);
-    public static final HeaderValueType<String> CONTENT_ENCODING = new StringHeader(HttpHeaderNames.CONTENT_ENCODING);
-    public static final HeaderValueType<String> USER_AGENT = new StringHeader(HttpHeaderNames.USER_AGENT);
+    public static final HeaderValueType<CharSequence> ACCEPT = header(HttpHeaderNames.ACCEPT);
+    public static final HeaderValueType<CharSequence> ACCEPT_ENCODING = header(HttpHeaderNames.ACCEPT_ENCODING);
+    public static final HeaderValueType<CharSequence> ACCEPT_RANGES = header(HttpHeaderNames.ACCEPT_RANGES);
+    public static final HeaderValueType<CharSequence> CONTENT_ENCODING = header(HttpHeaderNames.CONTENT_ENCODING);
+    public static final HeaderValueType<CharSequence> USER_AGENT = header(HttpHeaderNames.USER_AGENT);
     public static final HeaderValueType<Connection> CONNECTION = new ConnectionHeader();
     public static final HeaderValueType<Number> CONTENT_LENGTH = new NumberHeader(HttpHeaderNames.CONTENT_LENGTH);
     public static final HeaderValueType<URI> CONTENT_LOCATION = new UriHeader(HttpHeaderNames.CONTENT_LOCATION);
     public static final HeaderValueType<URI> LOCATION = new UriHeader(HttpHeaderNames.LOCATION);
     public static final HeaderValueType<Charset> ACCEPT_CHARSET = new CharsetHeader(HttpHeaderNames.ACCEPT_CHARSET);
     public static final HeaderValueType<Locale> CONTENT_LANGUAGE = new LocaleHeader(HttpHeaderNames.CONTENT_LANGUAGE);
-    public static final HeaderValueType<String> ETAG = new ETagHeader(HttpHeaderNames.ETAG);
-    public static final HeaderValueType<String> IF_NONE_MATCH = new ETagHeader(HttpHeaderNames.IF_NONE_MATCH);
+    public static final HeaderValueType<CharSequence> ETAG = new ETagHeader(HttpHeaderNames.ETAG);
+    public static final HeaderValueType<CharSequence> IF_NONE_MATCH = new ETagHeader(HttpHeaderNames.IF_NONE_MATCH);
     public static final HeaderValueType<Duration> AGE = new DurationHeader(HttpHeaderNames.AGE);
     public static final HeaderValueType<Duration> RETRY_AFTER = new DurationHeader(HttpHeaderNames.RETRY_AFTER);
     public static final HeaderValueType<BasicCredentials> AUTHORIZATION = new BasicCredentialsHeader();
@@ -93,12 +92,12 @@ public final class Headers {
     public static final HeaderValueType<Realm> WWW_AUTHENTICATE = new AuthHeader();
     public static final HeaderValueType<Method[]> ALLOW = new AllowHeader(false);
     public static final HeaderValueType<Method[]> ACCESS_CONTROL_ALLOW = new AllowHeader(true);
-    public static final HeaderValueType<String[]>ACCESS_CONTROL_ALLOW_ORIGIN = new StringArrayHeader(HttpHeaderNames.ACCESS_CONTROL_ALLOW_ORIGIN);
-    public static final HeaderValueType<Number>ACCESS_CONTROL_ALLOW_MAX_AGE = new NumberHeader(HttpHeaderNames.ACCESS_CONTROL_MAX_AGE);
+    public static final HeaderValueType<String[]> ACCESS_CONTROL_ALLOW_ORIGIN = new StringArrayHeader(HttpHeaderNames.ACCESS_CONTROL_ALLOW_ORIGIN);
+    public static final HeaderValueType<Number> ACCESS_CONTROL_ALLOW_MAX_AGE = new NumberHeader(HttpHeaderNames.ACCESS_CONTROL_MAX_AGE);
     public static final HeaderValueType<HeaderValueType<?>[]> ACCESS_CONTROL_ALLOW_HEADERS = new HeaderNamesHeader(HttpHeaderNames.ACCESS_CONTROL_ALLOW_HEADERS);
     public static final HeaderValueType<HeaderValueType<?>[]> ACCESS_CONTROL_EXPOSE_HEADERS = new HeaderNamesHeader(HttpHeaderNames.ACCESS_CONTROL_EXPOSE_HEADERS);
     public static final HeaderValueType<Boolean> ACCESS_CONTROL_ALLOW_CREDENTIALS = new BooleanHeader(HttpHeaderNames.ACCESS_CONTROL_ALLOW_CREDENTIALS);
-    public static final HeaderValueType<String> X_REQUESTED_WITH = stringHeader(new AsciiString("x-requested-with"));
+    public static final HeaderValueType<CharSequence> X_REQUESTED_WITH = header(new AsciiString("x-requested-with"));
     @Deprecated
     @SuppressWarnings("deprecation")
     public static final HeaderValueType<Cookie> SET_COOKIE = new SetCookieHeader();
@@ -112,14 +111,22 @@ public final class Headers {
     public static final HeaderValueType<String[]> WEBSOCKET_PROTOCOLS = new WebSocketProtocolsHeader();
     public static final HeaderValueType<String> WEBSOCKET_PROTOCOL = new StringHeader(HttpHeaderNames.WEBSOCKET_PROTOCOL);
 //    public static final HeaderValueType<URL> WEBSOCKET_LOCATION = new WebSocketLocationHeader();
-    public static final HeaderValueType<String> UPGRADE = stringHeader(HttpHeaderNames.UPGRADE);
-    public static final HeaderValueType<String> REFERRER = stringHeader(HttpHeaderNames.REFERER);
-    public static final HeaderValueType<String> TRANSFER_ENCODING = stringHeader(HttpHeaderNames.TRANSFER_ENCODING);
-    public static final HeaderValueType<String> ACCESS_CONTROL_ALLOW_METHODS = stringHeader(HttpHeaderNames.ACCESS_CONTROL_ALLOW_METHODS);
+    public static final HeaderValueType<CharSequence> UPGRADE = header(HttpHeaderNames.UPGRADE);
+    public static final HeaderValueType<CharSequence> REFERRER = header(HttpHeaderNames.REFERER);
+    public static final HeaderValueType<CharSequence> TRANSFER_ENCODING = header(HttpHeaderNames.TRANSFER_ENCODING);
+    public static final HeaderValueType<CharSequence> ACCESS_CONTROL_ALLOW_METHODS = header(HttpHeaderNames.ACCESS_CONTROL_ALLOW_METHODS);
     public static final HeaderValueType<Duration> ACCESS_CONTROL_MAX_AGE = new DurationHeader(HttpHeaderNames.ACCESS_CONTROL_MAX_AGE);
+    public static final HeaderValueType<Boolean> X_ACCEL_BUFFERING = new AccelBufferingHeader();
+    public static final HeaderValueType<Duration> KEEP_ALIVE = new KeepAliveHeader();
+    public static final HeaderValueType<CharSequence> CONTENT_DISPOSITION
+            = header(HttpHeaderNames.CONTENT_DISPOSITION);
 
     public static HeaderValueType<String> stringHeader(CharSequence key) {
         return new StringHeader(key);
+    }
+
+    public static HeaderValueType<CharSequence> header(CharSequence key) {
+        return new CharSequenceHeader(key);
     }
 
     public static <T> T read(HeaderValueType<T> type, HttpMessage msg) {
@@ -127,31 +134,31 @@ public final class Headers {
         return val == null ? null : type.toValue(val);
     }
 
-    public static <T> String writeIfNotNull(HeaderValueType<T> type, T value, HttpMessage msg) {
+    public static <T> CharSequence writeIfNotNull(HeaderValueType<T> type, T value, HttpMessage msg) {
         if (value != null) {
             return write(type, value, msg);
         }
         return null;
     }
 
-    public static <T> String write(HeaderValueType<T> type, T value, HttpMessage msg) {
+    public static <T> CharSequence write(HeaderValueType<T> type, T value, HttpMessage msg) {
         Checks.notNull("type", type);
         Checks.notNull("msg", msg);
         Checks.notNull("value " + type, value);
-        String val = type.toString(value);
+        CharSequence val = type.toCharSequence(value);
         msg.headers().add(type.name(), val);
         return val;
     }
 
     public static final DateTimeFormatter ISO2822DateFormat
             = new DateTimeFormatterBuilder().appendDayOfWeekShortText()
-            .appendLiteral(", ").appendDayOfMonth(2).appendLiteral(" ")
-            .appendMonthOfYearShortText().appendLiteral(" ")
-            .appendYear(4, 4).appendLiteral(" ").appendHourOfDay(2)
-            .appendLiteral(":").appendMinuteOfHour(2).appendLiteral(":")
-            .appendSecondOfMinute(2).appendLiteral(" ")
-            .appendTimeZoneOffset("GMT", true, 2, 2) //                .appendLiteral(" GMT")
-            .toFormatter();
+                    .appendLiteral(", ").appendDayOfMonth(2).appendLiteral(" ")
+                    .appendMonthOfYearShortText().appendLiteral(" ")
+                    .appendYear(4, 4).appendLiteral(" ").appendHourOfDay(2)
+                    .appendLiteral(":").appendMinuteOfHour(2).appendLiteral(":")
+                    .appendSecondOfMinute(2).appendLiteral(" ")
+                    .appendTimeZoneOffset("GMT", true, 2, 2) //                .appendLiteral(" GMT")
+                    .toFormatter();
 
     public static String toISO2822Date(DateTime dt) {
         dt = new DateTime(dt.getMillis(), DateTimeZone.UTC);

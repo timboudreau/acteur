@@ -40,6 +40,7 @@ import static com.mastfrog.acteur.headers.Headers.CONTENT_TYPE;
 import static com.mastfrog.acteur.headers.Headers.ETAG;
 import static com.mastfrog.acteur.headers.Headers.LAST_MODIFIED;
 import static com.mastfrog.acteur.headers.Headers.VARY;
+import static com.mastfrog.acteur.resources.DynamicFileResources.INTERNAL_COMPRESS_HEADER;
 import static com.mastfrog.acteur.resources.FileResources.RESOURCES_BASE_PATH;
 import com.mastfrog.acteur.util.CacheControl;
 import com.mastfrog.giulius.DeploymentMode;
@@ -236,10 +237,10 @@ public final class ClasspathResources implements StaticResources {
             }
             if (internalGzip) {
                 // Flag it so the standard compressor ignores us
-                response.add(Headers.stringHeader("X-Internal-Compress"), "true");
+                response.add(INTERNAL_COMPRESS_HEADER, "true");
             }
             if (chunked) {
-                response.add(Headers.stringHeader("Transfer-Encoding"), "chunked");
+                response.add(Headers.TRANSFER_ENCODING, HttpHeaderValues.CHUNKED);
             }
             if (isGzip(evt)) {
                 response.add(Headers.CONTENT_ENCODING, HttpHeaderValues.GZIP.toString());

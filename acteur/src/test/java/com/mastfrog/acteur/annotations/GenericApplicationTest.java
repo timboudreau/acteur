@@ -74,8 +74,8 @@ public class GenericApplicationTest {
 
         CallResult res = harn.put("/numble").log().setTimeout(Duration.standardSeconds(20))
                 .setBody(m, MediaType.JSON_UTF_8).go().await().assertCode(200);
-        System.out.println("ACTEUR: " + res.getHeader(Headers.stringHeader("X-Acteur")));
-        System.out.println("PAGE: " + res.getHeader(Headers.stringHeader("X-Page")));
+        System.out.println("ACTEUR: " + res.getHeader(Headers.header("X-Acteur")));
+        System.out.println("PAGE: " + res.getHeader(Headers.header("X-Page")));
         Map<String, Object> nue = res.content(Map.class);
         assertEquals(m, nue);
     }

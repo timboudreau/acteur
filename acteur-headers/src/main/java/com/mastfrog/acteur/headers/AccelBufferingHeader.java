@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright 2015 tim.
+ * Copyright 2017 Tim Boudreau.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,23 +24,30 @@
 
 package com.mastfrog.acteur.headers;
 
+import static com.mastfrog.util.Strings.charSequencesEqual;
+import io.netty.util.AsciiString;
+
 /**
  *
  * @author Tim Boudreau
  */
-final class ContentRangeHeader extends AbstractHeader<BoundedRange> {
+public class AccelBufferingHeader extends AbstractHeader<Boolean> {
     
-    ContentRangeHeader(CharSequence name) {
-        super(BoundedRange.class, name);
+    private static final AsciiString OFF = new AsciiString("off");
+    private static final AsciiString ON = new AsciiString("on");
+
+    public AccelBufferingHeader() {
+        super(Boolean.TYPE, new AsciiString("X-Accel-Buffering"));
     }
 
     @Override
-    public CharSequence toCharSequence(BoundedRange value) {
-        return value.toCharSequence();
+    public CharSequence toCharSequence(Boolean value) {
+        return value ? ON : OFF;
+    }
+    
+    @Override
+    public Boolean toValue(String value) {
+        return charSequencesEqual(ON, value);
     }
 
-    @Override
-    public BoundedRange toValue(String value) {
-        return new BoundedRange(value);
-    }
 }

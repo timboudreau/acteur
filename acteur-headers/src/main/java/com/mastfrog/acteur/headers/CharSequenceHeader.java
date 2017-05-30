@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright 2015 tim.
+ * Copyright 2017 Tim Boudreau.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,23 +24,25 @@
 
 package com.mastfrog.acteur.headers;
 
+import io.netty.util.AsciiString;
+
 /**
  *
  * @author Tim Boudreau
  */
-final class ContentRangeHeader extends AbstractHeader<BoundedRange> {
+final class CharSequenceHeader extends AbstractHeader<CharSequence> {
+
+    public CharSequenceHeader(CharSequence name) {
+        super(CharSequence.class, AsciiString.of(name));
+    }
     
-    ContentRangeHeader(CharSequence name) {
-        super(BoundedRange.class, name);
+    @Override
+    public CharSequence toValue(String value) {
+        return AsciiString.of(value);
     }
 
     @Override
-    public CharSequence toCharSequence(BoundedRange value) {
-        return value.toCharSequence();
-    }
-
-    @Override
-    public BoundedRange toValue(String value) {
-        return new BoundedRange(value);
+    public CharSequence toCharSequence(CharSequence value) {
+        return value;
     }
 }

@@ -31,6 +31,7 @@ import com.mastfrog.acteur.Acteur.WrapperActeur;
 import com.mastfrog.acteur.annotations.Concluders;
 import com.mastfrog.acteur.annotations.HttpCall;
 import com.mastfrog.acteur.annotations.Precursors;
+import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.acteur.preconditions.Description;
 import com.mastfrog.settings.SettingsBuilder;
 import com.mastfrog.giulius.Dependencies;
@@ -56,10 +57,12 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
+import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpVersion;
+import io.netty.util.AsciiString;
 import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
@@ -452,18 +455,21 @@ public class Application implements Iterable<Page> {
         return response;
     }
 
+    private static final HeaderValueType<CharSequence> X_REQ_PATH = Headers.header(new AsciiString("X-Req-Path"));
+    private static final HeaderValueType<CharSequence> X_ACTEUR = Headers.header(new AsciiString("X-Acteur"));
+    private static final HeaderValueType<CharSequence> X_PAGE = Headers.header(new AsciiString("X-Page"));
     HttpResponse _decorateResponse(Event<?> event, Page page, Acteur action, HttpResponse response) {
         Headers.write(Headers.SERVER, getName(), response);
         Headers.write(Headers.DATE, new DateTime(), response);
         if (debug) {
             String pth = event instanceof HttpEvent ? ((HttpEvent) event).getPath().toString() : "";
-            Headers.write(Headers.stringHeader("X-Req-Path"), pth, response);
-            Headers.write(Headers.stringHeader("X-Acteur"), action.getClass().getName(), response);
-            Headers.write(Headers.stringHeader("X-Page"), page.getClass().getName(), response);
+            Headers.write(X_REQ_PATH, pth, response);
+            Headers.write(X_ACTEUR, action.getClass().getName(), response);
+            Headers.write(X_PAGE, page.getClass().getName(), response);
         }
-        if (corsEnabled && !response.headers().contains(HttpHeaders.Names.ACCESS_CONTROL_ALLOW_ORIGIN)) {
+        if (corsEnabled && !response.headers().contains(HttpHeaderNames.ACCESS_CONTROL_ALLOW_ORIGIN)) {
             Headers.write(Headers.ACCESS_CONTROL_ALLOW_ORIGIN.toStringHeader(), corsAllowOrigin, response);
-            if (!response.headers().contains(HttpHeaders.Names.ACCESS_CONTROL_MAX_AGE)) {
+            if (!response.headers().contains(HttpHeaderNames.ACCESS_CONTROL_MAX_AGE)) {
                 Headers.write(Headers.ACCESS_CONTROL_MAX_AGE, new Duration(corsMaxAgeMinutes), response);
             }
         }
@@ -485,13 +491,13 @@ public class Application implements Iterable<Page> {
         DefaultFullHttpResponse resp = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1,
                 HttpResponseStatus.NOT_FOUND, buf);
         Headers.write(Headers.CONTENT_TYPE, MediaType.HTML_UTF_8.withCharset(charset), resp);
-        Headers.write(Headers.CONTENT_LENGTH, (long) buf.writerIndex(), resp);
+        Headers.write(Headers.CONTENT_LENGTH, buf.writerIndex(), resp);
         Headers.write(Headers.CONTENT_LANGUAGE, Locale.ENGLISH, resp);
         Headers.write(Headers.CACHE_CONTROL, new CacheControl(CacheControlTypes.no_cache), resp);
         Headers.write(Headers.DATE, new DateTime(), resp);
         if (debug) {
             String pth = event instanceof HttpEvent ? ((HttpEvent) event).getPath().toString() : "";
-            Headers.write(Headers.stringHeader("X-Req-Path"), pth, resp);
+            Headers.write(X_REQ_PATH, pth, resp);
         }
         return resp;
     }
