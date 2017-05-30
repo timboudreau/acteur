@@ -28,21 +28,17 @@ import static com.mastfrog.acteur.server.ServerModule.HTTP_COMPRESSION;
 import static com.mastfrog.acteur.server.ServerModule.MAX_CONTENT_LENGTH;
 import com.mastfrog.acteur.spi.ApplicationControl;
 import com.mastfrog.settings.Settings;
-import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.socket.SocketChannel;
-import io.netty.handler.codec.DecoderException;
-import io.netty.handler.codec.MessageToByteEncoder;
 import io.netty.handler.codec.http.HttpContentCompressor;
 import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpRequestDecoder;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseEncoder;
-import java.util.List;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
@@ -74,7 +70,6 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
         app.get().internalOnError(cause);
     }
 
-    private final MessageBufEncoder messageBufEncoder = new MessageBufEncoder();
     @Override
     public void initChannel(SocketChannel ch) throws Exception {
         // Create a default pipeline implementation.
@@ -92,25 +87,12 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
             ChannelHandler aggregator = new HttpObjectAggregator(maxContentLength);
             pipeline.addLast(PipelineDecorator.AGGREGATOR, aggregator);
         }
-
-//        pipeline.addLast(PipelineDecorator.BYTES, messageBufEncoder);
-
-        // Remove the following line if you don't want automatic content compression.
         if (httpCompression) {
             ChannelHandler compressor = new SelectiveCompressor();
             pipeline.addLast(PipelineDecorator.COMPRESSOR, compressor);
         }
         pipeline.addLast(PipelineDecorator.HANDLER, handler.get());
         decorator.onPipelineInitialized(pipeline);
-    }
-
-    @Sharable
-    private static class MessageBufEncoder extends MessageToByteEncoder<ByteBuf> {
-
-        @Override
-        protected void encode(ChannelHandlerContext ctx, ByteBuf msg, ByteBuf out) throws Exception {
-            out.writeBytes(msg);
-        }
     }
 
     private static class SelectiveCompressor extends HttpContentCompressor {

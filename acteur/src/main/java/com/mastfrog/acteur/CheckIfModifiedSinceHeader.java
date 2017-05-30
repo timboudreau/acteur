@@ -42,14 +42,11 @@ public final class CheckIfModifiedSinceHeader extends Acteur {
     @Inject
     CheckIfModifiedSinceHeader(HttpEvent event, Page page) {
         DateTime lastModifiedMustBeNewerThan = event.getHeader(IF_MODIFIED_SINCE);
-        DateTime pageLastModified = page.getResponseHeaders().getLastModified();
-        if (pageLastModified == null) {
-            pageLastModified = response().get(Headers.LAST_MODIFIED);
-        }
+        DateTime pageLastModified = response().get(Headers.LAST_MODIFIED);
         boolean notModified = lastModifiedMustBeNewerThan != null && pageLastModified != null;
         if (notModified) {
-            pageLastModified = pageLastModified.withMillisOfSecond(0);
-            notModified = pageLastModified.getMillis() <= lastModifiedMustBeNewerThan.getMillis();
+            notModified = pageLastModified.withMillisOfSecond(0).getMillis() 
+                    <= lastModifiedMustBeNewerThan.getMillis();
         }
         if (notModified) {
             reply(NOT_MODIFIED);

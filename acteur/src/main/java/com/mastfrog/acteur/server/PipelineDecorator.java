@@ -45,10 +45,6 @@ public interface PipelineDecorator {
      */
     public static final String AGGREGATOR = "aggregator";
     /**
-     * Name of the pipeline's encoder for raw ByteBufs (to emulate Netty 3 behavior)
-     */
-    public static final String BYTES = "bytes";
-    /**
      * Name of the pipeline's HttpObjectEncoder
      */
     public static final String ENCODER = "encoder";

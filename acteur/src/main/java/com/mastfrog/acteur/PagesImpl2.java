@@ -54,8 +54,6 @@ import io.netty.handler.codec.http.HttpHeaders;
 import static io.netty.handler.codec.http.HttpHeaders.Names.CONTENT_LENGTH;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
-import static io.netty.handler.codec.http.HttpResponseStatus.NOT_MODIFIED;
-import static io.netty.handler.codec.http.HttpResponseStatus.NO_CONTENT;
 import io.netty.handler.codec.http.HttpVersion;
 import java.io.PrintStream;
 import java.nio.charset.Charset;
@@ -101,7 +99,7 @@ class PagesImpl2 {
 
         Closables clos = new Closables(channel, application.control());
         ChainToPageConverter chainConverter = new ChainToPageConverter(id, event, clos);
-        Iterator<Page> pageIterator = new ScopeWrapIterator<Page>(application.getRequestScope(), application.iterator(), id, event, channel, clos);
+        Iterator<Page> pageIterator = new ScopeWrapIterator<>(application.getRequestScope(), application.iterator(), id, event, channel, clos);
         Iterable<PageChain> pagesIterable
                 = CollectionUtils.toIterable(CollectionUtils.convertedIterator(chainConverter, pageIterator));
 
@@ -143,6 +141,11 @@ class PagesImpl2 {
         @Override
         public void onBeforeRunOne(PageChain chain) {
             Page.set(chain.page);
+        }
+
+        @Override
+        public void onBeforeRunOne(PageChain chain, List<ResponseImpl> responsesThusFar) {
+            ResponseImpl.shadowResponses.set(responsesThusFar);
         }
 
         @Override
@@ -309,16 +312,17 @@ class PagesImpl2 {
             private final State state;
             private final Acteur acteur;
 
-            public ResponseTrigger(ResponseImpl response, HttpResponse resp, State state, Acteur acteur) {
+            ResponseTrigger(ResponseImpl response, HttpResponse resp, State state, Acteur acteur) {
                 this.response = response;
                 this.resp = resp;
                 this.state = state;
                 this.acteur = acteur;
             }
 
+            @Override
             public ChannelFuture call() throws Exception {
                 // Give the application a last chance to do something
-                application.onBeforeRespond(id, event, response.getResponseCode());
+                application.onBeforeRespond(id, event, response.internalStatus());
 
                 // Send the headers
                 ChannelFuture fut = channel.writeAndFlush(resp);
@@ -335,7 +339,7 @@ class PagesImpl2 {
 
         private final ScheduledFuture future;
 
-        public CancelOnClose(ScheduledFuture future) {
+        CancelOnClose(ScheduledFuture future) {
             this.future = future;
         }
 
@@ -383,11 +387,11 @@ class PagesImpl2 {
 
         private final Page page;
         private final Object[] ctx;
-        private AtomicBoolean first = new AtomicBoolean(true);
+        private final AtomicBoolean first = new AtomicBoolean(true);
         private final ReentrantScope scope;
         private static final Object[] EMPTY = new Object[0];
 
-        public PageChain(Dependencies deps, ReentrantScope scope, Class<? super Acteur> type, Page page, Object... ctx) {
+        PageChain(Dependencies deps, ReentrantScope scope, Class<? super Acteur> type, Page page, Object... ctx) {
             super(deps, type, page.acteurs());
             this.page = page;
             this.ctx = ctx;
@@ -406,6 +410,7 @@ class PagesImpl2 {
             }
         }
 
+        @Override
         public String toString() {
             return "Chain for " + page;
         }
@@ -418,7 +423,7 @@ class PagesImpl2 {
         private final Iterator<T> delegate;
         private final Object[] ctx;
 
-        public ScopeWrapIterator(ReentrantScope scope, Iterator<T> delegate, Object... ctx) {
+        ScopeWrapIterator(ReentrantScope scope, Iterator<T> delegate, Object... ctx) {
             this.scope = scope;
             this.delegate = delegate;
             this.ctx = ctx;
@@ -440,10 +445,5 @@ class PagesImpl2 {
         public void remove() {
             delegate.remove();
         }
-//
-//        @Override
-//        public void forEachRemaining(Consumer<? super T> cnsmr) {
-//            delegate.forEachRemaining(cnsmr);
-//        }
     }
 }

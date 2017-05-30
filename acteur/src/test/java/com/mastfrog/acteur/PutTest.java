@@ -68,7 +68,6 @@ public class PutTest {
 
             @Inject
             EchoPage(ActeurFactory af) {
-                getResponseHeaders().addCacheControl(CacheControlTypes.Public);
                 add(EchoActeur.class);
             }
         }

@@ -39,31 +39,31 @@ abstract class AbstractHeader<T> implements HeaderValueType<T> {
     }
 
     @Override
-    public CharSequence name() {
+    public final CharSequence name() {
         return name;
     }
 
     @Override
-    public Class<T> type() {
+    public final Class<T> type() {
         return type;
     }
 
     @Override
-    public String toString() {
+    public final String toString() {
         return name.toString();
     }
 
     @Override
-    public boolean equals(Object obj) {
-        return obj instanceof HeaderValueType<?> 
+    public final boolean equals(Object obj) {
+        return obj == null ? false : obj == this ? true : obj instanceof HeaderValueType<?> 
                 && Strings.charSequencesEqual(name(), ((HeaderValueType<?>) obj).name(), true);
     }
 
     @Override
-    public int hashCode() {
+    public final int hashCode() {
         int hash = 7;
-        hash = 79 * hash + this.type.hashCode();
-        hash = 79 * hash + this.name.hashCode();
+        hash = 79 * hash + this.type().hashCode();
+        hash = 79 * hash + this.name().hashCode();
         return hash;
     }
 

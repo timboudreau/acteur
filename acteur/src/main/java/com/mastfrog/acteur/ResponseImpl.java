@@ -41,6 +41,8 @@ import com.mastfrog.util.Checks;
 import com.mastfrog.util.Codec;
 import com.mastfrog.util.Exceptions;
 import com.mastfrog.util.Strings;
+import com.mastfrog.util.collections.CollectionUtils;
+import com.mastfrog.util.thread.ThreadLocalTransfer;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.Channel;
@@ -57,12 +59,12 @@ import static io.netty.handler.codec.http.HttpHeaderNames.CONTENT_ENCODING;
 import static io.netty.handler.codec.http.HttpHeaderNames.CONTENT_LENGTH;
 import static io.netty.handler.codec.http.HttpHeaderNames.TRANSFER_ENCODING;
 import io.netty.handler.codec.http.HttpHeaderValues;
-import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpMessage;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import static io.netty.handler.codec.http.HttpResponseStatus.NOT_MODIFIED;
 import static io.netty.handler.codec.http.HttpResponseStatus.NO_CONTENT;
+import static io.netty.handler.codec.http.HttpResponseStatus.OK;
 import io.netty.handler.codec.http.HttpVersion;
 import static io.netty.handler.codec.http.HttpVersion.HTTP_1_0;
 import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
@@ -76,7 +78,6 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
@@ -95,13 +96,23 @@ final class ResponseImpl extends Response {
 
     private volatile boolean modified;
     HttpResponseStatus status;
-    private final List<Entry<?>> headers = new ArrayList<Entry<?>>(2);
+    private final List<Entry<?>> headers = new ArrayList<>(3);
     private Object message;
     ChannelFutureListener listener;
     private boolean chunked;
     private Duration delay;
+    
+    static final ThreadLocalTransfer<List<ResponseImpl>> shadowResponses = new ThreadLocalTransfer<>();
+    List<ResponseImpl> alsoConsult;
 
     ResponseImpl() {
+       // Ensure's an Acteur's call to response().get(Headers.FOO) can see
+       // values set earlier in the chain.  Needed to get rid of ResponseHeaders
+       // and page.decorateResponse().
+       List<ResponseImpl> previousActeursResponses = shadowResponses.get();
+       if (previousActeursResponses != null) {
+           alsoConsult = CollectionUtils.reversed(previousActeursResponses);
+       }
     }
 
     boolean isModified() {
@@ -141,22 +152,37 @@ final class ResponseImpl extends Response {
         add(e.decorator, e.value);
     }
 
+    @Override
     public void setMessage(Object message) {
         modify();
         this.message = message;
     }
 
+    @Override
     public void setDelay(Duration delay) {
         modify();
         this.delay = delay;
     }
 
+    @Override
     public void setResponseCode(HttpResponseStatus status) {
         modify();
         this.status = status;
     }
+    
+    HttpResponseStatus rawStatus() {
+        return status;
+    }
 
     public HttpResponseStatus getResponseCode() {
+        if (status == null && alsoConsult != null) {
+            for (ResponseImpl previous : alsoConsult) {
+                HttpResponseStatus raw = previous.rawStatus();
+                if (raw != null) {
+                    return raw;
+                }
+            }
+        }
         return status == null ? HttpResponseStatus.OK : status;
     }
 
@@ -194,6 +220,7 @@ final class ResponseImpl extends Response {
     }
 
     @SuppressWarnings("unchecked")
+    @Override
     public <T> void add(HeaderValueType<T> decorator, T value) {
         List<Entry<?>> old = new LinkedList<>();
         // XXX set cookie!
@@ -225,16 +252,30 @@ final class ResponseImpl extends Response {
                 Method[] m = (Method[]) en.value;
                 all.addAll(Arrays.asList(m));
             }
-            value = (T) all.toArray(new Method[0]);
+            value = (T) all.toArray(new Method[all.size()]);
             e = new Entry<>(decorator, value);
         }
         headers.add(e);
         modify();
     }
 
+    @Override
     public <T> T get(HeaderValueType<T> decorator) {
+        T result = internalGet(decorator);
+        if (result == null && alsoConsult != null) {
+            for (ResponseImpl preceding : alsoConsult) {
+                result = preceding.internalGet(decorator);
+                if (result != null) {
+                    break;
+                }
+            }
+        }
+        return result;
+    }
+    
+    <T> T internalGet(HeaderValueType<T> headerType) {
         for (Entry<?> e : headers) {
-            HeaderValueType<T> d = e.match(decorator);
+            HeaderValueType<T> d = e.match(headerType);
             if (d != null) {
                 return d.type().cast(e.value);
             }
@@ -242,6 +283,7 @@ final class ResponseImpl extends Response {
         return null;
     }
 
+    @Override
     public void setChunked(boolean chunked) {
         this.chunked = chunked;
         modify();
@@ -272,7 +314,7 @@ final class ResponseImpl extends Response {
         private final AtomicReference<ResponseWriter> actual = new AtomicReference<>();
         private final Callable<ResponseWriter> resp;
 
-        public DynResponseWriter(final Class<? extends ResponseWriter> type, final Dependencies deps) {
+        DynResponseWriter(final Class<? extends ResponseWriter> type, final Dependencies deps) {
             ReentrantScope scope = deps.getInstance(ReentrantScope.class);
             assert scope.inScope();
             resp = scope.wrap(new Callable<ResponseWriter>() {
@@ -309,12 +351,22 @@ final class ResponseImpl extends Response {
         }
         return false;
     }
+    
+    private boolean hasContentLength() {
+        for (Entry<?> entry : headers) {
+            if (Headers.CONTENT_LENGTH.equals(entry.decorator)) {
+                return Strings.charSequencesEqual(HttpHeaderValues.CHUNKED, entry.stringValue(), true);
+            }
+        }
+        return false;
+        
+    }
 
     private boolean isHttp10StyleResponse() {
         // If no content length is set, but a listener is present, and transfer encoding
         // is not set, then we are going to fire raw ByteBufs down the pipe and we need
         // to close the connection to indicate that the response is finished
-        return listener != null && !chunked && !hasTransferEncodingChunked();
+        return listener != null && !chunked && !hasTransferEncodingChunked() && !hasContentLength();
     }
 
     boolean isKeepAlive(Event<?> evt) {
@@ -340,7 +392,7 @@ final class ResponseImpl extends Response {
         private final Event<?> evt;
         private final ExecutorService svc;
 
-        public ResponseWriterListener(Event<?> evt, ResponseWriter writer, Charset charset,
+        ResponseWriterListener(Event<?> evt, ResponseWriter writer, Charset charset,
                 ByteBufAllocator allocator, Codec mapper, boolean chunked,
                 boolean shouldClose, ExecutorService svc) {
             super(charset, allocator, mapper);
@@ -351,6 +403,7 @@ final class ResponseImpl extends Response {
             this.svc = svc;
         }
 
+        @Override
         public Channel channel() {
             if (future == null) {
                 throw new IllegalStateException("No future -> no channel");
@@ -457,6 +510,7 @@ final class ResponseImpl extends Response {
      *
      * @param listener
      */
+    @Override
     public void setBodyWriter(ChannelFutureListener listener) {
         if (this.listener != null) {
             throw new IllegalStateException("Listener already set to " + this.listener);
@@ -495,12 +549,17 @@ final class ResponseImpl extends Response {
         marshallers.write(message, buf, charset);
         return buf;
     }
+    
+    HttpResponseStatus internalStatus() {
+        return status == null ? OK : status;
+    }
 
     public HttpResponse toResponse(Event<?> evt, Charset defaultCharset) throws Exception {
-        if (!canHaveBody(getResponseCode()) && (message != null || listener != null)) {
+        HttpResponseStatus status = internalStatus();
+        if (!canHaveBody(status) && (message != null || listener != null)) {
             if (listener != ChannelFutureListener.CLOSE) {
                 System.err.println(evt
-                        + " attempts to attach a body to " + getResponseCode()
+                        + " attempts to attach a body to " + status
                         + " which cannot have one: " + message
                         + " - " + listener);
             }
@@ -516,11 +575,11 @@ final class ResponseImpl extends Response {
             add(Headers.CONTENT_LENGTH, size);
 
             DefaultFullHttpResponse r = new DefaultFullHttpResponse(
-                    HttpVersion.HTTP_1_1, getResponseCode(), buf);
+                    HttpVersion.HTTP_1_1, status, buf);
             resp = r;
         } else {
             HttpVersion version = isHttp10StyleResponse() ? HTTP_1_0 : HTTP_1_1;
-            resp = new DefaultHttpResponse(version, getResponseCode(), false, false);
+            resp = new DefaultHttpResponse(version, status, false, false);
         }
         for (Entry<?> e : headers) {
             // Remove things which cause problems for non-modified responses -
@@ -602,12 +661,19 @@ final class ResponseImpl extends Response {
 
         @SuppressWarnings({"unchecked"})
         public <R> HeaderValueType<R> match(HeaderValueType<R> decorator) {
-            if (decorator == this.decorator) {
+            if (this.decorator.equals(decorator)) { // Equality test is case-insensitive name match
+                if (this.decorator.type() != decorator.type()) {
+                    System.err.println("Requesting header " + decorator + " of type " + decorator.type().getName() + 
+                            " but returning header of type " + this.decorator.type().getName() + " - if set, this"
+                                    + " will probably throw a ClassCastException.");
+                }
                 return (HeaderValueType<R>) this.decorator;
             }
             if (this.decorator.name().equals(decorator.name())
                     && this.decorator.type().equals(decorator.type())) {
                 return decorator;
+            } else if (Strings.charSequencesEqual(this.decorator.name(), decorator.name(), true)) {
+                
             }
             return null;
         }

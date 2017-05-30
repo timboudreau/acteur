@@ -43,6 +43,8 @@ public final class CacheControl {
             = new CacheControl(Public, must_revalidate).add(max_age, Duration.standardDays(1));
     public static CacheControl PRIVATE_NO_CACHE_NO_STORE 
             = new CacheControl(Private, no_cache, no_store);
+    public static CacheControl PUBLIC
+            = new CacheControl(Public);
 
     public CacheControl(CacheControlTypes... types) {
         for (CacheControlTypes c : types) {
@@ -59,8 +61,8 @@ public final class CacheControl {
         if (contains(CacheControlTypes.no_cache) || contains(CacheControlTypes.no_store)) {
             return true;
         }
-        Long maxAgeSeconds = get(CacheControlTypes.max_age);
-        if (maxAgeSeconds != null) {
+        long maxAgeSeconds = get(CacheControlTypes.max_age);
+        if (maxAgeSeconds != -1) {
             Duration dur = new Duration(new DateTime(), creationTime);
             Duration target = Duration.standardSeconds(maxAgeSeconds);
             if (dur.isLongerThan(target)) {

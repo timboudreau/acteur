@@ -29,9 +29,14 @@ import com.google.inject.Inject;
 import com.mastfrog.url.Path;
 import com.mastfrog.util.Streams;
 import com.mastfrog.util.streams.HashingInputStream;
-import com.mastfrog.acteur.ResponseHeaders.ContentLengthProvider;
-import com.mastfrog.acteur.ResponseHeaders.ETagProvider;
-import com.mastfrog.acteur.util.CacheControlTypes;
+import com.mastfrog.acteur.headers.HeaderValueType;
+import static com.mastfrog.acteur.headers.Headers.CACHE_CONTROL;
+import static com.mastfrog.acteur.headers.Headers.CONTENT_ENCODING;
+import static com.mastfrog.acteur.headers.Headers.CONTENT_TYPE;
+import static com.mastfrog.acteur.headers.Headers.ETAG;
+import static com.mastfrog.acteur.headers.Headers.LAST_MODIFIED;
+import static com.mastfrog.acteur.headers.Headers.VARY;
+import com.mastfrog.acteur.util.CacheControl;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.http.HttpResponseStatus;
@@ -48,19 +53,18 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.apache.commons.codec.binary.Base64;
 import org.joda.time.DateTime;
-import org.joda.time.Duration;
 
 /**
  * A page which loads resources relative to itself on the classpath. Handles
  * caching headers as follows: ETag is generated (SHA-1) on first read; last
  * modified = server start time.
  * <p/>
- * Use this to embed resources inside application JARs - this is not for
- * serving flat files on disk.
+ * Use this to embed resources inside application JARs - this is not for serving
+ * flat files on disk.
  *
  * @author Tim Boudreau
  */
-public abstract class ClasspathResourcePage extends Page implements ContentLengthProvider, ETagProvider {
+public abstract class ClasspathResourcePage extends Page {
 
     private static Map<Class<?>, Map<Path, Integer>> sizes = new HashMap<>();
     private static Map<Class<?>, Boolean> overridesProcessContent = new HashMap<>();
@@ -69,24 +73,17 @@ public abstract class ClasspathResourcePage extends Page implements ContentLengt
     private final Path path;
 
     protected ClasspathResourcePage(final HttpEvent event, ActeurFactory f, DateTime serverStartTime, String... patterns) {
-        this (null, event, f, serverStartTime, patterns);
+        this(null, event, f, serverStartTime, patterns);
     }
-    
+
     @Deprecated
     @SuppressWarnings("LeakingThisInConstructor")
     protected ClasspathResourcePage(final Application app, final HttpEvent event, ActeurFactory f, DateTime serverStartTime, String... patterns) {
         this.path = event.getPath();
-        responseHeaders.setLastModified(serverStartTime);
-        responseHeaders.addCacheControl(CacheControlTypes.Public);
-        responseHeaders.addCacheControl(CacheControlTypes.must_revalidate);
-        responseHeaders.addCacheControl(CacheControlTypes.max_age, Duration.standardDays(100));
-        responseHeaders.setContentLengthProvider(this);
-        responseHeaders.setETagProvider(this);
-        getResponseHeaders().setMaxAge(Duration.standardDays(100));
-        getResponseHeaders().addVaryHeader(Headers.CONTENT_ENCODING);
 
-        add(f.matchPath(patterns));
         add(f.matchMethods(com.mastfrog.acteur.headers.Method.GET, com.mastfrog.acteur.headers.Method.HEAD));
+        add(f.matchPath(patterns));
+        add(HeadersActeur.class);
         add(HasStreamAction.class);
 
         add(f.sendNotModifiedIfETagHeaderMatches());
@@ -98,30 +95,14 @@ public abstract class ClasspathResourcePage extends Page implements ContentLengt
         }
     }
 
-    protected MediaType getContentType(Path path) {
-        MediaType type = responseHeaders.getContentType();
-        if (type != null) {
-            return type;
+    static class HeadersActeur extends Acteur {
+
+        @Inject
+        HeadersActeur(DateTime serverStartTime) {
+            add(LAST_MODIFIED, serverStartTime);
+            add(CACHE_CONTROL, CacheControl.PUBLIC_MUST_REVALIDATE_MAX_AGE_1_DAY);
+            add(VARY, new HeaderValueType<?>[]{CONTENT_ENCODING});
         }
-        String pth = path.toString();
-        if (pth.endsWith("svg")) {
-            return MediaType.SVG_UTF_8;
-        } else if (pth.endsWith("css")) {
-            return MediaType.CSS_UTF_8;
-        } else if (pth.endsWith("html")) {
-            return MediaType.HTML_UTF_8;
-        } else if (pth.endsWith("json")) {
-            return MediaType.JSON_UTF_8;
-        } else if (pth.endsWith("js")) {
-            return MediaType.JAVASCRIPT_UTF_8;
-        } else if (pth.endsWith("gif")) {
-            return MediaType.GIF;
-        } else if (pth.endsWith("jpg")) {
-            return MediaType.JPEG;
-        } else if (pth.endsWith("png")) {
-            return MediaType.PNG;
-        }
-        return null;
     }
 
     private static class WriteBodyActeur extends Acteur {
@@ -132,7 +113,34 @@ public abstract class ClasspathResourcePage extends Page implements ContentLengt
             byte[] content = ((ClasspathResourcePage) page).getContent(event.getPath());
             setState(new RespondWith(HttpResponseStatus.OK));
             setResponseWriter(new BodyWriter(content, event.isKeepAlive()));
+            MediaType type = getContentType(event.getPath());
+            if (type != null) {
+                add(CONTENT_TYPE, type);
+            }
         }
+
+        protected MediaType getContentType(Path path) {
+            String pth = path.toString();
+            if (pth.endsWith("svg")) {
+                return MediaType.SVG_UTF_8;
+            } else if (pth.endsWith("css")) {
+                return MediaType.CSS_UTF_8;
+            } else if (pth.endsWith("html")) {
+                return MediaType.HTML_UTF_8;
+            } else if (pth.endsWith("json")) {
+                return MediaType.JSON_UTF_8;
+            } else if (pth.endsWith("js")) {
+                return MediaType.JAVASCRIPT_UTF_8;
+            } else if (pth.endsWith("gif")) {
+                return MediaType.GIF;
+            } else if (pth.endsWith("jpg")) {
+                return MediaType.JPEG;
+            } else if (pth.endsWith("png")) {
+                return MediaType.PNG;
+            }
+            return null;
+        }
+
     }
 
     private static class HasStreamAction extends Acteur {
@@ -145,7 +153,7 @@ public abstract class ClasspathResourcePage extends Page implements ContentLengt
             if (hasContent) {
                 String cachedEtag = getCachedEtag(page.getClass(), event.getPath());
                 if (cachedEtag != null) {
-                    page.getResponseHeaders().setEtag(cachedEtag);
+                    add(ETAG, cachedEtag);
                 }
                 Long cachedSize = getCachedSize(page.getClass(), event.getPath());
                 if (cachedSize != null) {
@@ -203,6 +211,7 @@ public abstract class ClasspathResourcePage extends Page implements ContentLengt
             bytes = content;
             this.keepAlive = keepAlive;
         }
+
         @Override
         public Status write(Event<?> evt, Output out, int iteration) throws Exception {
             int old = offset;
@@ -214,7 +223,6 @@ public abstract class ClasspathResourcePage extends Page implements ContentLengt
         }
     }
 
-    @Override
     public Long getContentLength() {
         long result = -1;
         if (!isDynamicContent()) {
@@ -333,7 +341,6 @@ public abstract class ClasspathResourcePage extends Page implements ContentLengt
         return dynContent;
     }
 
-    @Override
     public String getETag() {
         if (isDynamicContent()) {
             return null;

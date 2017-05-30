@@ -34,7 +34,7 @@ import java.net.URL;
  */
 final class WebSocketLocationHeader extends AbstractHeader<URL> {
 
-    public WebSocketLocationHeader() {
+    WebSocketLocationHeader() {
         super(URL.class, HttpHeaderNames.WEBSOCKET_LOCATION);
     }
 

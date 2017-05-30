@@ -51,6 +51,7 @@ public abstract class State extends ActeurState<Response, ResponseImpl> {
         }
     }
 
+    @Override
     public boolean isRejected() {
         return super.isRejected();
     }
@@ -89,6 +90,7 @@ public abstract class State extends ActeurState<Response, ResponseImpl> {
      *
      * @return the locked action; if null, then there is no prior action
      */
+    @Override
     public abstract Acteur getActeur();
 
 }

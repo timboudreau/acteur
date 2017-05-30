@@ -73,7 +73,7 @@ public final class Closables {
 
         private final Runnable run;
 
-        public RunnableWrapper(Runnable run) {
+        RunnableWrapper(Runnable run) {
             this.run = run;
         }
 

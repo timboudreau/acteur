@@ -34,7 +34,7 @@ import java.util.logging.Logger;
 final class AllowHeader extends AbstractHeader<Method[]> {
 
     AllowHeader(boolean isAllowOrigin) {
-        super(Method[].class, isAllowOrigin ? "Access-Control-Allow-Methods" : HttpHeaderNames.ALLOW);
+        super(Method[].class, isAllowOrigin ? HttpHeaderNames.ACCESS_CONTROL_ALLOW_METHODS : HttpHeaderNames.ALLOW);
     }
 
     @Override

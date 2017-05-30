@@ -154,6 +154,11 @@ public class ChainsRunner {
         }
 
         @Override
+        public void onBeforeRunOne(P chain, List<R> responsesThusFar) {
+            onDone.onBeforeRunOne(chain, responsesThusFar);
+        }
+
+        @Override
         public void onAfterRunOne(P chain, A a) {
             onDone.onAfterRunOne(chain, a);
         }

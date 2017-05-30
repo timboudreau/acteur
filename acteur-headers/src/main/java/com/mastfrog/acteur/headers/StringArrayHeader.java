@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright 2015 Tim Boudreau
+ * Copyright 2017 Tim Boudreau.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,32 +21,44 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
+
 package com.mastfrog.acteur.headers;
 
-import io.netty.handler.codec.http.cookie.ClientCookieDecoder;
-import io.netty.handler.codec.http.cookie.Cookie;
-import io.netty.handler.codec.http.cookie.ServerCookieEncoder;
+import com.mastfrog.util.Checks;
+import com.mastfrog.util.Strings;
 
 /**
  *
  * @author Tim Boudreau
  */
-final class SetCookieHeaderNetty428 extends AbstractHeader<Cookie> {
+final class StringArrayHeader extends AbstractHeader<String[]> {
 
-    private final boolean strict;
-
-    SetCookieHeaderNetty428(CharSequence name, boolean strict) {
-        super(Cookie.class, name);
-        this.strict = strict;
+    StringArrayHeader(CharSequence name) {
+        super(String[].class, name);
+    }
+    
+    @Override
+    public String toString(String... value) {
+        Checks.notNull("value", value);
+        StringBuilder sb = new StringBuilder();
+        for (int i=0; i < value.length; i++) {
+            sb.append(value[i]);
+            if (i != value.length-1) {
+                sb.append(',');
+            }
+        }
+        return sb.toString();
     }
 
     @Override
-    public String toString(Cookie value) {
-        return strict ? ServerCookieEncoder.STRICT.encode(value) : ServerCookieEncoder.LAX.encode(value);
-    }
-
-    @Override
-    public Cookie toValue(String value) {
-        return strict ? ClientCookieDecoder.STRICT.decode(value) : ClientCookieDecoder.LAX.decode(value);
+    public String[] toValue(String value) {
+        Checks.notNull("value", value);
+        CharSequence[] result = Strings.split(',', value);
+        String[] rr = new String[result.length];
+        for (int i = 0; i < result.length; i++) {
+            rr[i] = result[i] instanceof String ? (String) result[i] :
+                    result[i].toString();
+        }
+        return rr;
     }
 }

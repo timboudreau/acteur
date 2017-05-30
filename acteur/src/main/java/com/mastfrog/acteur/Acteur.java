@@ -36,7 +36,6 @@ import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.giulius.scope.ReentrantScope;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.util.Checks;
-import com.mastfrog.util.Codec;
 import com.mastfrog.util.Exceptions;
 import com.mastfrog.util.Invokable;
 import io.netty.channel.ChannelFuture;
@@ -102,7 +101,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
 
         protected final Page page;
 
-        public BaseState(Object... context) {
+        BaseState(Object... context) {
             super(context);
             page = Page.get();
             if (page == null) {
@@ -110,7 +109,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
             }
         }
 
-        public BaseState(boolean rejected) {
+        BaseState(boolean rejected) {
             super(rejected);
             page = Page.get();
             if (page == null) {
@@ -136,6 +135,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
     }
     private static final RT INSTANCE = new RT();
 
+    @Override
     protected com.mastfrog.acteur.State getState() {
         return super.getState();
     }
@@ -189,6 +189,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
         return this;
     }
 
+    @Override
     protected ResponseImpl getResponse() {
         if (this instanceof Delegate) {
             return ((Delegate) this).getDelegate().getResponse();
@@ -215,6 +216,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
         return this;
     }
 
+    @Override
     protected final Response response() {
         if (this instanceof Delegate) {
             return ((Delegate) this).getDelegate().response();
@@ -354,7 +356,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
 
         @Override
         public String toString() {
-            return "Respond with " + getResponse().getResponseCode() + " - "
+            return "Respond with " + getResponse().internalStatus() + " - "
                     + super.toString() + " - " + getResponse().getMessage();
         }
     }
@@ -539,7 +541,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
         class WL implements ChannelFutureListener, Callable<Void> {
 
             private ChannelFuture future;
-            private Callable<Void> wrapper = app.getRequestScope().wrap(this);
+            private final Callable<Void> wrapper = app.getRequestScope().wrap(this);
 
             @Override
             public void operationComplete(ChannelFuture future) throws Exception {
@@ -577,7 +579,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
         private final Charset charset;
         private final Class<? extends Acteur> type;
 
-        public WrapperActeur(Dependencies deps, Charset charset, Class<? extends Acteur> type) {
+        WrapperActeur(Dependencies deps, Charset charset, Class<? extends Acteur> type) {
             this.deps = deps;
             this.charset = charset;
             this.type = type;

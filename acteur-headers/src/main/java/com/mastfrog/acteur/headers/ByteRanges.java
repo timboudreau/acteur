@@ -23,7 +23,6 @@
  */
 package com.mastfrog.acteur.headers;
 
-import com.mastfrog.acteur.headers.Range;
 import com.mastfrog.util.collections.CollectionUtils;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -142,6 +141,7 @@ public final class ByteRanges implements Iterable<Range> {
         return CollectionUtils.toIterator(ranges);
     }
 
+    @Override
     public String toString() {
         StringBuilder result = new StringBuilder("bytes=");
         for (int i = 0; i < ranges.length; i++) {
@@ -153,10 +153,12 @@ public final class ByteRanges implements Iterable<Range> {
         return result.toString();
     }
 
+    @Override
     public boolean equals(Object o) {
         return o instanceof ByteRanges && o.toString().equals(toString());
     }
 
+    @Override
     public int hashCode() {
         return valid ? 1 : -1 + (7 * Arrays.hashCode(ranges));
     }
@@ -212,7 +214,7 @@ public final class ByteRanges implements Iterable<Range> {
         final long start;
         final long end;
 
-        public RangeImpl(long start, long end) {
+        RangeImpl(long start, long end) {
             this.start = start;
             this.end = end;
         }
@@ -233,6 +235,7 @@ public final class ByteRanges implements Iterable<Range> {
             return end;
         }
 
+        @Override
         public String toString() {
             return start + "-" + end;
         }
@@ -247,7 +250,7 @@ public final class ByteRanges implements Iterable<Range> {
 
         final long endOffset;
 
-        public EndRange(long endOffset) {
+        EndRange(long endOffset) {
             this.endOffset = endOffset;
         }
 
@@ -268,6 +271,7 @@ public final class ByteRanges implements Iterable<Range> {
             return max;
         }
 
+        @Override
         public String toString() {
             return "-" + endOffset;
         }
@@ -299,6 +303,7 @@ public final class ByteRanges implements Iterable<Range> {
             return max;
         }
 
+        @Override
         public String toString() {
             return startpoint + "-";
         }

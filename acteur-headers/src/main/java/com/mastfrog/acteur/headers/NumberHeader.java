@@ -1,7 +1,7 @@
-/*
+/* 
  * The MIT License
  *
- * Copyright 2015 Tim Boudreau
+ * Copyright 2013 Tim Boudreau.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,30 +23,25 @@
  */
 package com.mastfrog.acteur.headers;
 
-import io.netty.handler.codec.http.cookie.ClientCookieDecoder;
-import io.netty.handler.codec.http.cookie.Cookie;
-import io.netty.handler.codec.http.cookie.ServerCookieEncoder;
-
 /**
+ * Header which is a number (so casting to long is unneeded for literals).
  *
  * @author Tim Boudreau
  */
-final class SetCookieHeaderNetty428 extends AbstractHeader<Cookie> {
+class NumberHeader extends AbstractHeader<Number> {
 
-    private final boolean strict;
-
-    SetCookieHeaderNetty428(CharSequence name, boolean strict) {
-        super(Cookie.class, name);
-        this.strict = strict;
+    NumberHeader(CharSequence name) {
+        super(Number.class, name);
     }
 
     @Override
-    public String toString(Cookie value) {
-        return strict ? ServerCookieEncoder.STRICT.encode(value) : ServerCookieEncoder.LAX.encode(value);
+    public String toString(Number value) {
+        return Long.toString(value.longValue());
     }
 
     @Override
-    public Cookie toValue(String value) {
-        return strict ? ClientCookieDecoder.STRICT.decode(value) : ClientCookieDecoder.LAX.decode(value);
+    public Number toValue(String value) {
+        return Long.parseLong(value);
     }
+
 }

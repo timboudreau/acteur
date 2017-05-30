@@ -36,7 +36,6 @@ import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_CORS_MAX_AGE_
 import com.mastfrog.acteur.util.CacheControl;
 import com.mastfrog.acteur.util.CacheControlTypes;
 import com.mastfrog.settings.Settings;
-import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import javax.inject.Inject;
 import org.joda.time.Duration;
@@ -51,8 +50,8 @@ final class CORSResource extends Page {
 
     private static final HeaderValueType<?>[] hdrs = new HeaderValueType<?>[]{
         Headers.CONTENT_TYPE,
-        Headers.stringHeader(HttpHeaders.Names.ACCEPT),
-        Headers.stringHeader("X-Requested-With")
+        Headers.ACCEPT,
+        Headers.X_REQUESTED_WITH
     };
 
     private static final Method[] methods = new Method[]{
@@ -66,7 +65,6 @@ final class CORSResource extends Page {
     @Inject
     CORSResource(ActeurFactory af) {
         add(CorsHeaders.class);
-        getResponseHeaders().setContentLength(0);
     }
 
     private static final class CorsHeaders extends Acteur {
@@ -75,8 +73,10 @@ final class CORSResource extends Page {
             String allowOrigin = settings.getString(SETTINGS_KEY_CORS_ALLOW_ORIGIN, DEFAULT_CORS_ALLOW_ORIGIN);
             Duration dur = Duration.standardMinutes(
                     settings.getLong(SETTINGS_KEY_CORS_MAX_AGE_MINUTES, DEFAULT_CORS_MAX_AGE_MINUTES));
-            add(Headers.ACCESS_CONTROL_ALLOW_ORIGIN, allowOrigin);
+            add(Headers.CONTENT_LENGTH, 0);
+            add(Headers.ACCESS_CONTROL_ALLOW_ORIGIN.toStringHeader(), allowOrigin);
             add(Headers.ACCESS_CONTROL_ALLOW, methods);
+            add(Headers.ACCESS_CONTROL_ALLOW_CREDENTIALS, true);
             add(Headers.ACCESS_CONTROL_ALLOW_HEADERS, hdrs);
             add(Headers.ACCESS_CONTROL_MAX_AGE, dur);
             add(Headers.CACHE_CONTROL, CacheControl.$(CacheControlTypes.Public).add(CacheControlTypes.max_age, Duration.standardDays(365)));

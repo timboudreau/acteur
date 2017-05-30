@@ -32,9 +32,10 @@ import com.mastfrog.util.Checks;
 import io.netty.handler.codec.http.Cookie;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpMessage;
+import io.netty.util.AsciiString;
 import java.net.URI;
 import java.nio.charset.Charset;
-import java.util.*;
+import java.util.Locale;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.joda.time.Duration;
@@ -78,7 +79,7 @@ public final class Headers {
     public static final HeaderValueType<String> CONTENT_ENCODING = new StringHeader(HttpHeaderNames.CONTENT_ENCODING);
     public static final HeaderValueType<String> USER_AGENT = new StringHeader(HttpHeaderNames.USER_AGENT);
     public static final HeaderValueType<Connection> CONNECTION = new ConnectionHeader();
-    public static final HeaderValueType<Long> CONTENT_LENGTH = new LongHeader(HttpHeaderNames.CONTENT_LENGTH);
+    public static final HeaderValueType<Number> CONTENT_LENGTH = new NumberHeader(HttpHeaderNames.CONTENT_LENGTH);
     public static final HeaderValueType<URI> CONTENT_LOCATION = new UriHeader(HttpHeaderNames.CONTENT_LOCATION);
     public static final HeaderValueType<URI> LOCATION = new UriHeader(HttpHeaderNames.LOCATION);
     public static final HeaderValueType<Charset> ACCEPT_CHARSET = new CharsetHeader(HttpHeaderNames.ACCEPT_CHARSET);
@@ -92,6 +93,12 @@ public final class Headers {
     public static final HeaderValueType<Realm> WWW_AUTHENTICATE = new AuthHeader();
     public static final HeaderValueType<Method[]> ALLOW = new AllowHeader(false);
     public static final HeaderValueType<Method[]> ACCESS_CONTROL_ALLOW = new AllowHeader(true);
+    public static final HeaderValueType<String[]>ACCESS_CONTROL_ALLOW_ORIGIN = new StringArrayHeader(HttpHeaderNames.ACCESS_CONTROL_ALLOW_ORIGIN);
+    public static final HeaderValueType<Number>ACCESS_CONTROL_ALLOW_MAX_AGE = new NumberHeader(HttpHeaderNames.ACCESS_CONTROL_MAX_AGE);
+    public static final HeaderValueType<HeaderValueType<?>[]> ACCESS_CONTROL_ALLOW_HEADERS = new HeaderNamesHeader(HttpHeaderNames.ACCESS_CONTROL_ALLOW_HEADERS);
+    public static final HeaderValueType<HeaderValueType<?>[]> ACCESS_CONTROL_EXPOSE_HEADERS = new HeaderNamesHeader(HttpHeaderNames.ACCESS_CONTROL_EXPOSE_HEADERS);
+    public static final HeaderValueType<Boolean> ACCESS_CONTROL_ALLOW_CREDENTIALS = new BooleanHeader(HttpHeaderNames.ACCESS_CONTROL_ALLOW_CREDENTIALS);
+    public static final HeaderValueType<String> X_REQUESTED_WITH = stringHeader(new AsciiString("x-requested-with"));
     @Deprecated
     @SuppressWarnings("deprecation")
     public static final HeaderValueType<Cookie> SET_COOKIE = new SetCookieHeader();
@@ -108,9 +115,7 @@ public final class Headers {
     public static final HeaderValueType<String> UPGRADE = stringHeader(HttpHeaderNames.UPGRADE);
     public static final HeaderValueType<String> REFERRER = stringHeader(HttpHeaderNames.REFERER);
     public static final HeaderValueType<String> TRANSFER_ENCODING = stringHeader(HttpHeaderNames.TRANSFER_ENCODING);
-    public static final HeaderValueType<String> ACCESS_CONTROL_ALLOW_ORIGIN = stringHeader(HttpHeaderNames.ACCESS_CONTROL_ALLOW_ORIGIN);
     public static final HeaderValueType<String> ACCESS_CONTROL_ALLOW_METHODS = stringHeader(HttpHeaderNames.ACCESS_CONTROL_ALLOW_METHODS);
-    public static final HeaderValueType<HeaderValueType<?>[]> ACCESS_CONTROL_ALLOW_HEADERS = new HeaderNamesHeader(HttpHeaderNames.ACCESS_CONTROL_ALLOW_HEADERS);
     public static final HeaderValueType<Duration> ACCESS_CONTROL_MAX_AGE = new DurationHeader(HttpHeaderNames.ACCESS_CONTROL_MAX_AGE);
 
     public static HeaderValueType<String> stringHeader(CharSequence key) {
@@ -152,9 +157,5 @@ public final class Headers {
         dt = new DateTime(dt.getMillis(), DateTimeZone.UTC);
         return dt.toDateTime(DateTimeZone.UTC).toDateTimeISO().toString(
                 ISO2822DateFormat);
-    }
-
-    public static HeaderValueType<String> custom(String name) {
-        return new StringHeader(name);
     }
 }

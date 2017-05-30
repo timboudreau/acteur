@@ -31,9 +31,9 @@ import java.util.Map;
 import javax.inject.Inject;
 
 /**
- * Convenience Acteur which compares the current Page's ETag against the
- * current request's If-None-Match header and returns a 304 response if
- * the browser's cached version is current.
+ * Convenience Acteur which compares the current Page's ETag against the current
+ * request's If-None-Match header and returns a 304 response if the browser's
+ * cached version is current.
  *
  * @author Tim Boudreau
  */
@@ -44,15 +44,10 @@ public final class CheckIfNoneMatchHeader extends Acteur {
         Checks.notNull("event", event);
         Checks.notNull("page", page);
         String etag = event.getHeader(IF_NONE_MATCH);
-        String pageEtag = page.getResponseHeaders().getETag();
-        if (pageEtag == null) {
-            pageEtag = response().get(Headers.ETAG);
-        }
-        if (etag != null && pageEtag != null) {
-            if (etag.equals(pageEtag)) {
-                reply(NOT_MODIFIED);
-                return;
-            }
+        String pageEtag = response().get(Headers.ETAG);
+        if (etag != null && pageEtag != null && etag.equals(pageEtag)) {
+            reply(NOT_MODIFIED);
+            return;
         }
         next();
     }
@@ -63,5 +58,4 @@ public final class CheckIfNoneMatchHeader extends Acteur {
                 + "If-None-Match header in the current request matches the "
                 + "ETag already set on the current page", true);
     }
-
 }

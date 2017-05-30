@@ -375,7 +375,7 @@ public class Application implements Iterable<Page> {
                             }
                         }
                     }
-                } catch (Exception e) {
+                } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
                     // A page may legitiimately be uninstantiable
                 }
             } else if (o instanceof Page) {
@@ -462,7 +462,7 @@ public class Application implements Iterable<Page> {
             Headers.write(Headers.stringHeader("X-Page"), page.getClass().getName(), response);
         }
         if (corsEnabled && !response.headers().contains(HttpHeaders.Names.ACCESS_CONTROL_ALLOW_ORIGIN)) {
-            Headers.write(Headers.ACCESS_CONTROL_ALLOW_ORIGIN, corsAllowOrigin, response);
+            Headers.write(Headers.ACCESS_CONTROL_ALLOW_ORIGIN.toStringHeader(), corsAllowOrigin, response);
             if (!response.headers().contains(HttpHeaders.Names.ACCESS_CONTROL_MAX_AGE)) {
                 Headers.write(Headers.ACCESS_CONTROL_MAX_AGE, new Duration(corsMaxAgeMinutes), response);
             }
@@ -491,7 +491,7 @@ public class Application implements Iterable<Page> {
         Headers.write(Headers.DATE, new DateTime(), resp);
         if (debug) {
             String pth = event instanceof HttpEvent ? ((HttpEvent) event).getPath().toString() : "";
-            Headers.write(Headers.custom("X-Req-Path"), pth, resp);
+            Headers.write(Headers.stringHeader("X-Req-Path"), pth, resp);
         }
         return resp;
     }

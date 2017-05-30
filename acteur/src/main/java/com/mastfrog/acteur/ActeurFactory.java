@@ -114,7 +114,7 @@ public class ActeurFactory {
         private final Charset charset;
         private final Method[] methods;
 
-        public MatchMethods(Provider<HttpEvent> deps, boolean notSupp, Charset charset, Method... methods) {
+        MatchMethods(Provider<HttpEvent> deps, boolean notSupp, Charset charset, Method... methods) {
             this.deps = deps;
             this.notSupp = notSupp;
             this.charset = charset;
@@ -162,7 +162,7 @@ public class ActeurFactory {
         private final Charset charset;
         private final Method[] method;
 
-        public MatchMethod(Provider<HttpEvent> deps, boolean notSupp, Charset charset, Method... method) {
+        MatchMethod(Provider<HttpEvent> deps, boolean notSupp, Charset charset, Method... method) {
             this.deps = deps;
             this.notSupp = notSupp;
             this.charset = charset;
@@ -187,7 +187,7 @@ public class ActeurFactory {
 
         @Override
         public String toString() {
-            return "Match Method " + method;
+            return "Match Method " + Arrays.toString(method);
         }
 
         @Override
@@ -289,6 +289,7 @@ public class ActeurFactory {
             this.status = status;
         }
 
+        @Override
         public com.mastfrog.acteur.State getState() {
             add(Headers.LOCATION, location);
             return new RespondWith(status, "Redirecting to " + location);
@@ -305,7 +306,7 @@ public class ActeurFactory {
      * @return An acteur
      */
     public <T> Acteur injectRequestBodyAsJSON(final Class<T> type) {
-        return new InjectBody<T>(deps, type);
+        return new InjectBody<>(deps, type);
     }
 
     @Description("Injects the body as a specific type")
@@ -370,7 +371,7 @@ public class ActeurFactory {
      * exactly to the parameter names desired.
      */
     public <T> Acteur injectRequestParametersAs(final Class<T> type) {
-        return new InjectParams<T>(deps, type);
+        return new InjectParams<>(deps, type);
     }
 
     @Description("Inject request parameters as a type")
@@ -404,6 +405,7 @@ public class ActeurFactory {
             into.put("type", type.getName());
         }
 
+        @Override
         public String toString() {
             return "Inject request parameters as " + type.getName();
         }
@@ -448,7 +450,7 @@ public class ActeurFactory {
         private final Charset charset;
         private final String[] names;
 
-        public RequireParameters(Provider<HttpEvent> deps, Charset charset, String... names) {
+        RequireParameters(Provider<HttpEvent> deps, Charset charset, String... names) {
             this.deps = deps;
             this.charset = charset;
             this.names = names;
@@ -526,6 +528,7 @@ public class ActeurFactory {
                         + (allowDecimal ? "(decimal-allowed)" : "(must be integers)") + (""), names);
             }
 
+            @Override
             public com.mastfrog.acteur.State getState() {
                 HttpEvent evt = event.get();
                 for (String name : names) {
@@ -580,6 +583,7 @@ public class ActeurFactory {
         @Description("Requires that parameters not be present")
         class BanParameters extends Acteur {
 
+            @Override
             public com.mastfrog.acteur.State getState() {
                 HttpEvent evt = event.get();
                 for (Map.Entry<String, String> e : evt.getParametersAsMap().entrySet()) {
@@ -803,7 +807,7 @@ public class ActeurFactory {
         boolean isExactGlob(String s) {
             Boolean match = matchCache.get(s);
             if (match != null) {
-                return match.booleanValue();
+                return match;
             }
             boolean result = true;
             for (char c : s.toCharArray()) {
@@ -860,7 +864,7 @@ public class ActeurFactory {
                 case '(':
                 case '^':
                 case '/':
-                    match.append("\\" + c);
+                    match.append("\\").append(c);
                     break;
                 case '*':
                     match.append("[^\\/]*?");
@@ -940,21 +944,21 @@ public class ActeurFactory {
         private final HttpResponseStatus code;
         private final String msg;
 
-        public ResponseCode(int code) {
+        ResponseCode(int code) {
             this(code, null);
         }
 
-        public ResponseCode(int code, String msg) {
+        ResponseCode(int code, String msg) {
             this(HttpResponseStatus.valueOf(code), msg);
         }
 
-        public ResponseCode(HttpResponseStatus code, String msg) {
+        ResponseCode(HttpResponseStatus code, String msg) {
             this.code = code;
             this.msg = msg;
 
         }
 
-        public ResponseCode(HttpResponseStatus code) {
+        ResponseCode(HttpResponseStatus code) {
             this(code, null);
         }
 
@@ -1012,6 +1016,7 @@ public class ActeurFactory {
         Checks.notEmpty("params", Arrays.asList(params));
         class RequireParametersIfMethodMatches extends Acteur {
 
+            @Override
             public com.mastfrog.acteur.State getState() {
                 HttpEvent evt = event.get();
                 if (method.equals(evt.getMethod())) {
@@ -1034,6 +1039,7 @@ public class ActeurFactory {
         Checks.notNull("to", to);
         class MatchNothing extends Acteur {
 
+            @Override
             public com.mastfrog.acteur.State getState() {
                 HttpEvent evt = event.get();
                 if (evt.getPath().toString().isEmpty()) {

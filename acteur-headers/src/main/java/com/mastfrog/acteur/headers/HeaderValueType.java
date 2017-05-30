@@ -29,9 +29,11 @@ import com.mastfrog.util.collections.Converter;
 /**
  * Base interface for things that convert an HTTP header to an appropriate
  * Java object and back.  See <a href="./Headers.html">Headers</a> for
- * useful implementations.
+ * useful implementations.  The equality contract is that the name() return
+ * value match case-insensitively for two instances to be equal, regardless
+ * of differences in the value of type().
  *
- * @see HeaderValueType
+ * @see Headers
  * @author Tim Boudreau
  */
 public interface HeaderValueType<T> extends Converter<T, CharSequence> {
@@ -76,5 +78,9 @@ public interface HeaderValueType<T> extends Converter<T, CharSequence> {
     @Override
     public default CharSequence unconvert(T t) {
         return toString(t);
+    }
+    
+    public default HeaderValueType<String> toStringHeader() {
+        return Headers.stringHeader(name());
     }
 }

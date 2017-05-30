@@ -64,7 +64,7 @@ public final class BuiltInPageAnnotationHandler extends PageAnnotationHandler {
     private final ActeurFactory af;
     private final Settings settings;
 
-    private static Class<?>[] TYPES = new Class<?>[]{Authenticated.class, AuthenticatedIf.class,
+    private static final Class<?>[] TYPES = new Class<?>[]{Authenticated.class, AuthenticatedIf.class,
         Path.class, Methods.class, MaximumPathLength.class, BannedUrlParameters.class,
         RequireAtLeastOneUrlParameterFrom.class, RequiredUrlParameters.class,
         RequireParametersIfMethodMatches.class, ParametersMustBeNumbersIfPresent.class,

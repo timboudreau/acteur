@@ -26,9 +26,10 @@ package com.mastfrog.acteur;
 import com.google.common.net.MediaType;
 import static com.mastfrog.acteur.Help.HELP_URL_PATTERN_SETTINGS_KEY;
 import com.mastfrog.acteur.headers.Headers;
-import com.mastfrog.acteur.headers.Method;
+import static com.mastfrog.acteur.headers.Method.GET;
 import com.mastfrog.acteur.preconditions.Description;
-import com.mastfrog.acteur.util.CacheControlTypes;
+import com.mastfrog.acteur.preconditions.Methods;
+import com.mastfrog.acteur.util.CacheControl;
 import com.mastfrog.acteur.util.Connection;
 import com.mastfrog.settings.Settings;
 import java.lang.reflect.Array;
@@ -46,15 +47,13 @@ import org.joda.time.DateTime;
  * @author Tim Boudreau
  */
 @Description("Provides a list of API calls this API supports")
+@Methods(GET)
 final class HelpPage extends Page {
 
     @Inject
-    HelpPage(ActeurFactory af, Settings settings, DateTime serverStartTime) {
+    HelpPage(ActeurFactory af, Settings settings) {
         String pattern = settings.getString(HELP_URL_PATTERN_SETTINGS_KEY, "^help$");
-        getResponseHeaders().addCacheControl(CacheControlTypes.Public);
-        getResponseHeaders().setLastModified(serverStartTime);
         add(af.matchPath(pattern));
-        add(af.matchMethods(Method.GET));
         add(af.sendNotModifiedIfIfModifiedSinceHeaderMatches());
         add(HelpActeur.class);
     }
@@ -64,7 +63,7 @@ final class HelpPage extends Page {
         private final boolean html;
 
         @Inject
-        HelpActeur(Application app, HttpEvent evt, Charset charset) {
+        HelpActeur(Application app, HttpEvent evt, Charset charset, DateTime serverStartTime) {
             this.html = "true".equals(evt.getParameter("html"));
             if (html) {
                 add(Headers.CONTENT_TYPE, MediaType.HTML_UTF_8.withCharset(charset));
@@ -72,6 +71,8 @@ final class HelpPage extends Page {
             setChunked(true);
             setResponseWriter(new HelpWriter(html, app));
             add(Headers.CONNECTION, Connection.close);
+            add(Headers.CACHE_CONTROL, CacheControl.PUBLIC_MUST_REVALIDATE);
+            add(Headers.LAST_MODIFIED, serverStartTime);
         }
 
         @Override
@@ -165,7 +166,7 @@ final class HelpPage extends Page {
                     Collections.sort(sortedKeys);
                     for (String k : sortedKeys) {
                         Object val = m.get(k);
-                        sb.append(codeOpen);;
+                        sb.append(codeOpen);
                         writeOut(k, val, sb, key);
                         sb.append(codeClose);
                         if (key == null) {
@@ -183,7 +184,7 @@ final class HelpPage extends Page {
                             .append(codeClose)
                             .append("</td></tr>\n");
                 } else if (object != null && object.getClass().isArray()) {
-                    String s = toString(object);;
+                    String s = toString(object);
                     sb.append("\n<tr><th bgcolor='#DDDDDD'>").append(humanized).append("</th><td>")
                             .append(codeOpen)
                             .append(s)

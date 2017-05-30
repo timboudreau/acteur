@@ -40,7 +40,6 @@ import com.mastfrog.acteur.Event;
 import com.mastfrog.acteur.HttpEvent;
 import com.mastfrog.acteur.ImplicitBindings;
 import com.mastfrog.acteur.Page;
-import com.mastfrog.acteur.ResponseHeaders;
 import com.mastfrog.acteur.errors.Err;
 import com.mastfrog.acteur.errors.ErrorResponse;
 import com.mastfrog.acteur.errors.ExceptionEvaluator;
@@ -392,7 +391,6 @@ public class ServerModule<A extends Application> extends AbstractModule {
         bind(Method.class).toProvider(MethodProvider2.class);
         bind(Path.class).toProvider(PathProvider.class);
         bind(BuiltInPageAnnotationHandler.class).asEagerSingleton();
-        bind(ResponseHeaders.class).toProvider(ResponseHeadersProvider.class);
         bind(ScheduledExecutorService.class).annotatedWith(Names.named(DELAY_EXECUTOR)).toProvider(DelayExecutorProvider.class);
         // allow Chain<Acteur> to be injected
         bind(new CL()).toProvider(ChainProvider.class);
@@ -458,22 +456,6 @@ public class ServerModule<A extends Application> extends AbstractModule {
                 }
             }
             return exe;
-        }
-    }
-
-    @Singleton
-    private static final class ResponseHeadersProvider implements Provider<ResponseHeaders> {
-
-        private final Provider<Page> page;
-
-        @Inject
-        public ResponseHeadersProvider(Provider<Page> page) {
-            this.page = page;
-        }
-
-        @Override
-        public ResponseHeaders get() {
-            return page.get().getResponseHeaders();
         }
     }
 

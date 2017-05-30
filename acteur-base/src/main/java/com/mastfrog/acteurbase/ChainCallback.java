@@ -65,6 +65,10 @@ public interface ChainCallback<A extends AbstractActeur<T, R, S>, S extends Acte
      * @param chain The chain in question
      */
     void onBeforeRunOne(P chain);
+    
+    default void onBeforeRunOne(P chain, List<R> responsesThusFar) {
+        //do nothing
+    }
 
     /**
      * Called after each AbstractActeur is run.

@@ -63,9 +63,9 @@ class DateTimeHeader extends AbstractHeader<DateTime> {
         //to be truly compliant, accept 2-digit dates
         if (result.getYear() < 100 && result.getYear() > 0) {
             if (result.getYear() >= 50) {
-                result = result.withYear(2000 - (100 - result.getYear())).withDayOfYear(result.getDayOfYear() - 1); //don't ask
+                result = result.withYear(2_000 - (100 - result.getYear())).withDayOfYear(result.getDayOfYear() - 1); //don't ask
             } else {
-                result = result.withYear(2000 + result.getYear());
+                result = result.withYear(2_000 + result.getYear());
             }
         }
         return result;

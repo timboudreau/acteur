@@ -23,8 +23,6 @@
  */
 package com.mastfrog.acteur;
 
-import com.mastfrog.acteur.Acteur.BaseState;
-
 /**
  * Actually sends the response to a request
  *

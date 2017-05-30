@@ -29,10 +29,21 @@ import com.mastfrog.acteur.Event;
 import com.mastfrog.acteur.HttpEvent;
 import com.mastfrog.acteur.Page;
 import com.mastfrog.acteur.Response;
-import com.mastfrog.acteur.ResponseHeaders;
 import com.mastfrog.acteur.ResponseWriter;
+import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.acteur.headers.Headers;
+import static com.mastfrog.acteur.headers.Headers.ACCEPT_ENCODING;
+import static com.mastfrog.acteur.headers.Headers.AGE;
+import static com.mastfrog.acteur.headers.Headers.CACHE_CONTROL;
+import static com.mastfrog.acteur.headers.Headers.CONTENT_ENCODING;
+import static com.mastfrog.acteur.headers.Headers.CONTENT_LENGTH;
+import static com.mastfrog.acteur.headers.Headers.ETAG;
+import static com.mastfrog.acteur.headers.Headers.EXPIRES;
+import static com.mastfrog.acteur.headers.Headers.LAST_MODIFIED;
+import static com.mastfrog.acteur.headers.Headers.VARY;
+import static com.mastfrog.acteur.headers.Headers.stringHeader;
 import com.mastfrog.acteur.spi.ApplicationControl;
+import com.mastfrog.acteur.util.CacheControl;
 import com.mastfrog.acteur.util.CacheControlTypes;
 import com.mastfrog.util.Exceptions;
 import com.mastfrog.util.Streams;
@@ -43,6 +54,7 @@ import io.netty.channel.DefaultFileRegion;
 import io.netty.channel.FileRegion;
 import io.netty.handler.codec.http.DefaultLastHttpContent;
 import io.netty.handler.codec.http.HttpHeaderNames;
+import io.netty.handler.codec.http.HttpHeaderValues;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -99,29 +111,33 @@ public class DynamicFileResources implements StaticResources {
 
         @Override
         public void decoratePage(Page page, HttpEvent evt, String path, Response response, boolean chunked) {
-            ResponseHeaders h = page.getResponseHeaders();
             String ua = evt.getHeader(HttpHeaderNames.USER_AGENT.toString());
             if (ua != null && !ua.contains("MSIE")) {
-                page.getResponseHeaders().addVaryHeader(Headers.ACCEPT_ENCODING);
+                response.add(VARY, new HeaderValueType<?>[]{ACCEPT_ENCODING});
             }
             DateTime expires = policy.get(types.get(path), evt.getPath());
             Duration maxAge = expires == null ? Duration.standardHours(2)
                     : new Duration(DateTime.now(), expires);
-            h.addCacheControl(CacheControlTypes.Public);
-            h.addCacheControl(CacheControlTypes.must_revalidate);
-            h.addCacheControl(CacheControlTypes.max_age, maxAge);
-            h.setMaxAge(maxAge);
-            h.setExpires(expires);
-            h.setAge(Duration.ZERO);
-            h.setEtag(getEtag());
-            h.setLastModified(new DateTime(file.lastModified()));
+
+            CacheControl cc = new CacheControl(CacheControlTypes.Public, CacheControlTypes.must_revalidate)
+                    .add(CacheControlTypes.max_age, maxAge);
+            response.add(CACHE_CONTROL, cc);
+
+            response.add(LAST_MODIFIED, new DateTime(file.lastModified()));
+            response.add(ETAG, getEtag());
+            response.add(AGE, Duration.ZERO);
+            if (expires != null) {
+                response.add(EXPIRES, expires);
+            }
+
+//            h.setMaxAge(maxAge);
             String acceptEncoding = evt.getHeader(Headers.ACCEPT_ENCODING);
             boolean willCompress = acceptEncoding != null && acceptEncoding.toLowerCase().contains("gzip");
             if (!willCompress) {
-                h.setContentLength(file.length());
+                response.add(CONTENT_LENGTH, file.length());
             } else {
-                response.add(Headers.stringHeader("X-Internal-Compress"), "true");
-                response.add(Headers.CONTENT_ENCODING, "gzip");
+                response.add(stringHeader("X-Internal-Compress"), "true");
+                response.add(CONTENT_ENCODING, HttpHeaderValues.GZIP.toString());
             }
             response.setChunked(false);
         }

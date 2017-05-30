@@ -30,11 +30,11 @@ import com.mastfrog.acteur.Event;
 import com.mastfrog.acteur.HttpEvent;
 import com.mastfrog.acteur.Page;
 import com.mastfrog.acteur.Response;
-import com.mastfrog.acteur.ResponseHeaders;
-import com.mastfrog.acteur.ResponseHeaders.ContentLengthProvider;
 import com.mastfrog.acteur.ResponseWriter;
+import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.acteur.util.CacheControlTypes;
 import com.mastfrog.acteur.headers.Headers;
+import com.mastfrog.acteur.util.CacheControl;
 import com.mastfrog.giulius.DeploymentMode;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.url.Path;
@@ -53,6 +53,7 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.compression.JZlibDecoder;
 import io.netty.handler.codec.compression.ZlibWrapper;
 import io.netty.handler.codec.http.DefaultHttpContent;
+import io.netty.handler.codec.http.HttpHeaderValues;
 import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.LastHttpContent;
 import java.io.BufferedInputStream;
@@ -178,7 +179,7 @@ public final class FileResources implements StaticResources {
         }
     }
 
-    private class FileResource2 implements Resource, ContentLengthProvider {
+    private class FileResource2 implements Resource {
 
         private ByteBuf bytes;
         private ByteBuf compressed;
@@ -261,42 +262,33 @@ public final class FileResources implements StaticResources {
                     Exceptions.printStackTrace(ex);
                 }
             }
-            ResponseHeaders h = page.getResponseHeaders();
             String ua = evt.getHeader("User-Agent");
             if (ua != null && !ua.contains("MSIE")) {
-                page.getResponseHeaders().addVaryHeader(Headers.ACCEPT_ENCODING);
+//                page.getResponseHeaders().addVaryHeader(Headers.ACCEPT_ENCODING);
+                response.add(Headers.VARY, new HeaderValueType<?>[]{Headers.ACCEPT_ENCODING});
             }
-//            if (productionMode()) {
-            h.addCacheControl(CacheControlTypes.Public);
-            h.addCacheControl(CacheControlTypes.max_age, maxAge);
-            h.addCacheControl(CacheControlTypes.must_revalidate);
-//            } else {
-//                page.getReponseHeaders().addCacheControl(CacheControlTypes.Private);
-//                page.getReponseHeaders().addCacheControl(CacheControlTypes.no_cache);
-//                page.getReponseHeaders().addCacheControl(CacheControlTypes.no_store);
-//            }
-////            if (evt.getMethod() != Method.HEAD) {
-//                page.getReponseHeaders().setContentLengthProvider(this);
-//            }
-            h.setLastModified(new DateTime(lastModified));
-            h.setEtag(hash);
+            CacheControl cc = new CacheControl(CacheControlTypes.Public, CacheControlTypes.must_revalidate)
+                    .add(CacheControlTypes.max_age, maxAge);
+            response.add(Headers.CACHE_CONTROL, cc);
+            
+            response.add(Headers.LAST_MODIFIED, new DateTime(lastModified));
+            response.add(Headers.ETAG, hash);
 //            page.getReponseHeaders().setContentLength(getLength());
             MediaType type = getContentType();
             if (type == null && debug) {
                 System.err.println("Null content type for " + name);
             }
             if (type != null) {
-                h.setContentType(type);
+                response.add(Headers.CONTENT_TYPE, type);
             }
             if (internalGzip) {
                 // Flag it so the standard compressor ignores us
                 response.add(Headers.stringHeader("X-Internal-Compress"), "true");
             }
             if (chunked) {
-                response.add(Headers.stringHeader("Transfer-Encoding"), "chunked");
+                response.add(Headers.TRANSFER_ENCODING, HttpHeaderValues.CHUNKED.toString());
             }
             if (isGzip(evt)) {
-                page.getResponseHeaders().setContentEncoding("gzip");
                 response.add(Headers.CONTENT_ENCODING, "gzip");
                 if (!chunked) {
                     response.add(Headers.CONTENT_LENGTH, (long) compressed.readableBytes());

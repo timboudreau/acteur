@@ -127,6 +127,7 @@ public final class BoundedRange {
         return of;
     }
 
+    @Override
     public String toString() {
         if (start == -1L && end == -1L) {
             return "bytes */" + of;
@@ -134,6 +135,7 @@ public final class BoundedRange {
         return "bytes " + start + "-" + end + "/" + (of == -1L ? "*" : of);
     }
 
+    @Override
     public boolean equals(Object o) {
         if (o == this) {
             return true;
@@ -145,6 +147,7 @@ public final class BoundedRange {
         return false;
     }
 
+    @Override
     public int hashCode() {
         return Arrays.hashCode(new long[]{start, end, of});
     }

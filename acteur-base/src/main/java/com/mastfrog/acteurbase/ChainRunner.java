@@ -171,6 +171,7 @@ public final class ChainRunner {
                     A a2 = null;
                     try {
                         onDone.onBeforeRunOne(chain);
+                        onDone.onBeforeRunOne(chain, responses);
                         // Instantiate the next acteur, most likely causing its 
                         // constructor to set its state
                         a2 = iter.next();

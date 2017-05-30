@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright 2015 Tim Boudreau
+ * Copyright 2017 Tim Boudreau.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,32 +21,31 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
+
 package com.mastfrog.acteur.headers;
 
-import io.netty.handler.codec.http.cookie.ClientCookieDecoder;
-import io.netty.handler.codec.http.cookie.Cookie;
-import io.netty.handler.codec.http.cookie.ServerCookieEncoder;
+import com.mastfrog.util.Checks;
 
 /**
  *
  * @author Tim Boudreau
  */
-final class SetCookieHeaderNetty428 extends AbstractHeader<Cookie> {
-
-    private final boolean strict;
-
-    SetCookieHeaderNetty428(CharSequence name, boolean strict) {
-        super(Cookie.class, name);
-        this.strict = strict;
+final class BooleanHeader extends AbstractHeader<Boolean> {
+    
+    BooleanHeader(CharSequence name) {
+        super(Boolean.TYPE, name);
     }
 
     @Override
-    public String toString(Cookie value) {
-        return strict ? ServerCookieEncoder.STRICT.encode(value) : ServerCookieEncoder.LAX.encode(value);
+    public String toString(Boolean value) {
+        Checks.notNull("value", value);
+        return value.toString();
     }
 
     @Override
-    public Cookie toValue(String value) {
-        return strict ? ClientCookieDecoder.STRICT.decode(value) : ClientCookieDecoder.LAX.decode(value);
+    public Boolean toValue(String value) {
+        Checks.notNull("value", value);
+        return Boolean.parseBoolean(value);
     }
+
 }

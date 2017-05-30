@@ -40,10 +40,7 @@ public final class CheckIfUnmodifiedSinceHeader extends Acteur {
     CheckIfUnmodifiedSinceHeader(HttpEvent event, Page page) {
         DateTime dt = event.getHeader(IF_UNMODIFIED_SINCE);
         if (dt != null) {
-            DateTime pageLastModified = page.getResponseHeaders().getLastModified();
-            if (pageLastModified == null) {
-                pageLastModified = response().get(Headers.LAST_MODIFIED);
-            }
+            DateTime pageLastModified = response().get(Headers.LAST_MODIFIED);
             if (pageLastModified != null) {
                 boolean modSince = pageLastModified.getMillis() > dt.getMillis();
                 if (modSince) {

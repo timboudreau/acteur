@@ -30,7 +30,6 @@ import com.mastfrog.parameters.KeysValues;
 import com.mastfrog.parameters.gen.Origin;
 import com.mastfrog.parameters.validation.ParamChecker;
 import com.mastfrog.util.Codec;
-import com.mastfrog.util.Streams;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;
 import java.io.IOException;

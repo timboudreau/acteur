@@ -25,11 +25,8 @@ package com.mastfrog.acteur;
 
 import com.google.inject.ImplementedBy;
 import com.mastfrog.acteur.errors.ResponseException;
-import com.mastfrog.acteur.headers.HeaderValueType;
-import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.acteur.preconditions.Description;
 import com.mastfrog.acteur.preconditions.PageAnnotationHandler;
-import com.mastfrog.acteur.util.CacheControl;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.util.Checks;
 import com.mastfrog.util.Exceptions;
@@ -45,8 +42,6 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import org.joda.time.DateTime;
-import org.joda.time.Duration;
 
 /**
  * Really an aggregation of Acteurs and a place to set header values; in recent
@@ -77,15 +72,10 @@ import org.joda.time.Duration;
 public abstract class Page implements Iterable<Acteur> {
 
     private static final AutoCloseThreadLocal<Page> CURRENT_PAGE = new AutoCloseThreadLocal<>();
-    protected ResponseHeaders responseHeaders;
     private final List<Object> acteurs = new ArrayList<>(10);
     volatile Application application;
 
     protected Page() {
-    }
-
-    public final ResponseHeaders getResponseHeaders() {
-        return responseHeaders == null ? responseHeaders = new ResponseHeaders() : responseHeaders;
     }
 
     public final void add(Acteur action) {
@@ -98,7 +88,7 @@ public abstract class Page implements Iterable<Acteur> {
     }
 
     Iterable<Object> contents() {
-        List<Object> result = new ArrayList<Object>(annotations());
+        List<Object> result = new ArrayList<>(annotations());
         result.addAll(this.acteurs);
         return result;
     }
@@ -210,36 +200,18 @@ public abstract class Page implements Iterable<Acteur> {
         }
     }
 
+    /**
+     * Allows the page to modify the raw Netty HttpResponse after all Acteurs have
+     * run.
+     * 
+     * @param event The event
+     * @param acteur The acteur
+     * @param response The response
+     * @deprecated This was a bad idea, which can result in invalid responses and bypasses
+     * important checking.  Simply use Acteur.add(Headers.WHATEVER, value) instead.
+     */
+    @Deprecated
     protected void decorateResponse(Event<?> event, Acteur acteur, HttpResponse response) {
-        final ResponseHeaders properties = responseHeaders;
-        if (properties == null || !properties.modified()) {
-            return;
-        }
-
-        List<HeaderValueType<?>> vary = new LinkedList<>();
-        properties.getVaryHeaders(vary);
-        if (!vary.isEmpty()) {
-            Headers.write(Headers.VARY, vary.toArray(new HeaderValueType<?>[vary.size()]), response);
-        }
-        Headers.writeIfNotNull(Headers.LAST_MODIFIED, properties.getLastModified(), response);
-        Headers.writeIfNotNull(Headers.TRANSFER_ENCODING, properties.getTransferEncoding(), response);
-        Headers.writeIfNotNull(Headers.CONTENT_ENCODING, properties.getContentEncoding(), response);
-        Headers.writeIfNotNull(Headers.ETAG, properties.getETag(), response);
-        Headers.writeIfNotNull(Headers.EXPIRES, properties.getExpires(), response);
-        CacheControl cacheControl = properties.getCacheControl();
-        if (cacheControl != null && !cacheControl.isEmpty()) {
-            Headers.write(Headers.CACHE_CONTROL, cacheControl, response);
-        }
-        Headers.writeIfNotNull(Headers.CONTENT_TYPE, properties.getContentType(), response);
-        Headers.writeIfNotNull(Headers.CONTENT_LANGUAGE, properties.getContentLanguage(), response);
-        Headers.writeIfNotNull(Headers.AGE, properties.getAge(), response);
-        Duration maxAge = properties.getMaxAge();
-        if (maxAge != null) {
-            Headers.write(Headers.EXPIRES, new DateTime().plus(maxAge), response);
-        }
-        Headers.writeIfNotNull(Headers.CONTENT_LOCATION, properties.getContentLocation(), response);
-        Headers.writeIfNotNull(Headers.LOCATION, properties.getLocation(), response);
-        Headers.writeIfNotNull(Headers.CONTENT_LENGTH, properties.getContentLength(), response);
     }
 
     @SuppressWarnings("deprecation")

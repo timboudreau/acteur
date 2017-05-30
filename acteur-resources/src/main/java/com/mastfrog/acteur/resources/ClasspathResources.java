@@ -30,12 +30,18 @@ import com.mastfrog.acteur.Event;
 import com.mastfrog.acteur.HttpEvent;
 import com.mastfrog.acteur.Page;
 import com.mastfrog.acteur.Response;
-import com.mastfrog.acteur.ResponseHeaders;
-import com.mastfrog.acteur.ResponseHeaders.ContentLengthProvider;
 import com.mastfrog.acteur.ResponseWriter;
+import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.acteur.util.CacheControlTypes;
 import com.mastfrog.acteur.headers.Headers;
+import static com.mastfrog.acteur.headers.Headers.ACCEPT_ENCODING;
+import static com.mastfrog.acteur.headers.Headers.CACHE_CONTROL;
+import static com.mastfrog.acteur.headers.Headers.CONTENT_TYPE;
+import static com.mastfrog.acteur.headers.Headers.ETAG;
+import static com.mastfrog.acteur.headers.Headers.LAST_MODIFIED;
+import static com.mastfrog.acteur.headers.Headers.VARY;
 import static com.mastfrog.acteur.resources.FileResources.RESOURCES_BASE_PATH;
+import com.mastfrog.acteur.util.CacheControl;
 import com.mastfrog.giulius.DeploymentMode;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.util.Checks;
@@ -53,6 +59,7 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.compression.JZlibDecoder;
 import io.netty.handler.codec.compression.ZlibWrapper;
 import io.netty.handler.codec.http.DefaultHttpContent;
+import io.netty.handler.codec.http.HttpHeaderValues;
 import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.LastHttpContent;
 import java.io.FileNotFoundException;
@@ -145,7 +152,7 @@ public final class ClasspathResources implements StaticResources {
         }
     }
 
-    private class ClasspathResource implements Resource, ContentLengthProvider {
+    private class ClasspathResource implements Resource {
 
         private final ByteBuf bytes;
         private final ByteBuf compressed;
@@ -208,32 +215,24 @@ public final class ClasspathResources implements StaticResources {
 
         @Override
         public void decoratePage(Page page, HttpEvent evt, String path, Response response, boolean chunked) {
-            ResponseHeaders h = page.getResponseHeaders();
             String ua = evt.getHeader("User-Agent");
             if (ua != null && !ua.contains("MSIE")) {
-                page.getResponseHeaders().addVaryHeader(Headers.ACCEPT_ENCODING);
+                response.add(VARY, new HeaderValueType<?>[] { ACCEPT_ENCODING });
             }
             if (productionMode()) {
-                page.getResponseHeaders().addCacheControl(CacheControlTypes.Public);
-                page.getResponseHeaders().addCacheControl(CacheControlTypes.max_age, Duration.standardHours(2));
-                page.getResponseHeaders().addCacheControl(CacheControlTypes.must_revalidate);
+                response.add(CACHE_CONTROL, CacheControl.PUBLIC_MUST_REVALIDATE_MAX_AGE_1_DAY);
             } else {
-                page.getResponseHeaders().addCacheControl(CacheControlTypes.Private);
-                page.getResponseHeaders().addCacheControl(CacheControlTypes.no_cache);
-                page.getResponseHeaders().addCacheControl(CacheControlTypes.no_store);
+                response.add(CACHE_CONTROL, new CacheControl(CacheControlTypes.Private, CacheControlTypes.no_cache, CacheControlTypes.no_store));
             }
-//            if (evt.getMethod() != Method.HEAD) {
-//                page.getReponseHeaders().setContentLengthProvider(this);
-//            }
-            h.setLastModified(startTime);
-            h.setEtag(hash);
+            response.add(LAST_MODIFIED, startTime);
+            response.add(ETAG, hash);
 //            page.getReponseHeaders().setContentLength(getLength());
             MediaType type = getContentType();
             if (type == null) {
-                new NullPointerException("Null content type for " + name).printStackTrace();
+                System.err.println("Null content type for " + name);
             }
             if (type != null) {
-                h.setContentType(type);
+                response.add(CONTENT_TYPE, type);
             }
             if (internalGzip) {
                 // Flag it so the standard compressor ignores us
@@ -243,7 +242,7 @@ public final class ClasspathResources implements StaticResources {
                 response.add(Headers.stringHeader("Transfer-Encoding"), "chunked");
             }
             if (isGzip(evt)) {
-                page.getResponseHeaders().setContentEncoding("gzip");
+                response.add(Headers.CONTENT_ENCODING, HttpHeaderValues.GZIP.toString());
                 if (!chunked) {
                     response.add(Headers.CONTENT_LENGTH, (long) compressed.readableBytes());
                 }

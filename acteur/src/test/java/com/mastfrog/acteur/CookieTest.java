@@ -48,37 +48,29 @@ import org.junit.runner.RunWith;
 @TestWith({TestHarnessModule.class, CTM.class})
 @RunWith(GuiceRunner.class)
 public class CookieTest {
-/*
+
     @Test
-    public void testOneCookie(TestHarness harn) throws Exception, Throwable {
+    public void testOneCookie(TestHarness harn) throws Throwable {
         CallResult res = harn.get("one").go().await().assertStatus(OK)
                 .assertHasHeader(Headers.SET_COOKIE_B.name())
                 .assertContent("Set one cookie");
         Iterable<Cookie> cookies = res.getHeaders(SET_COOKIE_B);
-        System.out.println("COOKIES: " + cookies);
         assertTrue("No cookies found", cookies.iterator().hasNext());
         res.assertCookieValue("hey", "you");
-        for (Cookie ck : cookies) {
-            System.out.println("COOKIE: " + ck);
-        }
     }
+
     @Test
-    public void testCookieEncoding(TestHarness harn) throws Exception, Throwable {
+    public void testCookieEncoding(TestHarness harn) throws Throwable {
         CallResult res = harn.get("space").go().await().assertStatus(OK)
                 .assertHasHeader(Headers.SET_COOKIE_B.name())
                 .assertContent("Set encodable cookie");
         Iterable<Cookie> cookies = res.getHeaders(SET_COOKIE_B);
-        System.out.println("COOKIES: " + cookies);
         assertTrue("No cookies found", cookies.iterator().hasNext());
         res.assertCookieValue("name", "Joe Blow");
-        for (Cookie ck : cookies) {
-            System.out.println("COOKIE: " + ck);
-        }
     }
-*/
 
     @Test
-    public void testMultipleCookies(TestHarness harn) throws Exception, Throwable {
+    public void testMultipleCookies(TestHarness harn) throws Throwable {
         CallResult res = harn.get("multi").go().await().assertStatus(OK)
                 .assertHasHeader(Headers.SET_COOKIE_B.name())
                 .assertContent("Set three cookies");
@@ -88,7 +80,6 @@ public class CookieTest {
         int ct = 0;
         StringBuilder sb = new StringBuilder();
         for (Cookie ck : cookies) {
-            System.out.println("COOKIE: " + ck);
             sb.append(ck.name()).append('=').append(ck.value()).append(", ");
             ct++;
         }
@@ -96,6 +87,15 @@ public class CookieTest {
         res.assertCookieValue("a", "hey");
         res.assertCookieValue("b", "you");
         res.assertCookieValue("c", "thing");
+    }
+    
+    @Test
+    public void testCORSHandling(TestHarness harn) throws Throwable {
+        harn.options("one").go().await().assertHasHeader(Headers.ACCESS_CONTROL_ALLOW)
+                .assertHasHeader(Headers.ACCESS_CONTROL_ALLOW_CREDENTIALS)
+                .assertHasHeader(Headers.ACCESS_CONTROL_MAX_AGE)
+                .assertHasHeader(Headers.CACHE_CONTROL)
+                .assertHasHeader(Headers.ACCESS_CONTROL_ALLOW_ORIGIN);
     }
 
     static final class CTM extends ServerModule<CTApp> {
@@ -111,6 +111,7 @@ public class CookieTest {
             add(OneCookiePage.class);
             add(MultiCookiePage.class);
             add(SpaceCookiePage.class);
+            super.enableDefaultCorsHandling();
         }
 
         @Path("/multi")
