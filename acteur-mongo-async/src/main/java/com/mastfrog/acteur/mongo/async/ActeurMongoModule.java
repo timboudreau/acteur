@@ -38,7 +38,6 @@ import com.mastfrog.giulius.mongodb.async.DynamicCodecs;
 import com.mastfrog.giulius.mongodb.async.MongoAsyncInitializer;
 import com.mastfrog.jackson.JacksonConfigurer;
 import com.mastfrog.jackson.JacksonModule;
-import com.mastfrog.jackson.jodatime.JodeTimeJacksonConfigurer;
 import com.mongodb.async.client.FindIterable;
 import com.mongodb.async.client.MongoClientSettings;
 import com.mongodb.async.client.MongoCollection;
@@ -69,7 +68,7 @@ public final class ActeurMongoModule extends AbstractModule implements MongoAsyn
         base.withCodec(ByteBufCodec.class);
         base.withDynamicCodecs(JacksonCodecs.class);
         base.withCodecProvider(AdditionalJacksonCodecs.class);
-        withJacksonConfigurer(ObjectIdJacksonConfigurer.class).withJacksonConfigurer(JodeTimeJacksonConfigurer.class);
+        withJacksonConfigurer(ObjectIdJacksonConfigurer.class);
     }
 
     public ActeurMongoModule withJacksonConfigurer(JacksonConfigurer configurer) {

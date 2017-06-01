@@ -29,11 +29,11 @@ import com.mastfrog.util.Strings;
  *
  * @author Tim Boudreau
  */
-abstract class AbstractHeader<T> implements HeaderValueType<T> {
+public abstract class AbstractHeader<T> implements HeaderValueType<T> {
     private final Class<T> type;
     private final CharSequence name;
 
-    AbstractHeader(Class<T> type, CharSequence name) {
+    protected AbstractHeader(Class<T> type, CharSequence name) {
         this.type = type;
         this.name = name;
     }

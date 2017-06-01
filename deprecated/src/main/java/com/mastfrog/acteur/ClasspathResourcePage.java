@@ -47,12 +47,12 @@ import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Method;
 import java.net.URLDecoder;
+import java.time.ZonedDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.apache.commons.codec.binary.Base64;
-import org.joda.time.DateTime;
 
 /**
  * A page which loads resources relative to itself on the classpath. Handles
@@ -72,13 +72,13 @@ public abstract class ClasspathResourcePage extends Page {
     private static final Map<Class<?>, Map<Path, byte[]>> contentForPathForType = new HashMap<>();
     private final Path path;
 
-    protected ClasspathResourcePage(final HttpEvent event, ActeurFactory f, DateTime serverStartTime, String... patterns) {
-        this(null, event, f, serverStartTime, patterns);
+    protected ClasspathResourcePage(final HttpEvent event, ActeurFactory f, String... patterns) {
+        this(null, event, f, patterns);
     }
 
     @Deprecated
     @SuppressWarnings("LeakingThisInConstructor")
-    protected ClasspathResourcePage(final Application app, final HttpEvent event, ActeurFactory f, DateTime serverStartTime, String... patterns) {
+    protected ClasspathResourcePage(final Application app, final HttpEvent event, ActeurFactory f, String... patterns) {
         this.path = event.getPath();
 
         add(f.matchMethods(com.mastfrog.acteur.headers.Method.GET, com.mastfrog.acteur.headers.Method.HEAD));
@@ -98,7 +98,7 @@ public abstract class ClasspathResourcePage extends Page {
     static class HeadersActeur extends Acteur {
 
         @Inject
-        HeadersActeur(DateTime serverStartTime) {
+        HeadersActeur(ZonedDateTime serverStartTime) {
             add(LAST_MODIFIED, serverStartTime);
             add(CACHE_CONTROL, CacheControl.PUBLIC_MUST_REVALIDATE_MAX_AGE_1_DAY);
             add(VARY, new HeaderValueType<?>[]{CONTENT_ENCODING});

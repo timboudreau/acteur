@@ -28,8 +28,8 @@ import com.google.inject.Inject;
 import com.mastfrog.giulius.DeploymentMode;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.url.Path;
-import org.joda.time.DateTime;
-import org.joda.time.Duration;
+import java.time.Duration;
+import java.time.ZonedDateTime;
 
 /**
  *
@@ -46,16 +46,16 @@ class DefaultExpiresPolicy implements ExpiresPolicy {
         this.production = mode.isProduction();
     }
 
-    public DateTime get(MediaType mimeType, Path path) {
+    public ZonedDateTime get(MediaType mimeType, Path path) {
         if (!production) {
             return null;
         }
         Long expires = settings.getLong("expires." + mimeType.type() + '/' + mimeType.subtype());
         if (expires != null) {
-            return DateTime.now().plus(Duration.millis(expires));
+            return ZonedDateTime.now().plus(Duration.ofMillis(expires));
         }
         if ("image".equals(mimeType.type())) {
-            return DateTime.now().plus(Duration.standardDays(30));
+            return ZonedDateTime.now().plus(Duration.ofDays(30));
         }
         return null;
     }

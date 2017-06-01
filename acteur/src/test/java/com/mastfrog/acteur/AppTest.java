@@ -33,17 +33,18 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
 import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.http.DefaultFullHttpRequest;
+import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.util.CharsetUtil;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.Charset;
+import java.time.Duration;
+import java.time.ZonedDateTime;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
-import org.joda.time.DateTime;
-import org.joda.time.Duration;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -186,7 +187,7 @@ public class AppTest {
     }
     static boolean done;
 
-    static class WriteResponseAction extends Acteur {
+    static final class WriteResponseAction extends Acteur {
 
         @Inject
         WriteResponseAction(BasicCredentials creds, Thing thing) {
@@ -194,11 +195,11 @@ public class AppTest {
             Checks.notNull("thing", thing);
             System.err.println("Got to write response action");
             done = true;
-            add(Headers.DATE, new DateTime());
+            add(Headers.DATE, ZonedDateTime.now());
             add(Headers.CONTENT_TYPE, MediaType.PLAIN_TEXT_UTF_8);
             add(Headers.ETAG, "1234");
-            add(Headers.LAST_MODIFIED, new DateTime().minus(Duration.standardHours(1)));
-            add(Headers.EXPIRES, new DateTime().plus(Duration.standardHours(1)));
+            add(Headers.LAST_MODIFIED, ZonedDateTime.now().minus(Duration.ofHours(1)));
+            add(Headers.EXPIRES, ZonedDateTime.now().plus(Duration.ofHours(1)));
             add(Headers.CACHE_CONTROL, new CacheControl().add(CacheControlTypes.no_store, CacheControlTypes.no_cache));
 
             setResponseCode(HttpResponseStatus.FORBIDDEN);
@@ -212,13 +213,13 @@ public class AppTest {
         DefaultFullHttpRequest req = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET,
                 "/root/captcha/image/test.png?select=1&value=3&realname=Joe%20Blow&name=joey&password=abcdefg", buf);
 
-        Headers.write(Headers.DATE, new DateTime(), req);
-        Headers.write(Headers.LAST_MODIFIED, new DateTime().minus(Duration.standardHours(1)), req);
+        Headers.write(Headers.DATE, ZonedDateTime.now(), req);
+        Headers.write(Headers.LAST_MODIFIED, ZonedDateTime.now().minus(Duration.ofHours(1)), req);
 
         Headers.write(Headers.CONTENT_TYPE, MediaType.JSON_UTF_8, req);
         Headers.write(Headers.AUTHORIZATION, new BasicCredentials("joey", "abcdefg"), req);
 
-        CacheControl cc = new CacheControl().add(CacheControlTypes.Public, CacheControlTypes.must_revalidate).add(CacheControlTypes.max_age, Duration.standardSeconds(25));
+        CacheControl cc = new CacheControl().add(CacheControlTypes.Public, CacheControlTypes.must_revalidate).add(CacheControlTypes.max_age, Duration.ofSeconds(25));
         Headers.write(Headers.CACHE_CONTROL, cc, req);
 
         CacheControl cc1 = Headers.read(Headers.CACHE_CONTROL, req);
@@ -226,8 +227,8 @@ public class AppTest {
 
         System.err.println("Cache-Control: " + req.headers().get(Headers.CACHE_CONTROL.name()));
 
-        System.err.println("AUTH HEADER IS " + req.headers().get(HttpHeaders.Names.AUTHORIZATION));
-        assertNotNull(req.headers().get(HttpHeaders.Names.AUTHORIZATION));
+        System.err.println("AUTH HEADER IS " + req.headers().get(HttpHeaderNames.AUTHORIZATION));
+        assertNotNull(req.headers().get(HttpHeaderNames.AUTHORIZATION));
         BasicCredentials c = Headers.read(Headers.AUTHORIZATION, req);
         assertNotNull(c);
         assertEquals("joey", c.username);

@@ -23,9 +23,10 @@
  */
 package com.mastfrog.acteur.headers;
 
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import org.joda.time.Duration;
 
 /**
  *
@@ -38,17 +39,17 @@ final class DurationHeader extends AbstractHeader<Duration> {
     }
 
     @Override
-    public String toString(Duration value) {
-        return value.getStandardSeconds() + "";
+    public CharSequence toCharSequence(Duration value) {
+        return Long.toString(value.get(ChronoUnit.SECONDS));
     }
 
     @Override
     public Duration toValue(String value) {
         try {
-            return new Duration(Long.parseLong(value));
+            return Duration.of(Long.parseLong(value), ChronoUnit.SECONDS);
         } catch (NumberFormatException nfe) {
             Logger.getLogger(DurationHeader.class.getName()).log(Level.INFO, "Bad duration header '" + value + "'", nfe);
-            return null;
+            return Duration.ZERO;
         }
     }
 

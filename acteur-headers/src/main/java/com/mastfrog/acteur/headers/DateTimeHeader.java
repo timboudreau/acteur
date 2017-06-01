@@ -1,4 +1,4 @@
-/* 
+/*
  * The MIT License
  *
  * Copyright 2013 Tim Boudreau.
@@ -23,51 +23,88 @@
  */
 package com.mastfrog.acteur.headers;
 
+import com.mastfrog.util.time.TimeUtil;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoField;
 import java.util.Date;
-import org.joda.time.DateTime;
-import org.joda.time.DateTimeZone;
 
 /**
  *
  * @author Tim Boudreau
  */
-class DateTimeHeader extends AbstractHeader<DateTime> {
+class DateTimeHeader extends AbstractHeader<ZonedDateTime> {
 
     DateTimeHeader(CharSequence name) {
-        super(DateTime.class, name);
+        super(ZonedDateTime.class, name);
     }
 
     @Override
-    public String toString(DateTime value) {
-        return Headers.toISO2822Date(value.withMillisOfSecond(0));
+    public String toString(ZonedDateTime value) {
+        return Headers.toISO2822Date(value);
+    }
+
+    private ZonedDateTime mungeYear(ZonedDateTime dt) {
+        int yr = dt.get(ChronoField.YEAR);
+        if (yr < 100 && yr >= 0) {
+            if (yr >= 50) {
+                yr += 1900;
+            } else {
+                yr += 2000;
+            }
+            dt = dt.withYear(yr);
+        }
+        return dt;
     }
 
     @Override
     @SuppressWarnings("deprecation")
-    public DateTime toValue(String value) {
-        long val = 0;
-        if (val == 0) {
+    public ZonedDateTime toValue(String value) {
+        // Be permissive in what you accept, as they say
+        long val;
+        ZonedDateTime result;
+        try {
+            ZonedDateTime top = ZonedDateTime.parse(value, Headers.ISO2822DateFormat);
+            result = mungeYear(top);
+        } catch (DateTimeParseException e) {
             try {
-                val = Headers.ISO2822DateFormat.parseDateTime(value).getMillis();
-            } catch (IllegalArgumentException e) {
+                ZonedDateTime rfs = ZonedDateTime.parse(value, DateTimeFormatter.RFC_1123_DATE_TIME);
+                result = mungeYear(rfs);
+            } catch (DateTimeParseException e1) {
+                e.addSuppressed(e1);
                 try {
-                    //Sigh...use java.util.date to handle "GMT", "PST", "EST"
-                    val = Date.parse(value);
-                } catch (IllegalArgumentException ex) {
-                    new IllegalArgumentException(value, ex).printStackTrace();
-                    return null;
+                    String munged = value;
+                    if (value.indexOf(' ') != -1) {
+                        munged = value.substring(value.indexOf(' ') + 1);
+                    }
+                    ZonedDateTime dt = ZonedDateTime.parse(munged, Headers.TWO_DIGIT_YEAR);
+                    result = mungeYear(dt);
+                } catch (DateTimeParseException ex2) {
+                    e.addSuppressed(ex2);
+                    try {
+                        //Sigh...use java.util.date to handle "GMT", "PST", "EST"
+                        val = Date.parse(value);
+                        result = TimeUtil.fromUnixTimestamp(val);
+                    } catch (IllegalArgumentException e3) {
+                        e.addSuppressed(e3);
+                        new IllegalArgumentException(value, e).printStackTrace(System.err);
+                        return null;
+                    }
                 }
             }
         }
-        DateTime result = new DateTime(val, DateTimeZone.UTC);
+//        result = result.withZoneSameInstant(ZoneId.of("America/New_York"));
+//        ZonedDateTime result = TimeUtil.fromUnixTimestamp(val).withZoneSameInstant(Headers.UTC);
         //to be truly compliant, accept 2-digit dates
-        if (result.getYear() < 100 && result.getYear() > 0) {
-            if (result.getYear() >= 50) {
-                result = result.withYear(2_000 - (100 - result.getYear())).withDayOfYear(result.getDayOfYear() - 1); //don't ask
-            } else {
-                result = result.withYear(2_000 + result.getYear());
-            }
-        }
+//        if (result.getYear() < 100 && result.getYear() > 0) {
+//            if (result.getYear() >= 50) {
+//                result = result.withYear(2_000 - (100 - result.getYear())).withDayOfYear(result.getDayOfYear() - 1); //don't ask
+//            } else {
+//                result = result.withYear(2_000 + result.getYear());
+//            }
+//        }
         return result;
     }
 

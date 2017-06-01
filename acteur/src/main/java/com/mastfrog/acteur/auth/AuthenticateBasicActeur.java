@@ -37,11 +37,9 @@ import io.netty.channel.ChannelFutureListener;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import static io.netty.handler.codec.http.HttpResponseStatus.SERVICE_UNAVAILABLE;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.Map;
 import javax.inject.Inject;
-import org.joda.time.Duration;
-import org.joda.time.format.PeriodFormatter;
-import org.joda.time.format.PeriodFormatterBuilder;
 
 /**
  * Basic authentication Acteur, with a few tricks:
@@ -93,14 +91,9 @@ public class AuthenticateBasicActeur extends AuthenticationActeur {
 
     @Benchmark(value = "tarpittedClients", publish = Kind.CALL_COUNT)
     void delayResponse(int badCount, Settings settings) {
-        Duration delayResponse = Duration.standardSeconds(badCount * settings.getInt(SETTINGS_KEY_TARPIT_DELAY_SECONDS, 1));
+        Duration delayResponse = Duration.ofSeconds(badCount * settings.getInt(SETTINGS_KEY_TARPIT_DELAY_SECONDS, 1));
         response().setDelay(delayResponse);
     }
-
-    private static final PeriodFormatter FORMAT
-            = new PeriodFormatterBuilder().appendMinutes()
-            .appendSeparatorIfFieldsBefore(":")
-            .appendSecondsWithMillis().toFormatter();
 
     @Benchmark(value = "failedAuthentication", publish = Kind.CALL_COUNT)
     private void unauthorized(Realm realm, HttpEvent evt, AuthenticationDecorator decorator, Page page, Response response) {

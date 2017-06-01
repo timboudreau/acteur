@@ -24,6 +24,7 @@
         <module>acteur-base</module>
         <module>acteur-mongo-async</module>
         <module>marshaller-registry</module>
+        <module>acteur-headers-jodatime</module>
     </modules>
     <url>https://github.com/timboudreau/acteur</url>
     <scm>

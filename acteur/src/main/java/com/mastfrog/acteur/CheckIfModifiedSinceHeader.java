@@ -25,10 +25,12 @@ package com.mastfrog.acteur;
 
 import com.mastfrog.acteur.headers.Headers;
 import static com.mastfrog.acteur.headers.Headers.IF_MODIFIED_SINCE;
+import com.mastfrog.util.time.TimeUtil;
 import static io.netty.handler.codec.http.HttpResponseStatus.NOT_MODIFIED;
+import java.time.ZonedDateTime;
+import java.time.temporal.ChronoField;
 import java.util.Map;
 import javax.inject.Inject;
-import org.joda.time.DateTime;
 
 /**
  * Convenience Acteur which compares the current Page's Date against the current
@@ -41,17 +43,30 @@ public final class CheckIfModifiedSinceHeader extends Acteur {
 
     @Inject
     CheckIfModifiedSinceHeader(HttpEvent event, Page page) {
-        DateTime lastModifiedMustBeNewerThan = event.getHeader(IF_MODIFIED_SINCE);
-        DateTime pageLastModified = response().get(Headers.LAST_MODIFIED);
+        ZonedDateTime lastModifiedMustBeNewerThan = event.getHeader(IF_MODIFIED_SINCE);
+        if (lastModifiedMustBeNewerThan != null) {
+            ZonedDateTime pageLastModified = response().get(Headers.LAST_MODIFIED);
+            if (pageLastModified != null) {
+                if (TimeUtil.isBeforeEqualOrNullSecondsResolution(lastModifiedMustBeNewerThan, pageLastModified)) {
+                    reply(NOT_MODIFIED);
+                    return;
+                }
+            }
+        }
+        /*
+        ZonedDateTime lastModifiedMustBeNewerThan = event.getHeader(IF_MODIFIED_SINCE);
+        ZonedDateTime pageLastModified = response().get(Headers.LAST_MODIFIED);
         boolean notModified = lastModifiedMustBeNewerThan != null && pageLastModified != null;
         if (notModified) {
-            notModified = pageLastModified.withMillisOfSecond(0).getMillis() 
-                    <= lastModifiedMustBeNewerThan.getMillis();
+            pageLastModified = pageLastModified.with(ChronoField.MILLI_OF_SECOND, 0);
+            notModified = pageLastModified.isBefore(lastModifiedMustBeNewerThan)
+                    || pageLastModified.isBefore(lastModifiedMustBeNewerThan);
+            if (notModified) {
+                reply(NOT_MODIFIED);
+                return;
+            }
         }
-        if (notModified) {
-            reply(NOT_MODIFIED);
-            return;
-        }
+*/
         next();
     }
 

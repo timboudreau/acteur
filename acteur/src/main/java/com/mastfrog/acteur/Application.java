@@ -49,6 +49,7 @@ import com.mastfrog.parameters.Param;
 import com.mastfrog.parameters.Params;
 import com.mastfrog.util.ConfigurationError;
 import com.mastfrog.util.Checks;
+import com.mastfrog.util.time.TimeUtil;
 import com.mastfrog.util.perf.Benchmark;
 import com.mastfrog.util.perf.Benchmark.Kind;
 import com.mastfrog.util.thread.QuietAutoCloseable;
@@ -58,7 +59,6 @@ import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
 import io.netty.handler.codec.http.HttpHeaderNames;
-import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpVersion;
@@ -69,6 +69,8 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Modifier;
 import java.nio.charset.Charset;
+import java.time.Duration;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -82,8 +84,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
-import org.joda.time.DateTime;
-import org.joda.time.Duration;
 import org.netbeans.validation.api.Validator;
 import org.netbeans.validation.api.builtin.stringvalidation.StringValidators;
 import org.openide.util.Exceptions;
@@ -460,7 +460,7 @@ public class Application implements Iterable<Page> {
     private static final HeaderValueType<CharSequence> X_PAGE = Headers.header(new AsciiString("X-Page"));
     HttpResponse _decorateResponse(Event<?> event, Page page, Acteur action, HttpResponse response) {
         Headers.write(Headers.SERVER, getName(), response);
-        Headers.write(Headers.DATE, new DateTime(), response);
+        Headers.write(Headers.DATE, ZonedDateTime.now(), response);
         if (debug) {
             String pth = event instanceof HttpEvent ? ((HttpEvent) event).getPath().toString() : "";
             Headers.write(X_REQ_PATH, pth, response);
@@ -470,7 +470,7 @@ public class Application implements Iterable<Page> {
         if (corsEnabled && !response.headers().contains(HttpHeaderNames.ACCESS_CONTROL_ALLOW_ORIGIN)) {
             Headers.write(Headers.ACCESS_CONTROL_ALLOW_ORIGIN.toStringHeader(), corsAllowOrigin, response);
             if (!response.headers().contains(HttpHeaderNames.ACCESS_CONTROL_MAX_AGE)) {
-                Headers.write(Headers.ACCESS_CONTROL_MAX_AGE, new Duration(corsMaxAgeMinutes), response);
+                Headers.write(Headers.ACCESS_CONTROL_MAX_AGE, TimeUtil.minutes(corsMaxAgeMinutes), response);
             }
         }
         return decorateResponse(event, page, action, response);
@@ -494,7 +494,7 @@ public class Application implements Iterable<Page> {
         Headers.write(Headers.CONTENT_LENGTH, buf.writerIndex(), resp);
         Headers.write(Headers.CONTENT_LANGUAGE, Locale.ENGLISH, resp);
         Headers.write(Headers.CACHE_CONTROL, new CacheControl(CacheControlTypes.no_cache), resp);
-        Headers.write(Headers.DATE, new DateTime(), resp);
+        Headers.write(Headers.DATE, ZonedDateTime.now(), resp);
         if (debug) {
             String pth = event instanceof HttpEvent ? ((HttpEvent) event).getPath().toString() : "";
             Headers.write(X_REQ_PATH, pth, resp);

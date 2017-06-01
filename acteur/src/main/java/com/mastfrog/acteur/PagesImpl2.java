@@ -57,6 +57,8 @@ import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpVersion;
 import java.io.PrintStream;
 import java.nio.charset.Charset;
+import java.time.Duration;
+import java.time.ZonedDateTime;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
@@ -67,8 +69,6 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javax.inject.Inject;
-import org.joda.time.DateTime;
-import org.joda.time.Duration;
 import org.netbeans.validation.api.InvalidInputException;
 
 /**
@@ -231,7 +231,7 @@ class PagesImpl2 {
                             if (debug) {
                                 System.err.println("Response will be delayed for " + delay);
                             }
-                            final ScheduledFuture<?> s = scheduler.schedule(c, response.getDelay().getMillis(), TimeUnit.MILLISECONDS);
+                            final ScheduledFuture<?> s = scheduler.schedule(c, delay.toMillis(), TimeUnit.MILLISECONDS);
                             // Ensure the task is discarded if the connection is broken
                             channel.closeFuture().addListener(new CancelOnClose(s));
                         }
@@ -296,7 +296,7 @@ class PagesImpl2 {
                         Headers.write(Headers.CONTENT_LENGTH, (long) buf.writerIndex(), resp);
                         Headers.write(Headers.CONTENT_LANGUAGE, Locale.ENGLISH, resp);
                         Headers.write(Headers.CACHE_CONTROL, CacheControl.PRIVATE_NO_CACHE_NO_STORE, resp);
-                        Headers.write(Headers.DATE, new DateTime(), resp);
+                        Headers.write(Headers.DATE, ZonedDateTime.now(), resp);
                         channel.writeAndFlush(resp).addListener(ChannelFutureListener.CLOSE);
                     }
                 } finally {

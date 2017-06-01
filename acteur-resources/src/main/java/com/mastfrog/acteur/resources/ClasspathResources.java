@@ -67,6 +67,8 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URLDecoder;
+import java.time.ZonedDateTime;
+import java.time.temporal.ChronoField;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -74,8 +76,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.zip.GZIPOutputStream;
-import org.joda.time.DateTime;
-import org.joda.time.Duration;
 
 /**
  *
@@ -87,7 +87,7 @@ public final class ClasspathResources implements StaticResources {
     private final MimeTypes types;
     private final Class<?> relativeTo;
     private final Map<String, Resource> names = new HashMap<>();
-    private static final DateTime startTime = DateTime.now();
+    private static final ZonedDateTime startTime = ZonedDateTime.now().with(ChronoField.MILLI_OF_SECOND, 0);
     private final String[] patterns;
     private final DeploymentMode mode;
     private final ByteBufAllocator allocator;
@@ -275,7 +275,7 @@ public final class ClasspathResources implements StaticResources {
             return hash;
         }
 
-        public DateTime lastModified() {
+        public ZonedDateTime lastModified() {
             return startTime;
         }
 

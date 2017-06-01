@@ -26,9 +26,9 @@ package com.mastfrog.acteur.mongo.async;
 import com.mastfrog.util.Checks;
 import com.mongodb.CursorType;
 import com.mongodb.async.client.FindIterable;
+import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 import org.bson.conversions.Bson;
-import org.joda.time.Duration;
 
 /**
  * Sets up the parameters on a <code>FindIterable</code> - call its setters,
@@ -118,7 +118,7 @@ public final class CursorControl {
     public <T> FindIterable<T> apply(FindIterable<T> fi) {
         fi = fi.batchSize(batchSize).cursorType(type).limit(limit);
         if (maxTime != null) {
-            fi = fi.maxTime(maxTime.getMillis(), TimeUnit.MILLISECONDS);
+            fi = fi.maxTime(maxTime.toMillis(), TimeUnit.MILLISECONDS);
         }
         if (projection != null) {
             fi = fi.projection(projection);

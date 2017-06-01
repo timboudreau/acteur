@@ -85,7 +85,7 @@ public class NumblePage extends Acteur {
                         problems.append("Port must be less than 65536");
                     }
                 } catch (NumberFormatException e) {
-                    problems.add("Not a number: " + model);
+                    problems.append("Not a number: " + model);
                 }
             }
         }

@@ -30,6 +30,7 @@ import com.mastfrog.parameters.KeysValues;
 import com.mastfrog.parameters.gen.Origin;
 import com.mastfrog.parameters.validation.ParamChecker;
 import com.mastfrog.util.Codec;
+import com.mastfrog.util.time.TimeUtil;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;
 import java.io.IOException;
@@ -37,11 +38,11 @@ import java.io.InputStream;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Proxy;
 import java.nio.charset.Charset;
+import java.time.Duration;
+import java.time.ZonedDateTime;
 import java.util.Date;
 import java.util.Map;
 import javax.inject.Inject;
-import org.joda.time.DateTime;
-import org.joda.time.Duration;
 import org.netbeans.validation.api.InvalidInputException;
 import org.netbeans.validation.api.Problems;
 
@@ -246,12 +247,12 @@ public class ContentConverter {
                     return parseDate(result);
                 }
                 return null;
-            } else if (method.getReturnType() == DateTime.class) {
+            } else if (method.getReturnType() == ZonedDateTime.class) {
                 long when = parseDate(result);
                 if (when == Long.MIN_VALUE) {
                     return null;
                 }
-                return new DateTime(parseDate(result));
+                return TimeUtil.fromUnixTimestamp(parseDate(result));
             } else if (method.getReturnType() == Duration.class) {
                 long amt = -1;
                 try {
@@ -259,7 +260,7 @@ public class ContentConverter {
                 } catch (NumberFormatException nfe) {
                     return Duration.ZERO;
                 }
-                return new Duration(amt);
+                return TimeUtil.millis(amt);
             }
             throw new IllegalArgumentException("Unsupported type " + method.getReturnType());
         }

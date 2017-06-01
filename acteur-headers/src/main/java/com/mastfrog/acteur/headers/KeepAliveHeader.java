@@ -21,25 +21,25 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-
 package com.mastfrog.acteur.headers;
 
 import io.netty.util.AsciiString;
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import org.joda.time.Duration;
 
 /**
  *
  * @author Tim Boudreau
  */
-public class KeepAliveHeader extends AbstractHeader<Duration> {
+final class KeepAliveHeader extends AbstractHeader<Duration> {
+    private static final Pattern PAT = Pattern.compile(".*?timeout=\\s*?(\\d+)");
 
     public KeepAliveHeader() {
         super(Duration.class, new AsciiString("keep-alive"));
     }
 
-    private static final Pattern PAT = Pattern.compile(".*?timeout=\\s*?(\\d+)");
     @Override
     public Duration toValue(String value) {
         Matcher m = PAT.matcher(value);
@@ -47,18 +47,17 @@ public class KeepAliveHeader extends AbstractHeader<Duration> {
             String time = m.group(1);
             try {
                 long val = Long.parseLong(time);
-                return Duration.standardSeconds(val);
+                return Duration.of(val, ChronoUnit.SECONDS);
             } catch (NumberFormatException nfe) {
                 System.err.println("Invalid " + name() + " header " + value);
             }
         }
-        return null;
+        return Duration.ZERO;
     }
 
     @Override
     public CharSequence toCharSequence(Duration value) {
-        return "timeout=" + value.toStandardSeconds();
+        return "timeout=" + value.get(ChronoUnit.SECONDS);
     }
 
-    
 }

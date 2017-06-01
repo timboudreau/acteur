@@ -49,7 +49,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicLong;
 import javax.inject.Inject;
-import org.joda.time.DateTimeUtils;
 
 /**
  * Receives objects representing server sent events, and publishes them to all
@@ -353,7 +352,7 @@ public class EventSink {
 
     private static final class Message {
 
-        public final long timestamp = DateTimeUtils.currentTimeMillis();
+        public final long timestamp = System.currentTimeMillis();
         public final String eventType;
         public final long id;
         public final Object message;

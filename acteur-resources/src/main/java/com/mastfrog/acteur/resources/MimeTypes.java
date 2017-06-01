@@ -29,9 +29,9 @@ import com.google.inject.Singleton;
 import com.mastfrog.url.Path;
 import io.netty.util.CharsetUtil;
 import java.nio.charset.Charset;
+import java.time.ZonedDateTime;
 import java.util.HashMap;
 import java.util.Map;
-import org.joda.time.DateTime;
 
 /**
  *
@@ -86,7 +86,7 @@ public class MimeTypes {
 
     private static class NullExpiresPolicy implements ExpiresPolicy {
 
-        public DateTime get(MediaType mimeType, Path path) {
+        public ZonedDateTime get(MediaType mimeType, Path path) {
             return null;
         }
     }

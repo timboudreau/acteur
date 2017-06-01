@@ -42,6 +42,7 @@ import com.mastfrog.util.Checks;
 import com.mastfrog.util.Streams;
 import com.mastfrog.util.Strings;
 import com.mastfrog.util.streams.HashingOutputStream;
+import com.mastfrog.util.time.TimeUtil;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.ByteBufInputStream;
@@ -63,6 +64,9 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URLDecoder;
+import java.time.Duration;
+import java.time.ZonedDateTime;
+import static java.time.temporal.ChronoField.MILLI_OF_SECOND;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -70,8 +74,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.zip.GZIPOutputStream;
-import org.joda.time.DateTime;
-import org.joda.time.Duration;
 import org.openide.util.Exceptions;
 
 /**
@@ -118,9 +120,9 @@ public final class FileResources implements StaticResources {
                 System.out.println("STATIC RES: " + name + " -> " + pth);
             }
             Path p = Path.parse(pth);
-            DateTime expires = policy.get(types.get(pth), p);
-            Duration maxAge = expires == null ? Duration.standardHours(2)
-                    : new Duration(DateTime.now(), expires);
+            ZonedDateTime expires = policy.get(types.get(pth), p);
+            Duration maxAge = expires == null ? Duration.ofHours(2)
+                    :  Duration.between(ZonedDateTime.now(), expires);
             this.names.put(pth, new FileResource2(name, maxAge));
         }
     }
@@ -271,7 +273,7 @@ public final class FileResources implements StaticResources {
                     .add(CacheControlTypes.max_age, maxAge);
             response.add(Headers.CACHE_CONTROL, cc);
             
-            response.add(Headers.LAST_MODIFIED, new DateTime(lastModified));
+            response.add(Headers.LAST_MODIFIED, TimeUtil.fromUnixTimestamp(lastModified).with(MILLI_OF_SECOND, 0));
             response.add(Headers.ETAG, hash);
 //            page.getReponseHeaders().setContentLength(getLength());
             MediaType type = getContentType();
@@ -316,8 +318,8 @@ public final class FileResources implements StaticResources {
             return hash;
         }
 
-        public DateTime lastModified() {
-            return new DateTime(lastModified);
+        public ZonedDateTime lastModified() {
+            return TimeUtil.fromUnixTimestamp(lastModified);
         }
 
         public MediaType getContentType() {

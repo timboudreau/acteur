@@ -85,6 +85,8 @@ import java.io.OutputStream;
 import java.lang.Thread.UncaughtExceptionHandler;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.charset.Charset;
+import java.time.Duration;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -97,8 +99,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.inject.Inject;
-import org.joda.time.DateTime;
-import org.joda.time.Duration;
 import org.netbeans.validation.api.InvalidInputException;
 
 /**
@@ -303,6 +303,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
     @Override
     @SuppressWarnings("deprecation")
     protected void configure() {
+        bind(ZonedDateTime.class).toInstance(ZonedDateTime.now());
         bind(Server.class).to(ServerImpl.class);
         bind(ReentrantScope.class).toInstance(scope);
         bind(Application.class).to(appType).asEagerSingleton();
@@ -367,7 +368,6 @@ public class ServerModule<A extends Application> extends AbstractModule {
                 SCOPED_BACKGROUND_THREAD_POOL_NAME)).toProvider(
                         new WrappedWorkerThreadPoolProvider(backgroundProvider, scope));
 
-        bind(DateTime.class).toInstance(DateTime.now());
         bind(Duration.class).toProvider(UptimeProvider.class);
         bind(new CKTL()).toProvider(CookiesProvider.class);
 
@@ -885,16 +885,16 @@ public class ServerModule<A extends Application> extends AbstractModule {
 
     private static class UptimeProvider implements Provider<Duration> {
 
-        private final DateTime dt;
+        private final ZonedDateTime dt;
 
         @Inject
-        UptimeProvider(DateTime dt) {
+        UptimeProvider(ZonedDateTime dt) {
             this.dt = dt;
         }
 
         @Override
         public Duration get() {
-            return new Duration(dt, new DateTime());
+            return Duration.between(dt, ZonedDateTime.now());
         }
     }
 

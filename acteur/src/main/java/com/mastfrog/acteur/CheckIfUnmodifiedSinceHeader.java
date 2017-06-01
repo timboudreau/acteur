@@ -26,9 +26,10 @@ package com.mastfrog.acteur;
 import com.mastfrog.acteur.headers.Headers;
 import static com.mastfrog.acteur.headers.Headers.IF_UNMODIFIED_SINCE;
 import static io.netty.handler.codec.http.HttpResponseStatus.PRECONDITION_FAILED;
+import java.time.ZonedDateTime;
+import java.time.temporal.ChronoField;
 import java.util.Map;
 import javax.inject.Inject;
-import org.joda.time.DateTime;
 
 /**
  *
@@ -38,14 +39,14 @@ public final class CheckIfUnmodifiedSinceHeader extends Acteur {
 
     @Inject
     CheckIfUnmodifiedSinceHeader(HttpEvent event, Page page) {
-        DateTime dt = event.getHeader(IF_UNMODIFIED_SINCE);
-        if (dt != null) {
-            DateTime pageLastModified = response().get(Headers.LAST_MODIFIED);
+        ZonedDateTime headerValue = event.getHeader(IF_UNMODIFIED_SINCE);
+        if (headerValue != null) {
+            ZonedDateTime pageLastModified = response().get(Headers.LAST_MODIFIED);
             if (pageLastModified != null) {
-                boolean modSince = pageLastModified.getMillis() > dt.getMillis();
-                if (modSince) {
+                pageLastModified = pageLastModified.with(ChronoField.MILLI_OF_SECOND, 0);
+
+                if (headerValue.equals(pageLastModified) || headerValue.isBefore(pageLastModified)) {
                     reply(PRECONDITION_FAILED);
-                    return;
                 }
             }
         }

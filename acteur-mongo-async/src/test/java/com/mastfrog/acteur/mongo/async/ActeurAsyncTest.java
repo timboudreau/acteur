@@ -57,6 +57,7 @@ import com.mongodb.async.client.MongoCollection;
 import io.netty.buffer.ByteBuf;
 import static io.netty.handler.codec.http.HttpResponseStatus.OK;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
@@ -65,7 +66,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import javax.inject.Inject;
 import org.bson.Document;
-import org.joda.time.Duration;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import static org.junit.Assert.assertEquals;
@@ -82,7 +82,7 @@ public class ActeurAsyncTest {
     public void test(TestHarness harn) throws Throwable {
         harn.get("/hello").go().assertStatus(OK).assertContent("Hello world");
         Thing[] objs = harn.get("/stuff")
-                .setTimeout(Duration.standardSeconds(18))
+                .setTimeout(Duration.ofSeconds(18))
                 .go().assertStatus(OK).throwIfError().content(Thing[].class);
         System.out.println("\n\nCT IS " + Arrays.toString(objs) + "\n\n");
 
@@ -90,7 +90,7 @@ public class ActeurAsyncTest {
         maybeFail();
 
         Thing one = harn.get("/oneThing")
-                .setTimeout(Duration.standardSeconds(18))
+                .setTimeout(Duration.ofSeconds(18))
                 .go().assertStatus(OK).throwIfError().content(Thing.class);
 
         System.out.println("THING ONE: " + one);

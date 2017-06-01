@@ -34,13 +34,13 @@ import com.mastfrog.acteur.util.Connection;
 import com.mastfrog.settings.Settings;
 import java.lang.reflect.Array;
 import java.nio.charset.Charset;
+import java.time.ZonedDateTime;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import javax.inject.Inject;
-import org.joda.time.DateTime;
 
 /**
  *
@@ -63,7 +63,7 @@ final class HelpPage extends Page {
         private final boolean html;
 
         @Inject
-        HelpActeur(Application app, HttpEvent evt, Charset charset, DateTime serverStartTime) {
+        HelpActeur(Application app, HttpEvent evt, Charset charset, ZonedDateTime serverStartTime) {
             this.html = "true".equals(evt.getParameter("html"));
             if (html) {
                 add(Headers.CONTENT_TYPE, MediaType.HTML_UTF_8.withCharset(charset));

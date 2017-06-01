@@ -51,12 +51,6 @@
             <version>${mastfrog.version}</version>
             <type>jar</type>
         </dependency>
-        <dependency>
-            <groupId>${project.groupId}</groupId>
-            <artifactId>jackson-jodatime</artifactId>
-            <version>${mastfrog.version}</version>
-            <type>jar</type>
-        </dependency>
     </dependencies>
     <url>https://github.com/timboudreau/acteur</url>
     <scm>

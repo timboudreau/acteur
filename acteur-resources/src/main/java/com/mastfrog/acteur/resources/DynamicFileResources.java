@@ -48,6 +48,7 @@ import com.mastfrog.acteur.util.CacheControlTypes;
 import com.mastfrog.util.Exceptions;
 import com.mastfrog.util.Streams;
 import com.mastfrog.util.Strings;
+import com.mastfrog.util.time.TimeUtil;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.ByteBufOutputStream;
@@ -61,9 +62,9 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.time.Duration;
+import java.time.ZonedDateTime;
 import java.util.zip.GZIPOutputStream;
-import org.joda.time.DateTime;
-import org.joda.time.Duration;
 
 /**
  * Version of FileResources that does not cache bytes in-memory, just uses
@@ -118,15 +119,15 @@ public class DynamicFileResources implements StaticResources {
             if (ua != null && !ua.contains("MSIE")) {
                 response.add(VARY, new HeaderValueType<?>[]{ACCEPT_ENCODING});
             }
-            DateTime expires = policy.get(types.get(path), evt.getPath());
-            Duration maxAge = expires == null ? Duration.standardHours(2)
-                    : new Duration(DateTime.now(), expires);
+            ZonedDateTime expires = policy.get(types.get(path), evt.getPath());
+            Duration maxAge = expires == null ? Duration.ofHours(2)
+                    : Duration.between(ZonedDateTime.now(), expires);
 
             CacheControl cc = new CacheControl(CacheControlTypes.Public, CacheControlTypes.must_revalidate)
                     .add(CacheControlTypes.max_age, maxAge);
             response.add(CACHE_CONTROL, cc);
 
-            response.add(LAST_MODIFIED, new DateTime(file.lastModified()));
+            response.add(LAST_MODIFIED, TimeUtil.fromUnixTimestamp(file.lastModified()));
             response.add(ETAG, getEtag());
             response.add(AGE, Duration.ZERO);
             if (expires != null) {
@@ -171,8 +172,8 @@ public class DynamicFileResources implements StaticResources {
         }
 
         @Override
-        public DateTime lastModified() {
-            return new DateTime(file.lastModified());
+        public ZonedDateTime lastModified() {
+            return TimeUtil.fromUnixTimestamp(file.lastModified());
         }
 
         @Override

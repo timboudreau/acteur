@@ -122,7 +122,7 @@ final class AuthCookieWriter {
      */
     public void setCookie(HttpEvent evt, String cookieValue, Response on) {
         DefaultCookie ck = new DefaultCookie(cookieName, cookieValue);
-        ck.setMaxAge(timeout.get().getStandardSeconds());
+        ck.setMaxAge(timeout.get().getSeconds());
         configureCookie(evt, ck);
         on.add(Headers.SET_COOKIE, ck);
     }

@@ -4,8 +4,8 @@ import com.google.inject.Inject;
 import com.mastfrog.giulius.DeploymentMode;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.util.ConfigurationError;
+import java.time.Duration;
 import javax.inject.Singleton;
-import org.joda.time.Duration;
 
 /**
  * Represents the duration of a login session before a user will be required to
@@ -31,14 +31,14 @@ public final class SessionTimeout {
     SessionTimeout(Settings settings, DeploymentMode mode) {
         Integer expiry = settings.getInt(SETTINGS_KEY_SESSION_EXPIRY_HOURS);
         if (expiry != null) {
-            this.expiry = Duration.standardHours(expiry);
+            this.expiry = Duration.ofHours(expiry);
         } else if (mode.isProduction()) {
 //                throw new ConfigurationError("Will not use the default session "
 //                        + "expiration time of 2 minutes in production.  Set"
 //                        + SETTINGS_KEY_SESSION_EXPIRY_HOURS + " to something resonable.");
-            this.expiry = Duration.standardDays(2);
+            this.expiry = Duration.ofDays(2);
         } else {
-            this.expiry = Duration.standardMinutes(2);
+            this.expiry = Duration.ofMinutes(2);
         }
     }
 

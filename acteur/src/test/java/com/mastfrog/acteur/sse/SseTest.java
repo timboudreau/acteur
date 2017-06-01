@@ -34,12 +34,12 @@ import io.netty.buffer.ByteBuf;
 import io.netty.handler.codec.http.HttpContent;
 import static io.netty.handler.codec.http.HttpResponseStatus.NOT_FOUND;
 import io.netty.util.CharsetUtil;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import org.joda.time.Duration;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
@@ -58,7 +58,7 @@ public class SseTest {
         long when = System.currentTimeMillis();
         System.err.println("PORT " + harn.getPort());
         System.err.flush();
-        harn.get("/foo").setTimeout(Duration.standardSeconds(60)).log().go().assertStatus(NOT_FOUND);
+        harn.get("/foo").setTimeout(Duration.ofSeconds(60)).log().go().assertStatus(NOT_FOUND);
         final StringBuilder content = new StringBuilder();
         final CallResult[] res = new CallResult[1];
         final AtomicInteger count = new AtomicInteger();
@@ -79,7 +79,7 @@ public class SseTest {
                     res[0].cancel();
                 }
             }
-        }).setTimeout(Duration.standardSeconds(10)).go();
+        }).setTimeout(Duration.ofSeconds(10)).go();
         try {
             res[0].await();
         } catch (InterruptedException ex) {

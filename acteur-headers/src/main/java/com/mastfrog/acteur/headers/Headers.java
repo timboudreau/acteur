@@ -35,19 +35,22 @@ import io.netty.handler.codec.http.HttpMessage;
 import io.netty.util.AsciiString;
 import java.net.URI;
 import java.nio.charset.Charset;
+import java.time.Duration;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
+import java.time.format.SignStyle;
+import java.time.format.TextStyle;
+import java.time.temporal.ChronoField;
 import java.util.Locale;
-import org.joda.time.DateTime;
-import org.joda.time.DateTimeZone;
-import org.joda.time.Duration;
-import org.joda.time.format.DateTimeFormatter;
-import org.joda.time.format.DateTimeFormatterBuilder;
 
 /**
  * A collection of standard HTTP headers and objects that convert between them
  * and actual header strings and vice versa. Typical usage would be something
  * like:
  * <pre>
- * response.setHeader(Headers.LAST_MODIFIED, new DateTime());
+ * response.setHeader(Headers.LAST_MODIFIED, new ZonedDateTime());
  * </pre> This handles conversion between header strings and Java objects
  * without creating a class which dicatates what headers should be or what they
  * should look like.
@@ -59,12 +62,12 @@ public final class Headers {
     private Headers() {
     }
     public static final HeaderValueType<CharSequence> EXPECT = header(HttpHeaderNames.EXPECT);
-    public static final HeaderValueType<DateTime> DATE = new DateTimeHeader(HttpHeaderNames.DATE);
-    public static final HeaderValueType<DateTime> LAST_MODIFIED = new DateTimeHeader(HttpHeaderNames.LAST_MODIFIED);
-    public static final HeaderValueType<DateTime> EXPIRES = new DateTimeHeader(HttpHeaderNames.EXPIRES);
-    public static final HeaderValueType<DateTime> IF_MODIFIED_SINCE = new DateTimeHeader(HttpHeaderNames.IF_MODIFIED_SINCE);
-    public static final HeaderValueType<DateTime> IF_UNMODIFIED_SINCE = new DateTimeHeader(HttpHeaderNames.IF_UNMODIFIED_SINCE);
-    public static final HeaderValueType<DateTime> RETRY_AFTER_DATE = new DateTimeHeader(HttpHeaderNames.RETRY_AFTER);
+    public static final HeaderValueType<ZonedDateTime> DATE = new DateTimeHeader(HttpHeaderNames.DATE);
+    public static final HeaderValueType<ZonedDateTime> LAST_MODIFIED = new DateTimeHeader(HttpHeaderNames.LAST_MODIFIED);
+    public static final HeaderValueType<ZonedDateTime> EXPIRES = new DateTimeHeader(HttpHeaderNames.EXPIRES);
+    public static final HeaderValueType<ZonedDateTime> IF_MODIFIED_SINCE = new DateTimeHeader(HttpHeaderNames.IF_MODIFIED_SINCE);
+    public static final HeaderValueType<ZonedDateTime> IF_UNMODIFIED_SINCE = new DateTimeHeader(HttpHeaderNames.IF_UNMODIFIED_SINCE);
+    public static final HeaderValueType<ZonedDateTime> RETRY_AFTER_DATE = new DateTimeHeader(HttpHeaderNames.RETRY_AFTER);
     public static final HeaderValueType<Duration> RETRY_AFTER_DURATION = new DurationHeader(HttpHeaderNames.RETRY_AFTER);
     public static final HeaderValueType<CharSequence> HOST = header(HttpHeaderNames.HOST);
     public static final HeaderValueType<MediaType> CONTENT_TYPE = new MediaTypeHeader();
@@ -151,18 +154,32 @@ public final class Headers {
     }
 
     public static final DateTimeFormatter ISO2822DateFormat
-            = new DateTimeFormatterBuilder().appendDayOfWeekShortText()
-                    .appendLiteral(", ").appendDayOfMonth(2).appendLiteral(" ")
-                    .appendMonthOfYearShortText().appendLiteral(" ")
-                    .appendYear(4, 4).appendLiteral(" ").appendHourOfDay(2)
-                    .appendLiteral(":").appendMinuteOfHour(2).appendLiteral(":")
-                    .appendSecondOfMinute(2).appendLiteral(" ")
-                    .appendTimeZoneOffset("GMT", true, 2, 2) //                .appendLiteral(" GMT")
-                    .toFormatter();
+            = new DateTimeFormatterBuilder()
+                    .appendText(ChronoField.DAY_OF_WEEK, TextStyle.SHORT_STANDALONE).appendLiteral(", ")
+                    .appendText(ChronoField.DAY_OF_MONTH, TextStyle.FULL).appendLiteral(" ")
+                    .appendText(ChronoField.MONTH_OF_YEAR, TextStyle.SHORT).appendLiteral(" ")
+                    .appendText(ChronoField.YEAR, TextStyle.FULL).appendLiteral(" ")
+                    .appendValue(ChronoField.HOUR_OF_DAY, 2).appendLiteral(":")
+                    .appendValue(ChronoField.MINUTE_OF_HOUR, 2).appendLiteral(":")
+                    .appendValue(ChronoField.SECOND_OF_MINUTE, 2).appendLiteral(" ")
+                    .appendOffsetId().toFormatter();
 
-    public static String toISO2822Date(DateTime dt) {
-        dt = new DateTime(dt.getMillis(), DateTimeZone.UTC);
-        return dt.toDateTime(DateTimeZone.UTC).toDateTimeISO().toString(
-                ISO2822DateFormat);
+    static final DateTimeFormatter TWO_DIGIT_YEAR
+            = new DateTimeFormatterBuilder()
+//                    .appendText(ChronoField.DAY_OF_WEEK, TextStyle.SHORT_STANDALONE).appendLiteral(", ")
+                    .appendText(ChronoField.DAY_OF_MONTH, TextStyle.FULL).appendLiteral(" ")
+                    .appendText(ChronoField.MONTH_OF_YEAR, TextStyle.SHORT).appendLiteral(" ")
+                    .appendValue(ChronoField.YEAR, 2, 4, SignStyle.NEVER).appendLiteral(" ")
+                    .appendValue(ChronoField.HOUR_OF_DAY, 2).appendLiteral(":")
+                    .appendValue(ChronoField.MINUTE_OF_HOUR, 2).appendLiteral(":")
+                    .appendValue(ChronoField.SECOND_OF_MINUTE, 2).appendLiteral(" ")
+                    .appendZoneOrOffsetId().toFormatter();
+
+    static final ZoneId UTC = ZoneId.of("GMT");
+    public static String toISO2822Date(ZonedDateTime dt) {
+//        dt = dt.withZoneSameInstant(UTC);
+        return dt.format(ISO2822DateFormat);
+//        return dt.toDateTime(DateTimeZone.UTC).toDateTimeISO().toString(
+//                ISO2822DateFormat);
     }
 }

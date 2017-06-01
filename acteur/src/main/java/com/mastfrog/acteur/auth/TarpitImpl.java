@@ -5,6 +5,10 @@ import com.google.inject.Singleton;
 import com.mastfrog.acteur.HttpEvent;
 import com.mastfrog.giulius.ShutdownHookRegistry;
 import com.mastfrog.settings.Settings;
+import com.mastfrog.util.time.TimeUtil;
+import java.time.Duration;
+import java.time.ZonedDateTime;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -12,8 +16,6 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import javax.inject.Inject;
-import org.joda.time.DateTime;
-import org.joda.time.Duration;
 
 /**
  * A basic implementation of Tarpit which uses in-memory storage and a five
@@ -32,9 +34,10 @@ final class TarpitImpl implements Tarpit {
     
     @Inject
     TarpitImpl(Settings settings, TarpitCacheKeyFactory keyFactory, ShutdownHookRegistry reg) {
-        timeToExpiration = Duration.standardMinutes(settings.getLong(SETTINGS_KEY_TARPIT_EXPIRATION_TIME_MINUTES, 5));
+        timeToExpiration = Duration.ofMinutes(settings.getLong(SETTINGS_KEY_TARPIT_EXPIRATION_TIME_MINUTES, 5));
         Timer timer = new Timer(true);
-        timer.scheduleAtFixedRate(gc, DateTime.now().plus(timeToExpiration).toDate(), timeToExpiration.getMillis() / 2);
+        Date firstTime = new Date(TimeUtil.toUnixTimestamp(ZonedDateTime.now().plus(timeToExpiration)));
+        timer.scheduleAtFixedRate(gc, firstTime, timeToExpiration.toMillis() / 2);
         reg.add(new Runnable() {
 
             @Override
@@ -113,11 +116,11 @@ final class TarpitImpl implements Tarpit {
         }
 
         boolean isExpired() {
-            DateTime now = DateTime.now();
+            ZonedDateTime now = ZonedDateTime.now();
             for (Iterator<Long> iter = accesses.iterator(); iter.hasNext();) {
-                DateTime when = new DateTime(iter.next());
-                Duration dur = new Duration(when, now);
-                if (dur.isLongerThan(timeToExpiration)) {
+                ZonedDateTime when = TimeUtil.fromUnixTimestamp(iter.next());
+                Duration dur = Duration.between(when, now);
+                if (TimeUtil.isLonger(dur, timeToExpiration)) {
                     iter.remove();
                 }
             }

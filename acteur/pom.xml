@@ -85,6 +85,7 @@
                     <perCoreThreadCount>4</perCoreThreadCount>
                     <threadCount>8</threadCount>
                     <reuseForks>true</reuseForks>
+                    <trimStackTrace>false</trimStackTrace>
                 </configuration>
             </plugin>
         </plugins>

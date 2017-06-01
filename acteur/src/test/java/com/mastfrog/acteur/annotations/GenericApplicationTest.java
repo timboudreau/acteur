@@ -20,11 +20,11 @@ import com.mastfrog.settings.SettingsBuilder;
 import com.mastfrog.util.GUIDFactory;
 import com.mastfrog.util.collections.MapBuilder;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
-import org.joda.time.Duration;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
@@ -72,7 +72,7 @@ public class GenericApplicationTest {
         Map<String, Object> m = new MapBuilder().put("host", "timboudreau.com")
                 .put("port", 8080).put("bool", false).build();
 
-        CallResult res = harn.put("/numble").log().setTimeout(Duration.standardSeconds(20))
+        CallResult res = harn.put("/numble").log().setTimeout(Duration.ofSeconds(20))
                 .setBody(m, MediaType.JSON_UTF_8).go().await().assertCode(200);
         System.out.println("ACTEUR: " + res.getHeader(Headers.header("X-Acteur")));
         System.out.println("PAGE: " + res.getHeader(Headers.header("X-Page")));

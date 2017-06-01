@@ -28,7 +28,7 @@ import com.google.inject.ImplementedBy;
 import com.mastfrog.acteur.HttpEvent;
 import com.mastfrog.acteur.Page;
 import com.mastfrog.acteur.Response;
-import org.joda.time.DateTime;
+import java.time.ZonedDateTime;
 
 /**
  * Source of static resources / files to be served.
@@ -58,7 +58,7 @@ public interface StaticResources {
 
         String getEtag();
 
-        DateTime lastModified();
+        ZonedDateTime lastModified();
 
         MediaType getContentType();
 

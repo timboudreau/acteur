@@ -25,10 +25,9 @@ package com.mastfrog.acteur;
 
 import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.acteur.util.RequestID;
+import com.mastfrog.util.time.TimeUtil;
 import io.netty.handler.codec.http.HttpResponseStatus;
-import org.joda.time.Duration;
-import org.joda.time.format.PeriodFormatter;
-import org.joda.time.format.PeriodFormatterBuilder;
+import java.time.Duration;
 
 /**
  * A trivial default logger implementation
@@ -52,7 +51,7 @@ class DefaultRequestLogger implements RequestLogger {
         int reqNum = rid == null ? -1 : rid.getIndex();
         StringBuilder sb = new StringBuilder(120)
                 .append(reqNum).append('\t')
-                .append(FORMAT.print(rid == null ? Duration.ZERO.toPeriod() : rid.getDuration().toPeriod()))
+                .append(rid == null ? TimeUtil.format(Duration.ZERO) : TimeUtil.format(rid.getDuration()))
                 .append('\t').append(event.getRemoteAddress())
                 .append("\t").append(status)
                 .append("\t").append(event);
@@ -68,8 +67,4 @@ class DefaultRequestLogger implements RequestLogger {
         }
         System.out.println(sb);
     }
-    private static final PeriodFormatter FORMAT
-            = new PeriodFormatterBuilder().appendMinutes()
-            .appendSeparatorIfFieldsBefore(":")
-            .appendSecondsWithMillis().toFormatter();
 }

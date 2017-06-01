@@ -23,9 +23,10 @@
  */
 package com.mastfrog.acteur.util;
 
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.inject.Singleton;
-import org.joda.time.Duration;
 
 /**
  * Unique ID for an HTTP request which can be injected
@@ -49,7 +50,7 @@ public final class RequestID {
     }
 
     public Duration getDuration() {
-        return new Duration(System.currentTimeMillis() - time);
+        return Duration.of(System.currentTimeMillis() - time, ChronoUnit.MILLIS);
     }
 
     public String stringValue() {
@@ -58,7 +59,7 @@ public final class RequestID {
 
     @Override
     public String toString() {
-        return RUN_ID + ":" + index + "/" + getDuration().getMillis() + "ms";
+        return RUN_ID + ":" + index + "/" + getDuration().toMillis() + "ms";
     }
 
     @Singleton

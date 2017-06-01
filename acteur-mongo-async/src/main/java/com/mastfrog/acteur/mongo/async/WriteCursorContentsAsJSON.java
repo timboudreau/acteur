@@ -36,6 +36,7 @@ import com.mastfrog.acteurbase.Deferral.Resumer;
 import com.mongodb.async.AsyncBatchCursor;
 import com.mongodb.async.SingleResultCallback;
 import com.mongodb.async.client.FindIterable;
+import io.netty.channel.ChannelFutureListener;
 import io.netty.handler.codec.http.HttpResponseStatus;
 
 /**
@@ -142,7 +143,7 @@ public class WriteCursorContentsAsJSON extends Acteur {
                 reply(Err.of(res.thrwbl));
             } else {
                 reply(HttpResponseStatus.OK);
-                setResponseBodyWriter(fact.create(res.cursor));
+                setResponseBodyWriter((ChannelFutureListener) fact.create(res.cursor));
             }
         }
     }

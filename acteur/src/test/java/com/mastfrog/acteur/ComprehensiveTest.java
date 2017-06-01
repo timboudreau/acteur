@@ -7,7 +7,7 @@ import static com.mastfrog.netty.http.client.StateType.Closed;
 import com.mastfrog.netty.http.test.harness.TestHarness;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import static io.netty.handler.codec.http.HttpResponseStatus.OK;
-import org.joda.time.Duration;
+import java.time.Duration;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -22,7 +22,7 @@ public class ComprehensiveTest {
     @Test(timeout = 7000)
     public void testEcho(TestHarness harness) throws Throwable {
         harness.post("echo").log().setBody("Echo this back to me", PLAIN_TEXT_UTF_8)
-                .setTimeout(Duration.standardSeconds(30)).go()
+                .setTimeout(Duration.ofSeconds(30)).go()
                 .throwIfError()
                 .assertStatus(OK)
                 .assertContent("Echo this back to me");
@@ -30,7 +30,7 @@ public class ComprehensiveTest {
 
     @Test(timeout = 7000)
     public void testIter(TestHarness harness) throws Throwable {
-        harness.get("iter").log().addQueryPair("iters", "5").setTimeout(Duration.standardSeconds(30)).go()
+        harness.get("iter").log().addQueryPair("iters", "5").setTimeout(Duration.ofSeconds(30)).go()
                 .assertContent(iter("Iteration", 5))
                 .assertCode(200)
                 .throwIfError();
@@ -39,7 +39,7 @@ public class ComprehensiveTest {
     @Test(timeout = 7000)
     public void testIter2(TestHarness harness) throws Throwable {
         harness.get("iter").log().addQueryPair("iters", "7")
-                .addQueryPair("msg", "Hello ").setTimeout(Duration.standardSeconds(30)).go()
+                .addQueryPair("msg", "Hello ").setTimeout(Duration.ofSeconds(30)).go()
                 .assertCode(200)
                 .assertContent(iter("Hello", 7))
                 .throwIfError();
@@ -47,7 +47,7 @@ public class ComprehensiveTest {
 
     @Test(timeout = 7000)
     public void testDeferred(TestHarness harness) throws Throwable {
-        harness.get("deferred").log().setTimeout(Duration.standardSeconds(10)).go()
+        harness.get("deferred").log().setTimeout(Duration.ofSeconds(10)).go()
                 .throwIfError()
                 .assertContent("I guess it's okay now")
                 .assertStatus(OK);
@@ -55,7 +55,7 @@ public class ComprehensiveTest {
 
     @Test(timeout = 7000)
     public void testNothing(TestHarness harness) throws Throwable {
-        harness.get("nothing").log().setTimeout(Duration.standardSeconds(39)).go()
+        harness.get("nothing").log().setTimeout(Duration.ofSeconds(39)).go()
                 .throwIfError()
                 .assertStatus(HttpResponseStatus.PAYMENT_REQUIRED)
                 .assertStateSeen(Closed);
@@ -63,7 +63,7 @@ public class ComprehensiveTest {
 
     @Test(timeout = 7000)
     public void testBranch1(TestHarness harness) throws Throwable {
-        harness.get("branch").log().setTimeout(Duration.standardSeconds(50)).addQueryPair("a", "true").go()
+        harness.get("branch").log().setTimeout(Duration.ofSeconds(50)).addQueryPair("a", "true").go()
                 .throwIfError()
                 .assertStatus(OK)
                 .assertContent("A");
@@ -71,7 +71,7 @@ public class ComprehensiveTest {
 
     @Test(timeout = 7000)
     public void testBranch2(TestHarness harness) throws Throwable {
-        harness.get("branch").log().setTimeout(Duration.standardSeconds(50)).go()
+        harness.get("branch").log().setTimeout(Duration.ofSeconds(50)).go()
                 .throwIfError()
                 .assertStatus(OK)
                 .assertContent("B");
@@ -80,7 +80,7 @@ public class ComprehensiveTest {
     @Test(timeout = 7000)
     public void testEcho2(TestHarness harness) throws Throwable {
         harness.post("echo").log().setBody("Echo this back to me", PLAIN_TEXT_UTF_8)
-                .setTimeout(Duration.standardSeconds(30)).go()
+                .setTimeout(Duration.ofSeconds(30)).go()
                 .assertStatus(OK)
                 .assertContent("Echo this back to me");
 
@@ -89,7 +89,7 @@ public class ComprehensiveTest {
     @Test(timeout = 7000)
     public void testDynamicActeur(TestHarness harness) throws Throwable {
         System.out.println("J");
-        harness.get("dyn").log().setTimeout(Duration.standardSeconds(10)).go()
+        harness.get("dyn").log().setTimeout(Duration.ofSeconds(10)).go()
                 .assertStatus(OK)
                 .assertContent("Dynamic acteur");
 
@@ -98,7 +98,7 @@ public class ComprehensiveTest {
     @Test(timeout = 7000)
     public void testUnchunked(TestHarness harness) throws Exception, Throwable {
         harness.get("unchunked").log().addQueryPair("iters", "7")
-                .setTimeout(Duration.standardSeconds(20))
+                .setTimeout(Duration.ofSeconds(20))
                 .go()
                 .assertCode(200)
                 .assertContent(iter("Iteration", 7))

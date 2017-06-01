@@ -26,7 +26,7 @@ package com.mastfrog.acteur.resources;
 import com.google.common.net.MediaType;
 import com.google.inject.ImplementedBy;
 import com.mastfrog.url.Path;
-import org.joda.time.DateTime;
+import java.time.ZonedDateTime;
 
 /**
  * Determines the value of the Expires header for various files
@@ -44,5 +44,5 @@ public interface ExpiresPolicy {
      * @param path The url path
      * @return A DateTime, or null if none should be used
      */
-    public DateTime get(MediaType mimeType, Path path);
+    public ZonedDateTime get(MediaType mimeType, Path path);
 }

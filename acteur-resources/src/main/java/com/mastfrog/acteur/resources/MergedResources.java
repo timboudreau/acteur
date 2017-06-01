@@ -56,7 +56,10 @@ public class MergedResources implements StaticResources {
     public String[] getPatterns() {
         List<String> result = new ArrayList<>();
         for (StaticResources r : resources) {
-            result.addAll(Arrays.asList(r.getPatterns()));
+            String[] pats = r.getPatterns();
+            if (pats != null) {
+                result.addAll(Arrays.asList(r.getPatterns()));
+            }
         }
         if (!warned) {
             warned = true;
@@ -65,6 +68,6 @@ public class MergedResources implements StaticResources {
                 System.err.println("Duplicate resources in " + result);
             }
         }
-        return result.toArray(new String[result.size()]);
+        return result.isEmpty() ? null : result.toArray(new String[result.size()]);
     }
 }

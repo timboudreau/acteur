@@ -10,6 +10,7 @@ import static com.mastfrog.netty.http.client.StateType.FullContentReceived;
 import com.mastfrog.netty.http.test.harness.TestHarness;
 import com.mastfrog.netty.http.test.harness.TestHarnessModule;
 import com.mastfrog.util.Streams;
+import com.mastfrog.util.time.TimeUtil;
 import static io.netty.handler.codec.http.HttpResponseStatus.NOT_MODIFIED;
 import static io.netty.handler.codec.http.HttpResponseStatus.OK;
 import java.io.File;
@@ -20,8 +21,8 @@ import java.nio.file.FileVisitResult;
 import java.nio.file.FileVisitor;
 import java.nio.file.Files;
 import java.nio.file.attribute.BasicFileAttributes;
-import org.joda.time.DateTime;
-import org.joda.time.Duration;
+import java.time.Duration;
+import java.time.ZonedDateTime;
 import org.junit.AfterClass;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -105,8 +106,8 @@ public class StaticResourcesTest {
 
     @Test
     public void test(TestHarness har, StaticResources resources) throws Throwable {
-        DateTime helloLastModified;
-        DateTime aLastModified;
+        ZonedDateTime helloLastModified;
+        ZonedDateTime aLastModified;
         helloLastModified = har.get("static/hello.txt").log().go()
                 .assertHasContent()
                 .assertStatus(OK)
@@ -115,7 +116,7 @@ public class StaticResourcesTest {
                 .assertContent(HELLO_CONTENT)
                 .getHeader(Headers.LAST_MODIFIED);
 
-        DateTime helloLastModified2 = har.get("static/hello.txt").go()
+        ZonedDateTime helloLastModified2 = har.get("static/hello.txt").go()
                 .assertHasContent()
                 .assertStatus(OK)
                 .assertHasHeader(Headers.LAST_MODIFIED.name())
@@ -136,9 +137,12 @@ public class StaticResourcesTest {
 
         assertNotNull(helloLastModified);
         assertNotNull(aLastModified);
+        
+        System.out.println("HELLO LAST MODIFIED: " + TimeUtil.toHttpHeaderFormat(helloLastModified));
 
         har.get("static/hello.txt")
                 .addHeader(Headers.IF_MODIFIED_SINCE, helloLastModified)
+                .log()
                 .go()
                 .assertStatus(NOT_MODIFIED);
 
@@ -148,18 +152,18 @@ public class StaticResourcesTest {
 
         har.get("static/another.txt")
                 .log()
-                .addHeader(Headers.IF_MODIFIED_SINCE, helloLastModified.plus(Duration.standardDays(1)))
+                .addHeader(Headers.IF_MODIFIED_SINCE, helloLastModified.plus(Duration.ofDays(1)))
                 .go().await().assertStatus(NOT_MODIFIED);
 
         har.get("static/another.txt")
-                .addHeader(Headers.IF_MODIFIED_SINCE, helloLastModified.minus(Duration.standardDays(1)))
+                .addHeader(Headers.IF_MODIFIED_SINCE, helloLastModified.minus(Duration.ofDays(1)))
                 .go().await().assertStatus(OK);
 
         if (resources instanceof ClasspathResources) {
             // should be server start time since that's all we know
             assertEquals(helloLastModified, aLastModified);
         } else {
-            DateTime subLastModified = har.get("static/sub/subfile.txt").go()
+            ZonedDateTime subLastModified = har.get("static/sub/subfile.txt").go()
                     .assertStateSeen(FullContentReceived)
                     .assertHasContent()
                     .assertStatus(OK)

@@ -26,7 +26,7 @@ package com.mastfrog.acteur;
 import com.mastfrog.acteur.headers.HeaderValueType;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.handler.codec.http.HttpResponseStatus;
-import org.joda.time.Duration;
+import java.time.Duration;
 
 /**
  * Abstraction for a response

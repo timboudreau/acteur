@@ -25,11 +25,13 @@ package com.mastfrog.acteur.util;
 
 import static com.mastfrog.acteur.util.CacheControlTypes.*;
 import com.mastfrog.util.Strings;
+import java.time.Duration;
+import java.time.ZonedDateTime;
+import java.time.temporal.ChronoField;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import org.joda.time.DateTime;
-import org.joda.time.Duration;
 
 /**
  *
@@ -41,7 +43,7 @@ public final class CacheControl {
     public static CacheControl PUBLIC_MUST_REVALIDATE
             = new CacheControl(Public, must_revalidate);
     public static CacheControl PUBLIC_MUST_REVALIDATE_MAX_AGE_1_DAY
-            = new CacheControl(Public, must_revalidate).add(max_age, Duration.standardDays(1));
+            = new CacheControl(Public, must_revalidate).add(max_age, Duration.of(1, ChronoUnit.DAYS));
     public static CacheControl PRIVATE_NO_CACHE_NO_STORE 
             = new CacheControl(Private, no_cache, no_store);
     public static CacheControl PUBLIC
@@ -56,22 +58,7 @@ public final class CacheControl {
     public static CacheControl $(CacheControlTypes types) {
         return new CacheControl(types);
     }
-    private final DateTime creationTime = new DateTime();
-
-    public boolean isExpired() {
-        if (contains(CacheControlTypes.no_cache) || contains(CacheControlTypes.no_store)) {
-            return true;
-        }
-        long maxAgeSeconds = get(CacheControlTypes.max_age);
-        if (maxAgeSeconds != -1) {
-            Duration dur = new Duration(new DateTime(), creationTime);
-            Duration target = Duration.standardSeconds(maxAgeSeconds);
-            if (dur.isLongerThan(target)) {
-                return true;
-            }
-        }
-        return false;
-    }
+    private final ZonedDateTime creationTime = ZonedDateTime.now();
 
     @Override
     public int hashCode() {
@@ -143,7 +130,7 @@ public final class CacheControl {
                 it.remove();
             }
         }
-        entries.add(new E(type, value.toStandardSeconds().getSeconds()));
+        entries.add(new E(type, value.get(ChronoUnit.SECONDS)));
         return this;
     }
     

@@ -27,6 +27,8 @@ import com.google.common.net.MediaType;
 import com.google.inject.Inject;
 import com.mastfrog.acteur.Acteur;
 import com.mastfrog.acteur.ActeurFactory;
+import com.mastfrog.acteur.CheckIfModifiedSinceHeader;
+import com.mastfrog.acteur.CheckIfNoneMatchHeader;
 import com.mastfrog.acteur.HttpEvent;
 import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.acteur.Page;
@@ -40,9 +42,9 @@ import com.mastfrog.url.Path;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
+import java.time.ZonedDateTime;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import org.joda.time.DateTime;
 
 /**
  *
@@ -65,10 +67,9 @@ public class ResourcesPage extends Page {
         if (base != null && !base.isEmpty()) {
             add(af.matchPath(base));
         }
-//        add(af.matchPath(r.getPatterns()));
         add(ResourceNameMatcher.class);
-        add(af.sendNotModifiedIfIfModifiedSinceHeaderMatches());
-        add(af.sendNotModifiedIfETagHeaderMatches());
+        add(CheckIfModifiedSinceHeader.class);
+        add(CheckIfNoneMatchHeader.class);
         add(BytesWriter.class);
     }
 
@@ -100,7 +101,7 @@ public class ResourcesPage extends Page {
                             r.decoratePage(page, evt, path, response(), chunked);
                             MediaType mimeType = r.getContentType();
                             if (mimeType != null) {
-                                DateTime dt = policy.get(mimeType, Path.parse(path));
+                                ZonedDateTime dt = policy.get(mimeType, Path.parse(path));
                                 if (dt != null) {
                                     add(Headers.EXPIRES, dt);
                                 }
@@ -116,7 +117,7 @@ public class ResourcesPage extends Page {
                     r.decoratePage(page, evt, path, response(), chunked);
                     MediaType mimeType = r.getContentType();
                     if (mimeType != null) {
-                        DateTime dt = policy.get(mimeType, Path.parse(path));
+                        ZonedDateTime dt = policy.get(mimeType, Path.parse(path));
                         if (dt != null) {
                             add(Headers.EXPIRES, dt);
                         }

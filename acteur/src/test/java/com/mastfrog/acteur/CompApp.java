@@ -13,6 +13,9 @@ import com.mastfrog.acteur.errors.ExceptionEvaluator;
 import com.mastfrog.acteur.errors.ExceptionEvaluatorRegistry;
 import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.acteur.headers.Method;
+import static com.mastfrog.acteur.headers.Method.GET;
+import com.mastfrog.acteur.preconditions.Methods;
+import com.mastfrog.acteur.preconditions.Path;
 import com.mastfrog.acteur.server.ServerModule;
 import com.mastfrog.acteur.util.ErrorInterceptor;
 import com.mastfrog.acteur.util.Server;
@@ -61,7 +64,7 @@ public class CompApp extends Application {
                 .add("acteur.debug", true)
                 .add("aggregateChunks", true)
                 .build();
-        Dependencies deps = Dependencies.builder().add(new ServerModule(CompApp.class)).add(s, Namespace.DEFAULT).build();
+        Dependencies deps = Dependencies.builder().add(new ServerModule<>(CompApp.class)).add(s, Namespace.DEFAULT).build();
         Server server = deps.getInstance(Server.class);
         System.out.println("GOT SERVER " + server);
         server.start().await();
@@ -414,12 +417,12 @@ public class CompApp extends Application {
         }
     }
 
+    @Methods(GET)
+    @Path("/nothing")
     public static class NoContentPage extends Page {
 
         @Inject
-        NoContentPage(ActeurFactory af) {
-            add(af.matchMethods(Method.GET));
-            add(af.matchPath("^nothing$"));
+        NoContentPage() {
             add(NoActeur.class);
         }
 
