@@ -43,6 +43,7 @@ class DateTimeHeader extends AbstractHeader<ZonedDateTime> {
 
     @Override
     public String toString(ZonedDateTime value) {
+        value = value.withZoneSameInstant(ZoneId.systemDefault());
         return Headers.toISO2822Date(value);
     }
 
@@ -105,7 +106,7 @@ class DateTimeHeader extends AbstractHeader<ZonedDateTime> {
 //                result = result.withYear(2_000 + result.getYear());
 //            }
 //        }
-        return result;
+        return result.withZoneSameInstant(ZoneId.systemDefault());
     }
 
 }
