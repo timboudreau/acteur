@@ -28,6 +28,7 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.net.MediaType;
+import com.mastfrog.util.Checks;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.util.AsciiString;
 import java.util.concurrent.ExecutionException;
@@ -61,6 +62,7 @@ final class MediaTypeHeader extends AbstractHeader<MediaType> {
 
     @Override
     public CharSequence toCharSequence(MediaType value) {
+        Checks.notNull("value", value);
         try {
             return typeCache.get(value);
         } catch (ExecutionException ex) {
@@ -70,7 +72,8 @@ final class MediaTypeHeader extends AbstractHeader<MediaType> {
     }
 
     @Override
-    public MediaType toValue(String value) {
+    public MediaType toValue(CharSequence value) {
+        Checks.notNull("value", value);
         try {
             return stringCache.get(value);
         } catch (ExecutionException ex) {

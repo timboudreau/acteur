@@ -23,6 +23,9 @@
  */
 package com.mastfrog.acteur.headers;
 
+import com.mastfrog.util.Checks;
+import com.mastfrog.util.Strings;
+
 /**
  *
  * @author Tim Boudreau
@@ -35,12 +38,14 @@ class IntHeader extends AbstractHeader<Integer> {
 
     @Override
     public CharSequence toCharSequence(Integer value) {
+        Checks.notNull("value", value);
         return value.toString();
     }
 
     @Override
-    public Integer toValue(String value) {
-        return Integer.parseInt(value);
+    public Integer toValue(CharSequence value) {
+        Checks.notNull("value", value);
+        return Strings.parseInt(value);
     }
 
 }

@@ -90,7 +90,7 @@ public interface HeaderValueType<T> extends Converter<T, CharSequence> {
      * @return An object that represents the header appropriately, such as a
      * <code>DateTime</code> for a date header.
      */
-    public T toValue(String value);
+    public T toValue(CharSequence value);
 
     @Override
     public default T convert(CharSequence r) {

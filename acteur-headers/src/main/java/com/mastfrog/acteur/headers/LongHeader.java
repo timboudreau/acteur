@@ -23,6 +23,8 @@
  */
 package com.mastfrog.acteur.headers;
 
+import com.mastfrog.util.Strings;
+
 /**
  *
  * @author Tim Boudreau
@@ -39,8 +41,8 @@ class LongHeader extends AbstractHeader<Long> {
     }
 
     @Override
-    public Long toValue(String value) {
-        return Long.parseLong(value);
+    public Long toValue(CharSequence value) {
+        return Strings.parseLong(value);
     }
 
 }

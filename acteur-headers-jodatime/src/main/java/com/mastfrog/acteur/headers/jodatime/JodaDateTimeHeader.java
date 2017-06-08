@@ -45,17 +45,18 @@ class JodaDateTimeHeader extends AbstractHeader<DateTime> {
 
     @Override
     @SuppressWarnings("deprecation")
-    public DateTime toValue(String value) {
+    public DateTime toValue(CharSequence value) {
+        String string = value.toString();
         long val = 0;
         if (val == 0) {
             try {
-                val = JodaHeaders.ISO2822DateFormat.parseDateTime(value).getMillis();
+                val = JodaHeaders.ISO2822DateFormat.parseDateTime(string).getMillis();
             } catch (IllegalArgumentException e) {
                 try {
                     //Sigh...use java.util.date to handle "GMT", "PST", "EST"
-                    val = Date.parse(value);
+                    val = Date.parse(string);
                 } catch (IllegalArgumentException ex) {
-                    new IllegalArgumentException(value, ex).printStackTrace();
+                    new IllegalArgumentException(string, ex).printStackTrace();
                     return null;
                 }
             }

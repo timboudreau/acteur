@@ -25,7 +25,6 @@ package com.mastfrog.acteur.headers;
 
 import io.netty.handler.codec.http.cookie.ClientCookieDecoder;
 import io.netty.handler.codec.http.cookie.Cookie;
-import java.util.Set;
 import org.junit.Test;
 import static org.junit.Assert.*;
 
@@ -42,7 +41,7 @@ public class ByteRangesTest {
         assertEquals(10, r.end(10));
         assertEquals(-1, r.end(9));
         ByteRanges test = new ByteRanges(ranges.toString());
-        assertEquals(test, ranges);
+        assertEquals(ranges, test);
 
         ranges = ByteRanges.builder().addStartpoint(1).build();
         assertTrue(ranges.isValid());
@@ -53,7 +52,7 @@ public class ByteRangesTest {
         assertEquals(10, r.end(10));
         assertEquals(9, r.end(9));
         test = new ByteRanges(ranges.toString());
-        assertEquals(test, ranges);
+        assertEquals(ranges, test);
 
         ranges = ByteRanges.builder().addFromEnd(90).build();
         assertTrue(ranges.isValid());
@@ -66,7 +65,7 @@ public class ByteRangesTest {
         assertEquals(10, r.start(100));
         assertEquals(100, r.end(100));
         test = new ByteRanges(ranges.toString());
-        assertEquals(test, ranges);
+        assertEquals(ranges, test);
 
         ranges = ByteRanges.builder().addFromEnd(90).add(20, 30).add(90,100).build();
         assertTrue(ranges.isValid());

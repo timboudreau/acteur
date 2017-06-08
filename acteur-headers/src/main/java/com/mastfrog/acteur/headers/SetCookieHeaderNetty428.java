@@ -23,6 +23,7 @@
  */
 package com.mastfrog.acteur.headers;
 
+import com.mastfrog.util.Checks;
 import io.netty.handler.codec.http.cookie.ClientCookieDecoder;
 import io.netty.handler.codec.http.cookie.Cookie;
 import io.netty.handler.codec.http.cookie.ServerCookieEncoder;
@@ -42,11 +43,15 @@ final class SetCookieHeaderNetty428 extends AbstractHeader<Cookie> {
 
     @Override
     public String toString(Cookie value) {
-        return strict ? ServerCookieEncoder.STRICT.encode(value) : ServerCookieEncoder.LAX.encode(value);
+        Checks.notNull("value", value);
+        return strict ? ServerCookieEncoder.STRICT.encode(value) 
+                : ServerCookieEncoder.LAX.encode(value);
     }
 
     @Override
-    public Cookie toValue(String value) {
-        return strict ? ClientCookieDecoder.STRICT.decode(value) : ClientCookieDecoder.LAX.decode(value);
+    public Cookie toValue(CharSequence value) {
+        Checks.notNull("value", value);
+        return strict ? ClientCookieDecoder.STRICT.decode(value.toString()) 
+                : ClientCookieDecoder.LAX.decode(value.toString());
     }
 }

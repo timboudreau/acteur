@@ -24,6 +24,7 @@
 
 package com.mastfrog.acteur.headers;
 
+import com.mastfrog.util.Checks;
 import io.netty.util.AsciiString;
 
 /**
@@ -37,12 +38,14 @@ final class CharSequenceHeader extends AbstractHeader<CharSequence> {
     }
     
     @Override
-    public CharSequence toValue(String value) {
+    public CharSequence toValue(CharSequence value) {
+        Checks.notNull("value", value);
         return AsciiString.of(value);
     }
 
     @Override
     public CharSequence toCharSequence(CharSequence value) {
+        Checks.notNull("value", value);
         return value;
     }
 }

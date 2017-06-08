@@ -42,7 +42,7 @@ public class JodaKeepAliveHeader extends AbstractHeader<Duration> {
     private static final Pattern PAT = Pattern.compile(".*?timeout=\\s*?(\\d+)");
 
     @Override
-    public Duration toValue(String value) {
+    public Duration toValue(CharSequence value) {
         Matcher m = PAT.matcher(value);
         if (m.find()) {
             String time = m.group(1);

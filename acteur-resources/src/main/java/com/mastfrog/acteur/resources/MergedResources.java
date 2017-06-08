@@ -40,9 +40,10 @@ public class MergedResources implements StaticResources {
 
     @Inject
     public MergedResources(List<StaticResources> all) {
-        resources = all.toArray(new StaticResources[0]);
+        resources = all.toArray(new StaticResources[all.size()]);
     }
 
+    @Override
     public Resource get(String path) {
         for (StaticResources s : resources) {
             Resource result = s.get(path);
@@ -53,6 +54,7 @@ public class MergedResources implements StaticResources {
         return null;
     }
 
+    @Override
     public String[] getPatterns() {
         List<String> result = new ArrayList<>();
         for (StaticResources r : resources) {

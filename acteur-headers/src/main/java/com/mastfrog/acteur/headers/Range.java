@@ -37,7 +37,7 @@ public interface Range {
      * @param max The total bytes available to serve
      * @return The start point
      */
-    public long start(long max);
+    long start(long max);
 
     /**
      * Get the ending value of the range, given the passed total
@@ -46,7 +46,7 @@ public interface Range {
      * @param max The total bytes available to serve
      * @return The start point
      */
-    public long end(long max);
+    long end(long max);
     
     /**
      * Convert this range to a bounded range suitable for use in a 
@@ -54,5 +54,9 @@ public interface Range {
      * @param max The number of bytes that could be served
      * @return A bounded range
      */
-    public BoundedRange toBoundedRange(long max);
+    BoundedRange toBoundedRange(long max);
+    
+    default long length(long max) {
+        return end(max) - start(max);
+    }
 }

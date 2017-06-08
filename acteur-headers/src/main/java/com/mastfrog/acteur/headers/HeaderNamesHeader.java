@@ -49,8 +49,8 @@ class HeaderNamesHeader extends AbstractHeader<HeaderValueType<?>[]> {
     }
 
     @Override
-    public HeaderValueType<?>[] toValue(String value) {
-        if (value == null || value.isEmpty()) {
+    public HeaderValueType<?>[] toValue(CharSequence value) {
+        if (value == null || value.length() == 0) {
             return new HeaderValueType<?>[0];
         }
         CharSequence[] items = Strings.split(',', value);

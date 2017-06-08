@@ -23,6 +23,7 @@
  */
 package com.mastfrog.acteur.headers;
 
+import com.mastfrog.util.Checks;
 import java.nio.charset.Charset;
 
 /**
@@ -41,8 +42,9 @@ class CharsetHeader extends AbstractHeader<Charset> {
     }
 
     @Override
-    public Charset toValue(String value) {
-        return Charset.forName(value);
+    public Charset toValue(CharSequence value) {
+        Checks.notNull("value", value);
+        return Charset.forName(value.toString());
     }
 
 }

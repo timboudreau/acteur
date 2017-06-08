@@ -111,7 +111,7 @@ public final class FileResources implements StaticResources {
         this.mode = mode;
         List<String> l = new ArrayList<>();
         scan(dir, "", l);
-        patterns = l.toArray(new String[0]);
+        patterns = l.toArray(new String[l.size()]);
         debug = settings.getBoolean("acteur.debug", false);
         String resourcesBasePath = settings.getString(RESOURCES_BASE_PATH, "");
         for (String name : l) {
@@ -147,6 +147,7 @@ public final class FileResources implements StaticResources {
         return mode.isProduction();
     }
 
+    @Override
     public Resource get(String path) {
         if (path.indexOf('%') >= 0) {
             path = URLDecoder.decode(path);
@@ -154,6 +155,7 @@ public final class FileResources implements StaticResources {
         return names.get(path);
     }
 
+    @Override
     public String[] getPatterns() {
         return patterns;
     }
@@ -314,19 +316,23 @@ public final class FileResources implements StaticResources {
             }
         }
 
+        @Override
         public String getEtag() {
             return hash;
         }
 
+        @Override
         public ZonedDateTime lastModified() {
             return TimeUtil.fromUnixTimestamp(lastModified);
         }
 
+        @Override
         public MediaType getContentType() {
             MediaType mt = types.get(name);
             return mt;
         }
 
+        @Override
         public long getLength() {
             return length;
         }
@@ -349,7 +355,7 @@ public final class FileResources implements StaticResources {
 
         private final ByteBuf bytes;
 
-        public BytesSender(ByteBuf bytes) {
+        BytesSender(ByteBuf bytes) {
             this.bytes = bytes.duplicate();
         }
 
@@ -367,7 +373,7 @@ public final class FileResources implements StaticResources {
         private final boolean close;
         private final boolean chunked;
 
-        public CompressedBytesSender(ByteBuf bytes, boolean close, boolean chunked) {
+        CompressedBytesSender(ByteBuf bytes, boolean close, boolean chunked) {
             this.bytes = bytes.duplicate();
             this.close = close;
             this.chunked = chunked;

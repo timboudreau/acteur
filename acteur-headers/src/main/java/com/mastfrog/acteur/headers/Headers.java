@@ -111,7 +111,7 @@ public final class Headers {
     public static final HeaderValueType<Cookie[]> COOKIE = new CookieHeader();
     public static final HeaderValueType<io.netty.handler.codec.http.cookie.Cookie[]> COOKIE_B = new CookieHeaderNetty428(false);
     public static final HeaderValueType<io.netty.handler.codec.http.cookie.Cookie[]> COOKIE_B_STRICT = new CookieHeaderNetty428(true);
-    public static final HeaderValueType<String[]> WEBSOCKET_PROTOCOLS = new WebSocketProtocolsHeader();
+    public static final HeaderValueType<CharSequence[]> WEBSOCKET_PROTOCOLS = new WebSocketProtocolsHeader();
     public static final HeaderValueType<String> WEBSOCKET_PROTOCOL = new StringHeader(HttpHeaderNames.WEBSOCKET_PROTOCOL);
 //    public static final HeaderValueType<URL> WEBSOCKET_LOCATION = new WebSocketLocationHeader();
     public static final HeaderValueType<CharSequence> UPGRADE = header(HttpHeaderNames.UPGRADE);

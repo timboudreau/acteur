@@ -23,6 +23,8 @@
  */
 package com.mastfrog.acteur.headers;
 
+import com.mastfrog.util.Checks;
+import com.mastfrog.util.Strings;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.util.internal.AppendableCharSequence;
 
@@ -38,6 +40,10 @@ final class VaryHeader extends AbstractHeader<HeaderValueType[]> {
 
     @Override
     public CharSequence toCharSequence(HeaderValueType[] value) {
+        Checks.notNull("value", value);
+        if (value.length == 1) {
+            return value[0].name();
+        }
         AppendableCharSequence seq = new AppendableCharSequence(30);
         for (int i = 0; i < value.length; i++) {
             seq.append(value[i].name());
@@ -49,11 +55,12 @@ final class VaryHeader extends AbstractHeader<HeaderValueType[]> {
     }
 
     @Override
-    public HeaderValueType<?>[] toValue(String value) {
-        String[] s = value.split(",");
+    public HeaderValueType<?>[] toValue(CharSequence value) {
+        Checks.notNull("value", value);
+        CharSequence[] s = Strings.split(',', value);
         HeaderValueType<?>[] result = new HeaderValueType<?>[s.length];
         for (int i = 0; i < s.length; i++) {
-            result[i] = new StringHeader(s[i].trim());
+            result[i] = new CharSequenceHeader(Strings.trim(s[i]));
         }
         return result;
     }

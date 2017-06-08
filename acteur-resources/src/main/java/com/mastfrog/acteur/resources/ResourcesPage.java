@@ -40,7 +40,6 @@ import com.mastfrog.acteur.resources.StaticResources.Resource;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.url.Path;
 import io.netty.handler.codec.http.HttpResponseStatus;
-import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.time.ZonedDateTime;
 import java.util.regex.Matcher;
@@ -78,7 +77,7 @@ public class ResourcesPage extends Page {
     private static final class ResourceNameMatcher extends Acteur {
 
         @Inject
-        ResourceNameMatcher(HttpEvent evt, StaticResources res, Settings settings, ExpiresPolicy policy, Page page) throws UnsupportedEncodingException {
+        ResourceNameMatcher(HttpEvent evt, StaticResources res, Settings settings, ExpiresPolicy policy, Page page) throws Exception {
             String base = settings.getString(SETTINGS_KEY_STATIC_RESOURCES_BASE_URL_PATH);
             String path = evt.getPath().toString();
             if (base != null && !base.isEmpty()) {
@@ -133,7 +132,7 @@ public class ResourcesPage extends Page {
     private static class BytesWriter extends Acteur {
 
         @Inject
-        BytesWriter(HttpEvent evt, Resource r) {
+        BytesWriter(HttpEvent evt, Resource r) throws Exception {
             setState(new RespondWith(HttpResponseStatus.OK));
             setChunked(false);
             if (evt.getMethod() != Method.HEAD) {

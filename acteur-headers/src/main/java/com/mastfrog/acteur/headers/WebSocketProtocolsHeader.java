@@ -1,4 +1,4 @@
-/* 
+/*
  * The MIT License
  *
  * Copyright 2013 Tim Boudreau.
@@ -23,35 +23,32 @@
  */
 package com.mastfrog.acteur.headers;
 
+import com.mastfrog.util.Strings;
+import com.mastfrog.util.strings.AppendableCharSequence;
 import io.netty.handler.codec.http.HttpHeaderNames;
 
 /**
  *
  * @author Tim Boudreau
  */
-final class WebSocketProtocolsHeader extends AbstractHeader<String[]> {
+final class WebSocketProtocolsHeader extends AbstractHeader<CharSequence[]> {
+
+    private static final CharSequence comma = Strings.singleChar(',');
 
     WebSocketProtocolsHeader() {
-        super(String[].class, HttpHeaderNames.WEBSOCKET_PROTOCOL);
+        super(CharSequence[].class, HttpHeaderNames.WEBSOCKET_PROTOCOL);
     }
 
     @Override
-    public String toString(String[] value) {
-        StringBuilder sb = new StringBuilder();
-        for (String s : value) {
-            if (sb.length() > 0) {
-                sb.append(", ");
-            }
-            sb.append(s);
-        }
-        return sb.toString();
+    public CharSequence toCharSequence(CharSequence[] value) {
+        return Strings.join(',', value);
     }
 
     @Override
-    public String[] toValue(String value) {
-        String[] result = value.split(",");
+    public CharSequence[] toValue(CharSequence value) {
+        CharSequence[] result = Strings.split(',', value);
         for (int i = 0; i < result.length; i++) {
-            result[i] = result[i].trim();
+            result[i] = Strings.trim(result[i]);
         }
         return result;
     }

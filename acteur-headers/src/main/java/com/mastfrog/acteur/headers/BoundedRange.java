@@ -23,6 +23,7 @@
  */
 package com.mastfrog.acteur.headers;
 
+import com.mastfrog.util.Strings;
 import io.netty.util.AsciiString;
 import java.util.Arrays;
 import java.util.regex.Matcher;
@@ -68,8 +69,8 @@ public final class BoundedRange {
     private final Pattern RANGE_PATTERN = Pattern.compile("bytes (\\d+)-(\\d+)\\/([\\d\\*]+)");
     private final Pattern INVALID_RANGE_PATTERN = Pattern.compile("bytes \\*\\/(\\d+)");
 
-    public BoundedRange(String value) {
-        value = value.trim();
+    public BoundedRange(CharSequence value) {
+        value = Strings.trim(value);
         Matcher m = RANGE_PATTERN.matcher(value);
         if (m.find()) {
             try {

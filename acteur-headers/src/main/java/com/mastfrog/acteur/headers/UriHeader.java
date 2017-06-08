@@ -23,6 +23,7 @@
  */
 package com.mastfrog.acteur.headers;
 
+import com.mastfrog.util.Checks;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.logging.Level;
@@ -40,13 +41,15 @@ final class UriHeader extends AbstractHeader<URI> {
 
     @Override
     public String toString(URI value) {
+        Checks.notNull("value", value);
         return value.toString();
     }
 
     @Override
-    public URI toValue(String value) {
+    public URI toValue(CharSequence value) {
+        Checks.notNull("value", value);
         try {
-            return new URI(value);
+            return new URI(value.toString());
         } catch (URISyntaxException ex) {
             Logger.getLogger(Headers.class.getName()).log(Level.SEVERE, "Bad URI in " + name() + " - " + value, ex);
             return null;

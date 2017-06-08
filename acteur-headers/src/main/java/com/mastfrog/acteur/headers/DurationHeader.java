@@ -23,6 +23,8 @@
  */
 package com.mastfrog.acteur.headers;
 
+import com.mastfrog.util.Checks;
+import com.mastfrog.util.Strings;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.logging.Level;
@@ -40,13 +42,15 @@ final class DurationHeader extends AbstractHeader<Duration> {
 
     @Override
     public CharSequence toCharSequence(Duration value) {
-        return Long.toString(value.get(ChronoUnit.SECONDS));
+        Checks.notNull("value", value);
+        return Long.toString(value.getSeconds());
     }
 
     @Override
-    public Duration toValue(String value) {
+    public Duration toValue(CharSequence value) {
+        Checks.notNull("value", value);
         try {
-            return Duration.of(Long.parseLong(value), ChronoUnit.SECONDS);
+            return Duration.of(Strings.parseLong(value), ChronoUnit.SECONDS);
         } catch (NumberFormatException nfe) {
             Logger.getLogger(DurationHeader.class.getName()).log(Level.INFO, "Bad duration header '" + value + "'", nfe);
             return Duration.ZERO;

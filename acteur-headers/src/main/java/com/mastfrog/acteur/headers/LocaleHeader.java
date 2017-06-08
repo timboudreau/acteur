@@ -23,6 +23,7 @@
  */
 package com.mastfrog.acteur.headers;
 
+import com.mastfrog.util.Checks;
 import java.util.Locale;
 
 /**
@@ -37,12 +38,14 @@ class LocaleHeader extends AbstractHeader<Locale> {
 
     @Override
     public String toString(Locale value) {
+        Checks.notNull("value", value);
         return value.toLanguageTag();
     }
 
     @Override
-    public Locale toValue(String value) {
-        return Locale.forLanguageTag(value);
+    public Locale toValue(CharSequence value) {
+        Checks.notNull("value", value);
+        return Locale.forLanguageTag(value.toString());
     }
 
 }

@@ -32,7 +32,7 @@ import java.util.Iterator;
  * 
  * @author Tim Boudreau
  */
-public abstract class ArrayHeaderValueType<T, R> extends AbstractHeader<T> {
+abstract class ArrayHeaderValueType<T, R> extends AbstractHeader<T> {
 
     private final Class<R> componentType;
 

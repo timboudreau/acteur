@@ -25,6 +25,7 @@
 package com.mastfrog.acteur.headers;
 
 import com.mastfrog.util.Checks;
+import com.mastfrog.util.Strings;
 
 /**
  *
@@ -43,9 +44,9 @@ final class BooleanHeader extends AbstractHeader<Boolean> {
     }
 
     @Override
-    public Boolean toValue(String value) {
+    public Boolean toValue(CharSequence value) {
         Checks.notNull("value", value);
-        return Boolean.parseBoolean(value);
+        return Strings.charSequencesEqual("true", value, true);
     }
 
 }

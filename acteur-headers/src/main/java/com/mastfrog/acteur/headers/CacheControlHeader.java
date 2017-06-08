@@ -24,6 +24,7 @@
 package com.mastfrog.acteur.headers;
 
 import com.mastfrog.acteur.util.CacheControl;
+import com.mastfrog.util.Checks;
 import io.netty.handler.codec.http.HttpHeaderNames;
 
 /**
@@ -38,11 +39,13 @@ final class CacheControlHeader extends AbstractHeader<CacheControl> {
 
     @Override
     public String toString(CacheControl value) {
+        Checks.notNull("value", value);
         return value.toString();
     }
 
     @Override
-    public CacheControl toValue(String value) {
+    public CacheControl toValue(CharSequence value) {
+        Checks.notNull("value", value);
         return CacheControl.fromString(value);
     }
 

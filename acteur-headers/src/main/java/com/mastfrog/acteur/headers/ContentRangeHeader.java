@@ -24,6 +24,8 @@
 
 package com.mastfrog.acteur.headers;
 
+import com.mastfrog.util.Checks;
+
 /**
  *
  * @author Tim Boudreau
@@ -36,11 +38,12 @@ final class ContentRangeHeader extends AbstractHeader<BoundedRange> {
 
     @Override
     public CharSequence toCharSequence(BoundedRange value) {
+        Checks.notNull("value", value);
         return value.toCharSequence();
     }
 
     @Override
-    public BoundedRange toValue(String value) {
+    public BoundedRange toValue(CharSequence value) {
         return new BoundedRange(value);
     }
 }

@@ -24,10 +24,10 @@
 package com.mastfrog.acteur.util;
 
 import java.nio.charset.Charset;
+import java.util.Base64;
 //import java.util.Base64;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import org.apache.commons.codec.binary.Base64;
 
 /**
  *
@@ -46,17 +46,12 @@ public class BasicCredentials {
     private static final Pattern HEADER = Pattern.compile("Basic (.*)");
     private static final Pattern UNPW = Pattern.compile("(.*?):(.*)");
 
-    public static BasicCredentials parse(String header) {
+    public static BasicCredentials parse(CharSequence header) {
         Matcher m = HEADER.matcher(header);
         if (m.matches()) {
             String base64 = m.group(1);
-//            byte[] decoded = Base64.getDecoder().decode(base64);
-//            String s = new String(decoded, UTF_8);
-            byte[] bytes = base64.getBytes(UTF_8);
-            if (Base64.isArrayByteBase64(bytes)) {
-                bytes = Base64.decodeBase64(bytes);
-            }
-            String s = new String(bytes, US_ASCII);
+            byte[] decoded = Base64.getDecoder().decode(base64);
+            String s = new String(decoded, US_ASCII);
             m = UNPW.matcher(s);
             if (m.matches()) {
                 String username = m.group(1);
@@ -66,12 +61,9 @@ public class BasicCredentials {
         }
         return null;
     }
-
+    
     public String toString() {
         String merged = username + ':' + password;
-//        return "Basic " + Base64.getEncoder().encodeToString(merged.getBytes(UTF_8));
-        byte[] b = merged.getBytes(UTF_8);
-        b = Base64.encodeBase64(b);
-        return "Basic " + new String(b, US_ASCII);
+        return "Basic " + Base64.getEncoder().encodeToString(merged.getBytes(UTF_8));
     }
 }

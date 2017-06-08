@@ -49,8 +49,8 @@ final class SetCookieHeader extends AbstractHeader<Cookie> {
 
     @Override
     @SuppressWarnings("deprecation")
-    public Cookie toValue(String value) {
-        Set<Cookie> ck = CookieDecoder.decode(value);
+    public Cookie toValue(CharSequence value) {
+        Set<Cookie> ck = CookieDecoder.decode(value.toString());
         if (ck.isEmpty()) {
             new NullPointerException("Does not decode to cookies: '" + value + "'").printStackTrace();
             return null;

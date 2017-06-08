@@ -23,6 +23,8 @@
  */
 package com.mastfrog.acteur.headers;
 
+import com.mastfrog.util.Strings;
+
 /**
  * Header which is a number (so casting to long is unneeded for literals).
  *
@@ -40,8 +42,8 @@ class NumberHeader extends AbstractHeader<Number> {
     }
 
     @Override
-    public Number toValue(String value) {
-        return Long.parseLong(value);
+    public Number toValue(CharSequence value) {
+        return Strings.parseLong(value);
     }
 
 }

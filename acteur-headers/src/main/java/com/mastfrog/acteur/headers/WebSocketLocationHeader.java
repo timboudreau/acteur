@@ -44,9 +44,9 @@ final class WebSocketLocationHeader extends AbstractHeader<URL> {
     }
 
     @Override
-    public URL toValue(String value) {
+    public URL toValue(CharSequence value) {
         try {
-            return new URL(value);
+            return new URL(value.toString());
         } catch (MalformedURLException ex) {
             return Exceptions.chuck(ex);
         }

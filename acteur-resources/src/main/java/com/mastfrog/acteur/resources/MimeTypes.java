@@ -86,6 +86,7 @@ public class MimeTypes {
 
     private static class NullExpiresPolicy implements ExpiresPolicy {
 
+        @Override
         public ZonedDateTime get(MediaType mimeType, Path path) {
             return null;
         }

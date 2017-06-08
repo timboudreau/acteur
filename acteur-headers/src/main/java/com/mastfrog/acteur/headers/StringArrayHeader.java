@@ -51,7 +51,7 @@ final class StringArrayHeader extends AbstractHeader<String[]> {
     }
 
     @Override
-    public String[] toValue(String value) {
+    public String[] toValue(CharSequence value) {
         Checks.notNull("value", value);
         CharSequence[] result = Strings.split(',', value);
         String[] rr = new String[result.length];

@@ -23,6 +23,8 @@
  */
 package com.mastfrog.acteur.headers;
 
+import com.mastfrog.util.Checks;
+import com.mastfrog.util.Strings;
 import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.util.AsciiString;
@@ -38,8 +40,9 @@ public enum Method implements com.mastfrog.acteur.util.HttpMethod {
     // WEBDAV
     PROPFIND, PROPPATCH, MKCOL, COPY, MOVE, LOCK, UNLOCK,
     UNKNOWN;
-    
+
     private final AsciiString stringValue;
+
     Method() {
         stringValue = AsciiString.of(name());
     }
@@ -53,8 +56,18 @@ public enum Method implements com.mastfrog.acteur.util.HttpMethod {
     public String toString() {
         return name();
     }
-    
+
     public CharSequence toCharSequence() {
         return stringValue;
+    }
+
+    public static Method valueOf(CharSequence seq) {
+        Checks.notNull("seq", seq);
+        for (Method m : values()) {
+            if (Strings.charSequencesEqual(seq, m.stringValue)) {
+                return m;
+            }
+        }
+        throw new IllegalArgumentException(seq.toString());
     }
 }

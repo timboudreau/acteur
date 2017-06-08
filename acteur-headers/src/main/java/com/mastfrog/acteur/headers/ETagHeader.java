@@ -47,10 +47,10 @@ class ETagHeader extends AbstractHeader<CharSequence> {
     }
 
     @Override
-    public String toValue(String value) {
+    public CharSequence toValue(CharSequence value) {
         if (value.length() > 1) {
             if (value.charAt(0) == '"' && value.charAt(value.length() - 1) == '"') {
-                return value.substring(1, value.length() - 1);
+                return value.subSequence(1, value.length() - 1);
             }
         }
         return value;

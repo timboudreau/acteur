@@ -28,7 +28,6 @@ import static com.mastfrog.acteur.headers.Headers.IF_MODIFIED_SINCE;
 import com.mastfrog.util.time.TimeUtil;
 import static io.netty.handler.codec.http.HttpResponseStatus.NOT_MODIFIED;
 import java.time.ZonedDateTime;
-import java.time.temporal.ChronoField;
 import java.util.Map;
 import javax.inject.Inject;
 

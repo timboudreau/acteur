@@ -30,9 +30,11 @@ import com.mastfrog.acteur.HttpEvent;
 import com.mastfrog.acteur.Page;
 import com.mastfrog.acteur.Response;
 import com.mastfrog.acteur.ResponseWriter;
+import com.mastfrog.acteur.headers.ByteRanges;
 import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.acteur.headers.Headers;
 import static com.mastfrog.acteur.headers.Headers.ACCEPT_ENCODING;
+import static com.mastfrog.acteur.headers.Headers.ACCEPT_RANGES;
 import static com.mastfrog.acteur.headers.Headers.AGE;
 import static com.mastfrog.acteur.headers.Headers.CACHE_CONTROL;
 import static com.mastfrog.acteur.headers.Headers.CONTENT_ENCODING;
@@ -40,8 +42,11 @@ import static com.mastfrog.acteur.headers.Headers.CONTENT_LENGTH;
 import static com.mastfrog.acteur.headers.Headers.ETAG;
 import static com.mastfrog.acteur.headers.Headers.EXPIRES;
 import static com.mastfrog.acteur.headers.Headers.LAST_MODIFIED;
+import static com.mastfrog.acteur.headers.Headers.RANGE;
 import static com.mastfrog.acteur.headers.Headers.VARY;
-import static com.mastfrog.acteur.headers.Headers.stringHeader;
+import com.mastfrog.acteur.headers.Method;
+import static com.mastfrog.acteur.headers.Method.HEAD;
+import com.mastfrog.acteur.headers.Range;
 import com.mastfrog.acteur.spi.ApplicationControl;
 import com.mastfrog.acteur.util.CacheControl;
 import com.mastfrog.acteur.util.CacheControlTypes;
@@ -57,9 +62,15 @@ import io.netty.channel.FileRegion;
 import io.netty.handler.codec.http.DefaultLastHttpContent;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaderValues;
+import io.netty.handler.codec.http.HttpResponseStatus;
+import static io.netty.handler.codec.http.HttpResponseStatus.BAD_REQUEST;
+import io.netty.util.AsciiString;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.time.Duration;
@@ -79,8 +90,9 @@ public class DynamicFileResources implements StaticResources {
     private final MimeTypes types;
     private final ApplicationControl ctrl;
     private final ByteBufAllocator alloc;
-    static final HeaderValueType<CharSequence> INTERNAL_COMPRESS_HEADER = 
-            Headers.header("X-Internal-Compress");
+    static final HeaderValueType<CharSequence> INTERNAL_COMPRESS_HEADER
+            = Headers.header("X-Internal-Compress");
+        private static final AsciiString TRUE = new AsciiString("true");
 
     @Inject
     DynamicFileResources(File dir, MimeTypes types, ExpiresPolicy policy, ApplicationControl ctrl, ByteBufAllocator alloc) {
@@ -109,7 +121,7 @@ public class DynamicFileResources implements StaticResources {
 
         private final File file;
 
-        public DynFileResource(File file) {
+        DynFileResource(File file) {
             this.file = file;
         }
 
@@ -130,16 +142,32 @@ public class DynamicFileResources implements StaticResources {
             response.add(LAST_MODIFIED, TimeUtil.fromUnixTimestamp(file.lastModified()));
             response.add(ETAG, getEtag());
             response.add(AGE, Duration.ZERO);
+            response.add(ACCEPT_RANGES, HttpHeaderValues.BYTES);
             if (expires != null) {
                 response.add(EXPIRES, expires);
             }
 
-            CharSequence acceptEncoding = evt.getHeader(Headers.ACCEPT_ENCODING);
+            CharSequence acceptEncoding = evt.getHeader(ACCEPT_ENCODING);
+            if (evt.getMethod() == HEAD) {
+                return;
+            }
+            ByteRanges ranges = evt.getHeader(RANGE);
+            if (ranges != null) {
+                if (!ranges.isValid()) {
+                    response.setResponseCode(BAD_REQUEST);
+                    response.setMessage("Invalid range " + ranges);
+                }
+                if (ranges.size() > 1) {
+                    response.setResponseCode(HttpResponseStatus.NOT_IMPLEMENTED);
+                    response.setMessage("Multiple ranges not supported in compressed responses, but requested " + ranges);
+                    return;
+                }
+            }
             boolean willCompress = acceptEncoding != null && Strings.charSequenceContains(acceptEncoding, HttpHeaderValues.GZIP, true);
             if (!willCompress) {
                 response.add(CONTENT_LENGTH, file.length());
             } else {
-                response.add(stringHeader("X-Internal-Compress"), "true");
+                response.add(INTERNAL_COMPRESS_HEADER, TRUE);
                 response.add(CONTENT_ENCODING, HttpHeaderValues.GZIP.toString());
             }
             response.setChunked(false);
@@ -155,7 +183,7 @@ public class DynamicFileResources implements StaticResources {
                 if (fileKey != null) {
                     String s = fileKey.toString();
                     if (s.contains("ino=")) {
-                        String inode = s.substring(s.indexOf("ino=") + 4, s.indexOf(")"));
+                        String inode = s.substring(s.indexOf("ino=") + 4, s.indexOf(')'));
                         try {
                             long val = Long.parseLong(inode);
                             return Long.toString(val, 36);
@@ -188,28 +216,73 @@ public class DynamicFileResources implements StaticResources {
 
         @Override
         public void attachBytes(HttpEvent evt, Response response, boolean chunked) {
+            if (evt.getMethod() == Method.HEAD) {
+                return;
+            }
             CharSequence acceptEncoding = evt.getHeader(Headers.ACCEPT_ENCODING);
             boolean willCompress = acceptEncoding != null && Strings.charSequenceContains(acceptEncoding, HttpHeaderValues.GZIP, true);
+            final ByteRanges ranges = evt.getHeader(Headers.RANGE);
+            if (ranges != null) {
+                response.add(Headers.RANGE, ranges);
+            }
+            final long length = file.length();
             if (!willCompress) {
                 response.setBodyWriter(new ResponseWriter() {
                     @Override
                     public ResponseWriter.Status write(Event<?> evt, ResponseWriter.Output out, int iteration) throws Exception {
-                        FileRegion reg = new DefaultFileRegion(file, 0, file.length());
-                        out.write(reg);
-                        return Status.DONE;
+                        if (ranges == null) {
+                            FileRegion reg = new DefaultFileRegion(file, 0, length);
+                            out.write(reg);
+                            return Status.DONE;
+                        } else {
+                            for (Range range : ranges) {
+                                System.out.println("WRITE RANGE " + range);
+                                long count = range.end(length) - range.start(length);
+                                FileRegion reg = new DefaultFileRegion(file, range.start(length), count);
+                                out.write(reg);
+                            }
+                            return Status.DONE;
+                        }
                     }
                 });
             } else {
                 ByteBuf buf = alloc.directBuffer();
-                try (FileInputStream in = new FileInputStream(file)) {
-                    try (ByteBufOutputStream bufOut = new ByteBufOutputStream(buf)) {
-                        try (GZIPOutputStream gz = new GZIPOutputStream(bufOut, (int) (file.length() / 2))) {
-                            Streams.copy(in, gz);
+                if (ranges == null) {
+                    try (FileInputStream in = new FileInputStream(file)) {
+                        try (ByteBufOutputStream bufOut = new ByteBufOutputStream(buf)) {
+                            try (GZIPOutputStream gz = new GZIPOutputStream(bufOut, (int) (file.length() / 2))) {
+                                Streams.copy(in, gz);
+                            }
                         }
+                    } catch (Exception ex) {
+                        buf.release();
+                        Exceptions.chuck(ex);
                     }
-                } catch (Exception ex) {
-                    buf.release();
-                    Exceptions.chuck(ex);
+                } else {
+                    try (ByteBufOutputStream bufOut = new ByteBufOutputStream(buf)) {
+                        for (Range r : ranges) {
+                            try (FileInputStream in = new FileInputStream(file)) {
+                                try (FileChannel channel = in.getChannel()) {
+                                    int rangeLength = (int) r.length(length);
+                                    System.out.println("WRITE GZIP RANGE " + rangeLength + " range " + r);
+                                    if (rangeLength > 0) {
+                                        ByteBuffer buffer = ByteBuffer.allocateDirect(rangeLength);
+                                        channel.position(r.start(length));
+                                        channel.read(buffer);
+                                        buffer.flip();
+                                        try (InputStream rangeIn = Streams.asInputStream(buffer)) {
+                                            try (GZIPOutputStream gz = new GZIPOutputStream(bufOut, (int) (file.length() / 2))) {
+                                                Streams.copy(rangeIn, gz);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } catch (Exception ex) {
+                        buf.release();
+                        Exceptions.chuck(ex);
+                    }
                 }
                 response.add(Headers.CONTENT_LENGTH, (long) buf.readableBytes());
                 response.setBodyWriter(new ResponseWriter() {

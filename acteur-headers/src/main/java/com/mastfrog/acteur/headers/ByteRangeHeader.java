@@ -23,6 +23,8 @@
  */
 package com.mastfrog.acteur.headers;
 
+import com.mastfrog.util.Checks;
+
 /**
  * Header that uses a byte range value
  *
@@ -36,11 +38,18 @@ final class ByteRangeHeader extends AbstractHeader<ByteRanges> {
 
     @Override
     public String toString(ByteRanges value) {
+        Checks.notNull("value", value);
         return value.toString();
     }
 
     @Override
-    public ByteRanges toValue(String value) {
+    public CharSequence toCharSequence(ByteRanges value) {
+        return value.toCharSequence();
+    }
+    
+    @Override
+    public ByteRanges toValue(CharSequence value) {
+        Checks.notNull("value", value);
         return new ByteRanges(value);
     }
 }

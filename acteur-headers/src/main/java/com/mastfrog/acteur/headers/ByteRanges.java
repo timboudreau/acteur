@@ -23,9 +23,13 @@
  */
 package com.mastfrog.acteur.headers;
 
+import com.mastfrog.util.Checks;
+import com.mastfrog.util.Strings;
 import com.mastfrog.util.collections.CollectionUtils;
+import io.netty.util.AsciiString;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -47,23 +51,35 @@ public final class ByteRanges implements Iterable<Range> {
     private final Range[] ranges;
 
     private ByteRanges(List<Range> ranges) {
+        Checks.notNull("ranges", ranges);
+        Checks.notEmpty("ranges", ranges);
         this.valid = true;
         this.ranges = ranges.toArray(new Range[ranges.size()]);
     }
+    
+    public ByteRanges(long start, long end) {
+        this.ranges = new Range[] { new RangeImpl(start, end) };
+        this.valid = end > start && end >= 0 && start >= 0;
+    }
+    
+    public ByteRanges(long start) {
+        this.ranges = new Range[] { new StartRange(start) };
+        this.valid = start >= 0;
+    }
 
-    public ByteRanges(String rangeHeader) {
+    public ByteRanges(CharSequence rangeHeader) {
         boolean valid = true;
         List<Range> items = new ArrayList<>(4);
-        if (!rangeHeader.startsWith("bytes=")) {
+        if (!Strings.startsWithIgnoreCase(rangeHeader, "bytes=")) {
             valid = false;
         } else {
-            String rangeInfo = rangeHeader.substring("bytes=".length()).trim();
+            CharSequence rangeInfo = Strings.trim(rangeHeader.subSequence(6, rangeHeader.length()));
             if (rangeInfo.length() == 0) {
                 valid = false;
             } else {
-                String[] ranges = rangeInfo.split(",");
-                for (String range : ranges) {
-                    range = range.trim();
+                CharSequence[] ranges = Strings.split(',', rangeInfo);
+                for (CharSequence range : ranges) {
+                    range = Strings.trim(range);
                     Matcher m = RANGE_PATTERN.matcher(range);
                     if (m.find()) {
                         try {
@@ -87,7 +103,7 @@ public final class ByteRanges implements Iterable<Range> {
                         if (m.find()) {
                             try {
                                 long val = Long.parseLong(m.group(1));
-                                if (val == -1) {
+                                if (val < 0) {
                                     valid = false;
                                     break;
                                 }
@@ -132,6 +148,13 @@ public final class ByteRanges implements Iterable<Range> {
         return ranges[which];
     }
 
+    public static ByteRanges of(long start, long end) {
+        if (end < start) {
+            throw new IllegalArgumentException("Start > end: " + start + " > " + end);
+        }
+        return new ByteRanges(Collections.singletonList(new RangeImpl(start, end)));
+    }
+
     public boolean isValid() {
         return valid;
     }
@@ -139,6 +162,10 @@ public final class ByteRanges implements Iterable<Range> {
     @Override
     public Iterator<Range> iterator() {
         return CollectionUtils.toIterator(ranges);
+    }
+    
+    public CharSequence toCharSequence() {
+        return new AsciiString(toString());
     }
 
     @Override

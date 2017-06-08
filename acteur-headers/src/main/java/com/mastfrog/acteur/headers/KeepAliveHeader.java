@@ -23,6 +23,7 @@
  */
 package com.mastfrog.acteur.headers;
 
+import com.mastfrog.util.Checks;
 import io.netty.util.AsciiString;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
@@ -41,7 +42,8 @@ final class KeepAliveHeader extends AbstractHeader<Duration> {
     }
 
     @Override
-    public Duration toValue(String value) {
+    public Duration toValue(CharSequence value) {
+        Checks.notNull("value", value);
         Matcher m = PAT.matcher(value);
         if (m.find()) {
             String time = m.group(1);
@@ -57,6 +59,7 @@ final class KeepAliveHeader extends AbstractHeader<Duration> {
 
     @Override
     public CharSequence toCharSequence(Duration value) {
+        Checks.notNull("value", value);
         return "timeout=" + value.get(ChronoUnit.SECONDS);
     }
 

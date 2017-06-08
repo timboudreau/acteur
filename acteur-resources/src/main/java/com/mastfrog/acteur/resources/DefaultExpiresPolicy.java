@@ -46,6 +46,7 @@ class DefaultExpiresPolicy implements ExpiresPolicy {
         this.production = mode.isProduction();
     }
 
+    @Override
     public ZonedDateTime get(MediaType mimeType, Path path) {
         if (!production) {
             return null;

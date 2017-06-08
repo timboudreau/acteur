@@ -39,8 +39,8 @@ class StringHeader extends AbstractHeader<String> {
     }
 
     @Override
-    public String toValue(String value) {
-        return value;
+    public String toValue(CharSequence value) {
+        return value.toString();
     }
 
 }

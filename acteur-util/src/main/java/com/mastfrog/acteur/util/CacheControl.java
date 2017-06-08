@@ -143,15 +143,15 @@ public final class CacheControl {
         return entries.isEmpty();
     }
 
-    public static CacheControl fromString(String s) {
+    public static CacheControl fromString(CharSequence s) {
         CacheControl result = new CacheControl();
-        String[] parts = s.split(",");
-        for (String part : parts) {
-            part = part.trim();
+        CharSequence[] parts = Strings.split(',', s);
+        for (CharSequence part : parts) {
+            part = Strings.trim(part);
             CacheControlTypes t = CacheControlTypes.find(part);
             if (t != null) {
                 if (t.takesValue) {
-                    String[] sides = part.split("=", 2);
+                    String[] sides = part.toString().split("=", 2);
                     if (sides.length == 2) {
                         try {
                             long val = Long.parseLong(sides[1]);

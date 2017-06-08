@@ -112,13 +112,14 @@ public final class ClasspathResources implements StaticResources {
             String pat = Strings.join(resourcesBasePath, nm);
             l.add(pat);
         }
-        patterns = l.toArray(new String[0]);
+        patterns = l.toArray(new String[l.size()]);
     }
 
     boolean productionMode() {
         return mode.isProduction();
     }
 
+    @Override
     public Resource get(String path) {
         if (path.indexOf('%') >= 0) {
             path = URLDecoder.decode(path);
@@ -126,6 +127,7 @@ public final class ClasspathResources implements StaticResources {
         return names.get(path);
     }
 
+    @Override
     public String[] getPatterns() {
         return patterns;
     }
@@ -271,19 +273,23 @@ public final class ClasspathResources implements StaticResources {
             }
         }
 
+        @Override
         public String getEtag() {
             return hash;
         }
 
+        @Override
         public ZonedDateTime lastModified() {
             return startTime;
         }
 
+        @Override
         public MediaType getContentType() {
             MediaType mt = types.get(name);
             return mt;
         }
 
+        @Override
         public long getLength() {
             return length;
         }
@@ -306,7 +312,7 @@ public final class ClasspathResources implements StaticResources {
 
         private final ByteBuf bytes;
 
-        public BytesSender(ByteBuf bytes) {
+        BytesSender(ByteBuf bytes) {
             this.bytes = Unpooled.wrappedBuffer(bytes);
         }
 
@@ -324,7 +330,7 @@ public final class ClasspathResources implements StaticResources {
         private final boolean close;
         private final boolean chunked;
 
-        public CompressedBytesSender(ByteBuf bytes, boolean close, boolean chunked) {
+        CompressedBytesSender(ByteBuf bytes, boolean close, boolean chunked) {
             this.bytes = Unpooled.wrappedBuffer(bytes);
             this.close = close;
             this.chunked = chunked;

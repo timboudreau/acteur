@@ -23,6 +23,8 @@
  */
 package com.mastfrog.acteur.headers;
 
+import com.mastfrog.util.Checks;
+import com.mastfrog.util.Strings;
 import com.mastfrog.util.time.TimeUtil;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -43,6 +45,7 @@ class DateTimeHeader extends AbstractHeader<ZonedDateTime> {
 
     @Override
     public String toString(ZonedDateTime value) {
+        Checks.notNull("value", value);
         value = value.withZoneSameInstant(ZoneId.systemDefault());
         return Headers.toISO2822Date(value);
     }
@@ -62,7 +65,8 @@ class DateTimeHeader extends AbstractHeader<ZonedDateTime> {
 
     @Override
     @SuppressWarnings("deprecation")
-    public ZonedDateTime toValue(String value) {
+    public ZonedDateTime toValue(CharSequence value) {
+        Checks.notNull("value", value);
         // Be permissive in what you accept, as they say
         long val;
         ZonedDateTime result;
@@ -76,9 +80,10 @@ class DateTimeHeader extends AbstractHeader<ZonedDateTime> {
             } catch (DateTimeParseException e1) {
                 e.addSuppressed(e1);
                 try {
-                    String munged = value;
-                    if (value.indexOf(' ') != -1) {
-                        munged = value.substring(value.indexOf(' ') + 1);
+                    CharSequence munged = value;
+                    int space = Strings.indexOf(' ', munged);
+                    if (space != -1) {
+                        munged = value.subSequence(space + 1, value.length());
                     }
                     ZonedDateTime dt = ZonedDateTime.parse(munged, Headers.TWO_DIGIT_YEAR);
                     result = mungeYear(dt);
@@ -86,11 +91,11 @@ class DateTimeHeader extends AbstractHeader<ZonedDateTime> {
                     e.addSuppressed(ex2);
                     try {
                         //Sigh...use java.util.date to handle "GMT", "PST", "EST"
-                        val = Date.parse(value);
+                        val = Date.parse(value.toString());
                         result = TimeUtil.fromUnixTimestamp(val);
                     } catch (IllegalArgumentException e3) {
                         e.addSuppressed(e3);
-                        new IllegalArgumentException(value, e).printStackTrace(System.err);
+                        new IllegalArgumentException(value.toString(), e).printStackTrace(System.err);
                         return null;
                     }
                 }

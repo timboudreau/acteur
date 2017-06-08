@@ -46,7 +46,7 @@ public class AccelBufferingHeader extends AbstractHeader<Boolean> {
     }
     
     @Override
-    public Boolean toValue(String value) {
+    public Boolean toValue(CharSequence value) {
         return charSequencesEqual(ON, value);
     }
 

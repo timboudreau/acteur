@@ -23,6 +23,8 @@
  */
 package com.mastfrog.acteur.headers;
 
+import com.mastfrog.util.Checks;
+import com.mastfrog.util.Strings;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.util.internal.AppendableCharSequence;
 import java.util.logging.Level;
@@ -40,6 +42,7 @@ final class AllowHeader extends AbstractHeader<Method[]> {
 
     @Override
     public CharSequence toCharSequence(Method[] value) {
+        Checks.notNull("value", value);
         if (value.length == 1) {
             return value[0].toCharSequence();
         }
@@ -54,8 +57,9 @@ final class AllowHeader extends AbstractHeader<Method[]> {
     }
 
     @Override
-    public Method[] toValue(String value) {
-        String[] s = value.split(",");
+    public Method[] toValue(CharSequence value) {
+        Checks.notNull("value", value);
+        CharSequence[] s = Strings.split(',', value);
         Method[] result = new Method[s.length];
         for (int i = 0; i < s.length; i++) {
             try {

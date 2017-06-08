@@ -43,7 +43,7 @@ final class JodaCacheControlHeader extends AbstractHeader<CacheControl> {
     }
 
     @Override
-    public CacheControl toValue(String value) {
+    public CacheControl toValue(CharSequence value) {
         return CacheControl.fromString(value);
     }
 

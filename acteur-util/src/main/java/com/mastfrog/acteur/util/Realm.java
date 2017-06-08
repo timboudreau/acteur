@@ -1,4 +1,4 @@
-/* 
+/*
  * The MIT License
  *
  * Copyright 2013 Tim Boudreau.
@@ -23,6 +23,10 @@
  */
 package com.mastfrog.acteur.util;
 
+import com.mastfrog.util.Checks;
+import com.mastfrog.util.Strings;
+import static com.mastfrog.util.Strings.charSequenceHashCode;
+import static com.mastfrog.util.Strings.charSequencesEqual;
 import javax.inject.Inject;
 import javax.inject.Named;
 
@@ -32,33 +36,43 @@ import javax.inject.Named;
  */
 public class Realm implements Comparable<Realm> {
 
-    private final String name;
+    private final CharSequence name;
 
     @Inject
     protected Realm(@Named("realm") String name) {
+        Checks.notNull("name", name);
+        this.name = name;
+    }
+    
+    protected Realm(@Named("realm") CharSequence name) {
+        Checks.notNull("name", name);
         this.name = name;
     }
 
     @Override
     public String toString() {
+        return name.toString();
+    }
+
+    public CharSequence value() {
         return name;
     }
 
     @Override
     public boolean equals(Object o) {
-        return o instanceof Realm && o.toString().equals(toString());
+        return o instanceof Realm && charSequencesEqual(((Realm) o).name, name);
     }
 
     @Override
     public int hashCode() {
-        return toString().hashCode();
+        return charSequenceHashCode(name);
     }
 
     public int compareTo(Realm o) {
-        return toString().compareTo(o.toString());
+        return o == this ? 0 : Strings.compareCharSequences(name, o.name, false);
     }
 
-    public static Realm createSimple(String name) {
+    public static Realm createSimple(CharSequence name) {
         return new Realm(name);
     }
 }

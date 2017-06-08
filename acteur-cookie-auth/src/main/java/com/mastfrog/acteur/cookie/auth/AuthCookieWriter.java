@@ -81,12 +81,16 @@ final class AuthCookieWriter {
     private boolean logged;
 
     private static final AsciiString LOCALHOST = new AsciiString("localhost");
+
     protected void configureCookie(HttpEvent evt, Cookie cookie) {
         CharSequence cookieHost = this.cookieHost;
         if (cookieHost == null) {
             cookieHost = evt.getHeader(Headers.HOST);
-            if (cookieHost != null && cookieHost.toString().lastIndexOf(":") > 0) {
-                cookieHost = cookieHost.subSequence(0, cookieHost.toString().lastIndexOf(":"));
+            if (cookieHost != null) {
+                int ix = Strings.lastIndexOf(':', cookieHost);
+                if (ix > 0) {
+                    cookieHost = cookieHost.subSequence(0, cookieHost.toString().lastIndexOf(":"));
+                }
             }
         }
         if (cookieHost == null) {
@@ -112,13 +116,14 @@ final class AuthCookieWriter {
     }
 
     /**
-     * Write the authentication cookie (using the configured name for it)
-     * to the response.
-     * 
+     * Write the authentication cookie (using the configured name for it) to the
+     * response.
+     *
      * @param evt The request
-     * @param cookieValue The value - which should be something opaque and random
-     * which can be used as a cache key to look up the user on the server side
-     * @param on 
+     * @param cookieValue The value - which should be something opaque and
+     * random which can be used as a cache key to look up the user on the server
+     * side
+     * @param on
      */
     public void setCookie(HttpEvent evt, String cookieValue, Response on) {
         DefaultCookie ck = new DefaultCookie(cookieName, cookieValue);

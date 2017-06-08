@@ -24,6 +24,7 @@
 package com.mastfrog.acteur.headers.jodatime;
 
 import com.mastfrog.acteur.headers.AbstractHeader;
+import com.mastfrog.util.Strings;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.joda.time.Duration;
@@ -44,9 +45,9 @@ final class JodaDurationHeader extends AbstractHeader<Duration> {
     }
 
     @Override
-    public Duration toValue(String value) {
+    public Duration toValue(CharSequence value) {
         try {
-            return new Duration(Long.parseLong(value));
+            return new Duration(Strings.parseLong(value));
         } catch (NumberFormatException nfe) {
             Logger.getLogger(JodaDurationHeader.class.getName()).log(Level.INFO, "Bad duration header '" + value + "'", nfe);
             return null;
