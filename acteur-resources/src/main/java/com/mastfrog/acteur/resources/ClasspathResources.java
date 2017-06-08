@@ -150,17 +150,17 @@ public final class ClasspathResources implements StaticResources {
         @Override
         protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) throws Exception {
             while (in.readableBytes() > 0) {
-                super.decode(ctx, in, out); 
+                super.decode(ctx, in, out);
             }
         }
     }
 
     private class ClasspathResource implements Resource {
 
-        private final ByteBuf bytes;
-        private final ByteBuf compressed;
+        final ByteBuf bytes;
+        final ByteBuf compressed;
         private final String hash;
-        private final String name;
+        final String name;
         private final int length;
 
         ClasspathResource(String name) throws Exception {
@@ -217,18 +217,18 @@ public final class ClasspathResources implements StaticResources {
         }
 
         @Override
-        public void decoratePage(Page page, HttpEvent evt, String path, Response response, boolean chunked) {
+        public void decorateResponse(HttpEvent evt, String path, Response response, boolean chunked) {
             String ua = evt.getHeader("User-Agent");
             if (ua != null && !ua.contains("MSIE")) {
-                response.add(VARY, new HeaderValueType<?>[] { ACCEPT_ENCODING });
+                response.add(VARY, new HeaderValueType<?>[]{ACCEPT_ENCODING});
             }
             if (productionMode()) {
                 response.add(CACHE_CONTROL, CacheControl.PUBLIC_MUST_REVALIDATE_MAX_AGE_1_DAY);
             } else {
                 response.add(CACHE_CONTROL, new CacheControl(CacheControlTypes.Private, CacheControlTypes.no_cache, CacheControlTypes.no_store));
             }
-            response.add(LAST_MODIFIED, startTime);
-            response.add(ETAG, hash);
+            response.add(LAST_MODIFIED, startTime)
+                    .add(ETAG, hash);
 //            page.getReponseHeaders().setContentLength(getLength());
             MediaType type = getContentType();
             if (type == null) {
@@ -254,49 +254,29 @@ public final class ClasspathResources implements StaticResources {
                     response.add(Headers.CONTENT_LENGTH, (long) bytes.readableBytes());
                 }
             }
-//            response.setChunked(true);
-            response.setChunked(chunked);
+//            response.chunked(true);
+            response.chunked(chunked);
         }
 
         @Override
         public void attachBytes(HttpEvent evt, Response response, boolean chunked) {
             if (isGzip(evt)) {
                 CompressedBytesSender sender = new CompressedBytesSender(compressed, !evt.isKeepAlive(), chunked);
-                response.setBodyWriter(sender);
+                response.contentWriter(sender);
 //                BytesSender sender = new BytesSender(compressed);
-//                response.setBodyWriter(sender);
+//                response.contentWriter(sender);
             } else {
 //                BytesSender sender = new BytesSender(bytes);
-//                response.setBodyWriter(sender);
+//                response.contentWriter(sender);
                 CompressedBytesSender c = new CompressedBytesSender(bytes, !evt.isKeepAlive(), chunked);
-                response.setBodyWriter(c);
+                response.contentWriter(c);
             }
-        }
-
-        @Override
-        public String getEtag() {
-            return hash;
-        }
-
-        @Override
-        public ZonedDateTime lastModified() {
-            return startTime;
         }
 
         @Override
         public MediaType getContentType() {
             MediaType mt = types.get(name);
             return mt;
-        }
-
-        @Override
-        public long getLength() {
-            return length;
-        }
-
-        public Long getContentLength() {
-//            return internalGzip ? null : (long) length;
-            return null;
         }
     }
 

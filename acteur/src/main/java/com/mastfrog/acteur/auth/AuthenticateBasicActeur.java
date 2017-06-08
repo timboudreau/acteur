@@ -92,7 +92,7 @@ public class AuthenticateBasicActeur extends AuthenticationActeur {
     @Benchmark(value = "tarpittedClients", publish = Kind.CALL_COUNT)
     void delayResponse(int badCount, Settings settings) {
         Duration delayResponse = Duration.ofSeconds(badCount * settings.getInt(SETTINGS_KEY_TARPIT_DELAY_SECONDS, 1));
-        response().setDelay(delayResponse);
+        response().delayedBy(delayResponse);
     }
 
     @Benchmark(value = "failedAuthentication", publish = Kind.CALL_COUNT)

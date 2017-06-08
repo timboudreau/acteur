@@ -36,7 +36,7 @@ import com.mastfrog.acteur.Response;
 import com.mastfrog.acteur.headers.Method;
 import com.mastfrog.acteur.preconditions.Description;
 import com.mastfrog.acteur.preconditions.Methods;
-import com.mastfrog.acteur.resources.StaticResources.Resource;
+import com.mastfrog.acteur.resources.Resource;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.url.Path;
 import io.netty.handler.codec.http.HttpResponseStatus;
@@ -97,7 +97,7 @@ public class ResourcesPage extends Page {
                             reject();
                             return;
                         } else {
-                            r.decoratePage(page, evt, path, response(), chunked);
+                            r.decorateResponse(evt, path, response(), chunked);
                             MediaType mimeType = r.getContentType();
                             if (mimeType != null) {
                                 ZonedDateTime dt = policy.get(mimeType, Path.parse(path));
@@ -113,7 +113,7 @@ public class ResourcesPage extends Page {
             } else {
                 Resource r = res.get(path);
                 if (r != null) {
-                    r.decoratePage(page, evt, path, response(), chunked);
+                    r.decorateResponse(evt, path, response(), chunked);
                     MediaType mimeType = r.getContentType();
                     if (mimeType != null) {
                         ZonedDateTime dt = policy.get(mimeType, Path.parse(path));

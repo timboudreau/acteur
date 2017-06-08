@@ -131,16 +131,16 @@ final class ResponseImpl extends Response {
                 addEntry(e);
             }
             if (other.status != null) {
-                setResponseCode(other.status);
+                status(other.status);
             }
             if (other.message != null) {
-                setMessage(other.message);
+                content(other.message);
             }
             if (other.chunked) {
-                setChunked(true);
+                chunked(true);
             }
             if (other.listener != null) {
-                setBodyWriter(other.listener);
+                contentWriter(other.listener);
             }
             if (other.delay != null) {
                 this.delay = other.delay;
@@ -153,21 +153,24 @@ final class ResponseImpl extends Response {
     }
 
     @Override
-    public void setMessage(Object message) {
+    public Response content(Object message) {
         modify();
         this.message = message;
+        return this;
     }
 
     @Override
-    public void setDelay(Duration delay) {
+    public Response delayedBy(Duration delay) {
         modify();
         this.delay = delay;
+        return this;
     }
 
     @Override
-    public void setResponseCode(HttpResponseStatus status) {
+    public Response status(HttpResponseStatus status) {
         modify();
         this.status = status;
+        return this;
     }
     
     HttpResponseStatus rawStatus() {
@@ -187,7 +190,7 @@ final class ResponseImpl extends Response {
     }
 
     @Override
-    public void setBodyWriter(ResponseWriter writer) {
+    public Response contentWriter(ResponseWriter writer) {
         Page p = Page.get();
         Application app = p.getApplication();
         Dependencies deps = app.getDependencies();
@@ -199,6 +202,7 @@ final class ResponseImpl extends Response {
                 Names.named(ServerModule.BACKGROUND_THREAD_POOL_NAME));
         ExecutorService svc = deps.getInstance(key);
         setWriter(writer, charset, allocator, mapper, evt, svc);
+        return this;
     }
 
     Duration getDelay() {
@@ -221,7 +225,7 @@ final class ResponseImpl extends Response {
 
     @SuppressWarnings("unchecked")
     @Override
-    public <T> void add(HeaderValueType<T> decorator, T value) {
+    public <T> Response add(HeaderValueType<T> decorator, T value) {
         List<Entry<?>> old = new LinkedList<>();
         // XXX set cookie!
         for (Iterator<Entry<?>> it = headers.iterator(); it.hasNext();) {
@@ -257,6 +261,7 @@ final class ResponseImpl extends Response {
         }
         headers.add(e);
         modify();
+        return this;
     }
 
     @Override
@@ -284,13 +289,14 @@ final class ResponseImpl extends Response {
     }
 
     @Override
-    public void setChunked(boolean chunked) {
+    public Response chunked(boolean chunked) {
         this.chunked = chunked;
         modify();
+        return this;
     }
 
     <T extends ResponseWriter> void setWriter(T w, Dependencies deps, HttpEvent evt) {
-//        setChunked(true);
+//        chunked(true);
         Charset charset = deps.getInstance(Charset.class);
         ByteBufAllocator allocator = deps.getInstance(ByteBufAllocator.class);
         Codec mapper = deps.getInstance(Codec.class);
@@ -300,7 +306,7 @@ final class ResponseImpl extends Response {
     }
 
     <T extends ResponseWriter> void setWriter(Class<T> w, Dependencies deps, HttpEvent evt) {
-//        setChunked(true);
+//        chunked(true);
         Charset charset = deps.getInstance(Charset.class);
         ByteBufAllocator allocator = deps.getInstance(ByteBufAllocator.class);
         Key<ExecutorService> key = Key.get(ExecutorService.class, Names.named(ServerModule.BACKGROUND_THREAD_POOL_NAME));
@@ -378,7 +384,7 @@ final class ResponseImpl extends Response {
     }
 
     void setWriter(ResponseWriter w, Charset charset, ByteBufAllocator allocator, Codec mapper, Event<?> evt, ExecutorService svc) {
-        setBodyWriter(new ResponseWriterListener(evt, w, charset, allocator,
+        contentWriter(new ResponseWriterListener(evt, w, charset, allocator,
                 mapper, chunked, !isKeepAlive(evt), svc));
     }
 
@@ -505,17 +511,18 @@ final class ResponseImpl extends Response {
      * Set a ChannelFutureListener which will be called after headers are
      * written and flushed to the socket; prefer
      * <code>setResponseWriter()</code> to this method unless you are not using
-     * chunked encoding and want to stream your response (in which case, be sure
-     * to setChunked(false) or you will have encoding errors).
+ chunked encoding and want to stream your response (in which case, be sure
+ to chunked(false) or you will have encoding errors).
      *
      * @param listener
      */
     @Override
-    public void setBodyWriter(ChannelFutureListener listener) {
+    public Response contentWriter(ChannelFutureListener listener) {
         if (this.listener != null) {
             throw new IllegalStateException("Listener already set to " + this.listener);
         }
         this.listener = listener;
+        return this;
     }
 
     public Object getMessage() {

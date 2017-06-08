@@ -202,17 +202,17 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
     }
 
     public final Acteur setResponseCode(HttpResponseStatus status) {
-        response().setResponseCode(status);
+        response().status(status);
         return this;
     }
 
     public final Acteur setMessage(Object message) {
-        response().setMessage(message);
+        response().content(message);
         return this;
     }
 
     public final Acteur setChunked(boolean chunked) {
-        response().setChunked(chunked);
+        response().chunked(chunked);
         return this;
     }
 
@@ -525,15 +525,15 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
      * Set a ChannelFutureListener which will be called after headers are
      * written and flushed to the socket; prefer
      * <code>setResponseWriter()</code> to this method unless you are not using
-     * chunked encoding and want to stream your response (in which case, be sure
-     * to setChunked(false) or you will have encoding errors).
+ chunked encoding and want to stream your response (in which case, be sure
+ to chunked(false) or you will have encoding errors).
      *
      * @param listener
      */
     public final Acteur setResponseBodyWriter(final ChannelFutureListener listener) {
         if (listener == ChannelFutureListener.CLOSE || listener == ChannelFutureListener.CLOSE_ON_FAILURE) {
             response();
-            getResponse().setBodyWriter(listener);
+            getResponse().contentWriter(listener);
             return this;
         }
         Page p = Page.get();
@@ -560,7 +560,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
                 return "Scope wrapper for " + listener;
             }
         }
-        response().setBodyWriter(new WL());
+        response().contentWriter(new WL());
         return this;
     }
 

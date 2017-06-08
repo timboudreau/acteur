@@ -39,6 +39,7 @@ import static com.mastfrog.acteur.headers.Headers.AGE;
 import static com.mastfrog.acteur.headers.Headers.CACHE_CONTROL;
 import static com.mastfrog.acteur.headers.Headers.CONTENT_ENCODING;
 import static com.mastfrog.acteur.headers.Headers.CONTENT_LENGTH;
+import static com.mastfrog.acteur.headers.Headers.CONTENT_TYPE;
 import static com.mastfrog.acteur.headers.Headers.ETAG;
 import static com.mastfrog.acteur.headers.Headers.EXPIRES;
 import static com.mastfrog.acteur.headers.Headers.LAST_MODIFIED;
@@ -92,7 +93,7 @@ public class DynamicFileResources implements StaticResources {
     private final ByteBufAllocator alloc;
     static final HeaderValueType<CharSequence> INTERNAL_COMPRESS_HEADER
             = Headers.header("X-Internal-Compress");
-        private static final AsciiString TRUE = new AsciiString("true");
+    private static final AsciiString TRUE = new AsciiString("true");
 
     @Inject
     DynamicFileResources(File dir, MimeTypes types, ExpiresPolicy policy, ApplicationControl ctrl, ByteBufAllocator alloc) {
@@ -119,14 +120,14 @@ public class DynamicFileResources implements StaticResources {
 
     private class DynFileResource implements Resource {
 
-        private final File file;
+        final File file;
 
         DynFileResource(File file) {
             this.file = file;
         }
 
         @Override
-        public void decoratePage(Page page, HttpEvent evt, String path, Response response, boolean chunked) {
+        public void decorateResponse(HttpEvent evt, String path, Response response, boolean chunked) {
             String ua = evt.getHeader(HttpHeaderNames.USER_AGENT.toString());
             if (ua != null && !ua.contains("MSIE")) {
                 response.add(VARY, new HeaderValueType<?>[]{ACCEPT_ENCODING});
@@ -137,12 +138,13 @@ public class DynamicFileResources implements StaticResources {
 
             CacheControl cc = new CacheControl(CacheControlTypes.Public, CacheControlTypes.must_revalidate)
                     .add(CacheControlTypes.max_age, maxAge);
-            response.add(CACHE_CONTROL, cc);
+            response.add(CACHE_CONTROL, cc)
+                    .add(LAST_MODIFIED, TimeUtil.fromUnixTimestamp(file.lastModified()))
+                    .add(ETAG, inodeEtag())
+                    .add(AGE, Duration.ZERO)
+                    .add(CONTENT_TYPE, getContentType())
+                    .add(ACCEPT_RANGES, HttpHeaderValues.BYTES);
 
-            response.add(LAST_MODIFIED, TimeUtil.fromUnixTimestamp(file.lastModified()));
-            response.add(ETAG, getEtag());
-            response.add(AGE, Duration.ZERO);
-            response.add(ACCEPT_RANGES, HttpHeaderValues.BYTES);
             if (expires != null) {
                 response.add(EXPIRES, expires);
             }
@@ -154,31 +156,32 @@ public class DynamicFileResources implements StaticResources {
             ByteRanges ranges = evt.getHeader(RANGE);
             if (ranges != null) {
                 if (!ranges.isValid()) {
-                    response.setResponseCode(BAD_REQUEST);
-                    response.setMessage("Invalid range " + ranges);
+                    response.status(BAD_REQUEST);
+                    response.content("Invalid range " + ranges);
                 }
                 if (ranges.size() > 1) {
-                    response.setResponseCode(HttpResponseStatus.NOT_IMPLEMENTED);
-                    response.setMessage("Multiple ranges not supported in compressed responses, but requested " + ranges);
+                    response.status(HttpResponseStatus.NOT_IMPLEMENTED);
+                    response.content("Multiple ranges not supported in compressed responses, but requested " + ranges);
                     return;
                 }
             }
             boolean willCompress = acceptEncoding != null && Strings.charSequenceContains(acceptEncoding, HttpHeaderValues.GZIP, true);
             if (!willCompress) {
-                response.add(CONTENT_LENGTH, file.length());
+                if (evt.getMethod() != Method.HEAD) {
+                    response.add(CONTENT_LENGTH, file.length());
+                }
             } else {
-                response.add(INTERNAL_COMPRESS_HEADER, TRUE);
-                response.add(CONTENT_ENCODING, HttpHeaderValues.GZIP.toString());
+                if (evt.getMethod() != Method.HEAD) {
+                    response.add(INTERNAL_COMPRESS_HEADER, TRUE).add(CONTENT_ENCODING, HttpHeaderValues.GZIP.toString());
+                }
             }
-            response.setChunked(false);
+            response.chunked(false);
         }
 
-        @Override
-        public String getEtag() {
+        private String inodeEtag() {
             try {
                 java.nio.file.Path path = file.toPath();
                 BasicFileAttributes attr = Files.readAttributes(path, BasicFileAttributes.class);
-
                 Object fileKey = attr.fileKey();
                 if (fileKey != null) {
                     String s = fileKey.toString();
@@ -200,22 +203,7 @@ public class DynamicFileResources implements StaticResources {
         }
 
         @Override
-        public ZonedDateTime lastModified() {
-            return TimeUtil.fromUnixTimestamp(file.lastModified());
-        }
-
-        @Override
-        public MediaType getContentType() {
-            return types.get(file.getName());
-        }
-
-        @Override
-        public long getLength() {
-            return file.length();
-        }
-
-        @Override
-        public void attachBytes(HttpEvent evt, Response response, boolean chunked) {
+        public void attachBytes(HttpEvent evt, Response response, boolean chunked) throws Exception {
             if (evt.getMethod() == Method.HEAD) {
                 return;
             }
@@ -227,7 +215,7 @@ public class DynamicFileResources implements StaticResources {
             }
             final long length = file.length();
             if (!willCompress) {
-                response.setBodyWriter(new ResponseWriter() {
+                response.contentWriter(new ResponseWriter() {
                     @Override
                     public ResponseWriter.Status write(Event<?> evt, ResponseWriter.Output out, int iteration) throws Exception {
                         if (ranges == null) {
@@ -247,45 +235,44 @@ public class DynamicFileResources implements StaticResources {
                 });
             } else {
                 ByteBuf buf = alloc.directBuffer();
-                if (ranges == null) {
-                    try (FileInputStream in = new FileInputStream(file)) {
-                        try (ByteBufOutputStream bufOut = new ByteBufOutputStream(buf)) {
-                            try (GZIPOutputStream gz = new GZIPOutputStream(bufOut, (int) (file.length() / 2))) {
-                                Streams.copy(in, gz);
+                try {
+                    if (ranges == null) {
+                        try (FileInputStream in = new FileInputStream(file)) {
+                            try (ByteBufOutputStream bufOut = new ByteBufOutputStream(buf)) {
+                                try (GZIPOutputStream gz = new GZIPOutputStream(bufOut, (int) (file.length() / 2))) {
+                                    Streams.copy(in, gz);
+                                }
                             }
                         }
-                    } catch (Exception ex) {
-                        buf.release();
-                        Exceptions.chuck(ex);
-                    }
-                } else {
-                    try (ByteBufOutputStream bufOut = new ByteBufOutputStream(buf)) {
-                        for (Range r : ranges) {
-                            try (FileInputStream in = new FileInputStream(file)) {
-                                try (FileChannel channel = in.getChannel()) {
-                                    int rangeLength = (int) r.length(length);
-                                    System.out.println("WRITE GZIP RANGE " + rangeLength + " range " + r);
-                                    if (rangeLength > 0) {
-                                        ByteBuffer buffer = ByteBuffer.allocateDirect(rangeLength);
-                                        channel.position(r.start(length));
-                                        channel.read(buffer);
-                                        buffer.flip();
-                                        try (InputStream rangeIn = Streams.asInputStream(buffer)) {
-                                            try (GZIPOutputStream gz = new GZIPOutputStream(bufOut, (int) (file.length() / 2))) {
-                                                Streams.copy(rangeIn, gz);
+                    } else {
+                        try (ByteBufOutputStream bufOut = new ByteBufOutputStream(buf)) {
+                            for (Range r : ranges) {
+                                try (FileInputStream in = new FileInputStream(file)) {
+                                    try (FileChannel channel = in.getChannel()) {
+                                        int rangeLength = (int) r.length(length);
+                                        if (rangeLength > 0) {
+                                            ByteBuffer buffer = ByteBuffer.allocateDirect(rangeLength);
+                                            channel.position(r.start(length));
+                                            channel.read(buffer);
+                                            buffer.flip();
+                                            try (InputStream rangeIn = Streams.asInputStream(buffer)) {
+                                                try (GZIPOutputStream gz = new GZIPOutputStream(bufOut, (int) (file.length() / 2))) {
+                                                    Streams.copy(rangeIn, gz);
+                                                }
                                             }
                                         }
                                     }
                                 }
                             }
                         }
-                    } catch (Exception ex) {
-                        buf.release();
-                        Exceptions.chuck(ex);
                     }
+                } catch (Exception ex) {
+                    buf.release();
+                    throw ex;
                 }
+
                 response.add(Headers.CONTENT_LENGTH, (long) buf.readableBytes());
-                response.setBodyWriter(new ResponseWriter() {
+                response.contentWriter(new ResponseWriter() {
                     boolean first = true;
 
                     @Override
@@ -301,6 +288,11 @@ public class DynamicFileResources implements StaticResources {
                     }
                 });
             }
+        }
+
+        @Override
+        public MediaType getContentType() {
+            return types.get(file.getName());
         }
     }
 }

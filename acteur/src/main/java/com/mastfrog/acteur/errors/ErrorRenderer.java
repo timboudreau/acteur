@@ -42,9 +42,9 @@ public abstract class ErrorRenderer {
 
     public void render(ErrorResponse resp, Response into, HttpEvent evt) throws IOException {
         String s = render(resp, evt);
-        into.setResponseCode(resp.status());
+        into.status(resp.status());
         if (s != null) {
-            into.setMessage(s);
+            into.content(s);
         }
     }
 
@@ -61,8 +61,8 @@ public abstract class ErrorRenderer {
 
         @Override
         public void render(ErrorResponse resp, Response into, HttpEvent evt) throws JsonProcessingException {
-            into.setResponseCode(resp.status());
-            into.setMessage(resp.message());
+            into.status(resp.status());
+            into.content(resp.message());
         }
 
         @Override

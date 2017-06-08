@@ -30,7 +30,7 @@ import com.google.inject.Singleton;
 import com.google.inject.TypeLiteral;
 import com.mastfrog.acteur.Application;
 import com.mastfrog.acteur.ImplicitBindings;
-import com.mastfrog.acteur.resources.StaticResources.Resource;
+import com.mastfrog.acteur.resources.Resource;
 import com.mastfrog.acteur.server.ServerModule;
 import com.mastfrog.netty.http.client.HttpClient;
 import com.mastfrog.util.Exceptions;

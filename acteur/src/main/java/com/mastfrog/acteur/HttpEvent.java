@@ -1,4 +1,4 @@
-/* 
+/*
  * The MIT License
  *
  * Copyright 2013 Tim Boudreau.
@@ -82,24 +82,23 @@ public interface HttpEvent extends Event<HttpRequest> {
      * @return An object or null if the header is missing or invalid
      */
     <T> T getHeader(HeaderValueType<T> value);
-    
+
     /**
      * Get all headers matching a type.
-     * 
+     *
      * @param <T> The type
      * @param headerType The header
      * @return A list of headers
      */
     <T> List<T> getHeaders(HeaderValueType<T> headerType);
-    
-     /**
-      * Get all headers (pruning duplicate names) as a case-insensitive map
-      * of CharSequence to header value.
-      * 
-      * @return A map.
-      */
-     Map<CharSequence, CharSequence> getHeadersAsMap();
 
+    /**
+     * Get all headers (pruning duplicate names) as a case-insensitive map of
+     * CharSequence to header value.
+     *
+     * @return A map.
+     */
+    Map<CharSequence, CharSequence> getHeadersAsMap();
 
     /**
      * Gets the HTTP parameters as a flat map, ignoring duplicated keys. To be
@@ -134,7 +133,8 @@ public interface HttpEvent extends Event<HttpRequest> {
 
     Optional<Long> getLongParameter(String name);
 
-    boolean isKeepAlive();
-    
     String getContentAsString() throws IOException;
+
+    boolean isKeepAlive();
+
 }

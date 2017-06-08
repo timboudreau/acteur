@@ -25,6 +25,7 @@ package com.mastfrog.acteur.resources.markup;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.name.Names;
+import com.mastfrog.acteur.resources.Resource;
 import com.mastfrog.acteur.resources.StaticResources;
 import com.mastfrog.giulius.scope.ReentrantScope;
 import com.mastfrog.healthtracker.MarkupFiles;
@@ -82,6 +83,6 @@ public class MarkupFilesModule extends AbstractModule {
                 Names.named(MarkupFiles.GUICE_BINDING_CLASS_RELATIVE_MARKUP))
                 .toInstance(relativeTo);
         bind(StaticResources.class).toProvider(MarkupFiles.class);
-        scope.bindTypes(binder(), StaticResources.Resource.class);
+        scope.bindTypes(binder(), Resource.class);
     }
 }

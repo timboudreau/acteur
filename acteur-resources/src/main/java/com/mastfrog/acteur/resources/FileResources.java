@@ -185,14 +185,14 @@ public final class FileResources implements StaticResources {
 
     private class FileResource2 implements Resource {
 
-        private ByteBuf bytes;
-        private ByteBuf compressed;
+        ByteBuf bytes;
+        ByteBuf compressed;
         private String hash;
-        private final String name;
+        final String name;
         private int length;
         private final File file;
         private long lastModified;
-        private final Duration maxAge;
+        final Duration maxAge;
 
         FileResource2(String name, Duration maxAge) throws Exception {
             Checks.notNull("name", name);
@@ -220,13 +220,13 @@ public final class FileResources implements StaticResources {
             this.bytes = Unpooled.unreleasableBuffer(bytes);
             if (internalGzip) {
                 int sizeEstimate = (int) Math.ceil(bytes.readableBytes() * 1.001) + 12;
-                ByteBuf compressed = allocator.directBuffer(sizeEstimate);
-                gzip(bytes, compressed);
+                ByteBuf compressedBuffer = allocator.directBuffer(sizeEstimate);
+                gzip(bytes, compressedBuffer);
                 bytes.resetReaderIndex();
-                this.compressed = Unpooled.unreleasableBuffer(compressed);
+                this.compressed = Unpooled.unreleasableBuffer(compressedBuffer);
                 assert check();
                 bytes.resetReaderIndex();
-                compressed.resetReaderIndex();
+                compressedBuffer.resetReaderIndex();
             } else {
                 compressed = null;
             }
@@ -257,7 +257,7 @@ public final class FileResources implements StaticResources {
         }
 
         @Override
-        public void decoratePage(Page page, HttpEvent evt, String path, Response response, boolean chunked) {
+        public void decorateResponse(HttpEvent evt, String path, Response response, boolean chunked) {
             // XXX would be nicer not to hit the filesystem every time here
             if (file.lastModified() != lastModified) {
                 try {
@@ -273,10 +273,9 @@ public final class FileResources implements StaticResources {
             }
             CacheControl cc = new CacheControl(CacheControlTypes.Public, CacheControlTypes.must_revalidate)
                     .add(CacheControlTypes.max_age, maxAge);
-            response.add(Headers.CACHE_CONTROL, cc);
-            
-            response.add(Headers.LAST_MODIFIED, TimeUtil.fromUnixTimestamp(lastModified).with(MILLI_OF_SECOND, 0));
-            response.add(Headers.ETAG, hash);
+            response.add(Headers.CACHE_CONTROL, cc)
+                    .add(Headers.LAST_MODIFIED, TimeUtil.fromUnixTimestamp(lastModified).with(MILLI_OF_SECOND, 0))
+                    .add(Headers.ETAG, hash);
 //            page.getReponseHeaders().setContentLength(getLength());
             MediaType type = getContentType();
             if (type == null && debug) {
@@ -302,39 +301,24 @@ public final class FileResources implements StaticResources {
                     response.add(Headers.CONTENT_LENGTH, (long) bytes.readableBytes());
                 }
             }
-            response.setChunked(chunked);
+            response.chunked(chunked);
         }
 
         @Override
         public void attachBytes(HttpEvent evt, Response response, boolean chunked) {
             if (isGzip(evt)) {
                 CompressedBytesSender sender = new CompressedBytesSender(compressed.copy(), !evt.isKeepAlive(), chunked);
-                response.setBodyWriter(sender);
+                response.contentWriter(sender);
             } else {
                 CompressedBytesSender c = new CompressedBytesSender(bytes.copy(), !evt.isKeepAlive(), chunked);
-                response.setBodyWriter(c);
+                response.contentWriter(c);
             }
-        }
-
-        @Override
-        public String getEtag() {
-            return hash;
-        }
-
-        @Override
-        public ZonedDateTime lastModified() {
-            return TimeUtil.fromUnixTimestamp(lastModified);
         }
 
         @Override
         public MediaType getContentType() {
             MediaType mt = types.get(name);
             return mt;
-        }
-
-        @Override
-        public long getLength() {
-            return length;
         }
 
         public Long getContentLength() {
