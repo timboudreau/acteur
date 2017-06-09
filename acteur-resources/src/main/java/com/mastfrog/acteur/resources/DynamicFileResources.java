@@ -128,11 +128,11 @@ public class DynamicFileResources implements StaticResources {
 
         @Override
         public void decorateResponse(HttpEvent evt, String path, Response response, boolean chunked) {
-            String ua = evt.getHeader(HttpHeaderNames.USER_AGENT.toString());
+            String ua = evt.header(HttpHeaderNames.USER_AGENT.toString());
             if (ua != null && !ua.contains("MSIE")) {
                 response.add(VARY, new HeaderValueType<?>[]{ACCEPT_ENCODING});
             }
-            ZonedDateTime expires = policy.get(types.get(path), evt.getPath());
+            ZonedDateTime expires = policy.get(types.get(path), evt.path());
             Duration maxAge = expires == null ? Duration.ofHours(2)
                     : Duration.between(ZonedDateTime.now(), expires);
 
@@ -149,11 +149,11 @@ public class DynamicFileResources implements StaticResources {
                 response.add(EXPIRES, expires);
             }
 
-            CharSequence acceptEncoding = evt.getHeader(ACCEPT_ENCODING);
-            if (evt.getMethod() == HEAD) {
+            CharSequence acceptEncoding = evt.header(ACCEPT_ENCODING);
+            if (evt.method() == HEAD) {
                 return;
             }
-            ByteRanges ranges = evt.getHeader(RANGE);
+            ByteRanges ranges = evt.header(RANGE);
             if (ranges != null) {
                 if (!ranges.isValid()) {
                     response.status(BAD_REQUEST);
@@ -167,11 +167,11 @@ public class DynamicFileResources implements StaticResources {
             }
             boolean willCompress = acceptEncoding != null && Strings.charSequenceContains(acceptEncoding, HttpHeaderValues.GZIP, true);
             if (!willCompress) {
-                if (evt.getMethod() != Method.HEAD) {
+                if (evt.method() != Method.HEAD) {
                     response.add(CONTENT_LENGTH, file.length());
                 }
             } else {
-                if (evt.getMethod() != Method.HEAD) {
+                if (evt.method() != Method.HEAD) {
                     response.add(INTERNAL_COMPRESS_HEADER, TRUE).add(CONTENT_ENCODING, HttpHeaderValues.GZIP.toString());
                 }
             }
@@ -204,12 +204,12 @@ public class DynamicFileResources implements StaticResources {
 
         @Override
         public void attachBytes(HttpEvent evt, Response response, boolean chunked) throws Exception {
-            if (evt.getMethod() == Method.HEAD) {
+            if (evt.method() == Method.HEAD) {
                 return;
             }
-            CharSequence acceptEncoding = evt.getHeader(Headers.ACCEPT_ENCODING);
+            CharSequence acceptEncoding = evt.header(Headers.ACCEPT_ENCODING);
             boolean willCompress = acceptEncoding != null && Strings.charSequenceContains(acceptEncoding, HttpHeaderValues.GZIP, true);
-            final ByteRanges ranges = evt.getHeader(Headers.RANGE);
+            final ByteRanges ranges = evt.header(Headers.RANGE);
             if (ranges != null) {
                 response.add(Headers.RANGE, ranges);
             }

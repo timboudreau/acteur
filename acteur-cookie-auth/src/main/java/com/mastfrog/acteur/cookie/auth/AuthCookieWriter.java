@@ -49,7 +49,7 @@ final class AuthCookieWriter {
     }
 
     protected Cookie findCookie(HttpEvent evt) {
-        Cookie[] cookies = evt.getHeader(Headers.COOKIE);
+        Cookie[] cookies = evt.header(Headers.COOKIE);
         Cookie cookie = null;
         if (cookies != null && cookies.length > 0) {
             for (Cookie ck : cookies) {
@@ -85,7 +85,7 @@ final class AuthCookieWriter {
     protected void configureCookie(HttpEvent evt, Cookie cookie) {
         CharSequence cookieHost = this.cookieHost;
         if (cookieHost == null) {
-            cookieHost = evt.getHeader(Headers.HOST);
+            cookieHost = evt.header(Headers.HOST);
             if (cookieHost != null) {
                 int ix = Strings.lastIndexOf(':', cookieHost);
                 if (ix > 0) {

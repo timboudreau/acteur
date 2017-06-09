@@ -213,10 +213,10 @@ public class ServerModule<A extends Application> extends AbstractModule {
     private static final int DEFAULT_DELAY_THREADS = 2;
 
     /**
-     * If true, the return value of Event.getRemoteAddress() will prefer the
-     * headers X-Forwarded-For or X-Real-IP if present, so that running an
-     * acteur application behind a reverse proxy does not mask the actual IP
-     * address.
+     * If true, the return value of Event.remoteAddress() will prefer the
+ headers X-Forwarded-For or X-Real-IP if present, so that running an
+ acteur application behind a reverse proxy does not mask the actual IP
+ address.
      */
     public static final String SETTINGS_KEY_DECODE_REAL_IP = "decodeRealIP";
     /**
@@ -470,7 +470,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
 
         @Override
         public Path get() {
-            return evt.get().getPath();
+            return evt.get().path();
         }
     }
 
@@ -485,7 +485,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
 
         @Override
         public HttpMethod get() {
-            return evt.get().getMethod();
+            return evt.get().method();
         }
 
     }
@@ -505,7 +505,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
             if (e == null) {
                 return null;
             }
-            return e == null || !(e.getMethod() instanceof Method) ? null : (Method) evt.get().getMethod();
+            return e == null || !(e.method() instanceof Method) ? null : (Method) evt.get().method();
         }
 
     }
@@ -521,7 +521,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
 
         @Override
         public Channel get() {
-            return evt.get().getChannel();
+            return evt.get().channel();
         }
     }
 
@@ -536,7 +536,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
 
         @Override
         public KeysValues get() {
-            return new KeysValues.MapAdapter(evt.get().getParametersAsMap());
+            return new KeysValues.MapAdapter(evt.get().urlParametersAsMap());
         }
     }
 
@@ -763,7 +763,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
         @Override
         public Set<Cookie> get() {
             HttpEvent evt = ev.get();
-            String h = evt.getHeader(HttpHeaderNames.COOKIE.toString());
+            String h = evt.header(HttpHeaderNames.COOKIE.toString());
             if (h != null) {
                 @SuppressWarnings("deprecation")
                 Set<Cookie> result = CookieDecoder.decode(h);

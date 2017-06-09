@@ -39,7 +39,7 @@ public final class CheckIfUnmodifiedSinceHeader extends Acteur {
 
     @Inject
     CheckIfUnmodifiedSinceHeader(HttpEvent event, Page page) {
-        ZonedDateTime headerValue = event.getHeader(IF_UNMODIFIED_SINCE);
+        ZonedDateTime headerValue = event.header(IF_UNMODIFIED_SINCE);
         if (headerValue != null) {
             ZonedDateTime pageLastModified = response().get(Headers.LAST_MODIFIED);
             if (pageLastModified != null) {

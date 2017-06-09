@@ -43,7 +43,7 @@ import java.lang.annotation.Target;
  * application anymore, so this class is less useful as it can only appear on
  * the application class. Instead, use {@link HttpCall} with the
  * <code>scopeTypes</code> parameter register types on the acteurs that use
- * them;  or use ServerBuilder.withType().
+ * them; or use ServerBuilder.withType().
  *
  * @author Tim Boudreau
  */

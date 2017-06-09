@@ -266,7 +266,7 @@ public final class FileResources implements StaticResources {
                     Exceptions.printStackTrace(ex);
                 }
             }
-            String ua = evt.getHeader("User-Agent");
+            String ua = evt.header("User-Agent");
             if (ua != null && !ua.contains("MSIE")) {
 //                page.getResponseHeaders().addVaryHeader(Headers.ACCEPT_ENCODING);
                 response.add(Headers.VARY, new HeaderValueType<?>[]{Headers.ACCEPT_ENCODING});
@@ -307,10 +307,10 @@ public final class FileResources implements StaticResources {
         @Override
         public void attachBytes(HttpEvent evt, Response response, boolean chunked) {
             if (isGzip(evt)) {
-                CompressedBytesSender sender = new CompressedBytesSender(compressed.copy(), !evt.isKeepAlive(), chunked);
+                CompressedBytesSender sender = new CompressedBytesSender(compressed.copy(), !evt.requestsConnectionStayOpen(), chunked);
                 response.contentWriter(sender);
             } else {
-                CompressedBytesSender c = new CompressedBytesSender(bytes.copy(), !evt.isKeepAlive(), chunked);
+                CompressedBytesSender c = new CompressedBytesSender(bytes.copy(), !evt.requestsConnectionStayOpen(), chunked);
                 response.contentWriter(c);
             }
         }
@@ -331,7 +331,7 @@ public final class FileResources implements StaticResources {
         if (!internalGzip) {
             return false;
         }
-        String hdr = evt.getHeader(HttpHeaders.Names.ACCEPT_ENCODING);
+        String hdr = evt.header(HttpHeaders.Names.ACCEPT_ENCODING);
         return hdr != null && hdr.toLowerCase().contains("gzip");
     }
 

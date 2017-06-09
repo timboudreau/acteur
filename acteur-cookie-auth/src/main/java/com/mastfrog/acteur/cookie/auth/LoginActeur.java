@@ -16,7 +16,7 @@ public final class LoginActeur extends Acteur {
 
     @Inject
     LoginActeur(HttpEvent evt, CookieAuthenticator auth) throws Exception {
-        LoginInfo info = evt.getContentAsJSON(LoginInfo.class);
+        LoginInfo info = evt.jsonContent(LoginInfo.class);
         Object[] inject = auth.login(evt, info, response());
         if (inject == null || inject.length == 0) {
             auth.logout(evt, response());

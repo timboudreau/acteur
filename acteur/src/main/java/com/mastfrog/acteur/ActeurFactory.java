@@ -133,12 +133,12 @@ public class ActeurFactory {
         @Override
         public com.mastfrog.acteur.State getState() {
             HttpEvent event = deps.get();
-            boolean hasMethod = hasMethod(event.getMethod());
+            boolean hasMethod = hasMethod(event.method());
             add(Headers.ALLOW, methods);
             if (notSupp && !hasMethod) {
                 add(Headers.CONTENT_TYPE, MediaType.PLAIN_TEXT_UTF_8.withCharset(charset));
                 return new Acteur.RespondWith(new Err(HttpResponseStatus.METHOD_NOT_ALLOWED, "405 Method "
-                        + event.getMethod() + " not allowed.  Accepted methods are "
+                        + event.method() + " not allowed.  Accepted methods are "
                         + Headers.ALLOW.toCharSequence(methods) + "\n"));
             }
             com.mastfrog.acteur.State result = hasMethod ? new Acteur.ConsumedState() : new Acteur.RejectedState();
@@ -172,13 +172,13 @@ public class ActeurFactory {
         @Override
         public com.mastfrog.acteur.State getState() {
             HttpEvent event = deps.get();
-            HttpMethod mth = event.getMethod();
-            boolean hasMethod = mth == method[0] || method[0].equals(event.getMethod());
+            HttpMethod mth = event.method();
+            boolean hasMethod = mth == method[0] || method[0].equals(event.method());
             add(Headers.ALLOW, method);
             if (notSupp && !hasMethod) {
                 add(Headers.CONTENT_TYPE, MediaType.PLAIN_TEXT_UTF_8.withCharset(charset));
                 return new Acteur.RespondWith(new Err(HttpResponseStatus.METHOD_NOT_ALLOWED, "405 Method "
-                        + event.getMethod() + " not allowed.  Accepted methods are "
+                        + event.method() + " not allowed.  Accepted methods are "
                         + Headers.ALLOW.toString(method) + "\n"));
             }
             com.mastfrog.acteur.State result = hasMethod ? new Acteur.ConsumedState() : new Acteur.RejectedState();
@@ -202,7 +202,7 @@ public class ActeurFactory {
             @Override
             public com.mastfrog.acteur.State getState() {
                 HttpEvent event = ActeurFactory.this.event.get();
-                if (event.getPath().getElements().length == length) {
+                if (event.path().getElements().length == length) {
                     return new RejectedState();
                 } else {
                     return new ConsumedState();
@@ -223,7 +223,7 @@ public class ActeurFactory {
             @Override
             public com.mastfrog.acteur.State getState() {
                 HttpEvent event = ActeurFactory.this.event.get();
-                if (event.getPath().getElements().length < length) {
+                if (event.path().getElements().length < length) {
                     return new RejectedState();
                 } else {
                     return new ConsumedState();
@@ -244,7 +244,7 @@ public class ActeurFactory {
             @Override
             public com.mastfrog.acteur.State getState() {
                 HttpEvent event = ActeurFactory.this.event.get();
-                if (event.getPath().getElements().length > length) {
+                if (event.path().getElements().length > length) {
                     return new Acteur.RejectedState();
                 } else {
                     return new Acteur.ConsumedState();
@@ -325,12 +325,12 @@ public class ActeurFactory {
             final ContentConverter converter = deps.getInstance(ContentConverter.class);
             HttpEvent evt = deps.getInstance(HttpEvent.class);
             try {
-                MediaType mt = evt.getHeader(Headers.CONTENT_TYPE);
+                MediaType mt = evt.header(Headers.CONTENT_TYPE);
                 if (mt == null) {
                     mt = MediaType.ANY_TYPE;
                 }
                 try {
-                    T obj = converter.readObject(evt.getContent(), mt, type);
+                    T obj = converter.readObject(evt.content(), mt, type);
                     return new Acteur.ConsumedLockedState(obj);
                 } catch (InvalidInputException e) {
                     List<String> pblms = new LinkedList<>();
@@ -390,7 +390,7 @@ public class ActeurFactory {
             HttpEvent evt = deps.getInstance(HttpEvent.class);
             ContentConverter converter = deps.getInstance(ContentConverter.class);
             try {
-                T obj = converter.createObjectFor(evt.getParametersAsMap(), type);
+                T obj = converter.createObjectFor(evt.urlParametersAsMap(), type);
                 if (obj != null) {
                     return new Acteur.ConsumedLockedState(obj);
                 }
@@ -460,7 +460,7 @@ public class ActeurFactory {
         public com.mastfrog.acteur.State getState() {
             HttpEvent event = deps.get();
             for (String nm : names) {
-                String val = event.getParameter(nm);
+                String val = event.urlParameter(nm);
                 if (val == null) {
                     add(Headers.CONTENT_TYPE, MediaType.PLAIN_TEXT_UTF_8.withCharset(charset));
                     return new Acteur.RespondWith(Err.badRequest("Missing URL parameter '" + nm + "'\n"));
@@ -489,7 +489,7 @@ public class ActeurFactory {
                 HttpEvent event = ActeurFactory.this.event.get();
                 String first = null;
                 for (String nm : names) {
-                    String val = event.getParameter(nm);
+                    String val = event.urlParameter(nm);
                     if (val != null) {
                         if (first == null) {
                             first = nm;
@@ -532,7 +532,7 @@ public class ActeurFactory {
             public com.mastfrog.acteur.State getState() {
                 HttpEvent evt = event.get();
                 for (String name : names) {
-                    String p = evt.getParameter(name);
+                    String p = evt.urlParameter(name);
                     if (p != null) {
                         boolean decimalSeen = false;
                         for (int i = 0; i < p.length(); i++) {
@@ -586,7 +586,7 @@ public class ActeurFactory {
             @Override
             public com.mastfrog.acteur.State getState() {
                 HttpEvent evt = event.get();
-                for (Map.Entry<String, String> e : evt.getParametersAsMap().entrySet()) {
+                for (Map.Entry<String, String> e : evt.urlParametersAsMap().entrySet()) {
                     if (Arrays.binarySearch(names, e.getKey()) >= 0) {
                         return new RespondWith(Err.badRequest(
                                 e.getKey() + " not allowed in parameters\n"));
@@ -617,7 +617,7 @@ public class ActeurFactory {
             public com.mastfrog.acteur.State getState() {
                 HttpEvent event = ActeurFactory.this.event.get();
                 for (String nm : names) {
-                    String val = event.getParameter(nm);
+                    String val = event.urlParameter(nm);
                     if (val != null) {
                         return new ConsumedState();
                     }
@@ -646,8 +646,8 @@ public class ActeurFactory {
     }
 
     /**
-     * Reject the request if HttpEvent.getPath().toString() does not match one
-     * of the passed regular expressions
+     * Reject the request if HttpEvent.path().toString() does not match one
+ of the passed regular expressions
      *
      * @param regexen Regexen
      * @return An acteur
@@ -677,7 +677,7 @@ public class ActeurFactory {
         @Override
         public com.mastfrog.acteur.State getState() {
             HttpEvent event = deps.get();
-            if (path.equals(event.getPath().toString())) {
+            if (path.equals(event.path().toString())) {
                 return new ConsumedState();
             }
             return new RejectedState();
@@ -714,7 +714,7 @@ public class ActeurFactory {
             HttpEvent event = deps.get();
             for (String regex : regexen) {
                 Pattern p = cache.getPattern(regex);
-                boolean matches = p.matcher(event.getPath().toString()).matches();
+                boolean matches = p.matcher(event.path().toString()).matches();
                 if (matches) {
                     return new ConsumedState();
                 }
@@ -979,7 +979,7 @@ public class ActeurFactory {
             @Override
             public com.mastfrog.acteur.State getState() {
                 try {
-                    int val = event.get().getContent().readableBytes();
+                    int val = event.get().content().readableBytes();
                     if (val < length) {
                         return new RespondWith(Err.badRequest("Request body must be > " + length + " characters"));
                     }
@@ -997,7 +997,7 @@ public class ActeurFactory {
             @Override
             public com.mastfrog.acteur.State getState() {
                 try {
-                    int val = event.get().getContent().readableBytes();
+                    int val = event.get().content().readableBytes();
                     if (val > length) {
                         return new Acteur.RespondWith(new Err(HttpResponseStatus.REQUEST_ENTITY_TOO_LARGE,
                                 "Request body must be < " + length + " characters"));
@@ -1019,8 +1019,8 @@ public class ActeurFactory {
             @Override
             public com.mastfrog.acteur.State getState() {
                 HttpEvent evt = event.get();
-                if (method.equals(evt.getMethod())) {
-                    if (!evt.getParametersAsMap().keySet().containsAll(Arrays.asList(params))) {
+                if (method.equals(evt.method())) {
+                    if (!evt.urlParametersAsMap().keySet().containsAll(Arrays.asList(params))) {
                         return new RespondWith(Err.badRequest("Required parameters: "
                                 + Arrays.asList(params)));
                     }
@@ -1042,7 +1042,7 @@ public class ActeurFactory {
             @Override
             public com.mastfrog.acteur.State getState() {
                 HttpEvent evt = event.get();
-                if (evt.getPath().toString().isEmpty()) {
+                if (evt.path().toString().isEmpty()) {
                     PathFactory pf = deps.getInstance(PathFactory.class);
                     add(Headers.LOCATION, pf.toExternalPath(to).toURI());
                     return new RespondWith(SEE_OTHER);

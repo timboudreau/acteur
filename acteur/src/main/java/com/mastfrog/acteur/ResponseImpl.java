@@ -376,7 +376,7 @@ final class ResponseImpl extends Response {
     }
 
     boolean isKeepAlive(Event<?> evt) {
-        boolean result = evt instanceof HttpEvent ? ((HttpEvent) evt).isKeepAlive() : false;
+        boolean result = evt instanceof HttpEvent ? ((HttpEvent) evt).requestsConnectionStayOpen() : false;
         if (result) {
             result = !isHttp10StyleResponse();
         }
@@ -552,7 +552,7 @@ final class ResponseImpl extends Response {
             throw new IllegalStateException("Call to write message outside request scope");
         }
         NettyContentMarshallers marshallers = p.getApplication().getDependencies().getInstance(NettyContentMarshallers.class);
-        ByteBuf buf = evt.getChannel().alloc().ioBuffer();
+        ByteBuf buf = evt.channel().alloc().ioBuffer();
         marshallers.write(message, buf, charset);
         return buf;
     }

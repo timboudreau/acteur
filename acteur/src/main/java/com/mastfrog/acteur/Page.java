@@ -47,8 +47,15 @@ import java.util.Map;
  * Really an aggregation of Acteurs and a place to set header values; in recent
  * versions of Acteur it is rarely necessary to implement this - instead, simply
  * annotate your entry-point Acteur with &#064;HttpCall and one will be
- * generated for you under-the-hood.
- *
+ * generated for you under-the-hood, and use &#064;Precursors and 
+ * &#064;Concluders to specify Acteurs that should run before/after that one.
+ * <p>
+ * This class was central to the Acteur 1.0 API, but at this point is mainly an
+ * implementation class.  Page subclasses are still generated from annotations, but
+ * are rarely used in application code at this point;  they are still useful in
+ * unit and integration tests where you may have multiple applications for different
+ * tests.
+ * <p>
  * To implement, simply subclass and add zero or more
  * <code><a href="Acteur.html">Acteur</a></code> classes or instances using the
  * <code>add()</code> method. Each Acteur is called in succession and can do one
@@ -82,6 +89,11 @@ public abstract class Page implements Iterable<Acteur> {
         acteurs.add(action);
     }
 
+    /**
+     * Get a description used in the generated web API help.
+     * 
+     * @return A description
+     */
     protected String getDescription() {
         Description desc = getClass().getAnnotation(Description.class);
         return desc != null ? desc.value() : getClass().getSimpleName();

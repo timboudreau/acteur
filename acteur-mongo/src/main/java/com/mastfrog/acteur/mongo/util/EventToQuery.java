@@ -42,7 +42,7 @@ public final class EventToQuery implements Provider<BasicDBObject> {
         BasicDBObject obj = new BasicDBObject();
         for (String param : config) {
             boolean found = false;
-            String v = evt.getParameter(param);
+            String v = evt.urlParameter(param);
             if (v == null) {
                 continue;
             }
@@ -72,7 +72,7 @@ public final class EventToQuery implements Provider<BasicDBObject> {
             }
         }
 
-        for (Map.Entry<String, String> e : evt.getParametersAsMap().entrySet()) {
+        for (Map.Entry<String, String> e : evt.urlParametersAsMap().entrySet()) {
             if (config.isIgnoredParameter(e.getKey()) || config.isNumericParameter(e.getKey())) {
                 continue;
             }
@@ -94,7 +94,7 @@ public final class EventToQuery implements Provider<BasicDBObject> {
 
     protected BasicDBObject onQueryConstructed(HttpEvent evt, BasicDBObject obj) {
         if (!obj.isEmpty()) {
-            String idparam = evt.getParameter(_id);
+            String idparam = evt.urlParameter(_id);
             if (idparam != null) {
                 try {
                     obj.put(_id, new ObjectId(idparam));

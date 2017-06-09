@@ -218,7 +218,7 @@ public final class ClasspathResources implements StaticResources {
 
         @Override
         public void decorateResponse(HttpEvent evt, String path, Response response, boolean chunked) {
-            String ua = evt.getHeader("User-Agent");
+            String ua = evt.header("User-Agent");
             if (ua != null && !ua.contains("MSIE")) {
                 response.add(VARY, new HeaderValueType<?>[]{ACCEPT_ENCODING});
             }
@@ -261,14 +261,14 @@ public final class ClasspathResources implements StaticResources {
         @Override
         public void attachBytes(HttpEvent evt, Response response, boolean chunked) {
             if (isGzip(evt)) {
-                CompressedBytesSender sender = new CompressedBytesSender(compressed, !evt.isKeepAlive(), chunked);
+                CompressedBytesSender sender = new CompressedBytesSender(compressed, !evt.requestsConnectionStayOpen(), chunked);
                 response.contentWriter(sender);
 //                BytesSender sender = new BytesSender(compressed);
 //                response.contentWriter(sender);
             } else {
 //                BytesSender sender = new BytesSender(bytes);
 //                response.contentWriter(sender);
-                CompressedBytesSender c = new CompressedBytesSender(bytes, !evt.isKeepAlive(), chunked);
+                CompressedBytesSender c = new CompressedBytesSender(bytes, !evt.requestsConnectionStayOpen(), chunked);
                 response.contentWriter(c);
             }
         }
@@ -284,7 +284,7 @@ public final class ClasspathResources implements StaticResources {
         if (!internalGzip) {
             return false;
         }
-        String hdr = evt.getHeader(HttpHeaders.Names.ACCEPT_ENCODING);
+        String hdr = evt.header(HttpHeaders.Names.ACCEPT_ENCODING);
         return hdr != null && hdr.toLowerCase().contains("gzip");
     }
 

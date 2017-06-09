@@ -16,7 +16,7 @@ public class TarpitCacheKeyFactory {
      * @return The key or null if none can be computed
      */
     public String createKey(HttpEvent evt) {
-        SocketAddress addr = evt.getRemoteAddress();
+        SocketAddress addr = evt.remoteAddress();
         if (!(addr instanceof InetSocketAddress)) {
             return null;
         }

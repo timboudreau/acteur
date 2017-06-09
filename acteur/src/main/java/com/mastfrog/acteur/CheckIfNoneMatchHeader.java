@@ -44,7 +44,7 @@ public final class CheckIfNoneMatchHeader extends Acteur {
     CheckIfNoneMatchHeader(HttpEvent event, Page page) throws Exception {
         Checks.notNull("event", event);
         Checks.notNull("page", page);
-        CharSequence etag = event.getHeader(IF_NONE_MATCH);
+        CharSequence etag = event.header(IF_NONE_MATCH);
         CharSequence pageEtag = response().get(Headers.ETAG);
         if (etag != null && pageEtag != null && Strings.charSequencesEqual(etag, pageEtag)) {
             reply(NOT_MODIFIED);

@@ -1,4 +1,4 @@
-/* 
+/*
  * The MIT License
  *
  * Copyright 2013 Tim Boudreau.
@@ -36,21 +36,28 @@ import java.net.SocketAddress;
  */
 public interface Event<T> {
 
-    Channel getChannel();
+    /**
+     * Get the Netty channel this request is travelling through.
+     *
+     * @return The channel
+     */
+    Channel channel();
 
     /**
-     * Get the actual HTTP request in all its gory detail
+     * Get the actual HTTP request.
      *
      * @return An http request
      */
-    T getRequest();
+    T request();
 
     /**
-     * Get the remote address of whoever made the request
+     * Get the remote address of whoever made the request. The framework will
+     * take care of interpreting HTTP headers used by proxies to represent the
+     * real origin.
      *
-     * @return
+     * @return An address
      */
-    SocketAddress getRemoteAddress();
+    SocketAddress remoteAddress();
 
     /**
      * Will use Jackson to parse the request body and return an object of the
@@ -63,7 +70,70 @@ public interface Event<T> {
      * @throws IOException if the body is malformed or for some other reason,
      * cannot be parsed
      */
-    <T> T getContentAsJSON(Class<T> type) throws IOException;
+    <T> T jsonContent(Class<T> type) throws IOException;
 
-    ByteBuf getContent() throws IOException;
+    /**
+     * Get the raw request body, if any.
+     *
+     * @return A bytebuf if one is available.
+     * @throws IOException If something goes wrong
+     */
+    ByteBuf content() throws IOException;
+
+    @Deprecated
+    default Channel getChannel() {
+        return channel();
+    }
+
+    /**
+     * Get the actual HTTP request.
+     *
+     * @return An http request
+     * @deprecated use request()
+     */
+    @Deprecated
+    default T getRequest() {
+        return request();
+    }
+
+    /**
+     * Get the remote address of whoever made the request, if necessary,
+     * interpreting HTTP proxy headers to give the <i>real</i> remote address,
+     * not that of the reverse proxy.
+     *
+     * @return An address
+     * @deprecated use remoteAddress().
+     */
+    @Deprecated
+    default SocketAddress getRemoteAddress() {
+        return remoteAddress();
+    }
+
+    /**
+     * Will use Jackson to parse the request body and return an object of the
+     * type requested if possible.
+     * <p/>
+     *
+     * @param <T> The type
+     * @param type The type of object to return
+     * @return An object of type T
+     * @throws IOException if the body is malformed or for some other reason,
+     * cannot be parsed
+     * @deprecated use jsonContent()
+     */
+    @Deprecated
+    default <T> T getContentAsJSON(Class<T> type) throws IOException {
+        return jsonContent(type);
+    }
+
+    /**
+     * Get the Netty channel this request is travelling through.
+     *
+     * @return The channel
+     * @deprecated use content()
+     */
+    @Deprecated
+    default ByteBuf getContent() throws IOException {
+        return content();
+    }
 }

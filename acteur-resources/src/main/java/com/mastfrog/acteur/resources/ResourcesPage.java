@@ -79,7 +79,7 @@ public class ResourcesPage extends Page {
         @Inject
         ResourceNameMatcher(HttpEvent evt, StaticResources res, Settings settings, ExpiresPolicy policy, Page page) throws Exception {
             String base = settings.getString(SETTINGS_KEY_STATIC_RESOURCES_BASE_URL_PATH);
-            String path = evt.getPath().toString();
+            String path = evt.path().toString();
             if (base != null && !base.isEmpty()) {
                 Pattern p = Pattern.compile(base);
                 Matcher m = p.matcher(path);
@@ -135,7 +135,7 @@ public class ResourcesPage extends Page {
         BytesWriter(HttpEvent evt, Resource r) throws Exception {
             setState(new RespondWith(HttpResponseStatus.OK));
             setChunked(false);
-            if (evt.getMethod() != Method.HEAD) {
+            if (evt.method() != Method.HEAD) {
                 Response rr = response();
                 r.attachBytes(evt, rr, chunked);
             }

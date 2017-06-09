@@ -79,7 +79,7 @@ public abstract class ClasspathResourcePage extends Page {
     @Deprecated
     @SuppressWarnings("LeakingThisInConstructor")
     protected ClasspathResourcePage(final Application app, final HttpEvent event, ActeurFactory f, String... patterns) {
-        this.path = event.getPath();
+        this.path = event.path();
 
         add(f.matchMethods(com.mastfrog.acteur.headers.Method.GET, com.mastfrog.acteur.headers.Method.HEAD));
         add(f.matchPath(patterns));
@@ -88,7 +88,7 @@ public abstract class ClasspathResourcePage extends Page {
 
         add(f.sendNotModifiedIfETagHeaderMatches());
         add(f.sendNotModifiedIfIfModifiedSinceHeaderMatches());
-        if (event.getMethod() != com.mastfrog.acteur.headers.Method.HEAD) {
+        if (event.method() != com.mastfrog.acteur.headers.Method.HEAD) {
             add(WriteBodyActeur.class);
         } else {
             add(f.responseCode(HttpResponseStatus.OK));
@@ -110,10 +110,10 @@ public abstract class ClasspathResourcePage extends Page {
         @Inject
         @SuppressWarnings("ArrayIsStoredDirectly")
         WriteBodyActeur(HttpEvent event, Page page) throws IOException {
-            byte[] content = ((ClasspathResourcePage) page).getContent(event.getPath());
+            byte[] content = ((ClasspathResourcePage) page).getContent(event.path());
             setState(new RespondWith(HttpResponseStatus.OK));
-            setResponseWriter(new BodyWriter(content, event.isKeepAlive()));
-            MediaType type = getContentType(event.getPath());
+            setResponseWriter(new BodyWriter(content, event.requestsConnectionStayOpen()));
+            MediaType type = getContentType(event.path());
             if (type != null) {
                 add(CONTENT_TYPE, type);
             }
@@ -149,19 +149,19 @@ public abstract class ClasspathResourcePage extends Page {
         HasStreamAction(Page page, HttpEvent event) {
             boolean hasContent;
             Map<Path, byte[]> m = contentForPathForType.get(page.getClass());
-            hasContent = (m != null && m.containsKey(event.getPath()) || getStream(event.getPath(), page.getClass()) != null);
+            hasContent = (m != null && m.containsKey(event.path()) || getStream(event.path(), page.getClass()) != null);
             if (hasContent) {
-                String cachedEtag = getCachedEtag(page.getClass(), event.getPath());
+                String cachedEtag = getCachedEtag(page.getClass(), event.path());
                 if (cachedEtag != null) {
                     add(ETAG, cachedEtag);
                 }
-                Long cachedSize = getCachedSize(page.getClass(), event.getPath());
+                Long cachedSize = getCachedSize(page.getClass(), event.path());
                 if (cachedSize != null) {
                     add(Headers.CONTENT_LENGTH, cachedSize);
                 }
                 setState(new ConsumedState());
             } else {
-                setState(new RespondWith(HttpResponseStatus.NOT_FOUND, "No such page " + event.getPath()));
+                setState(new RespondWith(HttpResponseStatus.NOT_FOUND, "No such page " + event.path()));
             }
         }
     }

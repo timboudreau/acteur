@@ -61,7 +61,7 @@ final class CursorWriter<T> implements ChannelFutureListener, SingleResultCallba
     @Inject
     public CursorWriter(final AsyncBatchCursor<T> cursor, HttpEvent evt, ApplicationControl ctrl, ConstantBuffers constant, Codec codec) {
         this.cursor = cursor;
-        this.closeConnection = !evt.isKeepAlive();
+        this.closeConnection = !evt.requestsConnectionStayOpen();
         this.ctrl = ctrl;
         this.constant = constant;
         this.codec = codec;

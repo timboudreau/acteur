@@ -64,7 +64,7 @@ final class HelpPage extends Page {
 
         @Inject
         HelpActeur(Application app, HttpEvent evt, Charset charset, ZonedDateTime serverStartTime) {
-            this.html = "true".equals(evt.getParameter("html"));
+            this.html = "true".equals(evt.urlParameter("html"));
             if (html) {
                 add(Headers.CONTENT_TYPE, MediaType.HTML_UTF_8.withCharset(charset));
             }

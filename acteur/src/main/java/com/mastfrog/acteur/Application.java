@@ -461,7 +461,7 @@ public class Application implements Iterable<Page> {
         Headers.write(Headers.SERVER, getName(), response);
         Headers.write(Headers.DATE, ZonedDateTime.now(), response);
         if (debug) {
-            String pth = event instanceof HttpEvent ? ((HttpEvent) event).getPath().toString() : "";
+            String pth = event instanceof HttpEvent ? ((HttpEvent) event).path().toString() : "";
             Headers.write(X_REQ_PATH, pth, response);
             Headers.write(X_ACTEUR, action.getClass().getName(), response);
             Headers.write(X_PAGE, page.getClass().getName(), response);
@@ -482,7 +482,7 @@ public class Application implements Iterable<Page> {
      * @return
      */
     protected HttpResponse createNotFoundResponse(Event<?> event) {
-        ByteBuf buf = event.getChannel().alloc().buffer(90);
+        ByteBuf buf = event.channel().alloc().buffer(90);
         String msg = "<html><head>"
                 + "<title>Not Found</title></head><body><h1>Not Found</h1>"
                 + event + " was not found\n<body></html>\n";
@@ -495,7 +495,7 @@ public class Application implements Iterable<Page> {
         Headers.write(Headers.CACHE_CONTROL, new CacheControl(CacheControlTypes.no_cache), resp);
         Headers.write(Headers.DATE, ZonedDateTime.now(), resp);
         if (debug) {
-            String pth = event instanceof HttpEvent ? ((HttpEvent) event).getPath().toString() : "";
+            String pth = event instanceof HttpEvent ? ((HttpEvent) event).path().toString() : "";
             Headers.write(X_REQ_PATH, pth, resp);
         }
         return resp;
@@ -620,7 +620,7 @@ public class Application implements Iterable<Page> {
         HttpResponse response = createNotFoundResponse(event);
         onBeforeRespond(id, event, response.getStatus());
         ChannelFuture fut = channel.writeAndFlush(response);
-        boolean keepAlive = event instanceof HttpEvent ? ((HttpEvent) event).isKeepAlive() : false;
+        boolean keepAlive = event instanceof HttpEvent ? ((HttpEvent) event).requestsConnectionStayOpen() : false;
         if (keepAlive) {
             fut.addListener(ChannelFutureListener.CLOSE);
         }

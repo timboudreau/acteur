@@ -23,11 +23,11 @@ public final class Closables {
 
     private final List<AutoCloseable> closeables = new CopyOnWriteArrayList<>();
     private final List<Timer> timers = new CopyOnWriteArrayList<>();
-    private final CloseWhenChannelCloses closeListener = new CloseWhenChannelCloses();
+    private final CloseWhenChannelCloses closeListener;
     private final ApplicationControl application;
 
     Closables(Channel channel, ApplicationControl application) {
-        channel.closeFuture().addListener(closeListener);
+        channel.closeFuture().addListener(closeListener = new CloseWhenChannelCloses(channel));
         this.application = application;
     }
 
@@ -60,8 +60,33 @@ public final class Closables {
         add(new RunnableWrapper(run));
         return this;
     }
+    
+    void forceClose() throws Exception {
+        closeListener.earlyClose();
+    }
+    
+    void closeOn(ChannelFuture future) {
+        future.addListener(closeListener);
+        closeListener.detach();
+    }
 
-    class CloseWhenChannelCloses implements ChannelFutureListener {
+    final class CloseWhenChannelCloses implements ChannelFutureListener {
+        private final Channel channel;
+
+        public CloseWhenChannelCloses(Channel channel) {
+            this.channel = channel;
+            channel.closeFuture().addListener(this);
+        }
+        
+        void detach() {
+            channel.closeFuture().removeListener(this);
+        }
+        
+        void earlyClose() throws Exception {
+            detach();
+            close();
+        }
+        
 
         @Override
         public void operationComplete(ChannelFuture f) throws Exception {

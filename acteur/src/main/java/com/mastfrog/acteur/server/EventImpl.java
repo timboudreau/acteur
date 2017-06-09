@@ -92,28 +92,28 @@ final class EventImpl implements HttpEvent {
     }
 
     @Override
-    public Channel getChannel() {
+    public Channel channel() {
         return channel;
     }
 
     @Override
-    public ByteBuf getContent() {
+    public ByteBuf content() {
         return req instanceof ByteBufHolder ? ((ByteBufHolder) req).content()
                 : Unpooled.EMPTY_BUFFER;
     }
 
     @Override
-    public <T> T getContentAsJSON(Class<T> type) throws IOException {
-        MediaType mimeType = getHeader(Headers.CONTENT_TYPE);
+    public <T> T jsonContent(Class<T> type) throws IOException {
+        MediaType mimeType = header(Headers.CONTENT_TYPE);
         if (mimeType == null) {
             mimeType = MediaType.ANY_TYPE;
         }
-        return converter.toObject(getContent(), mimeType, type);
+        return converter.toObject(content(), mimeType, type);
     }
 
     @Override
-    public String getContentAsString() throws IOException {
-        MediaType type = getHeader(Headers.CONTENT_TYPE);
+    public String stringContent() throws IOException {
+        MediaType type = header(Headers.CONTENT_TYPE);
         if (type == null) {
             type = MediaType.PLAIN_TEXT_UTF_8;
         }
@@ -123,16 +123,16 @@ final class EventImpl implements HttpEvent {
         } else {
             encoding = CharsetUtil.UTF_8;
         }
-        return converter.toString(getContent(), encoding);
+        return converter.toString(content(), encoding);
     }
 
     @Override
-    public HttpRequest getRequest() {
+    public HttpRequest request() {
         return req;
     }
 
     @Override
-    public Method getMethod() {
+    public Method method() {
         try {
             return Method.get(req);
         } catch (IllegalArgumentException e) {
@@ -141,43 +141,43 @@ final class EventImpl implements HttpEvent {
     }
 
     @Override
-    public SocketAddress getRemoteAddress() {
+    public SocketAddress remoteAddress() {
         return address;
     }
 
     @Override
-    public String getHeader(CharSequence nm) {
+    public String header(CharSequence nm) {
         return req.headers().get(nm);
     }
 
     @Override
-    public String getParameter(String param) {
-        return getParametersAsMap().get(param);
+    public String urlParameter(String param) {
+        return urlParametersAsMap().get(param);
     }
 
     @Override
-    public Path getPath() {
+    public Path path() {
         return path;
     }
 
     @Override
-    public <T> List<T> getHeaders(HeaderValueType<T> headerType) {
-        List<CharSequence> headers = CollectionUtils.<CharSequence>generalize(getRequest().headers().getAll(headerType.name()));
+    public <T> List<T> headers(HeaderValueType<T> headerType) {
+        List<CharSequence> headers = CollectionUtils.<CharSequence>generalize(request().headers().getAll(headerType.name()));
         return CollectionUtils.convertedList(headers, headerType, CharSequence.class, headerType.type());
     }
 
     @Override
-    public Map<CharSequence, CharSequence> getHeadersAsMap() {
+    public Map<CharSequence, CharSequence> headersAsMap() {
         Map<CharSequence, CharSequence> headers = CollectionUtils.caseInsensitiveStringMap();
-        for (Map.Entry<String, String> e : getRequest().headers().entries()) {
+        for (Map.Entry<String, String> e : request().headers().entries()) {
             headers.put(e.getKey(), e.getValue());
         }
         return headers;
     }
 
     @Override
-    public <T> T getHeader(HeaderValueType<T> value) {
-        String header = getHeader(value.name());
+    public <T> T header(HeaderValueType<T> value) {
+        String header = header(value.name());
         if (header != null) {
             return value.toValue(header);
         }
@@ -186,7 +186,7 @@ final class EventImpl implements HttpEvent {
     private Map<String, String> paramsMap;
 
     @Override
-    public synchronized Map<String, String> getParametersAsMap() {
+    public synchronized Map<String, String> urlParametersAsMap() {
         if (paramsMap == null) {
             QueryStringDecoder queryStringDecoder = new QueryStringDecoder(req.uri());
             Map<String, List<String>> params = queryStringDecoder.parameters();
@@ -204,12 +204,12 @@ final class EventImpl implements HttpEvent {
 
     @Override
     @SuppressWarnings("unchecked")
-    public <T> T getParametersAs(Class<T> type) {
-        return converter.toObject(getParametersAsMap(), type);
+    public <T> T urlParametersAs(Class<T> type) {
+        return converter.toObject(urlParametersAsMap(), type);
     }
 
     @Override
-    public boolean isKeepAlive() {
+    public boolean requestsConnectionStayOpen() {
         if (neverKeepAlive) {
             return false;
         }
@@ -221,8 +221,8 @@ final class EventImpl implements HttpEvent {
     }
 
     @Override
-    public Optional<Integer> getIntParameter(String name) {
-        String val = getParameter(name);
+    public Optional<Integer> intUrlParameter(String name) {
+        String val = urlParameter(name);
         if (val != null) {
             int ival = Integer.parseInt(val);
             return Optional.of(ival);
@@ -231,8 +231,8 @@ final class EventImpl implements HttpEvent {
     }
 
     @Override
-    public Optional<Long> getLongParameter(String name) {
-        String val = getParameter(name);
+    public Optional<Long> longUrlParameter(String name) {
+        String val = urlParameter(name);
         if (val != null) {
             long lval = Long.parseLong(val);
             return Optional.of(lval);

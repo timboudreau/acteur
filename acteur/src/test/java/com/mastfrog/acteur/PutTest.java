@@ -77,7 +77,7 @@ public class PutTest {
         @Inject
         EchoActeur(HttpEvent evt) {
             add(Headers.CACHE_CONTROL, CacheControl.$(CacheControlTypes.Public));
-            if (evt.getMethod() == Method.GET) {
+            if (evt.method() == Method.GET) {
                 setState(new RespondWith(HttpResponseStatus.OK, "Hello world"));
             } else {
                 setState(new RespondWith(HttpResponseStatus.OK));
@@ -89,13 +89,13 @@ public class PutTest {
     private static class RWriter extends ResponseWriter {
         @Override
         public ResponseWriter.Status write(Event<?> evt, Output out) throws Exception {
-            FullHttpRequest req = evt.getRequest() instanceof FullHttpRequest
-                    ? (FullHttpRequest) evt.getRequest() : null;
+            FullHttpRequest req = evt.request() instanceof FullHttpRequest
+                    ? (FullHttpRequest) evt.request() : null;
             if (req != null) {
                 ByteBuf buf = req.content();
                 out.write(buf);
             } else {
-                throw new AssertionError("Not a FullHttpRequest: " + evt.getRequest() + " " + Types.list(evt.getRequest().getClass()));
+                throw new AssertionError("Not a FullHttpRequest: " + evt.request() + " " + Types.list(evt.request().getClass()));
             }
             return ResponseWriter.Status.DONE;
         }

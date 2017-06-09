@@ -39,11 +39,11 @@ class DefaultRequestLogger implements RequestLogger {
     @Override
     public void onBeforeEvent(RequestID rid, Event<?> event) {
 //        int reqNum = rid == null ? -1 : rid.getIndex();
-//        Object msg = event.getRequest();
+//        Object msg = event.request();
 //        String uri = msg instanceof HttpRequest ? ((HttpRequest) msg).getUri() :
 //                msg instanceof WebSocketFrame ? ((WebSocketFrame) msg).toString() :
 //                "";
-////        System.out.println(reqNum + " " + event.getRemoteAddress() + " " + event.getMethod() + " " + event.getPath() + " " + uri);
+////        System.out.println(reqNum + " " + event.remoteAddress() + " " + event.method() + " " + event.path() + " " + uri);
     }
 
     @Override
@@ -52,15 +52,15 @@ class DefaultRequestLogger implements RequestLogger {
         StringBuilder sb = new StringBuilder(120)
                 .append(reqNum).append('\t')
                 .append(rid == null ? TimeUtil.format(Duration.ZERO) : TimeUtil.format(rid.getDuration()))
-                .append('\t').append(event.getRemoteAddress())
+                .append('\t').append(event.remoteAddress())
                 .append("\t").append(status)
                 .append("\t").append(event);
         if (event instanceof HttpEvent) {
-            CharSequence referrer = ((HttpEvent) event).getHeader(Headers.REFERRER);
+            CharSequence referrer = ((HttpEvent) event).header(Headers.REFERRER);
             if (referrer != null) {
                 sb.append('\t').append(referrer);
             }
-            CharSequence userAgent = ((HttpEvent) event).getHeader(Headers.USER_AGENT);
+            CharSequence userAgent = ((HttpEvent) event).header(Headers.USER_AGENT);
             if (userAgent != null) {
                 sb.append('\t').append(userAgent);
             }            

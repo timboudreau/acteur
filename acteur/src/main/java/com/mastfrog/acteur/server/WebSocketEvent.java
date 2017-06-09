@@ -28,27 +28,27 @@ final class WebSocketEvent implements Event<WebSocketFrame> {
     }
 
     @Override
-    public Channel getChannel() {
+    public Channel channel() {
         return channel;
     }
 
     @Override
-    public WebSocketFrame getRequest() {
+    public WebSocketFrame request() {
         return frame;
     }
 
     @Override
-    public SocketAddress getRemoteAddress() {
+    public SocketAddress remoteAddress() {
         return addr;
     }
 
     @Override
-    public <T> T getContentAsJSON(Class<T> type) throws IOException {
+    public <T> T jsonContent(Class<T> type) throws IOException {
         return mapper.readValue(new ByteBufInputStream(frame.content()), type);
     }
 
     @Override
-    public ByteBuf getContent() throws IOException {
+    public ByteBuf content() throws IOException {
         return frame.content();
     }
 }

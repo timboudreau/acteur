@@ -147,7 +147,7 @@ public class AppTest {
 
         @Inject
         AuthenticationAction(HttpEvent event) {
-            BasicCredentials credentials = event.getHeader(Headers.AUTHORIZATION);
+            BasicCredentials credentials = event.header(Headers.AUTHORIZATION);
             if (credentials != null) {
                 next(credentials);
                 System.err.println("CREDENTIALS " + credentials.username + " pw=" + credentials.password);
@@ -162,7 +162,7 @@ public class AppTest {
 
         @Inject
         ConvertHeadersAction(HttpEvent event) {
-            ReqParams p = event.getParametersAs(ReqParams.class);
+            ReqParams p = event.urlParametersAs(ReqParams.class);
             if (p == null) {
                 System.err.println("PARAM name is " + p.name() + " realname " + p.realname());
                 setState(new RejectedState());
@@ -177,7 +177,7 @@ public class AppTest {
 
         @Inject
         ConvertBodyAction(HttpEvent event, ContentConverter cvt) throws IOException {
-            Thing thing = cvt.readObject(event.getContent(), event.getHeader(Headers.CONTENT_TYPE), Thing.class);
+            Thing thing = cvt.readObject(event.content(), event.header(Headers.CONTENT_TYPE), Thing.class);
             if (thing == null) {
                 setState(new RejectedState());
             } else {

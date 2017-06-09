@@ -71,7 +71,7 @@ public class AuthenticateBasicActeur extends AuthenticationActeur {
             setState(new RespondWith(SERVICE_UNAVAILABLE, "Too many bad password attempts"));
             return;
         }
-        BasicCredentials credentials = event.getHeader(Headers.AUTHORIZATION);
+        BasicCredentials credentials = event.header(Headers.AUTHORIZATION);
         if (credentials == null) {
             unauthorized(r, event, decorator, page, response());
         } else {

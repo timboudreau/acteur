@@ -25,7 +25,7 @@ public class CursorWriter extends ResponseWriter {
 
     @Inject
     public CursorWriter(final DBCursor cursor, Closables clos, HttpEvent evt, Provider<MapFilter> filter) {
-        this(cursor, !evt.isKeepAlive(), filter);
+        this(cursor, !evt.requestsConnectionStayOpen(), filter);
         clos.add(cursor);
     }
 

@@ -42,7 +42,7 @@ public final class CheckIfModifiedSinceHeader extends Acteur {
 
     @Inject
     CheckIfModifiedSinceHeader(HttpEvent event, Page page) {
-        ZonedDateTime lastModifiedMustBeNewerThan = event.getHeader(IF_MODIFIED_SINCE);
+        ZonedDateTime lastModifiedMustBeNewerThan = event.header(IF_MODIFIED_SINCE);
         if (lastModifiedMustBeNewerThan != null) {
             ZonedDateTime pageLastModified = response().get(Headers.LAST_MODIFIED);
             if (pageLastModified != null) {
@@ -53,7 +53,7 @@ public final class CheckIfModifiedSinceHeader extends Acteur {
             }
         }
         /*
-        ZonedDateTime lastModifiedMustBeNewerThan = event.getHeader(IF_MODIFIED_SINCE);
+        ZonedDateTime lastModifiedMustBeNewerThan = event.header(IF_MODIFIED_SINCE);
         ZonedDateTime pageLastModified = response().get(Headers.LAST_MODIFIED);
         boolean notModified = lastModifiedMustBeNewerThan != null && pageLastModified != null;
         if (notModified) {

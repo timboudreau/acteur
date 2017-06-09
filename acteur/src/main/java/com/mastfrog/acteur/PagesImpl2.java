@@ -370,7 +370,7 @@ class PagesImpl2 {
         public PageChain convert(Page r) {
             r.setApplication(application);
             if (event instanceof HttpEvent) {
-                Path pth = ((HttpEvent) event).getPath();
+                Path pth = ((HttpEvent) event).path();
                 Thread.currentThread().setName(pth + " for " + r.getClass().getName());
             }
             PageChain result = new PageChain(application.getDependencies(), application.getRequestScope(), Acteur.class, r, r, id, event, clos);
