@@ -41,6 +41,8 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufHolder;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
+import io.netty.handler.codec.http.HttpHeaderNames;
+import io.netty.handler.codec.http.HttpHeaderValues;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.QueryStringDecoder;
 import io.netty.util.CharsetUtil;
@@ -213,11 +215,14 @@ final class EventImpl implements HttpEvent {
         if (neverKeepAlive) {
             return false;
         }
-        String hdr = req.headers().get("Connection");
-        if (hdr == null) {
-            return false;
-        }
-        return "keep-alive".equalsIgnoreCase(hdr);
+        boolean hasKeepAlive = req.headers()
+                .contains(HttpHeaderNames.CONNECTION, HttpHeaderValues.KEEP_ALIVE, true);
+//        String hdr = req.headers().get(HttpHeaderNames.CONNECTION);
+//        if (hdr == null) {
+//            return false;
+//        }
+//        return "keep-alive".equalsIgnoreCase(hdr);
+        return hasKeepAlive;
     }
 
     @Override

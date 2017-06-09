@@ -54,7 +54,7 @@ import javax.inject.Inject;
  *
  * @author Tim Boudreau
  */
-public class SseActeur extends Acteur {
+public final class SseActeur extends Acteur {
 
     private static final MediaType TYPE = MediaType.parse("text/event-stream; charset=UTF-8");
 

@@ -29,7 +29,7 @@ public final class CookieAuthModule extends AbstractModule {
      */
     public <T> CookieAuthModule(ReentrantScope scope, Class<T> userType, Class<? extends UserFinder<T>> finderType) {
         this.scope = scope;
-        types = new UserTypeAndFinderType<T>(userType, finderType);
+        types = new UserTypeAndFinderType<>(userType, finderType);
     }
 
     @Override
@@ -47,7 +47,7 @@ public final class CookieAuthModule extends AbstractModule {
         final Class<T> userType;
         final Class<? extends UserFinder<T>> finderType;
 
-        public UserTypeAndFinderType(Class<T> userType, Class<? extends UserFinder<T>> finderType) {
+        UserTypeAndFinderType(Class<T> userType, Class<? extends UserFinder<T>> finderType) {
             this.userType = userType;
             this.finderType = finderType;
         }

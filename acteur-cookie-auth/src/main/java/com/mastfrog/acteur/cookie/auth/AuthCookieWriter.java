@@ -12,8 +12,8 @@ import static com.mastfrog.acteur.cookie.auth.CookieAuthenticator.SETTINGS_KEY_U
 import static com.mastfrog.acteur.cookie.auth.CookieAuthenticator.SETTINGS_KEY_USE_COOKIE_PORTS;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.util.Strings;
-import io.netty.handler.codec.http.Cookie;
-import io.netty.handler.codec.http.DefaultCookie;
+import io.netty.handler.codec.http.cookie.Cookie;
+import io.netty.handler.codec.http.cookie.DefaultCookie;
 import io.netty.util.AsciiString;
 import java.util.ArrayList;
 import java.util.List;
@@ -27,7 +27,6 @@ final class AuthCookieWriter {
 
     private final String cookieName;
     private final boolean useCookieHost;
-    private final boolean useCookiePorts;
     private final boolean cookieHttpOnly;
     private final String cookieHost;
     private final SessionTimeout timeout;
@@ -37,7 +36,6 @@ final class AuthCookieWriter {
     AuthCookieWriter(Settings settings, SessionTimeout timeout) {
         cookieName = settings.getString(SETTINGS_KEY_COOKIE_NAME, DEFAULT_COOKIE_NAME);
         useCookieHost = settings.getBoolean(SETTINGS_KEY_USE_COOKIE_HOST, true);
-        useCookiePorts = settings.getBoolean(SETTINGS_KEY_USE_COOKIE_PORTS, true);
         cookieHttpOnly = settings.getBoolean(SETTINGS_KEY_COOKIE_HTTP_ONLY, true);
         cookieHost = settings.getString(SETTINGS_KEY_COOKIE_HOST);
         port = settings.getInt("port");
@@ -49,11 +47,11 @@ final class AuthCookieWriter {
     }
 
     protected Cookie findCookie(HttpEvent evt) {
-        Cookie[] cookies = evt.header(Headers.COOKIE);
+        Cookie[] cookies = evt.header(Headers.COOKIE_B);
         Cookie cookie = null;
         if (cookies != null && cookies.length > 0) {
             for (Cookie ck : cookies) {
-                if (cookieName.equals(ck.getName())) {
+                if (cookieName.equals(ck.name())) {
                     cookie = ck;
                     break;
                 }
@@ -89,7 +87,7 @@ final class AuthCookieWriter {
             if (cookieHost != null) {
                 int ix = Strings.lastIndexOf(':', cookieHost);
                 if (ix > 0) {
-                    cookieHost = cookieHost.subSequence(0, cookieHost.toString().lastIndexOf(":"));
+                    cookieHost = cookieHost.subSequence(0, cookieHost.toString().lastIndexOf(':'));
                 }
             }
         }
@@ -109,9 +107,9 @@ final class AuthCookieWriter {
             if (cookieHttpOnly) {
                 cookie.setHttpOnly(true);
             }
-            if (useCookiePorts) {
-                cookie.setPorts(cookiePorts());
-            }
+//            if (useCookiePorts) {
+//                cookie.setPorts(cookiePorts());
+//            }
         }
     }
 
@@ -129,14 +127,14 @@ final class AuthCookieWriter {
         DefaultCookie ck = new DefaultCookie(cookieName, cookieValue);
         ck.setMaxAge(timeout.get().getSeconds());
         configureCookie(evt, ck);
-        on.add(Headers.SET_COOKIE, ck);
+        on.add(Headers.SET_COOKIE_B, ck);
     }
 
     public void discardCookie(HttpEvent evt, Response on) {
         DefaultCookie cookie = new DefaultCookie(cookieName(), "");
         configureCookie(evt, cookie);
-        cookie.setDiscard(true);
+//        cookie.setDiscard(true);
         cookie.setMaxAge(0);
-        on.add(Headers.SET_COOKIE, cookie);
+        on.add(Headers.SET_COOKIE_B, cookie);
     }
 }

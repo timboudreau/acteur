@@ -117,7 +117,7 @@ public class EventSink {
                 break;
             }
         }
-        long id = name == null ? count.getAndIncrement() : name.nextId();
+//        long id = name == null ? count.getAndIncrement() : name.nextId();
         Message msg = new Message(name, eventType, count.getAndIncrement(), message);
         messages.offer(msg);
         return this;

@@ -5,7 +5,7 @@ import com.mastfrog.acteur.HttpEvent;
 import com.mastfrog.acteur.Response;
 import com.mastfrog.acteur.cookie.auth.UserFinder.UserAndCookieValue;
 import com.mastfrog.util.Checks;
-import io.netty.handler.codec.http.Cookie;
+import io.netty.handler.codec.http.cookie.Cookie;
 import javax.inject.Singleton;
 
 /**
@@ -20,17 +20,18 @@ final class CookieAuthenticatorImpl implements CookieAuthenticator {
     private final UserFinder<?> userFinder;
 
     @Inject
-    public CookieAuthenticatorImpl(AuthCookieWriter writer, UserFinder<?> userFinder) {
+     CookieAuthenticatorImpl(AuthCookieWriter writer, UserFinder<?> userFinder) {
         this.writer = writer;
         this.userFinder = userFinder;
     }
 
+    @Override
     public Object[] authenticateRequest(HttpEvent evt) throws Exception {
         Checks.notNull("evt", evt);
         Object[] result = null;
         Cookie ck = writer.findCookie(evt);
         if (ck != null) {
-            String cookieValue = ck.getValue();
+            String cookieValue = ck.value();
             if (cookieValue != null && !cookieValue.isEmpty()) {
                 Object user = userFinder.findUser(evt, cookieValue);
                 if (user != null) {
@@ -41,6 +42,7 @@ final class CookieAuthenticatorImpl implements CookieAuthenticator {
         return result;
     }
 
+    @Override
     public Object[] login(HttpEvent evt, LoginInfo info, Response response) throws Exception {
         Checks.notNull("evt", evt);
         Checks.notNull("info", info);

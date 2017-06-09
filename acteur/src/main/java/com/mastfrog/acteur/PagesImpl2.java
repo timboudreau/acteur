@@ -23,6 +23,7 @@
  */
 package com.mastfrog.acteur;
 
+import com.google.common.io.Closeables;
 import com.google.common.net.MediaType;
 import com.google.inject.name.Named;
 import com.mastfrog.acteur.errors.ResponseException;
@@ -48,6 +49,7 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
+import io.netty.handler.codec.http.FullHttpResponse;
 import static io.netty.handler.codec.http.HttpHeaderNames.CONTENT_ENCODING;
 import static io.netty.handler.codec.http.HttpHeaderNames.TRANSFER_ENCODING;
 import io.netty.handler.codec.http.HttpHeaders;
@@ -222,8 +224,8 @@ class PagesImpl2 {
                     }
                     final HttpResponse resp = httpResponse;
                     try {
-
-                        Callable<ChannelFuture> c = new ResponseTrigger(response, resp, state, acteur);
+                        Closables closables = application.getDependencies().getInstance(Closables.class);
+                        Callable<ChannelFuture> c = new ResponseTrigger(response, resp, state, acteur, closables);
                         Duration delay = response.getDelay();
                         if (delay == null) {
                             c.call();
@@ -311,12 +313,14 @@ class PagesImpl2 {
             private final HttpResponse resp;
             private final State state;
             private final Acteur acteur;
+            private final Closables closeables;
 
-            ResponseTrigger(ResponseImpl response, HttpResponse resp, State state, Acteur acteur) {
+            ResponseTrigger(ResponseImpl response, HttpResponse resp, State state, Acteur acteur, Closables closeables) {
                 this.response = response;
                 this.resp = resp;
                 this.state = state;
                 this.acteur = acteur;
+                this.closeables = closeables;
             }
 
             @Override
@@ -328,9 +332,17 @@ class PagesImpl2 {
                 ChannelFuture fut = channel.writeAndFlush(resp);
 
                 final Page pg = state.getLockedPage();
-                fut = response.sendMessage(event, fut, resp);
+                ChannelFuture bodyFuture = response.sendMessage(event, fut, resp);
+                if (bodyFuture == fut && resp instanceof FullHttpResponse) {
+                    // In the case of keep-alive connections (at least where no listeners
+                    // flushing responses later are involved), let database connections, etc.
+                    // be closed when the response is flushed - the connection might be kept
+                    // alive for some time.
+                    // XXX need to solve for the case of flushing multiple chunks with listeners
+                    closeables.closeOn(fut);
+                }
                 application.onAfterRespond(id, event, acteur, pg, state, HttpResponseStatus.OK, resp);
-                return fut;
+                return bodyFuture;
             }
         }
     }

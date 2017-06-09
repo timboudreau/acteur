@@ -564,9 +564,6 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
         return this;
     }
 
-//    public <T extends State & com.mastfrog.acteur.State> State getState() {
-//        return super.getState();
-//    }
     public static Acteur wrap(final Class<? extends Acteur> type, final Dependencies deps) {
         Checks.notNull("type", type);
         final Charset charset = deps.getInstance(Charset.class);

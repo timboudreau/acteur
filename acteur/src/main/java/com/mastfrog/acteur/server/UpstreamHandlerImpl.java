@@ -39,6 +39,7 @@ import io.netty.handler.codec.http.HttpResponse;
 import static io.netty.handler.codec.http.HttpResponseStatus.CONTINUE;
 import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
 import io.netty.handler.codec.http.websocketx.WebSocketFrame;
+import io.netty.util.AsciiString;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import javax.inject.Inject;
@@ -78,6 +79,9 @@ final class UpstreamHandlerImpl extends ChannelInboundHandlerAdapter {
         application.internalOnError(cause);
     }
 
+    
+    private static final AsciiString X_REAL_IP = new AsciiString("X-Real-IP");
+    private static final AsciiString X_FORWARDED_FOR = new AsciiString("X-Forwarded-For");
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
         if (msg instanceof HttpRequest) {
             final HttpRequest request = (HttpRequest) msg;
@@ -86,9 +90,9 @@ final class UpstreamHandlerImpl extends ChannelInboundHandlerAdapter {
             }
             SocketAddress addr = ctx.channel().remoteAddress();
             if (decodeRealIP) {
-                String hdr = request.headers().get("X-Real-IP");
+                String hdr = request.headers().get(X_REAL_IP);
                 if (hdr == null) {
-                    hdr = request.headers().get("X-Forwarded-For");
+                    hdr = request.headers().get(X_FORWARDED_FOR);
                 }
                 if (hdr != null) {
                     addr = InetSocketAddress.createUnresolved(hdr, addr instanceof InetSocketAddress ? ((InetSocketAddress) addr).getPort() : 80);

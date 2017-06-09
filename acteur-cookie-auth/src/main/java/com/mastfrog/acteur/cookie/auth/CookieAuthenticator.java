@@ -26,7 +26,9 @@ public interface CookieAuthenticator {
     public static final String SETTINGS_KEY_COOKIE_HTTP_ONLY = "cookie.http.only";
     /**
      * Whether auth cookies should specify ports.
+     * @deprecated - Netty 4 eliminated setPorts() on DefaultCookie - not used
      */
+    @Deprecated
     public static final String SETTINGS_KEY_USE_COOKIE_PORTS = "use.cookie.ports";
     /**
      * Whether auth headers should be used in non-localhost cookies.
