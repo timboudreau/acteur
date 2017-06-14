@@ -101,6 +101,7 @@ public final class Headers {
     public static final HeaderValueType<HeaderValueType<?>[]> ACCESS_CONTROL_EXPOSE_HEADERS = new HeaderNamesHeader(HttpHeaderNames.ACCESS_CONTROL_EXPOSE_HEADERS);
     public static final HeaderValueType<Boolean> ACCESS_CONTROL_ALLOW_CREDENTIALS = new BooleanHeader(HttpHeaderNames.ACCESS_CONTROL_ALLOW_CREDENTIALS);
     public static final HeaderValueType<CharSequence> X_REQUESTED_WITH = header(new AsciiString("x-requested-with"));
+    public static final HeaderValueType<CharSequence> X_FORWARDED_PROTO = header(new AsciiString("x-forwarded-proto"));
     @Deprecated
     @SuppressWarnings("deprecation")
     public static final HeaderValueType<Cookie> SET_COOKIE = new SetCookieHeader();

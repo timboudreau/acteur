@@ -16,10 +16,6 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>com.google.guava</groupId>
-            <artifactId>guava</artifactId>
-        </dependency>
-        <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>giulius-settings</artifactId>
         </dependency>
@@ -30,6 +26,11 @@
         <dependency>
             <groupId>commons-codec</groupId>
             <artifactId>commons-codec</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.mastfrog</groupId>
+            <artifactId>giulius-tests</artifactId>
+            <scope>test</scope>
         </dependency>
     </dependencies>
     <url>https://github.com/timboudreau/acteur</url>

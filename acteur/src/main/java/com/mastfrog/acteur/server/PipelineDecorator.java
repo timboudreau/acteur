@@ -56,7 +56,12 @@ public interface PipelineDecorator {
      * Name of the pipeline's dispatch handler that invokes acteurs
      */
     public static final String HANDLER = "handler";
+    
+    public static final String SSL_HANDLER = "ssl";
 
+    default void onBeforeInstallSslHandler(ChannelPipeline pipeline) {
+        // do nothing
+    }
     /**
      * Called when the pipeline is first fetched/created, before
      * adding anything

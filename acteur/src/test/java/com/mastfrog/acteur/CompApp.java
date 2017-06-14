@@ -228,13 +228,13 @@ public class CompApp extends Application {
 //                    return;
 //                }
 
-                String content = cvt.toObject(evt.getContent(), evt.getHeader(Headers.CONTENT_TYPE), String.class);
+                String content = cvt.toObject(evt.content(), evt.header(Headers.CONTENT_TYPE), String.class);
 //                String content = evt.getContentAsString();
                 ByteBuf buf = evt.getContent();
 //                String content = buf.readCharSequence(buf.readableBytes(), CharsetUtil.UTF_8).toString();
 
                 System.out.println("CONTENT length: " + content.length());
-                System.out.println("INBOUND CONTENT: '" + content + "' " + evt.getHeader(Headers.CONTENT_TYPE) + " length " + evt.getHeader(Headers.CONTENT_LENGTH) + " encoding " + evt.getHeader(Headers.TRANSFER_ENCODING));
+                System.out.println("INBOUND CONTENT: '" + content + "' " + evt.header(Headers.CONTENT_TYPE) + " length " + evt.header(Headers.CONTENT_LENGTH) + " encoding " + evt.getHeader(Headers.TRANSFER_ENCODING));
                 System.out.println("BUFFER " + buf + " rb " + buf.readableBytes() + " ri " + buf.readerIndex() + " wi " + buf.writerIndex());
 
                 if (content.isEmpty()) {
@@ -319,7 +319,7 @@ public class CompApp extends Application {
             @Inject
             OldStyleActeur(HttpEvent evt, @Named(ServerModule.BACKGROUND_THREAD_POOL_NAME) ExecutorService svc) {
                 this.svc = svc;
-                max = evt.getIntParameter("iters").get();
+                max = evt.intUrlParameter("iters").get();
                 if (max == null) {
                     max = 5;
                 }

@@ -26,12 +26,18 @@ package com.mastfrog.acteur.errors;
 import com.mastfrog.acteur.Acteur;
 import com.mastfrog.acteur.HttpEvent;
 import com.mastfrog.acteur.Page;
+import com.mastfrog.giulius.Ordered;
 import javax.inject.Singleton;
 
 /**
  * Converts exceptions thrown inside Acteurs into error messages.  
  * Multiple ones can be registered.  To register, simply bind your
  * implementation as an eager singleton in your Guice module.
+ * <p>
+ * Note that this class does not suppress <i>logging</i> of exceptions -
+ * to do that, implement an ErrorHandler and bind it as an eager singleton.
+ * This simply decides how to convert a particular exception into an
+ * HTTP response.
  *
  * @author Tim Boudreau
  */
@@ -51,6 +57,10 @@ public abstract class ExceptionEvaluator implements Comparable<ExceptionEvaluato
     }
 
     protected int ordinal() {
+        Ordered ord = getClass().getAnnotation(Ordered.class);
+        if (ord != null) {
+            return ord.value();
+        }
         return 1;
     }
 

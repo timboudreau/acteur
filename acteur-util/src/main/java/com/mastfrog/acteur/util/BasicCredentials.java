@@ -25,7 +25,6 @@ package com.mastfrog.acteur.util;
 
 import java.nio.charset.Charset;
 import java.util.Base64;
-//import java.util.Base64;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 

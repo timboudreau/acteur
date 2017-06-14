@@ -62,6 +62,7 @@ final class UpstreamHandlerImpl extends ChannelInboundHandlerAdapter {
 
     private final boolean decodeRealIP;
     private final ContentConverter converter;
+    private final boolean ssl;
 
     @Inject
     UpstreamHandlerImpl(ApplicationControl application, PathFactory paths, Codec mapper, Settings settings, ContentConverter converter) {
@@ -72,6 +73,7 @@ final class UpstreamHandlerImpl extends ChannelInboundHandlerAdapter {
         aggregateChunks = settings.getBoolean("aggregateChunks", PipelineFactoryImpl.DEFAULT_AGGREGATE_CHUNKS);
         neverKeepAlive = settings.getBoolean("neverKeepAlive", false);
         decodeRealIP = settings.getBoolean(SETTINGS_KEY_DECODE_REAL_IP, true);
+        ssl = settings.getBoolean(ServerModule.SETTINGS_KEY_SSL_ENABLED, false);
     }
 
     @Override
@@ -98,7 +100,7 @@ final class UpstreamHandlerImpl extends ChannelInboundHandlerAdapter {
                     addr = InetSocketAddress.createUnresolved(hdr, addr instanceof InetSocketAddress ? ((InetSocketAddress) addr).getPort() : 80);
                 }
             }
-            EventImpl evt = new EventImpl(request, addr, ctx.channel(), paths, converter);
+            EventImpl evt = new EventImpl(request, addr, ctx.channel(), paths, converter, ssl);
             evt.setNeverKeepAlive(neverKeepAlive);
             application.onEvent(evt, ctx.channel());
         } else if (msg instanceof WebSocketFrame) {

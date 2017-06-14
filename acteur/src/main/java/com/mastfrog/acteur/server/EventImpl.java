@@ -45,6 +45,7 @@ import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaderValues;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.QueryStringDecoder;
+import io.netty.util.AsciiString;
 import io.netty.util.CharsetUtil;
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -66,6 +67,7 @@ final class EventImpl implements HttpEvent {
     private boolean neverKeepAlive = false;
     private final Channel channel;
     private ContentConverter converter;
+    private boolean ssl;
 
     public EventImpl(HttpRequest req, PathFactory paths) {
         this.req = req;
@@ -76,12 +78,25 @@ final class EventImpl implements HttpEvent {
         this.converter = new ContentConverter(codec, Providers.of(Charset.defaultCharset()), null, null);
     }
 
-    public EventImpl(HttpRequest req, SocketAddress addr, Channel channel, PathFactory paths, ContentConverter converter) {
+    public EventImpl(HttpRequest req, SocketAddress addr, Channel channel, PathFactory paths, ContentConverter converter, boolean ssl) {
         this.req = req;
         this.path = paths.toPath(req.uri());
         address = addr;
         this.channel = channel;
         this.converter = converter;
+        this.ssl = ssl;
+    }
+    
+    private static final AsciiString HTTPS = AsciiString.of("https");
+    public boolean isSsl() {
+        boolean result = ssl;
+        if (!result) {
+            CharSequence cs = header(Headers.X_FORWARDED_PROTO);
+            if (cs != null) {
+                result = HTTPS.contentEqualsIgnoreCase(HTTPS);
+            }
+        }
+        return result;
     }
 
     @Override

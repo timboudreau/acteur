@@ -42,6 +42,7 @@ public interface HttpEvent extends Event<HttpRequest> {
      * Get the HTTP method for this request
      *
      * @return A method name
+     * @since 2.0.0
      */
     HttpMethod method();
 
@@ -50,6 +51,7 @@ public interface HttpEvent extends Event<HttpRequest> {
      *
      * @param nm The header name
      * @return The header
+     * @since 2.0.0
      */
     String header(CharSequence nm);
 
@@ -58,6 +60,7 @@ public interface HttpEvent extends Event<HttpRequest> {
      *
      * @param param The parameter name
      * @return A parameter or null
+     * @since 2.0.0
      */
     String urlParameter(String param);
 
@@ -70,6 +73,7 @@ public interface HttpEvent extends Event<HttpRequest> {
      * return <code>foo/bar</code>.
      *
      * @return
+     * @since 2.0.0
      */
     Path path();
 
@@ -89,6 +93,7 @@ public interface HttpEvent extends Event<HttpRequest> {
      * @param <T> The type
      * @param headerType The header
      * @return A list of headers
+     * @since 2.0.0
      */
     <T> List<T> headers(HeaderValueType<T> headerType);
 
@@ -97,6 +102,7 @@ public interface HttpEvent extends Event<HttpRequest> {
      * CharSequence to header value.
      *
      * @return A map.
+     * @since 2.0.0
      */
     Map<CharSequence, CharSequence> headersAsMap();
 
@@ -109,6 +115,7 @@ public interface HttpEvent extends Event<HttpRequest> {
      * into a map.
      *
      * @return A map
+     * @since 2.0.0
      */
     Map<String, String> urlParametersAsMap();
 
@@ -126,6 +133,7 @@ public interface HttpEvent extends Event<HttpRequest> {
      * @param <T>
      * @param type
      * @return
+     * @since 2.0.0
      */
     <T> T urlParametersAs(Class<T> type);
 
@@ -134,6 +142,7 @@ public interface HttpEvent extends Event<HttpRequest> {
      *
      * @param name The parameter name
      * @return A parameter which may not be present
+     * @since 2.0.0
      */
     Optional<Integer> intUrlParameter(String name);
 
@@ -142,6 +151,7 @@ public interface HttpEvent extends Event<HttpRequest> {
      *
      * @param name The parameter name
      * @return A long which may not be present
+     * @since 2.0.0
      */
     Optional<Long> longUrlParameter(String name);
 
@@ -151,6 +161,7 @@ public interface HttpEvent extends Event<HttpRequest> {
      *
      * @return A string
      * @throws IOException If something goes wrong decoding the body
+     * @since 2.0.0
      */
     String stringContent() throws IOException;
 
@@ -165,8 +176,16 @@ public interface HttpEvent extends Event<HttpRequest> {
      *
      * @return True if the connection should be kept alive after the conclusion
      * of responding to this request.
+     * @since 2.0.0
      */
     boolean requestsConnectionStayOpen();
+    
+    /**
+     * Determine if this event was over an encrypted connection.
+     * @return True if it was encrypted
+     * @since 2.0.0
+     */
+    boolean isSsl();
 
     /**
      * Get the HTTP method for this request

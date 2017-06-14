@@ -26,6 +26,8 @@ package com.mastfrog.acteur.server;
 import com.google.inject.Provider;
 import static com.mastfrog.acteur.server.ServerModule.HTTP_COMPRESSION;
 import static com.mastfrog.acteur.server.ServerModule.MAX_CONTENT_LENGTH;
+import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_SSL_ENABLED;
+import static com.mastfrog.acteur.server.ServerModule.SSL_ATTRIBUTE_KEY;
 import com.mastfrog.acteur.spi.ApplicationControl;
 import com.mastfrog.settings.Settings;
 import io.netty.channel.ChannelHandler;
@@ -39,6 +41,7 @@ import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpRequestDecoder;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseEncoder;
+import io.netty.util.AttributeKey;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
@@ -54,15 +57,21 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
     private final boolean httpCompression;
     private final Provider<ApplicationControl> app;
     private final PipelineDecorator decorator;
+    private final ActeurSslConfig sslConfigProvider;
+    boolean useSsl;
 
     @Inject
-    PipelineFactoryImpl(Provider<ChannelHandler> handler, Provider<ApplicationControl> app, Settings settings, PipelineDecorator decorator) {
+    PipelineFactoryImpl(Provider<ChannelHandler> handler, 
+            Provider<ApplicationControl> app, Settings settings, 
+            PipelineDecorator decorator, ActeurSslConfig sslConfigProvider) {
         this.decorator = decorator;
         this.handler = handler;
         this.app = app;
+        this.sslConfigProvider = sslConfigProvider;
         aggregateChunks = settings.getBoolean("aggregateChunks", DEFAULT_AGGREGATE_CHUNKS);
         httpCompression = settings.getBoolean(HTTP_COMPRESSION, true);
         maxContentLength = settings.getInt(MAX_CONTENT_LENGTH, 1048576);
+        useSsl = settings.getBoolean(SETTINGS_KEY_SSL_ENABLED, false);
     }
 
     @Override
@@ -74,12 +83,15 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
     public void initChannel(SocketChannel ch) throws Exception {
         // Create a default pipeline implementation.
         ChannelPipeline pipeline = ch.pipeline();
+        ch.attr(SSL_ATTRIBUTE_KEY).set(useSsl);
+        if (useSsl) {
+            decorator.onBeforeInstallSslHandler(pipeline);
+            pipeline.addLast(PipelineDecorator.SSL_HANDLER, sslConfigProvider.get().newHandler(ch.alloc()));
+        }
         decorator.onCreatePipeline(pipeline);
+
         ChannelHandler decoder = new HttpRequestDecoder();
         ChannelHandler encoder = new HttpResponseEncoder();
-//        SSLEngine engine = SecureChatSslContextFactory.getServerContext().createSSLEngine();
-//        engine.setUseClientMode(false);
-//        pipeline.addLast("ssl", new SslHandler(engine));
 
         pipeline.addLast(PipelineDecorator.DECODER, decoder);
         pipeline.addLast(PipelineDecorator.ENCODER, encoder);

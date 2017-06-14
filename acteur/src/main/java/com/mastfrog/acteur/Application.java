@@ -43,6 +43,7 @@ import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_CORS_ALLOW_OR
 import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_CORS_MAX_AGE_MINUTES;
 import com.mastfrog.acteur.util.ErrorInterceptor;
 import com.mastfrog.acteur.spi.ApplicationControl;
+import com.mastfrog.acteur.util.ErrorHandlers;
 import com.mastfrog.acteur.util.RequestID;
 import com.mastfrog.acteurbase.InstantiatingIterators;
 import com.mastfrog.parameters.Param;
@@ -113,6 +114,8 @@ public class Application implements Iterable<Page> {
     private PagesImpl2 runner;
     @Inject(optional = true)
     private ErrorInterceptor errorHandler;
+    @Inject
+    private ErrorHandlers errorHandlers;
     @Inject
     private Charset charset;
     @Inject(optional = true)
@@ -545,10 +548,11 @@ public class Application implements Iterable<Page> {
     final void internalOnError(Throwable err) {
         Checks.notNull("err", err);
         try {
+            errorHandlers.onError(err);
+        } finally {
             if (errorHandler != null) {
                 errorHandler.onError(err);
             }
-        } finally {
             onError(err);
         }
     }
@@ -557,10 +561,9 @@ public class Application implements Iterable<Page> {
      * Called when an exception is thrown
      *
      * @param err
+     * @deprecated Implement ErrorHandler and bind it as an eager singleton
      */
     public void onError(Throwable err) {
-        Checks.notNull("err", err);
-        err.printStackTrace(System.err);
     }
 
     /**

@@ -44,6 +44,9 @@ import com.mastfrog.acteur.errors.Err;
 import com.mastfrog.acteur.errors.ErrorResponse;
 import com.mastfrog.acteur.errors.ExceptionEvaluator;
 import com.mastfrog.acteur.errors.ExceptionEvaluatorRegistry;
+import com.mastfrog.acteur.headers.Headers;
+import static com.mastfrog.acteur.headers.Headers.COOKIE_B;
+import static com.mastfrog.acteur.headers.Headers.X_FORWARDED_PROTO;
 import com.mastfrog.acteur.headers.Method;
 import com.mastfrog.acteur.server.ServerModule.TF;
 import com.mastfrog.acteur.spi.ApplicationControl;
@@ -64,8 +67,11 @@ import com.mastfrog.settings.MutableSettings;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.settings.SettingsBuilder;
 import com.mastfrog.url.Path;
+import com.mastfrog.url.Protocol;
+import com.mastfrog.url.Protocols;
 import com.mastfrog.util.Codec;
 import com.mastfrog.util.ConfigurationError;
+import com.mastfrog.util.Strings;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.PooledByteBufAllocator;
@@ -78,6 +84,9 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.codec.http.Cookie;
 import io.netty.handler.codec.http.CookieDecoder;
 import io.netty.handler.codec.http.HttpHeaderNames;
+import io.netty.handler.ssl.SslProvider;
+import io.netty.util.Attribute;
+import io.netty.util.AttributeKey;
 import io.netty.util.CharsetUtil;
 import java.io.IOException;
 import java.io.InputStream;
@@ -88,7 +97,9 @@ import java.nio.charset.Charset;
 import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
@@ -214,20 +225,20 @@ public class ServerModule<A extends Application> extends AbstractModule {
 
     /**
      * If true, the return value of Event.remoteAddress() will prefer the
- headers X-Forwarded-For or X-Real-IP if present, so that running an
- acteur application behind a reverse proxy does not mask the actual IP
- address.
+     * headers X-Forwarded-For or X-Real-IP if present, so that running an
+     * acteur application behind a reverse proxy does not mask the actual IP
+     * address.
      */
     public static final String SETTINGS_KEY_DECODE_REAL_IP = "decodeRealIP";
     /**
-     * Settings key if true, do CORS responses on OPTIONS requests
+     * Settings key if true, do CORS responses on OPTIONS requests.
      */
     public static final String SETTINGS_KEY_CORS_ENABLED = "cors.enabled";
     /**
      * If true (the default), a ForkJoinPool will be used for dispatching work
-     * to acteurs;  if not, a fixed thread ExecutorService will be used.
-     * The default is correct for most appliations; applications which require
-     * an extremely small memory footprint (7-10Mb) will reduce their memory
+     * to acteurs; if not, a fixed thread ExecutorService will be used. The
+     * default is correct for most appliations; applications which require an
+     * extremely small memory footprint (7-10Mb) will reduce their memory
      * requirements under load by turning this off.
      */
     public static final String SETTINGS_KEY_USE_FORK_JOIN_POOL = "acteur.fork.join";
@@ -238,32 +249,41 @@ public class ServerModule<A extends Application> extends AbstractModule {
      */
     public static final String SETTINGS_KEY_CORS_MAX_AGE_MINUTES = "cors.max.age.minutes";
     /**
-     * If the default support for CORS requests is enabled, this is the value
-     * of what hosts the response is valid for (what sites can use scripts from
-     * this server without the browser blocking them).  The default is *.
+     * If the default support for CORS requests is enabled, this is the value of
+     * what hosts the response is valid for (what sites can use scripts from
+     * this server without the browser blocking them). The default is *.
      */
     public static final String SETTINGS_KEY_CORS_ALLOW_ORIGIN = "cors.allow.origin";
     /**
-     * Default value for @link(ServerModule.SETTINGS_KEY_CORS_ENABLED}
+     * Default value for @link(ServerModule.SETTINGS_KEY_CORS_ENABLED}.
      */
     public static final boolean DEFAULT_CORS_ENABLED = true;
     /**
-     * Default value for @link(ServerModule.SETTINGS_KEY_CORS_MAX_AGE_MINUTES}
+     * Default value for @link(ServerModule.SETTINGS_KEY_CORS_MAX_AGE_MINUTES}.
      */
     public static final long DEFAULT_CORS_MAX_AGE_MINUTES = 5;
     /**
-     * Default value for @link(ServerModule.SETTINGS_KEY_CORS_ALLOW_ORIGIN}
+     * Default value for @link(ServerModule.SETTINGS_KEY_CORS_ALLOW_ORIGIN}.
      */
     public static final String DEFAULT_CORS_ALLOW_ORIGIN = "*";
-    
     /**
-     * Determine if the application should exit if an exception is thrown when binding
-     * the server socket (usually because the port is in use).  The default is
-     * true, but in cases where multiple servers are started in one JVM and the failure
-     * of one should not cause the JVM to exit, it can be set to false and the JVM
-     * will continue running if there are any live non-daemon threads.
+     * Settings key for the SSL engine to use - the name of one of the constants
+     * on SslProvider.
+     */
+    public static final String SETTINGS_KEY_SSL_ENGINE = "ssl.engine";
+    /**
+     * Determine if the application should exit if an exception is thrown when
+     * binding the server socket (usually because the port is in use). The
+     * default is true, but in cases where multiple servers are started in one
+     * JVM and the failure of one should not cause the JVM to exit, it can be
+     * set to false and the JVM will continue running if there are any live
+     * non-daemon threads.
      */
     public static final String SETTINGS_KEY_SYSTEM_EXIT_ON_BIND_FAILURE = "system.exit.on.bind.failure";
+    
+    public static final String SETTINGS_KEY_SSL_ENABLED = "ssl.enabled";
+    
+    static final AttributeKey<Boolean> SSL_ATTRIBUTE_KEY = AttributeKey.newInstance("ssl");
 
     protected final Class<A> appType;
     protected final ReentrantScope scope;
@@ -292,8 +312,9 @@ public class ServerModule<A extends Application> extends AbstractModule {
     }
 
     /**
-     * Get the Guice scope used for injecting dynamic request-related
-     * objects into Acteur constructors.
+     * Get the Guice scope used for injecting dynamic request-related objects
+     * into Acteur constructors.
+     *
      * @return The scope
      */
     public final ReentrantScope applicationScope() {
@@ -395,10 +416,58 @@ public class ServerModule<A extends Application> extends AbstractModule {
         // allow Chain<Acteur> to be injected
         bind(new CL()).toProvider(ChainProvider.class);
         bind(NettyContentMarshallers.class).toProvider(MarshallersProvider.class).in(Scopes.SINGLETON);
+        bind(SslProvider.class).toProvider(SSLEngineProvider.class);
+        bind(new TypeLiteral<Set<io.netty.handler.codec.http.cookie.Cookie>>(){}).toProvider(CookiesProvider2.class);
+        bind(Protocol.class).toProvider(ProtocolProvider.class);
+    }
+    
+    private static final class ProtocolProvider implements Provider<Protocol> {
+
+        private final Provider<Channel> channelProvider;
+        private final Provider<HttpEvent> evt;
+        
+        @Inject
+        ProtocolProvider(Provider<Channel> channel, Provider<HttpEvent> evt) {
+            this.channelProvider = channel;
+            this.evt = evt;
+        }
+
+        @Override
+        public Protocol get() {
+            Channel ch = channelProvider.get();
+            Attribute<Boolean> sslAttr = ch.attr(SSL_ATTRIBUTE_KEY);
+            if (sslAttr != null && sslAttr.get()) {
+                return Protocols.HTTPS;
+            } else {
+                CharSequence seq = evt.get().header(X_FORWARDED_PROTO);
+                if (seq != null && Strings.charSequencesEqual(seq, Protocols.HTTPS.name(), true)) {
+                    return Protocols.HTTPS;
+                }
+            }
+            return Protocols.HTTP;
+        }
+    }
+
+    private static final class SSLEngineProvider implements Provider<SslProvider> {
+
+        private final SslProvider engine;
+
+        @Inject
+        SSLEngineProvider(Settings settings) {
+            String name = settings.getString(SETTINGS_KEY_SSL_ENGINE);
+            engine = name == null ? SslProvider.JDK : SslProvider.valueOf(name);
+        }
+
+        @Override
+        public SslProvider get() {
+            return engine;
+        }
     }
 
     private static final class MarshallersProvider implements Provider<NettyContentMarshallers> {
+
         final NettyContentMarshallers marshallers;
+
         @Inject
         public MarshallersProvider(ObjectMapper mapper) {
             marshallers = NettyContentMarshallers.getDefault(mapper);
@@ -409,7 +478,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
             return marshallers;
         }
     }
-    
+
     static class CL extends TypeLiteral<Chain<Acteur>> {
 
     }
@@ -774,6 +843,25 @@ public class ServerModule<A extends Application> extends AbstractModule {
             return Collections.emptySet();
         }
     }
+    
+    @SuppressWarnings("deprecation")
+    private static final class CookiesProvider2 implements Provider<Set<io.netty.handler.codec.http.cookie.Cookie>> {
+
+        private final Provider<HttpEvent> ev;
+
+        @Inject
+        public CookiesProvider2(Provider<HttpEvent> ev) {
+            this.ev = ev;
+        }
+
+        @Override
+        public Set<io.netty.handler.codec.http.cookie.Cookie> get() {
+            HttpEvent evt = ev.get();
+            io.netty.handler.codec.http.cookie.Cookie[] cookies = evt.header(COOKIE_B);
+            return cookies == null || cookies.length == 0 ? Collections.emptySet() :
+                    new HashSet<>(Arrays.asList(cookies));
+        }
+    }    
 
     private static final class ExecutorServiceProvider implements Provider<ExecutorService> {
 
@@ -957,4 +1045,4 @@ public class ServerModule<A extends Application> extends AbstractModule {
     @SuppressWarnings("deprecation")
     private static class CKTL extends TypeLiteral<Set<Cookie>> {
     }
-}
+    }

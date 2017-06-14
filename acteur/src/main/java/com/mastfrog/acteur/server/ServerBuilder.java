@@ -38,14 +38,17 @@ import com.mastfrog.settings.Settings;
 import com.mastfrog.settings.SettingsBuilder;
 import com.mastfrog.util.Checks;
 import com.mastfrog.util.Exceptions;
+import io.netty.handler.ssl.SslContext;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
+import java.security.cert.CertificateException;
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
+import javax.net.ssl.SSLException;
 
 /**
  * Hides the complexity of initializing Guice and Settings to start a server
@@ -110,6 +113,23 @@ public final class ServerBuilder {
             throw new IllegalStateException("App type was already set to " + this.appType);
         }
         this.appType = type;
+        return this;
+    }
+
+    private SslContext sslContext;
+
+    public ServerBuilder sslConfig(SslContext context) {
+        ssl();
+        this.sslContext = context;
+        return this;
+    }
+
+    public ServerBuilder ssl() {
+        try {
+            settingsList.add(new SettingsBuilder().add(ServerModule.SETTINGS_KEY_SSL_ENABLED, true).build());
+        } catch (IOException ex) {
+            return Exceptions.chuck(ex);
+        }
         return this;
     }
 
@@ -187,12 +207,14 @@ public final class ServerBuilder {
         this.enableCors = false;
         return this;
     }
-    
+
     private final Set<SettingsBindings> settingsBindings = EnumSet.allOf(SettingsBindings.class);
+
     /**
-     * Disable binding of settings to some types if you know they
-     * will not be used, to save (minimal) memory.  This is only
-     * significant if you are running in &lt; 20Mb heap.
+     * Disable binding of settings to some types if you know they will not be
+     * used, to save (minimal) memory. This is only significant if you are
+     * running in &lt; 20Mb heap.
+     *
      * @param bindings The bindings to remove
      * @return this
      */
@@ -204,11 +226,11 @@ public final class ServerBuilder {
         settingsBindings.removeAll(toRemove);
         return this;
     }
-    
+
     /**
-     * Explicitly set the list of types that are bound to settings to
-     * save (minimal) memory.
-     * 
+     * Explicitly set the list of types that are bound to settings to save
+     * (minimal) memory.
+     *
      * @param bindings The types of bindings to set up
      * @return this
      */
@@ -220,7 +242,7 @@ public final class ServerBuilder {
         this.settingsBindings.clear();
         this.settingsBindings.addAll(newSet);
         return this;
-    }    
+    }
 
     /**
      * Build a Server object which can be started with its start() method (call
@@ -254,14 +276,14 @@ public final class ServerBuilder {
     @SuppressWarnings("unchecked")
     private ScopeProvider appModule(Settings settings) {
         if (appType == null || GenericApplication.class.isAssignableFrom(appType)) {
-            return createGenericApplicationModule(settings, types);
+            return createGenericApplicationModule(settings, types, sslContext);
         } else {
-            return createModule(scope, appType, types);
+            return createModule(scope, appType, types, sslContext);
         }
     }
 
-    private static <T extends Application> TS<T> createModule(ReentrantScope scope, Class<T> appType, Set<Class<?>> toBind) {
-        return new TS<>(scope, appType, toBind);
+    private static <T extends Application> TS<T> createModule(ReentrantScope scope, Class<T> appType, Set<Class<?>> toBind, SslContext sslContext) {
+        return new TS<>(scope, appType, toBind, sslContext);
     }
 
     static class CorsAndHelpModule extends GenericApplicationSettings implements Module {
@@ -276,13 +298,29 @@ public final class ServerBuilder {
         }
     }
 
+    static final class SslConfigImpl extends ActeurSslConfig {
+
+        private final SslContext ctx;
+
+        public SslConfigImpl(SslContext ctx) {
+            this.ctx = ctx;
+        }
+
+        @Override
+        protected SslContext createSslContext() throws CertificateException, SSLException {
+            return ctx;
+        }
+    }
+
     private static final class TS<T extends Application> extends ServerModule<T> implements ScopeProvider {
 
         private final Set<Class<?>> toBind;
+        private final SslContext ctx;
 
-        TS(ReentrantScope scope, Class<T> appType, Set<Class<?>> toBind) {
+        TS(ReentrantScope scope, Class<T> appType, Set<Class<?>> toBind, SslContext ctx) {
             super(scope, appType, -1, -1, -1);
             this.toBind = toBind;
+            this.ctx = ctx;
         }
 
         @Override
@@ -290,6 +328,9 @@ public final class ServerBuilder {
             super.configure();
             Class<?>[] types = toBind.toArray(new Class<?>[toBind.size()]);
             scope.bindTypes(binder(), types);
+            if (ctx != null) {
+                bind(ActeurSslConfig.class).toInstance(new SslConfigImpl(ctx));
+            }
         }
 
         public ReentrantScope scope() {
@@ -298,22 +339,24 @@ public final class ServerBuilder {
     }
 
     @SuppressWarnings("unchecked")
-    private GS<?> createGenericApplicationModule(Settings settings, Set<Class<?>> toBind) {
+    private GS<?> createGenericApplicationModule(Settings settings, Set<Class<?>> toBind, SslContext ctx) {
         Class<? extends GenericApplication> c = appType == null ? GenericApplication.class : (Class<? extends GenericApplication>) appType;
-        return createGenericApplicationModule(scope, c, settings, toBind);
+        return createGenericApplicationModule(scope, c, settings, toBind, ctx);
     }
 
-    private static <T extends GenericApplication> GS<T> createGenericApplicationModule(ReentrantScope scope, Class<T> type, Settings settings, Set<Class<?>> toBind) {
-        return new GS<>(scope, type, settings, toBind);
+    private static <T extends GenericApplication> GS<T> createGenericApplicationModule(ReentrantScope scope, Class<T> type, Settings settings, Set<Class<?>> toBind, SslContext ctx) {
+        return new GS<>(scope, type, settings, toBind, ctx);
     }
 
     private static final class GS<T extends GenericApplication> extends GenericApplicationModule<T> implements ScopeProvider {
 
         private final Set<Class<?>> toBind;
+        private SslContext ctx;
 
-        public GS(ReentrantScope scope, Class<T> appType, Settings settings, Set<Class<?>> toBind) {
+        public GS(ReentrantScope scope, Class<T> appType, Settings settings, Set<Class<?>> toBind, SslContext ctx) {
             super(scope, settings, appType, new Class<?>[0]);
             this.toBind = toBind;
+            this.ctx = ctx;
         }
 
         public GS(Settings settings, Set<Class<?>> toBind) {
@@ -326,6 +369,9 @@ public final class ServerBuilder {
             super.configure();
             Class<?>[] types = toBind.toArray(new Class<?>[toBind.size()]);
             scope.bindTypes(binder(), types);
+            if (ctx != null) {
+                bind(ActeurSslConfig.class).toInstance(new SslConfigImpl(ctx));
+            }
         }
 
         public ReentrantScope scope() {

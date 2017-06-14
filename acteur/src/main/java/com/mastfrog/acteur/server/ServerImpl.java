@@ -39,12 +39,10 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelInitializer;
-import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
-import io.netty.handler.logging.LoggingHandler;
 import java.io.IOException;
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
@@ -65,8 +63,9 @@ import javax.inject.Inject;
  */
 final class ServerImpl implements Server {
 
+    private static final int DEFAULT_PORT = 8123;
     private final ChannelInitializer<SocketChannel> pipelineFactory;
-    private int port = 8123;
+    private int port = DEFAULT_PORT;
     private final ThreadFactory eventThreadFactory;
     private final ThreadCount eventThreadCount;
     private final ThreadFactory workerThreadFactory;
@@ -89,7 +88,7 @@ final class ServerImpl implements Server {
             ShutdownHookRegistry registry,
             Provider<ApplicationControl> app,
             Settings settings) {
-        this.port = settings.getInt(ServerModule.PORT, 8123);
+        this.port = settings.getInt(ServerModule.PORT, DEFAULT_PORT);
         this.pipelineFactory = pipelineFactory;
         this.eventThreadFactory = eventThreadFactory;
         this.eventThreadCount = eventThreadCount;
@@ -130,8 +129,6 @@ final class ServerImpl implements Server {
 
             bootstrap.group(result.events, result.workers)
                     .channel(NioServerSocketChannel.class)
-                    .handler(new LoggingHandler())
-//                    .option(ChannelOption.TCP_NODELAY, true)
                     .childHandler(pipelineFactory);
             if (addr == null) {
                 bootstrap = bootstrap.localAddress(new InetSocketAddress(port));
@@ -149,6 +146,7 @@ final class ServerImpl implements Server {
             afterStart.await();
             return result.throwIfFailure();
         } catch (InterruptedException ex) {
+            app.get().internalOnError(ex);
             return Exceptions.chuck(ex);
         }
     }
@@ -159,12 +157,14 @@ final class ServerImpl implements Server {
 
     @Override
     public ServerControl start(boolean ssl) throws IOException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        ((PipelineFactoryImpl) pipelineFactory).useSsl = ssl;
+        return start(port);
     }
 
     @Override
     public ServerControl start(int port, boolean ssl) throws IOException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        ((PipelineFactoryImpl) pipelineFactory).useSsl = ssl;
+        return start(port);
     }
 
     private static class WeakRunnable implements Runnable {
