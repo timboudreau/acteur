@@ -252,6 +252,10 @@ public final class ServerBuilder {
      * @throws IOException if something goes wrong
      */
     public Server build() throws IOException {
+        return toDependenciesBuilder().build().getInstance(Server.class);
+    }
+    
+    public DependenciesBuilder toDependenciesBuilder() throws IOException {
         SettingsBuilder sb = new SettingsBuilder(namespace);
         sb.addDefaultLocations();
         for (Settings s : settingsList) {
@@ -270,7 +274,7 @@ public final class ServerBuilder {
             db.add(instantiateModule(m, appModule, settings));
         }
         db.add(new CorsAndHelpModule(enableCors, enableHelp));
-        return db.build().getInstance(Server.class);
+        return db;        
     }
 
     @SuppressWarnings("unchecked")
