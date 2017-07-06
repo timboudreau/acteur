@@ -28,7 +28,6 @@ import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.mastfrog.acteur.Event;
 import com.mastfrog.acteur.HttpEvent;
-import com.mastfrog.acteur.Page;
 import com.mastfrog.acteur.Response;
 import com.mastfrog.acteur.ResponseWriter;
 import com.mastfrog.acteur.headers.HeaderValueType;
@@ -61,7 +60,6 @@ import io.netty.handler.codec.compression.JZlibDecoder;
 import io.netty.handler.codec.compression.ZlibWrapper;
 import io.netty.handler.codec.http.DefaultHttpContent;
 import io.netty.handler.codec.http.HttpHeaderValues;
-import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.LastHttpContent;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -109,7 +107,7 @@ public final class ClasspathResources implements StaticResources {
 
         for (String nm : info.names()) {
             this.names.put(nm, new ClasspathResource(nm));
-            String pat = Strings.join(resourcesBasePath, nm);
+            String pat = Strings.joinPath(resourcesBasePath, nm);
             l.add(pat);
         }
         patterns = l.toArray(new String[l.size()]);
@@ -140,7 +138,7 @@ public final class ClasspathResources implements StaticResources {
         }
     }
 
-    static class Y extends JZlibDecoder {
+    private static class Y extends JZlibDecoder {
 
         Y() {
             super(ZlibWrapper.GZIP);
@@ -229,11 +227,7 @@ public final class ClasspathResources implements StaticResources {
             }
             response.add(LAST_MODIFIED, startTime)
                     .add(ETAG, hash);
-//            page.getReponseHeaders().setContentLength(getLength());
             MediaType type = getContentType();
-            if (type == null) {
-                System.err.println("Null content type for " + name);
-            }
             if (type != null) {
                 response.add(CONTENT_TYPE, type);
             }
@@ -254,7 +248,6 @@ public final class ClasspathResources implements StaticResources {
                     response.add(Headers.CONTENT_LENGTH, (long) bytes.readableBytes());
                 }
             }
-//            response.chunked(true);
             response.chunked(chunked);
         }
 
@@ -263,11 +256,7 @@ public final class ClasspathResources implements StaticResources {
             if (isGzip(evt)) {
                 CompressedBytesSender sender = new CompressedBytesSender(compressed, !evt.requestsConnectionStayOpen(), chunked);
                 response.contentWriter(sender);
-//                BytesSender sender = new BytesSender(compressed);
-//                response.contentWriter(sender);
             } else {
-//                BytesSender sender = new BytesSender(bytes);
-//                response.contentWriter(sender);
                 CompressedBytesSender c = new CompressedBytesSender(bytes, !evt.requestsConnectionStayOpen(), chunked);
                 response.contentWriter(c);
             }
@@ -284,8 +273,9 @@ public final class ClasspathResources implements StaticResources {
         if (!internalGzip) {
             return false;
         }
-        String hdr = evt.header(HttpHeaders.Names.ACCEPT_ENCODING);
-        return hdr != null && hdr.toLowerCase().contains("gzip");
+        CharSequence acceptEncoding = evt.header(Headers.ACCEPT_ENCODING);
+        return acceptEncoding != null && 
+                Strings.charSequenceContains(acceptEncoding, "gzip", true);
     }
 
     static final class BytesSender extends ResponseWriter {

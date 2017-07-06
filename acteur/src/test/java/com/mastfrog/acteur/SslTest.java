@@ -23,6 +23,7 @@
  */
 package com.mastfrog.acteur;
 
+import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.acteur.server.ServerBuilder;
@@ -40,6 +41,7 @@ import com.mastfrog.util.net.PortFinder;
 import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import static io.netty.handler.codec.http.HttpResponseStatus.OK;
+import io.netty.handler.ssl.SslProvider;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
@@ -96,17 +98,23 @@ public class SslTest {
         assertTrue(headers.get().contains("X-Request-Encrypted"));
     }
 
+    static boolean useOpenSSL;
+    
     @Before
     public void setup() throws IOException {
         port = new PortFinder().findAvailableServerPort();
+        SettingsBuilder set = new SettingsBuilder().add(ServerModule.PORT, port);
+        if (useOpenSSL) {
+            set.add(ServerModule.SETTINGS_KEY_SSL_ENGINE, SslProvider.OPENSSL_REFCNT.name());
+        }
         Server server = new ServerBuilder().applicationClass(SslApp.class).ssl()
-                .add(new SettingsBuilder().add(ServerModule.PORT, port).build())
-                .build();
+                .add(set.build()).build();
         this.serverControl = server.start();
         client = HttpClient.builder().useCompression().build();
     }
     
     public static void main(String[] args) throws IOException, InterruptedException {
+//        useOpenSSL = true;
         SslTest test = new SslTest();
         test.setup();
         test.serverControl.await();

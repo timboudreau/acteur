@@ -96,7 +96,7 @@ public class DynamicFileResources implements StaticResources {
     private static final AsciiString TRUE = new AsciiString("true");
 
     @Inject
-    DynamicFileResources(File dir, MimeTypes types, ExpiresPolicy policy, ApplicationControl ctrl, ByteBufAllocator alloc) {
+    public DynamicFileResources(File dir, MimeTypes types, ExpiresPolicy policy, ApplicationControl ctrl, ByteBufAllocator alloc) {
         this.dir = dir;
         this.policy = policy;
         this.types = types;

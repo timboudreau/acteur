@@ -1,10 +1,12 @@
-package com.mastfrog.healthtracker;
+package com.mastfrog.acteur.resources.markup;
 
 import com.google.inject.name.Named;
+import com.mastfrog.acteur.resources.DynamicFileResources;
 import com.mastfrog.acteur.resources.ExpiresPolicy;
 import com.mastfrog.acteur.resources.FileResources;
 import com.mastfrog.acteur.resources.MimeTypes;
 import com.mastfrog.acteur.resources.StaticResources;
+import com.mastfrog.acteur.spi.ApplicationControl;
 import com.mastfrog.giulius.DeploymentMode;
 import com.mastfrog.giulius.ShutdownHookRegistry;
 import com.mastfrog.settings.Settings;
@@ -93,13 +95,20 @@ public class MarkupFiles implements Provider<StaticResources> {
      * should be used for locating the html directory and the markup archive.
      */
     public static final String GUICE_BINDING_CLASS_RELATIVE_MARKUP = "markupRelativeTo";
-    private final ShutdownHookRegistry onShutdown;
+
+    /**
+     * If set to true, use DynamicFileResources instead of FileResources for
+     * serving markup. The difference is that with DynamicFileResources, files
+     * are not copied into JVM memory for serving - slightly slower performance,
+     * but able to serve files that did not exist on VM startup.
+     */
+    public static final String SETTINGS_KEY_USE_DYN_FILE_RESOURCES = "markup.files.dynamic";
+    public static final boolean DEFAULT_USE_DYN_FILE_RESOURCES = false;
 
     @Inject
     @SuppressWarnings("unchecked")
-    public MarkupFiles(@Named(GUICE_BINDING_CLASS_RELATIVE_MARKUP) Class type, Settings settings, MimeTypes types, DeploymentMode mode, ByteBufAllocator allocator, ExpiresPolicy policy, ShutdownHookRegistry onShutdown) throws Exception {
+    public MarkupFiles(@Named(GUICE_BINDING_CLASS_RELATIVE_MARKUP) Class type, Settings settings, MimeTypes types, DeploymentMode mode, ByteBufAllocator allocator, ExpiresPolicy policy, ShutdownHookRegistry onShutdown, ApplicationControl ctrl) throws Exception {
         String jarRelativeFolderName = settings.getString(SETTINGS_KEY_JAR_RELATIVE_FOLDER_NAME, DEFAULT_JAR_RELATIVE_FOLDER_NAME);
-        this.onShutdown = onShutdown;
         // Find where we're running from and try to look up ../html
         File file = findFolderRelativeToJAR(type, jarRelativeFolderName);
         // If that isn't there, see if there is a setting html.path that
@@ -113,16 +122,21 @@ public class MarkupFiles implements Provider<StaticResources> {
                 }
             }
         }
+        boolean dynResources = file != null || settings.getBoolean(SETTINGS_KEY_USE_DYN_FILE_RESOURCES, DEFAULT_USE_DYN_FILE_RESOURCES);
         // If that fails, unpack the embedded archive of html into a unique
         // subdir of /tmp and serve from there
         if (file == null) {
             String archiveName = settings.getString(SETTINGS_KEY_HTML_ARCHIVE_TAR_GZ_NAME, DEFAULT_HTML_ARCHIVE_TAR_GZ_NAME);
-            file = unpackMarkupArchive(type, archiveName);
+            file = unpackMarkupArchive(type, archiveName, onShutdown, ctrl);
         }
-        resources = new FileResources(file, types, mode, allocator, settings, policy);
+        if (dynResources) {
+            resources = new DynamicFileResources(file, types, policy, ctrl, allocator);
+        } else {
+            resources = new FileResources(file, types, mode, allocator, settings, policy);
+        }
     }
 
-    public File findFolderRelativeToJAR(Class<?> jarClass, String relPath) throws URISyntaxException, IOException {
+    public final File findFolderRelativeToJAR(Class<?> jarClass, String relPath) throws URISyntaxException, IOException {
         // Get the location this JAR is in on disk, to set up paths relative to it
         ProtectionDomain protectionDomain = jarClass.getProtectionDomain();
         URL location = protectionDomain.getCodeSource().getLocation();
@@ -147,7 +161,7 @@ public class MarkupFiles implements Provider<StaticResources> {
         return result;
     }
 
-    private final File unpackMarkupArchive(Class<?> relativeTo, String archiveName) throws IOException, FileNotFoundException {
+    private File unpackMarkupArchive(Class<?> relativeTo, String archiveName, ShutdownHookRegistry onShutdown, ApplicationControl ctrl) throws IOException, FileNotFoundException {
         File tmp = new File(System.getProperty("java.io.tmpdir"));
         String uniq = GUIDFactory.get().newGUID(1, 7);
         if (!archiveName.endsWith(".tar.gz")) {
@@ -162,7 +176,14 @@ public class MarkupFiles implements Provider<StaticResources> {
             if (!destDir.mkdirs()) {
                 throw new IOException("Could not create " + destDir.getAbsolutePath());
             }
-            unTar(in, destDir);
+            List<File> untarred = unTar(in, destDir);
+            if (!untarred.isEmpty()) {
+                try {
+                    onShutdown.add(new MarkupDeleter(destDir, untarred));
+                } catch (Exception e) {
+                    ctrl.internalOnError(e);
+                }
+            }
         }
         return destDir;
     }
@@ -173,10 +194,10 @@ public class MarkupFiles implements Provider<StaticResources> {
     }
 
     private List<File> unTar(InputStream raw, final File outputDir) throws FileNotFoundException, IOException {
-        final List<File> untaredFiles = new LinkedList<>();
+        final List<File> untarredFiles = new LinkedList<>();
         GZIPInputStream is = new GZIPInputStream(raw);
         try (TarInputStream debInputStream = new TarInputStream(is)) {
-            TarEntry entry = null;
+            TarEntry entry;
             while ((entry = (TarEntry) debInputStream.getNextEntry()) != null) {
                 final File outputFile = new File(outputDir, entry.getName());
                 if (entry.isDirectory()) {
@@ -191,15 +212,10 @@ public class MarkupFiles implements Provider<StaticResources> {
                     }
                     outputFile.setLastModified(entry.getModTime().getTime());
                 }
-                untaredFiles.add(outputFile);
+                untarredFiles.add(outputFile);
             }
         }
-        try {
-            onShutdown.add(new MarkupDeleter(outputDir, untaredFiles));
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return untaredFiles;
+        return untarredFiles;
     }
 
     static class MarkupDeleter implements Runnable {

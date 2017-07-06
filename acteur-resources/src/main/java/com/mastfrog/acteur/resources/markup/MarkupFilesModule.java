@@ -28,7 +28,6 @@ import com.google.inject.name.Names;
 import com.mastfrog.acteur.resources.Resource;
 import com.mastfrog.acteur.resources.StaticResources;
 import com.mastfrog.giulius.scope.ReentrantScope;
-import com.mastfrog.healthtracker.MarkupFiles;
 
 /**
  * Looks up static html files to be served by acteur-resources and provides an
