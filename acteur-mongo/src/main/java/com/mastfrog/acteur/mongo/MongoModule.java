@@ -26,7 +26,7 @@ package com.mastfrog.acteur.mongo;
 import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 import com.mastfrog.acteur.Acteur;
-import com.mastfrog.acteur.HttpEvent;
+import com.mastfrog.acteur.Event;
 import com.mastfrog.acteur.Page;
 import com.mastfrog.acteur.errors.Err;
 import com.mastfrog.acteur.errors.ErrorResponse;
@@ -89,7 +89,7 @@ public class MongoModule extends AbstractModule implements MongoConfigModule {
         }
 
         @Override
-        public ErrorResponse evaluate(Throwable t, Acteur acteur, Page page, HttpEvent evt) {
+        public ErrorResponse evaluate(Throwable t, Acteur acteur, Page page, Event<?> evt) {
             String msg = t.getMessage() == null ? t.getClass().getSimpleName() : t.getMessage();
             return Err.badRequest(msg);
         }
