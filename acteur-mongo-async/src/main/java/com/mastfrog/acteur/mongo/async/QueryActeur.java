@@ -43,7 +43,7 @@ public class QueryActeur extends Acteur {
 
     @SuppressWarnings("unchecked")
     @Inject
-    QueryActeur(Bson query, CursorControl ctrl, MongoCollection<?> collection, Chain<Acteur> chain) {
+    QueryActeur(Bson query, CursorControl ctrl, MongoCollection<?> collection, Chain<Acteur, ? extends Chain<Acteur,?>> chain) {
         FindIterable<ByteBuf> find = collection.find(query, ByteBuf.class);
         chain.add(WriteCursorContentsAsJSON.class);
         next(find);
