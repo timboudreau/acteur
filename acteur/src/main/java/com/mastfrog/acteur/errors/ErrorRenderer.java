@@ -26,7 +26,7 @@ package com.mastfrog.acteur.errors;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.inject.ImplementedBy;
-import com.mastfrog.acteur.HttpEvent;
+import com.mastfrog.acteur.Event;
 import com.mastfrog.acteur.Response;
 import com.mastfrog.acteur.errors.ErrorRenderer.DefaultErrorRenderer;
 import java.io.IOException;
@@ -40,7 +40,7 @@ import javax.inject.Inject;
 @ImplementedBy(DefaultErrorRenderer.class)
 public abstract class ErrorRenderer {
 
-    public void render(ErrorResponse resp, Response into, HttpEvent evt) throws IOException {
+    public void render(ErrorResponse resp, Response into, Event<?> evt) throws IOException {
         String s = render(resp, evt);
         into.status(resp.status());
         if (s != null) {
@@ -48,7 +48,7 @@ public abstract class ErrorRenderer {
         }
     }
 
-    public abstract String render(ErrorResponse resp, HttpEvent evt) throws IOException;
+    public abstract String render(ErrorResponse resp, Event<?> evt) throws IOException;
 
     static class DefaultErrorRenderer extends ErrorRenderer {
 
@@ -60,13 +60,13 @@ public abstract class ErrorRenderer {
         }
 
         @Override
-        public void render(ErrorResponse resp, Response into, HttpEvent evt) throws JsonProcessingException {
+        public void render(ErrorResponse resp, Response into, Event<?> evt) throws JsonProcessingException {
             into.status(resp.status());
             into.content(resp.message());
         }
 
         @Override
-        public String render(ErrorResponse resp, HttpEvent evt) throws IOException {
+        public String render(ErrorResponse resp, Event<?> evt) throws IOException {
             return mapper.writeValueAsString(resp.message());
         }
     }

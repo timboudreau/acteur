@@ -35,13 +35,19 @@ import com.mastfrog.giulius.ShutdownHookRegistry;
 import com.mastfrog.giulius.scope.ReentrantScope;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Supplier;
 import org.junit.After;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -54,11 +60,12 @@ public class ChainRunnerTest {
     ReentrantScope scope;
     Dependencies deps;
     ExecutorService svc;
-    ArrayChain<AbstractActeur<Response, ResponseImpl, ActeurState<Response, ResponseImpl>>> chain;
-    ArrayChain<AbstractActeur<Response, ResponseImpl, ActeurState<Response, ResponseImpl>>> rejectIt;
-    ArrayChain<AbstractActeur<Response, ResponseImpl, ActeurState<Response, ResponseImpl>>> dontRespond;
-    ArrayChain<AbstractActeur<Response, ResponseImpl, ActeurState<Response, ResponseImpl>>> plainChain;
-    ArrayChain<AbstractActeur<Response, ResponseImpl, ActeurState<Response, ResponseImpl>>> errorChain;
+    ArrayChain<AbstractActeur<Response, ResponseImpl, ActeurState<Response, ResponseImpl>>, ?> chain;
+    ArrayChain<AbstractActeur<Response, ResponseImpl, ActeurState<Response, ResponseImpl>>, ?> rejectIt;
+    ArrayChain<AbstractActeur<Response, ResponseImpl, ActeurState<Response, ResponseImpl>>, ?> dontRespond;
+    ArrayChain<AbstractActeur<Response, ResponseImpl, ActeurState<Response, ResponseImpl>>, ?> plainChain;
+    ArrayChain<AbstractActeur<Response, ResponseImpl, ActeurState<Response, ResponseImpl>>, ?> errorChain;
+    ArrayChain<AbstractActeur<Response, ResponseImpl, ActeurState<Response, ResponseImpl>>, ?> remnantChain;
     Timer timer = new Timer();
 
     @Test(timeout = 10000)
@@ -70,27 +77,32 @@ public class ChainRunnerTest {
         TestCallback plainChainResults = new TestCallback();
         TestCallback errorChainResults = new TestCallback();
         TestCallback rejectChainResults = new TestCallback();
+        TestCallback remnantChainResults = new TestCallback();
         try (AutoCloseable cl = scope.enter()) {
             cr.submit(chain, chainWithDeferResults, cancelled);
             cr.submit(dontRespond, dontRespondChainResults, cancelled);
             cr.submit(plainChain, plainChainResults, cancelled);
             cr.submit(errorChain, errorChainResults, cancelled);
             cr.submit(rejectIt, rejectChainResults, cancelled);
+            cr.submit(remnantChain, remnantChainResults, cancelled);
+            cr.submit(remnantChain, remnantChainResults, cancelled); // Do this twice to ensure acteur counter reset
         }
         chainWithDeferResults.assertGotResponse().assertActeurClass(AddedA.class).throwIfError().assertNotRejected();
         dontRespondChainResults.assertNoResponse().throwIfError();
         plainChainResults.throwIfError().assertGotResponse().assertActeurClass(AddedA.class).assertNotRejected();
         errorChainResults.assertException(SpecialError.class);
         rejectChainResults.throwIfError().assertRejected();
+        remnantChainResults.throwIfError().assertRejected();
     }
+
     @Test(timeout = 20000)
     public void testMultiChainRunner() throws Exception, Throwable {
         AtomicBoolean cancelled = new AtomicBoolean();
-        List<ArrayChain<AbstractActeur<Response, ResponseImpl, ActeurState<Response, ResponseImpl>>>> l = new LinkedList<>();
+        List<ArrayChain<AbstractActeur<Response, ResponseImpl, ActeurState<Response, ResponseImpl>>, ?>> l = new LinkedList<>();
         for (int i = 0; i < 5; i++) {
-            ArrayChain<AbstractActeur<Response, ResponseImpl, ActeurState<Response, ResponseImpl>>> ch
+            ArrayChain<AbstractActeur<Response, ResponseImpl, ActeurState<Response, ResponseImpl>>, ?> ch
                     = new NamedChain("Chain " + i, deps, AbstractActeur.class)
-                    .add(FirstA.class).add(Rejecter.class).add(SecondWithoutTimeoutA.class).add(EndA.class);
+                            .add(FirstA.class).add(Rejecter.class).add(SecondWithoutTimeoutA.class).add(EndA.class);
             l.add(ch);
         }
         l.add(plainChain);
@@ -105,7 +117,7 @@ public class ChainRunnerTest {
         callback.throwIfError().assertNoResponse();
     }
 
-    static class NamedChain extends ArrayChain<AbstractActeur<Response, ResponseImpl, ActeurState<Response, ResponseImpl>>> {
+    static class NamedChain extends ArrayChain<AbstractActeur<Response, ResponseImpl, ActeurState<Response, ResponseImpl>>, NamedChain> {
 
         private final String name;
 
@@ -142,6 +154,9 @@ public class ChainRunnerTest {
 
         errorChain = new NamedChain("ErrorChain", deps, AbstractActeur.class)
                 .add(FirstA.class).add(SecondWithoutTimeoutA.class).add(ErrorA.class);
+
+        remnantChain = new NamedChain("Remnant", deps, AbstractActeur.class)
+                .add(FirstA.class).add(XA1.class).add(XA2.class);
     }
 
     @After
@@ -169,7 +184,24 @@ public class ChainRunnerTest {
 
     static class FirstA extends A2 {
 
-        FirstA() {
+        @Inject
+        @SuppressWarnings("unchecked")
+        FirstA(Chain chain) {
+            assertNotNull(chain);
+            assertTrue(chain instanceof NamedChain);
+            NamedChain nc = (NamedChain) chain;
+            if ("Remnant".equals(chain.toString())) {
+                System.out.println("On remnant chain");
+                Supplier<Chain> supp = chain.remnantSupplier();
+                Chain nue = supp.get();
+                Set<Class<?>> s = new HashSet<>();
+                for (Object o : nue) {
+                    s.add(o.getClass());
+                }
+                assertTrue(s.contains(XA1.class));
+                assertTrue(s.contains(XA2.class));
+                assertEquals(2, s.size());
+            }
             System.out.println("firstA " + Thread.currentThread());
             setState(new ActeurState<Response, ResponseImpl>("hello"));
         }
@@ -227,12 +259,27 @@ public class ChainRunnerTest {
             setState(new ActeurState<Response, ResponseImpl>(false));
         }
     }
-    
+
     static class EndA extends A2 {
+
         EndA() {
             response().setMessage("foo");
             response().setStatus(HttpResponseStatus.OK);
-            setState( new ActeurState<Response, ResponseImpl>(false));
+            setState(new ActeurState<Response, ResponseImpl>(false));
+        }
+    }
+
+    static class XA1 extends A2 {
+
+        XA1() {
+            setState(new ActeurState<Response, ResponseImpl>(false));
+        }
+    }
+
+    static class XA2 extends A2 {
+
+        XA2() {
+            setState(new ActeurState<Response, ResponseImpl>(true));
         }
     }
 

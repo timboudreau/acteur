@@ -41,10 +41,7 @@ import java.util.concurrent.ExecutorService;
 import static org.junit.Assert.assertNotNull;
 import org.openide.util.Exceptions;
 
-/**
- *
- * @author tim
- */
+@SuppressWarnings("deprecation")
 public class CompApp extends Application {
 
     public CompApp() {
@@ -110,7 +107,7 @@ public class CompApp extends Application {
         }
 
         @Override
-        public ErrorResponse evaluate(Throwable t, Acteur acteur, Page page, HttpEvent evt) {
+        public ErrorResponse evaluate(Throwable t, Acteur acteur, Page page, Event<?> evt) {
             System.out.println("EVALUATE " + t.getClass().getName());
             if (t instanceof ConfigurationException) {
 //                if (page instanceof Fails) {
@@ -125,7 +122,7 @@ public class CompApp extends Application {
 
         @Override
         @SuppressWarnings("unchecked")
-        public String render(ErrorResponse resp, HttpEvent evt) throws IOException {
+        public String render(ErrorResponse resp, Event<?> evt) throws IOException {
             Map<String, Object> m = (Map<String, Object>) resp.message();
             String s = (String) m.get("error");
             assertNotNull(s);
@@ -448,7 +445,7 @@ public class CompApp extends Application {
     public static class FirstActeur extends Acteur {
 
         @Inject
-        FirstActeur(Chain<Acteur> chain) {
+        FirstActeur(Chain<Acteur, ? extends Chain<Acteur,?>> chain) {
             chain.add(SecondActeur.class);
             next();
         }
@@ -457,7 +454,7 @@ public class CompApp extends Application {
     public static class SecondActeur extends Acteur {
 
         @Inject
-        SecondActeur(Chain<Acteur> chain) {
+        SecondActeur(Chain<Acteur, ? extends Chain<Acteur,?>> chain) {
             chain.add(ThirdActeur.class);
             next();
         }

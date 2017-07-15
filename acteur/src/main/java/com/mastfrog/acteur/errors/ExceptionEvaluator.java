@@ -24,7 +24,7 @@
 package com.mastfrog.acteur.errors;
 
 import com.mastfrog.acteur.Acteur;
-import com.mastfrog.acteur.HttpEvent;
+import com.mastfrog.acteur.Event;
 import com.mastfrog.acteur.Page;
 import com.mastfrog.giulius.Ordered;
 import javax.inject.Singleton;
@@ -81,5 +81,5 @@ public abstract class ExceptionEvaluator implements Comparable<ExceptionEvaluato
         return theirs.compareTo(mine);
     }
 
-    public abstract ErrorResponse evaluate(Throwable t, Acteur acteur, Page page, HttpEvent evt);
+    public abstract ErrorResponse evaluate(Throwable t, Acteur acteur, Page page, Event<?> evt);
 }

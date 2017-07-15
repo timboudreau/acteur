@@ -44,7 +44,6 @@ import com.mastfrog.acteur.errors.Err;
 import com.mastfrog.acteur.errors.ErrorResponse;
 import com.mastfrog.acteur.errors.ExceptionEvaluator;
 import com.mastfrog.acteur.errors.ExceptionEvaluatorRegistry;
-import com.mastfrog.acteur.headers.Headers;
 import static com.mastfrog.acteur.headers.Headers.COOKIE_B;
 import static com.mastfrog.acteur.headers.Headers.X_FORWARDED_PROTO;
 import com.mastfrog.acteur.headers.Method;
@@ -84,6 +83,7 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.codec.http.Cookie;
 import io.netty.handler.codec.http.CookieDecoder;
 import io.netty.handler.codec.http.HttpHeaderNames;
+import io.netty.handler.codec.http.websocketx.WebSocketFrame;
 import io.netty.handler.ssl.SslProvider;
 import io.netty.util.Attribute;
 import io.netty.util.AttributeKey;
@@ -280,9 +280,12 @@ public class ServerModule<A extends Application> extends AbstractModule {
      * non-daemon threads.
      */
     public static final String SETTINGS_KEY_SYSTEM_EXIT_ON_BIND_FAILURE = "system.exit.on.bind.failure";
-    
+
     public static final String SETTINGS_KEY_SSL_ENABLED = "ssl.enabled";
-    
+
+    public static final String SETTINGS_KEY_WEBSOCKETS_ENABLED = "websocket.enabled";
+    public static final boolean DEFAULT_WEBSOCKET_ENABLED = false;
+
     static final AttributeKey<Boolean> SSL_ATTRIBUTE_KEY = AttributeKey.newInstance("ssl");
 
     protected final Class<A> appType;
@@ -417,15 +420,37 @@ public class ServerModule<A extends Application> extends AbstractModule {
         bind(new CL()).toProvider(ChainProvider.class);
         bind(NettyContentMarshallers.class).toProvider(MarshallersProvider.class).in(Scopes.SINGLETON);
         bind(SslProvider.class).toProvider(SSLEngineProvider.class);
-        bind(new TypeLiteral<Set<io.netty.handler.codec.http.cookie.Cookie>>(){}).toProvider(CookiesProvider2.class);
+        bind(new TypeLiteral<Set<io.netty.handler.codec.http.cookie.Cookie>>() {
+        }).toProvider(CookiesProvider2.class);
         bind(Protocol.class).toProvider(ProtocolProvider.class);
+        bind(WebSocketFrame.class).toProvider(WebSocketFrameProvider.class);
     }
-    
+
+    private static final class WebSocketFrameProvider implements Provider<WebSocketFrame> {
+
+        private final Provider<Event> evt;
+
+        @Inject
+        public WebSocketFrameProvider(Provider<Event> evt) {
+            this.evt = evt;
+        }
+
+        @Override
+        public WebSocketFrame get() {
+            Event evt = this.evt.get();
+            if (evt instanceof WebSocketEvent) {
+                return ((WebSocketEvent) evt).request();
+            }
+            throw new IllegalStateException("No web socket event in scope");
+        }
+
+    }
+
     private static final class ProtocolProvider implements Provider<Protocol> {
 
         private final Provider<Channel> channelProvider;
         private final Provider<HttpEvent> evt;
-        
+
         @Inject
         ProtocolProvider(Provider<Channel> channel, Provider<HttpEvent> evt) {
             this.channelProvider = channel;
@@ -479,11 +504,11 @@ public class ServerModule<A extends Application> extends AbstractModule {
         }
     }
 
-    static class CL extends TypeLiteral<Chain<Acteur>> {
+    static class CL extends TypeLiteral<Chain<Acteur, ? extends Chain<Acteur,?>>> {
 
     }
 
-    static class ChainProvider implements Provider<Chain<Acteur>> {
+    static class ChainProvider implements Provider<Chain<Acteur, ? extends Chain<Acteur,?>>> {
 
         @SuppressWarnings("unchecked")
         private final Provider<Chain> chain;
@@ -496,7 +521,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
 
         @Override
         @SuppressWarnings("unchecked")
-        public Chain<Acteur> get() {
+        public Chain<Acteur, ? extends Chain<Acteur,?>> get() {
             return chain.get();
         }
 
@@ -617,7 +642,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
         }
 
         @Override
-        public ErrorResponse evaluate(Throwable t, Acteur acteur, Page page, HttpEvent evt) {
+        public ErrorResponse evaluate(Throwable t, Acteur acteur, Page page, Event<?> evt) {
             if (t instanceof InvalidInputException) {
                 InvalidInputException iie = (InvalidInputException) t;
                 return Err.badRequest(iie.getProblems().toString());
@@ -843,7 +868,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
             return Collections.emptySet();
         }
     }
-    
+
     @SuppressWarnings("deprecation")
     private static final class CookiesProvider2 implements Provider<Set<io.netty.handler.codec.http.cookie.Cookie>> {
 
@@ -858,10 +883,10 @@ public class ServerModule<A extends Application> extends AbstractModule {
         public Set<io.netty.handler.codec.http.cookie.Cookie> get() {
             HttpEvent evt = ev.get();
             io.netty.handler.codec.http.cookie.Cookie[] cookies = evt.header(COOKIE_B);
-            return cookies == null || cookies.length == 0 ? Collections.emptySet() :
-                    new HashSet<>(Arrays.asList(cookies));
+            return cookies == null || cookies.length == 0 ? Collections.emptySet()
+                    : new HashSet<>(Arrays.asList(cookies));
         }
-    }    
+    }
 
     private static final class ExecutorServiceProvider implements Provider<ExecutorService> {
 
@@ -1045,4 +1070,4 @@ public class ServerModule<A extends Application> extends AbstractModule {
     @SuppressWarnings("deprecation")
     private static class CKTL extends TypeLiteral<Set<Cookie>> {
     }
-    }
+}

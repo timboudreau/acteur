@@ -78,7 +78,7 @@ public final class ChainRunner {
      * @param cancelled Set this to true if execution should be silently
      * cancelled
      */
-    public <A extends AbstractActeur<T, R, S>, S extends ActeurState<T, R>, P extends Chain<? extends A>, T, R extends T>
+    public <A extends AbstractActeur<T, R, S>, S extends ActeurState<T, R>, P extends Chain<? extends A, ?>, T, R extends T>
             void submit(P chain, ChainCallback<A, S, P, T, R> onDone, AtomicBoolean cancelled) {
         ActeurInvoker<A, S, P, T, R> cc = new ActeurInvoker<>(svc, scope, chain, onDone, cancelled);
         // Enter the scope, with the Chain (so it can be dynamically added to)
@@ -90,7 +90,7 @@ public final class ChainRunner {
         }
     }
 
-    private static class ActeurInvoker<A extends AbstractActeur<T, R, S>, S extends ActeurState<T, R>, P extends Chain<? extends A>, T, R extends T> implements Callable<Void>, Resumer {
+    private static class ActeurInvoker<A extends AbstractActeur<T, R, S>, S extends ActeurState<T, R>, P extends Chain<? extends A, ?>, T, R extends T> implements Callable<Void>, Resumer {
 
         private final ExecutorService svc;
 

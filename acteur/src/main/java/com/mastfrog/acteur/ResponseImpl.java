@@ -101,18 +101,18 @@ final class ResponseImpl extends Response {
     ChannelFutureListener listener;
     private boolean chunked;
     private Duration delay;
-    
+
     static final ThreadLocalTransfer<List<ResponseImpl>> shadowResponses = new ThreadLocalTransfer<>();
     List<ResponseImpl> alsoConsult;
 
     ResponseImpl() {
-       // Ensure's an Acteur's call to response().get(Headers.FOO) can see
-       // values set earlier in the chain.  Needed to get rid of ResponseHeaders
-       // and page.decorateResponse().
-       List<ResponseImpl> previousActeursResponses = shadowResponses.get();
-       if (previousActeursResponses != null) {
-           alsoConsult = CollectionUtils.reversed(previousActeursResponses);
-       }
+        // Ensure's an Acteur's call to response().get(Headers.FOO) can see
+        // values set earlier in the chain.  Needed to get rid of ResponseHeaders
+        // and page.decorateResponse().
+        List<ResponseImpl> previousActeursResponses = shadowResponses.get();
+        if (previousActeursResponses != null) {
+            alsoConsult = CollectionUtils.reversed(previousActeursResponses);
+        }
     }
 
     boolean isModified() {
@@ -172,7 +172,7 @@ final class ResponseImpl extends Response {
         this.status = status;
         return this;
     }
-    
+
     HttpResponseStatus rawStatus() {
         return status;
     }
@@ -277,7 +277,7 @@ final class ResponseImpl extends Response {
         }
         return result;
     }
-    
+
     <T> T internalGet(HeaderValueType<T> headerType) {
         for (Entry<?> e : headers) {
             HeaderValueType<T> d = e.match(headerType);
@@ -357,7 +357,7 @@ final class ResponseImpl extends Response {
         }
         return false;
     }
-    
+
     private boolean hasContentLength() {
         for (Entry<?> entry : headers) {
             if (Headers.CONTENT_LENGTH.equals(entry.decorator)) {
@@ -365,7 +365,7 @@ final class ResponseImpl extends Response {
             }
         }
         return false;
-        
+
     }
 
     private boolean isHttp10StyleResponse() {
@@ -511,8 +511,8 @@ final class ResponseImpl extends Response {
      * Set a ChannelFutureListener which will be called after headers are
      * written and flushed to the socket; prefer
      * <code>setResponseWriter()</code> to this method unless you are not using
- chunked encoding and want to stream your response (in which case, be sure
- to chunked(false) or you will have encoding errors).
+     * chunked encoding and want to stream your response (in which case, be sure
+     * to chunked(false) or you will have encoding errors).
      *
      * @param listener
      */
@@ -549,14 +549,14 @@ final class ResponseImpl extends Response {
         }
         Page p = Page.get();
         if (p == null) {
-            throw new IllegalStateException("Call to write message outside request scope");
+            throw new IllegalStateException("Call to write message with Page.set() not called (outside request scope?)");
         }
         NettyContentMarshallers marshallers = p.getApplication().getDependencies().getInstance(NettyContentMarshallers.class);
         ByteBuf buf = evt.channel().alloc().ioBuffer();
         marshallers.write(message, buf, charset);
         return buf;
     }
-    
+
     HttpResponseStatus internalStatus() {
         return status == null ? OK : status;
     }
@@ -670,9 +670,9 @@ final class ResponseImpl extends Response {
         public <R> HeaderValueType<R> match(HeaderValueType<R> decorator) {
             if (this.decorator.equals(decorator)) { // Equality test is case-insensitive name match
                 if (this.decorator.type() != decorator.type()) {
-                    System.err.println("Requesting header " + decorator + " of type " + decorator.type().getName() + 
-                            " but returning header of type " + this.decorator.type().getName() + " - if set, this"
-                                    + " will probably throw a ClassCastException.");
+                    System.err.println("Requesting header " + decorator + " of type " + decorator.type().getName()
+                            + " but returning header of type " + this.decorator.type().getName() + " - if set, this"
+                            + " will probably throw a ClassCastException.");
                 }
                 return (HeaderValueType<R>) this.decorator;
             }
@@ -680,7 +680,7 @@ final class ResponseImpl extends Response {
                     && this.decorator.type().equals(decorator.type())) {
                 return decorator;
             } else if (Strings.charSequencesEqual(this.decorator.name(), decorator.name(), true)) {
-                
+
             }
             return null;
         }

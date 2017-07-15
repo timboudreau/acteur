@@ -84,12 +84,12 @@ public class ChainsRunner {
      * @param initialContext Any objects which should be available for injection
      * into the {@link AbstractActeur}s in the chain.
      */
-    public <A extends AbstractActeur<T, R, S>, S extends ActeurState<T, R>, P extends Chain<? extends A>, T, R extends T>
+    public <A extends AbstractActeur<T, R, S>, S extends ActeurState<T, R>, P extends Chain<? extends A, ?>, T, R extends T>
             void submit(Iterable<P> chains, ChainCallback<A, S, P, T, R> onDone, AtomicBoolean cancelled, Object... initialContext) {
         svc.submit(scope.wrap(new OneChainRun<>(svc, onDone, chains.iterator(), cancelled), initialContext));
     }
 
-    class OneChainRun<A extends AbstractActeur<T, R, S>, S extends ActeurState<T, R>, P extends Chain<? extends A>, T, R extends T> implements ChainCallback<A, S, P, T, R>, Callable<Void> {
+    class OneChainRun<A extends AbstractActeur<T, R, S>, S extends ActeurState<T, R>, P extends Chain<? extends A,?>, T, R extends T> implements ChainCallback<A, S, P, T, R>, Callable<Void> {
 
         private final ExecutorService svc;
 

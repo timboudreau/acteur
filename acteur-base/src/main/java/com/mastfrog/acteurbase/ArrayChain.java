@@ -27,22 +27,26 @@ import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.util.Checks;
 import com.mastfrog.util.ConfigurationError;
 import java.lang.reflect.Modifier;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 
 /**
- * Base class for Chain implementations - a thing you can add either 
+ * Base class for Chain implementations - a thing you can add either
  * class objects of type T or objects of type T to, and it will provide
  * an <code>Iterator&lt;T&gt;</code> over the result.
  *
  * @author Tim Boudreau
  */
-public class ArrayChain<T> implements Chain<T> {
+public class ArrayChain<T, C extends ArrayChain<T,C>> implements Chain<T, C> {
 
-    private final List<Object> types = new LinkedList<>();
-    private final Dependencies deps;
-    private final Class<? super T> type;
+    protected final List<Object> types = new LinkedList<>();
+    protected final Dependencies deps;
+    protected final Class<? super T> type;
+    protected AtomicInteger chainPosition;
 
     @SuppressWarnings("unchecked")
     public ArrayChain(Dependencies deps, Class<? super T> type, List<Object> objs) {
@@ -71,7 +75,24 @@ public class ArrayChain<T> implements Chain<T> {
         this.type = type;
     }
 
-    public final ArrayChain<T> add(Class<? extends T> type) {
+    @Override
+    @SuppressWarnings("unchecked")
+    public Supplier<C> remnantSupplier() {
+        assert chainPosition != null : "Called out of sequence";
+        int pos = chainPosition.get();
+        final List<Object> rem = new ArrayList<>(types.size() - pos);
+        for (int i = pos; i < types.size(); i++) {
+            rem.add(types.get(i));
+        }
+        final Dependencies d = deps;
+        return () -> {
+            List<Object> l = new ArrayList<>(rem);
+            return (C) new ArrayChain<T,C>(deps, type, l);
+        };
+    }
+
+    @SuppressWarnings("unchecked")
+    public final C add(Class<? extends T> type) {
         Checks.notNull("type", type);
         if (!this.type.isAssignableFrom(type)) {
             throw new ConfigurationError(type.getName() + " is not a " + this.type.getName());
@@ -89,26 +110,22 @@ public class ArrayChain<T> implements Chain<T> {
             throw new ConfigurationError(type + " is an annotation type");
         }
         types.add(type);
-        return this;
+        return (C) this;
     }
 
-    public final ArrayChain<T> add(T obj) {
+    @SuppressWarnings("unchecked")
+    public final C add(T obj) {
         Checks.notNull("obj", obj);
         if (!this.type.isInstance(obj)) {
             throw new ConfigurationError("Not an instance of " + this.type.getName() + ": " + obj);
         }
         types.add(obj);
-        return this;
+        return (C) this;
     }
 
     @Override
     @SuppressWarnings("unchecked")
     public Iterator<T> iterator() {
-        return (Iterator<T>) new InstantiatingIterators(deps).iterable(types, type).iterator();
-    }
-
-    @Override
-    public Object[] getContextContribution() {
-        return new Object[0];
+        return (Iterator<T>) new InstantiatingIterators(deps, chainPosition = new AtomicInteger()).iterable(types, type).iterator();
     }
 }

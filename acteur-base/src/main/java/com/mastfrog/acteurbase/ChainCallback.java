@@ -30,7 +30,7 @@ import java.util.List;
  *
  * @author Tim Boudreau
  */
-public interface ChainCallback<A extends AbstractActeur<T, R, S>, S extends ActeurState<T, R>, P extends Chain<? extends AbstractActeur<T, R, ?>>, T, R extends T> {
+public interface ChainCallback<A extends AbstractActeur<T, R, S>, S extends ActeurState<T, R>, P extends Chain<? extends AbstractActeur<T, R, ?>, ?>, T, R extends T> {
 
     /**
      * Executing the chain or chains has completed, with the passed state and

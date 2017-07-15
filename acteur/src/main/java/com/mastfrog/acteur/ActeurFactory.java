@@ -40,6 +40,7 @@ import com.mastfrog.util.Exceptions;
 import com.mastfrog.util.Strings;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import static io.netty.handler.codec.http.HttpResponseStatus.SEE_OTHER;
+import io.netty.handler.codec.http.websocketx.WebSocketFrame;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
@@ -78,6 +79,7 @@ public class ActeurFactory {
 
     @Inject
     private Provider<HttpEvent> event;
+
     /**
      * Reject the request if it is not one of the passed HTTP methods
      *
@@ -120,7 +122,7 @@ public class ActeurFactory {
             this.charset = charset;
             this.methods = methods;
         }
-        
+
         private boolean hasMethod(HttpMethod m) {
             for (Method mm : methods) {
                 if (mm == m || mm.equals(m)) {
@@ -157,6 +159,7 @@ public class ActeurFactory {
     }
 
     private static class MatchMethod extends Acteur {
+
         private final Provider<HttpEvent> deps;
         private final boolean notSupp;
         private final Charset charset;
@@ -323,25 +326,35 @@ public class ActeurFactory {
         @Override
         public com.mastfrog.acteur.State getState() {
             final ContentConverter converter = deps.getInstance(ContentConverter.class);
-            HttpEvent evt = deps.getInstance(HttpEvent.class);
-            try {
-                MediaType mt = evt.header(Headers.CONTENT_TYPE);
-                if (mt == null) {
-                    mt = MediaType.ANY_TYPE;
-                }
+            Event<?> event = deps.getInstance(Event.class);
+            if (event.request() instanceof WebSocketFrame) {
                 try {
-                    T obj = converter.readObject(evt.content(), mt, type);
+                    T obj = converter.readObject(((WebSocketFrame) event).content(), MediaType.JSON_UTF_8, type);
                     return new Acteur.ConsumedLockedState(obj);
-                } catch (InvalidInputException e) {
-                    List<String> pblms = new LinkedList<>();
-                    for (Problem p : e.getProblems()) {
-                        pblms.add(p.getMessage());
-                    }
-                    return new Acteur.RespondWith(Err.badRequest("Invalid data").put("problems", pblms));
+                } catch (IOException | InvalidInputException ex) {
+                    return new Acteur.RespondWith(Err.badRequest("Bad or no JSON\n" + stackTrace(ex)));
                 }
-            } catch (IOException ex) {
+            } else {
+                HttpEvent evt = deps.getInstance(HttpEvent.class);
+                try {
+                    MediaType mt = evt.header(Headers.CONTENT_TYPE);
+                    if (mt == null) {
+                        mt = MediaType.ANY_TYPE;
+                    }
+                    try {
+                        T obj = converter.readObject(evt.content(), mt, type);
+                        return new Acteur.ConsumedLockedState(obj);
+                    } catch (InvalidInputException e) {
+                        List<String> pblms = new LinkedList<>();
+                        for (Problem p : e.getProblems()) {
+                            pblms.add(p.getMessage());
+                        }
+                        return new Acteur.RespondWith(Err.badRequest("Invalid data").put("problems", pblms));
+                    }
+                } catch (IOException ex) {
 //                Logger.getLogger(ActeurFactory.class.getName()).log(Level.SEVERE, null, ex);
-                return new Acteur.RespondWith(Err.badRequest("Bad or no JSON\n" + stackTrace(ex)));
+                    return new Acteur.RespondWith(Err.badRequest("Bad or no JSON\n" + stackTrace(ex)));
+                }
             }
         }
 
@@ -646,8 +659,8 @@ public class ActeurFactory {
     }
 
     /**
-     * Reject the request if HttpEvent.path().toString() does not match one
- of the passed regular expressions
+     * Reject the request if HttpEvent.path().toString() does not match one of
+     * the passed regular expressions
      *
      * @param regexen Regexen
      * @return An acteur
@@ -786,14 +799,14 @@ public class ActeurFactory {
                     case '&':
                         exactPathForRegex.put(regex, INVALID);
                         return null;
-                    default :
+                    default:
                         sb.append(c);
                 }
                 precedingWasBackslash = c == '\\';
             }
             if (!endMarkerFound || !startMarkerFound) {
-                        exactPathForRegex.put(regex, INVALID);
-                        return null;
+                exactPathForRegex.put(regex, INVALID);
+                return null;
             }
             if (sb.length() > 0 && sb.charAt(0) == '/') {
                 result = sb.substring(1);
@@ -1061,7 +1074,7 @@ public class ActeurFactory {
             @SuppressWarnings("unchecked")
             public com.mastfrog.acteur.State getState() {
                 boolean result = test.test(event.get());
-                Chain<Acteur> chain = deps.getInstance(Chain.class);
+                Chain<Acteur, ?> chain = deps.getInstance(Chain.class);
                 if (result) {
                     chain.add(ifTrue);
                 } else {

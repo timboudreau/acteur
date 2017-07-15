@@ -28,6 +28,7 @@ import com.mastfrog.util.collections.CollectionUtils;
 import com.mastfrog.util.collections.Converter;
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import javax.inject.Inject;
 
 /**
@@ -40,10 +41,17 @@ import javax.inject.Inject;
 public final class InstantiatingIterators {
 
     private final Dependencies deps;
+    private final AtomicInteger position;
 
     @Inject
     InstantiatingIterators(Dependencies deps) {
         this.deps = deps;
+        this.position = null;
+    }
+
+    InstantiatingIterators(Dependencies deps, AtomicInteger position) {
+        this.deps = deps;
+        this.position = position;
     }
 
     public <T> Iterable<T> iterable(List<Object> obj, final Class<? extends T> type) {
@@ -62,7 +70,7 @@ public final class InstantiatingIterators {
                     return type.cast(t);
                 }
             }
-        }, new PermissiveIterator<Object>(obj)));
+        }, new PermissiveIterator<Object>(obj, position)));
     }
 
     /**
@@ -74,9 +82,11 @@ public final class InstantiatingIterators {
 
         private volatile int ix = 0;
         private final List<T> objs;
+        private final AtomicInteger position;
 
-        public PermissiveIterator(List<T> objs) {
+        public PermissiveIterator(List<T> objs, AtomicInteger position) {
             this.objs = objs;
+            this.position = position;
         }
 
         @Override
@@ -86,6 +96,9 @@ public final class InstantiatingIterators {
 
         @Override
         public T next() {
+            if (position != null) {
+                position.incrementAndGet();
+            }
             return objs.get(ix++);
         }
 

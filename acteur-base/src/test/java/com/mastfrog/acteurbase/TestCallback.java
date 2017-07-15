@@ -35,7 +35,7 @@ import org.junit.Assert;
  *
  * @author Tim Boudreau
  */
-class TestCallback implements ChainCallback<AbstractActeur<Response, ResponseImpl, ActeurState<Response, ResponseImpl>>, ActeurState<Response, ResponseImpl>, ArrayChain<AbstractActeur<Response, ResponseImpl, ActeurState<Response, ResponseImpl>>>, Response, ResponseImpl> {
+class TestCallback implements ChainCallback<AbstractActeur<Response, ResponseImpl, ActeurState<Response, ResponseImpl>>, ActeurState<Response, ResponseImpl>, ArrayChain<AbstractActeur<Response, ResponseImpl, ActeurState<Response, ResponseImpl>>, ?>, Response, ResponseImpl> {
 
     private final CountDownLatch latch;
     private Throwable ex;
@@ -134,6 +134,9 @@ class TestCallback implements ChainCallback<AbstractActeur<Response, ResponseImp
         await();
         synchronized (this) {
             Assert.assertNotNull(ex);
+            if (!type.isInstance(ex)) {
+                throw ex;
+            }
             Assert.assertTrue("Expected " + type.getName() + " but was " + ex.getClass().getName(), type.isInstance(ex));
         }
         return this;
@@ -150,12 +153,12 @@ class TestCallback implements ChainCallback<AbstractActeur<Response, ResponseImp
     }
 
     @Override
-    public void onBeforeRunOne(ArrayChain<AbstractActeur<Response, ResponseImpl, ActeurState<Response, ResponseImpl>>> chain) {
+    public void onBeforeRunOne(ArrayChain<AbstractActeur<Response, ResponseImpl, ActeurState<Response, ResponseImpl>>, ?> chain) {
         System.out.println("On before run one " + chain);
     }
 
     @Override
-    public void onAfterRunOne(ArrayChain<AbstractActeur<Response, ResponseImpl, ActeurState<Response, ResponseImpl>>> chain, AbstractActeur<Response, ResponseImpl, ActeurState<Response, ResponseImpl>> acteur) {
+    public void onAfterRunOne(ArrayChain<AbstractActeur<Response, ResponseImpl, ActeurState<Response, ResponseImpl>>, ?> chain, AbstractActeur<Response, ResponseImpl, ActeurState<Response, ResponseImpl>> acteur) {
         System.out.println("On after run one " + acteur);
     }
 }

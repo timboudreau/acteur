@@ -59,6 +59,8 @@ public interface PipelineDecorator {
     
     public static final String SSL_HANDLER = "ssl";
 
+    public static final String WEBSOCKET_HANDLER = "websocket";
+
     default void onBeforeInstallSslHandler(ChannelPipeline pipeline) {
         // do nothing
     }

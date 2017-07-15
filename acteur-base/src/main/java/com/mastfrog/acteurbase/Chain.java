@@ -23,6 +23,8 @@
  */
 package com.mastfrog.acteurbase;
 
+import java.util.function.Supplier;
+
 /**
  * A chain of objects which can be added to by either adding class objects or
  * instances, which will take care of instantiating the class objects on the
@@ -33,7 +35,7 @@ package com.mastfrog.acteurbase;
  *
  * @author Tim Boudreau
  */
-public interface Chain<T> extends Iterable<T> {
+public interface Chain<T, C extends Chain<T, C>> extends Iterable<T> {
 
     /**
      * Add an object of type T to this chain.
@@ -41,7 +43,7 @@ public interface Chain<T> extends Iterable<T> {
      * @param obj The object, non null, checked for type safety
      * @return this
      */
-    Chain add(T obj);
+    C add(T obj);
 
     /**
      * Add a type which should be instantiated by the iterator on-demand. The
@@ -51,15 +53,16 @@ public interface Chain<T> extends Iterable<T> {
      * @param type The type
      * @return this
      */
-    Chain add(Class<? extends T> type);
+    C add(Class<? extends T> type);
 
     /**
      * Get any objects this chain should contribute into the injection context.
      *
      * @return an array of objects
      */
-//    default Object[] getContextContribution() {
-//        return new Object[0];
-//    }
-    Object[] getContextContribution();
+    default Object[] getContextContribution() {
+        return new Object[0];
+    }
+
+    Supplier<C> remnantSupplier();
 }
