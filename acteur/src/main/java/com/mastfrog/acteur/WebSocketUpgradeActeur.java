@@ -23,6 +23,7 @@
  */
 package com.mastfrog.acteur;
 
+import com.google.inject.ImplementedBy;
 import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.acteur.server.PathFactory;
 import com.mastfrog.acteur.spi.ApplicationControl;
@@ -46,7 +47,8 @@ import java.util.function.Supplier;
 import javax.inject.Inject;
 
 /**
- * Use in &#064;Precursors annotation before acteurs which consume and produce web socket responses.
+ * Use in &#064;Precursors annotation before acteurs which consume and produce
+ * web socket responses.
  *
  * @author Tim Boudreau
  */
@@ -62,12 +64,12 @@ public class WebSocketUpgradeActeur extends Acteur {
             = AttributeKey.valueOf(WebSocketUpgradeActeur.class, "page");
 
     @Inject
-    WebSocketUpgradeActeur(HttpEvent evt, PathFactory paths, Settings settings, Page page, Deferral defer, Chain chain, ApplicationControl ctrl) {
+    @SuppressWarnings("unchecked")
+    protected WebSocketUpgradeActeur(HttpEvent evt, PathFactory paths, Settings settings, Page page, Deferral defer, Chain chain, ApplicationControl ctrl, OnWebsocketConnect onConnect) {
         Path pth = paths.toExternalPath(evt.path());
         int max = settings.getInt(SETTINGS_KEY_WEBSOCKET_FRAME_MAX_LENGTH, DEFAULT_WEBSOCKET_FRAME_MAX_LENGTH);
 
         boolean secure = settings.getBoolean(SETTINGS_KEY_WEBSOCKET_SECURE_PROTOCOL, DEFAULT_WEBSOCKET_SECURE_PROTOCOL);
-
 
         URL url = paths.constructURL(secure ? Protocols.WSS : Protocols.WS, pth);
 
@@ -82,7 +84,9 @@ public class WebSocketUpgradeActeur extends Acteur {
             future.addListener((ChannelFutureListener) (ChannelFuture future1) -> {
                 if (future1.isSuccess()) {
                     Channel ch = future1.channel();
-                    ch.attr(CHAIN_KEY).set(chain.remnantSupplier());
+                    Object a = onConnect.connected(evt, ch);
+                    Object b = connected(evt, ch); // allow subclasses
+                    ch.attr(CHAIN_KEY).set(chain.remnantSupplier(arrayOf(a, b)));
                     ch.attr(PAGE_KEY).set(page);
                     return;
                 } else if (future1.cause() != null) {
@@ -92,6 +96,39 @@ public class WebSocketUpgradeActeur extends Acteur {
             });
             Resumer res = defer.defer(); // Intentionally never resume
             next();
+        }
+    }
+
+    private Object[] arrayOf(Object a, Object b) {
+        if (a != null && b != null) {
+            return new Object[] { a, b };
+        } else if (a == null && b != null) {
+            return new Object[] { b };
+        } else if (a != null && b == null) {
+            return new Object[] { a };
+        } else {
+            return new Object[0];
+        }
+    }
+
+    Object connected(HttpEvent evt, Channel channel) {
+        // do nothing
+        return null;
+    }
+
+    @ImplementedBy(DefaultOnWebsocketConnect.class)
+    public interface OnWebsocketConnect {
+
+        Object connected(HttpEvent evt, Channel channel);
+
+    }
+
+    private static final class DefaultOnWebsocketConnect implements OnWebsocketConnect {
+
+        @Override
+        public Object connected(HttpEvent evt, Channel channel) {
+            // do nothing
+            return null;
         }
     }
 }

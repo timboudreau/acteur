@@ -77,14 +77,13 @@ public class ArrayChain<T, C extends ArrayChain<T,C>> implements Chain<T, C> {
 
     @Override
     @SuppressWarnings("unchecked")
-    public Supplier<C> remnantSupplier() {
+    public Supplier<C> remnantSupplier(Object... scopeContents) {
         assert chainPosition != null : "Called out of sequence";
         int pos = chainPosition.get();
         final List<Object> rem = new ArrayList<>(types.size() - pos);
         for (int i = pos; i < types.size(); i++) {
             rem.add(types.get(i));
         }
-        final Dependencies d = deps;
         return () -> {
             List<Object> l = new ArrayList<>(rem);
             return (C) new ArrayChain<T,C>(deps, type, l);

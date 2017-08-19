@@ -33,6 +33,7 @@ import com.mastfrog.giulius.tests.GuiceRunner;
 import com.mastfrog.giulius.tests.TestWith;
 import com.mastfrog.netty.http.test.harness.TestHarness;
 import com.mastfrog.netty.http.test.harness.TestHarnessModule;
+import com.mastfrog.util.net.PortFinder;
 import com.mastfrog.util.time.TimeUtil;
 import static io.netty.handler.codec.http.HttpResponseStatus.NOT_MODIFIED;
 import static io.netty.handler.codec.http.HttpResponseStatus.OK;
@@ -53,7 +54,7 @@ import org.junit.runner.RunWith;
 public class InternalsTest {
 
     private static final ZonedDateTime WHEN = ZonedDateTime.now().with(ChronoField.MILLI_OF_SECOND, 0);
-    
+
     static {
         System.setProperty("acteur.debug", "true");
     }
@@ -73,17 +74,23 @@ public class InternalsTest {
                 .assertContent("Got here.")
                 .getHeader(Headers.LAST_MODIFIED);
         assertEquals(when.toInstant(), WHEN.toInstant());
-        
+
         harn.get("lm").addHeader(Headers.IF_MODIFIED_SINCE, when).go().assertStatus(NOT_MODIFIED);
         harn.get("lm").addHeader(Headers.IF_MODIFIED_SINCE, WHEN).go().assertStatus(NOT_MODIFIED);
         harn.get("lm").addHeader(Headers.IF_MODIFIED_SINCE, WHEN.plus(Duration.ofHours(1))).go().assertStatus(NOT_MODIFIED);
         harn.get("lm").addHeader(Headers.IF_MODIFIED_SINCE, WHEN.minus(Duration.ofHours(1))).go().assertStatus(OK);
     }
-    
+
     static final class ITM extends ServerModule<ITApp> {
 
         ITM() {
             super(ITApp.class, 2, 2, 3);
+        }
+
+        @Override
+        protected void configure() {
+            System.setProperty(ServerModule.PORT, "" + new PortFinder().findAvailableServerPort());
+            super.configure();
         }
     }
 
@@ -108,13 +115,15 @@ public class InternalsTest {
         }
 
         static class LMActeur extends Acteur {
+
             LMActeur() {
                 add(Headers.LAST_MODIFIED, WHEN);
                 next();
             }
         }
-        
+
         static class MsgActeur extends Acteur {
+
             MsgActeur() {
                 ok("Got here.");
             }

@@ -1,4 +1,4 @@
-/* 
+/*
  * The MIT License
  *
  * Copyright 2013 Tim Boudreau.
@@ -26,6 +26,7 @@ package com.mastfrog.url;
 import com.mastfrog.util.AbstractBuilder;
 import com.mastfrog.util.Checks;
 import com.mastfrog.util.Exceptions;
+import static com.mastfrog.util.Strings.charSequencesEqual;
 import com.mastfrog.util.collections.CollectionUtils;
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
@@ -39,31 +40,35 @@ import java.util.regex.Pattern;
 import org.openide.util.NbBundle;
 
 /**
- * The path portion of a URL.
+ * The path portion of a URL.  In particular, this class deals with normalizing
+ * relative (..) references, and leading and trailing slashes.
  *
  * @author Tim Boudreau
  */
 public final class Path implements URLComponent, Iterable<PathElement> {
+
     private static final long serialVersionUID = 1L;
     private final PathElement[] elements;
     private final boolean illegal;
-    public Path (PathElement... elements) {
+
+    public Path(PathElement... elements) {
         Checks.notNull("elements", elements);
         this.elements = new PathElement[elements.length];
         System.arraycopy(elements, 0, this.elements, 0, elements.length);
         illegal = normalizePath().illegal;
     }
 
-    Path (NormalizeResult n) {
+    Path(NormalizeResult n) {
         Checks.notNull("n", n);
         illegal = n.illegal;
         this.elements = illegal ? n.original : n.elements.toArray(new PathElement[n.elements.size()]);
     }
 
-    static final Pattern PATH_PATTERN = Pattern.compile (URLBuilder.PATH_ELEMENT_DELIMITER + "([$.]*?)");
+    static final Pattern PATH_PATTERN = Pattern.compile(URLBuilder.PATH_ELEMENT_DELIMITER + "([$.]*?)");
 
     /**
      * Parse a path in the format <code>element1/element2/element3</code>
+     *
      * @param path
      * @return
      */
@@ -143,11 +148,29 @@ public final class Path implements URLComponent, Iterable<PathElement> {
         return CollectionUtils.toIterator(elements);
     }
 
-    public Path normalize() {
-        return new Path (normalizePath());
+    public PathElement lastElement() {
+        return elements.length == 0 ? new PathElement("") : elements[elements.length-1];
     }
-    
-    public Path replace (String old, String nue) {
+
+    /**
+     * Normalize a path, resolving <code>..</code> elements.
+     *
+     * @return A path
+     */
+    public Path normalize() {
+        return new Path(normalizePath());
+    }
+
+    /**
+     * Create a new path, replacing any path <i>elements</i> that exactly
+     * match the passed string with new elements that match the
+     * replacement.
+     *
+     * @param old The string to look for
+     * @param nue The string to replace it with
+     * @return A path
+     */
+    public Path replace(String old, String nue) {
         PathElement[] els = this.getElements();
         for (int i = 0; i < els.length; i++) {
             if (els[i].toNonTrailingSlashElement().toString().equals(old)) {
@@ -179,11 +202,12 @@ public final class Path implements URLComponent, Iterable<PathElement> {
             }
             result.add(e);
         }
-        NormalizeResult res = new NormalizeResult (result, this.elements, illegal);
+        NormalizeResult res = new NormalizeResult(result, this.elements, illegal);
         return res;
     }
 
     static final class NormalizeResult {
+
         private final List<PathElement> elements;
         private final boolean illegal;
         private final PathElement[] original;
@@ -197,17 +221,18 @@ public final class Path implements URLComponent, Iterable<PathElement> {
             this.illegal = illegal;
         }
     }
-    
-    public Path prepend (String part) {
-        return merge (Path.parse(part), this);
+
+    public Path prepend(String part) {
+        return merge(Path.parse(part), this);
     }
-    
-    public Path append (String part) {
-        return merge (this, Path.parse(part));
+
+    public Path append(String part) {
+        return merge(this, Path.parse(part));
     }
 
     /**
      * Merge an array of paths together
+     *
      * @param paths An array of paths
      * @return A merged path which appends all elements of all passed paths
      */
@@ -215,13 +240,13 @@ public final class Path implements URLComponent, Iterable<PathElement> {
         Checks.notEmptyOrNull("paths", paths);
         List<PathElement> l = new ArrayList<>(paths.length * 10);
         for (Path p : paths) {
-            l.addAll (Arrays.asList(p.getElements()));
+            l.addAll(Arrays.asList(p.getElements()));
         }
-        return new Path (l.toArray(new PathElement[l.size()]));
+        return new Path(l.toArray(new PathElement[l.size()]));
     }
 
     /**
-     * Determine if this path is a path to a parent of the passed path.  E.g.
+     * Determine if this path is a path to a parent of the passed path. E.g.
      * <pre>
      * assert Path.parse ("com/foo").isParentOf(Path.parse("com/foo/bar")) == true;
      * </pre>
@@ -229,13 +254,13 @@ public final class Path implements URLComponent, Iterable<PathElement> {
      * @param path A path
      * @return whether or not this path is a parent of the passed path.
      */
-    public boolean isParentOf (Path path) {
+    public boolean isParentOf(Path path) {
         Checks.notNull("path", path);
         return path.toString().startsWith(toString());
     }
 
     /**
-     * Determine if this path is a path to a child of the passed path.  E.g.
+     * Determine if this path is a path to a child of the passed path. E.g.
      * <pre>
      * assert Path.parse ("com/foo/bar").isChildOf(Path.parse("com/foo")) == true;
      * </pre>
@@ -243,13 +268,14 @@ public final class Path implements URLComponent, Iterable<PathElement> {
      * @param path a path
      * @return whether or not this Path is a child of the passed Path
      */
-    public boolean isChildOf (Path path) {
+    public boolean isChildOf(Path path) {
         Checks.notNull("path", path);
         return path.isParentOf(this);
     }
 
     /**
      * Get the number of elements in this path.
+     *
      * @return
      */
     public int size() {
@@ -258,6 +284,7 @@ public final class Path implements URLComponent, Iterable<PathElement> {
 
     /**
      * Get the individual elements of this path.
+     *
      * @return An array of elements
      */
     public PathElement[] getElements() {
@@ -267,8 +294,8 @@ public final class Path implements URLComponent, Iterable<PathElement> {
     }
 
     /**
-     * Get a Path which does not include the first element of this path.
-     * E.g. the child path of <code>com/foo/bar</code> is <code>foo/bar</code>.
+     * Get a Path which does not include the first element of this path. E.g.
+     * the child path of <code>com/foo/bar</code> is <code>foo/bar</code>.
      *
      * @return A child path
      */
@@ -280,7 +307,13 @@ public final class Path implements URLComponent, Iterable<PathElement> {
         }
         return null;
     }
-    
+
+    /**
+     * Create a string version of this path, prepending a leading slash
+     * if necessary.
+     *
+     * @return A string
+     */
     public String toStringWithLeadingSlash() {
         StringBuilder result = new StringBuilder();
         appendTo(result);
@@ -293,8 +326,9 @@ public final class Path implements URLComponent, Iterable<PathElement> {
     }
 
     /**
-     * Get the parent of this path.  E.g. the parent of
-     * <code>com/foo/bar</code> is <code>com/foo</code>.
+     * Get the parent of this path. E.g. the parent of <code>com/foo/bar</code>
+     * is <code>com/foo</code>.
+     *
      * @return A path
      */
     public Path getParentPath() {
@@ -304,6 +338,32 @@ public final class Path implements URLComponent, Iterable<PathElement> {
             return new Path(els);
         }
         return null;
+    }
+
+    /**
+     * Returns true if the last path element is a textual match for the passed
+     * CharSequence, considering case.
+     *
+     * @param s The string to match
+     * @return True if it matches
+     */
+    public boolean lastElementMatches(CharSequence s) {
+        return lastElementMatches(s, false);
+    }
+
+    /**
+     * Returns true if the last path element is a textual match for the passed
+     * CharSequence, ignoring case if the passed boolean flag is true.
+     *
+     * @param s The string to match
+     * @param ignoreCase Whether or not to do a case-insensitive match
+     * @return True if it matches
+     */
+    public boolean lastElementMatches(CharSequence s, boolean ignoreCase) {
+        if (this.elements.length == 0) {
+            return false;
+        }
+        return charSequencesEqual(s, elements[elements.length - 1].toString(), ignoreCase);
     }
 
     @Override
@@ -341,8 +401,9 @@ public final class Path implements URLComponent, Iterable<PathElement> {
 
     /**
      * Determine if this path is probably a reference to a file (last element
-     * contains a . character).  May be used to decide whether or not to append
-     * a '/' character.
+     * contains a . character). May be used to decide whether or not to append a
+     * '/' character.
+     *
      * @return true if this is a probable file.
      */
     public boolean isProbableFileReference() {
@@ -353,7 +414,7 @@ public final class Path implements URLComponent, Iterable<PathElement> {
         Checks.notNull("sb", sb);
         for (int i = 0; i < elements.length; i++) {
             if (i > 0) {
-                sb.append (URLBuilder.PATH_ELEMENT_DELIMITER);
+                sb.append(URLBuilder.PATH_ELEMENT_DELIMITER);
             }
             elements[i].appendTo(sb, i == elements.length - 1);
         }
@@ -363,7 +424,7 @@ public final class Path implements URLComponent, Iterable<PathElement> {
         Checks.nonNegative("ix", ix);
         return elements[ix];
     }
-    
+
     public PathElement getLastElement() {
         if (elements.length > 0) {
             PathElement last = elements[elements.length - 1];
@@ -391,7 +452,7 @@ public final class Path implements URLComponent, Iterable<PathElement> {
         hash = 67 * hash + Arrays.deepHashCode(this.elements);
         return hash;
     }
-    
+
     public URI toURI() {
         try {
             return new URI(toString());
@@ -399,7 +460,7 @@ public final class Path implements URLComponent, Iterable<PathElement> {
             return Exceptions.chuck(ex);
         }
     }
-    
+
     public URI toURIWithLeadingSlash() {
         try {
             return new URI(toStringWithLeadingSlash());
@@ -407,7 +468,7 @@ public final class Path implements URLComponent, Iterable<PathElement> {
             return Exceptions.chuck(ex);
         }
     }
-    
+
     public String[] toStringArray() {
         String[] result = new String[this.size()];
         for (int i = 0; i < result.length; i++) {
@@ -417,12 +478,12 @@ public final class Path implements URLComponent, Iterable<PathElement> {
     }
 
     private static final class PathBuilder extends AbstractBuilder<PathElement, Path> {
-        
+
         @Override
         public Path create() {
             PathElement[] elements = new PathElement[size()];
             elements = elements().toArray(elements);
-            return new Path (elements);
+            return new Path(elements);
         }
 
         @Override

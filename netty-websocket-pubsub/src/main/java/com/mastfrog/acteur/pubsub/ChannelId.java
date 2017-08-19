@@ -1,7 +1,7 @@
-/* 
+/*
  * The MIT License
  *
- * Copyright 2013 Tim Boudreau.
+ * Copyright 2017 Tim Boudreau.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,27 +21,32 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.mastfrog.acteur.util;
+package com.mastfrog.acteur.pubsub;
 
 /**
- * Enum of standard values for the HTTP Connection header.
+ * An ad-hoc name for a pub-sub channel, which multiple netty channels
+ * may be subscribed to.  The channels subscribed must have a handler that
+ * knows what to do with a WebSocketFrame.
  *
  * @author Tim Boudreau
  */
-public enum Connection {
-    close, keep_alive, upgrade;
-    
-    @Override
+public final class ChannelId {
+
+    private final String name;
+
+    public ChannelId(String name) {
+        this.name = name;
+    }
+
+    public boolean equals(Object o) {
+        return o instanceof ChannelId && ((ChannelId) o).name.equals(name);
+    }
+
+    public int hashCode() {
+        return name.hashCode() * 71;
+    }
+
     public String toString() {
-        switch (this) {
-            case close:
-                return name();
-            case keep_alive:
-                return "keep-alive";
-            case upgrade:
-                return "Upgrade";
-            default:
-                throw new AssertionError(this);
-        }
+        return name;
     }
 }

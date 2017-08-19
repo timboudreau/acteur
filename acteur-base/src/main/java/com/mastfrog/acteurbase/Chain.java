@@ -64,5 +64,5 @@ public interface Chain<T, C extends Chain<T, C>> extends Iterable<T> {
         return new Object[0];
     }
 
-    Supplier<C> remnantSupplier();
+    Supplier<C> remnantSupplier(Object... scopeTypes);
 }

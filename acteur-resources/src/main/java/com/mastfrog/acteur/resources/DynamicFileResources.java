@@ -27,7 +27,6 @@ import com.google.common.net.MediaType;
 import com.google.inject.Inject;
 import com.mastfrog.acteur.Event;
 import com.mastfrog.acteur.HttpEvent;
-import com.mastfrog.acteur.Page;
 import com.mastfrog.acteur.Response;
 import com.mastfrog.acteur.ResponseWriter;
 import com.mastfrog.acteur.headers.ByteRanges;
@@ -51,7 +50,6 @@ import com.mastfrog.acteur.headers.Range;
 import com.mastfrog.acteur.spi.ApplicationControl;
 import com.mastfrog.acteur.util.CacheControl;
 import com.mastfrog.acteur.util.CacheControlTypes;
-import com.mastfrog.util.Exceptions;
 import com.mastfrog.util.Streams;
 import com.mastfrog.util.Strings;
 import com.mastfrog.util.time.TimeUtil;
@@ -142,8 +140,12 @@ public class DynamicFileResources implements StaticResources {
                     .add(LAST_MODIFIED, TimeUtil.fromUnixTimestamp(file.lastModified()))
                     .add(ETAG, inodeEtag())
                     .add(AGE, Duration.ZERO)
-                    .add(CONTENT_TYPE, getContentType())
                     .add(ACCEPT_RANGES, HttpHeaderValues.BYTES);
+
+            MediaType contentType = getContentType();
+            if (contentType != null) {
+                response.add(CONTENT_TYPE, contentType);
+            }
 
             if (expires != null) {
                 response.add(EXPIRES, expires);

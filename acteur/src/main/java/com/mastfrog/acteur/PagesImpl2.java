@@ -112,8 +112,12 @@ class PagesImpl2 {
         if (event.request() instanceof WebSocketFrame) {
             Attribute<Supplier<? extends Chain<? extends Acteur, ?>>> s = channel.attr(WebSocketUpgradeActeur.CHAIN_KEY);
             Supplier<? extends Chain<? extends Acteur, ?>> chainSupplier = s.get();
+            if (chainSupplier == null) {
+                throw new IllegalStateException("Got a WebSocketFrame on a channel with no websocket chain set up");
+            }
 
             PageChain pageChain = (PageChain) chainSupplier.get();
+            pageChain.addToContext(event);
             pageChain.page = channel.attr(WebSocketUpgradeActeur.PAGE_KEY).get();
 
             pagesIterable = Collections.singleton(pageChain);
@@ -132,6 +136,7 @@ class PagesImpl2 {
     }
 
     static final class OneChainIterable implements Iterable<PageChain> {
+
         private final Page page;
         private final ReentrantScope scope;
         private final Object[] contents;
@@ -148,6 +153,7 @@ class PagesImpl2 {
         public Iterator<PageChain> iterator() {
             return new Iterator<PageChain>() {
                 boolean used;
+
                 @Override
                 public boolean hasNext() {
                     return !used;
@@ -242,11 +248,16 @@ class PagesImpl2 {
 
         @Override
         public void receive(final Acteur acteur, final com.mastfrog.acteur.State state, final ResponseImpl response) {
-            boolean isWebSocketResponse = event.request() instanceof WebSocketFrame && !(acteur instanceof WebSocketUpgradeActeur) &&
-                    response.isModified();
+            boolean isWebSocketResponse = event.request() instanceof WebSocketFrame && !(acteur instanceof WebSocketUpgradeActeur)
+                    && response.isModified();
             if (isWebSocketResponse) {
                 if (response.getMessage() instanceof WebSocketFrame) {
                     channel.writeAndFlush(response.getMessage());
+                    return;
+                } else if (response.getMessage() == null) {
+                    // If no message, that just means we don't have a reply to this
+                    // frame immediately - silently do not try to publish something
+                    // - this is not http request/response.
                     return;
                 }
                 // XXX consider response.getDelay()?
@@ -475,7 +486,7 @@ class PagesImpl2 {
     static class PageChain extends ArrayChain<Acteur, PageChain> {
 
         private Page page;
-        private final Object[] ctx;
+        private Object[] ctx;
         private final AtomicBoolean first = new AtomicBoolean(true);
         private final ReentrantScope scope;
         private static final Object[] EMPTY = new Object[0];
@@ -488,7 +499,7 @@ class PagesImpl2 {
             this.scope = scope;
         }
 
-        PageChain(Dependencies deps, ReentrantScope scope, Class<? super Acteur> type, List<Object> pages, Object... ctx) {
+        PageChain(Dependencies deps, ReentrantScope scope, Class<? super Acteur> type, List<Object> pages, Object[] ctx) {
             super(deps, type, pages);
             isReconstituted = true;
             this.scope = scope;
@@ -509,15 +520,17 @@ class PagesImpl2 {
 
                     @Override
                     public Acteur next() {
-                        try (QuietAutoCloseable cl = Page.set(page)) {
-                            return orig.next();
+                        // XXX why are we not getting the context here?
+                        try (QuietAutoCloseable cl1 = scope.enter(ctx)) {
+                            try (QuietAutoCloseable cl = Page.set(page)) {
+                                return orig.next();
+                            }
                         }
                     }
                 };
             }
             return result;
         }
-
 
         @Override
         public Object[] getContextContribution() {
@@ -536,8 +549,22 @@ class PagesImpl2 {
             return "Chain for " + page;
         }
 
+        private Object[] combine(Object[] a, Object[] b) {
+            if (a.length == 0) {
+                return b;
+            } else if (b.length == 0) {
+                return a;
+            } else {
+                Object[] nue = new Object[a.length + b.length];
+                System.arraycopy(a, 0, nue, 0, a.length);
+                System.arraycopy(b, 0, nue, a.length, b.length);
+                return nue;
+            }
+        }
+
         @Override
-        public Supplier<PageChain> remnantSupplier() {
+        public Supplier<PageChain> remnantSupplier(Object... scopeContents) {
+            Object[] context = combine(ctx, scopeContents);
             assert chainPosition != null : "Called out of sequence";
             int pos = chainPosition.get();
             final List<Object> rem = new ArrayList<>(types.size() - pos);
@@ -547,10 +574,17 @@ class PagesImpl2 {
             final Dependencies d = deps;
             return () -> {
                 List<Object> l = new ArrayList<>(rem);
-                PageChain chain = new PageChain(d, scope, type, rem, l, ctx);
+                PageChain chain = new PageChain(d, scope, type, l, context);
                 chain.page = page;
                 return chain;
             };
+        }
+
+        private void addToContext(Event<?> event) {
+            Object[] nue = new Object[ctx.length + 1];
+            System.arraycopy(ctx, 0, nue, 0, ctx.length);
+            nue[nue.length-1] = event;
+            ctx = nue;
         }
     }
 

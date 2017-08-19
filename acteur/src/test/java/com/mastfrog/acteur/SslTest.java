@@ -23,7 +23,6 @@
  */
 package com.mastfrog.acteur;
 
-import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.acteur.server.ServerBuilder;
@@ -165,7 +164,7 @@ public class SslTest {
     static {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < 100; i++) {
-            sb.append("This is line " + i + "\n");
+            sb.append("This is line ").append(i).append("\n");
         }
         MESSAGE = sb.toString();
     }

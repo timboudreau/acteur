@@ -77,6 +77,19 @@ public class MimeTypes {
         add("pdf", MediaType.parse("application/pdf"));
         add("ppt", MediaType.parse("application/powerpoint"));
         add("rtf", MediaType.parse("text/richtext"));
+        add("mp4", MediaType.MP4_VIDEO);
+        add("mp3", MediaType.parse("audio/mp3"));
+        add("m4a", MediaType.MP4_AUDIO);
+        add("flv", MediaType.FLV_VIDEO);
+        add("webm", MediaType.WEBM_VIDEO);
+        add("aac", MediaType.AAC_AUDIO);
+        add("json", MediaType.JSON_UTF_8);
+        add("mpeg", MediaType.MPEG_VIDEO);
+        add("avi", MediaType.parse("video/avi"));
+        add("aiff", MediaType.parse("audio/aiff"));
+        add("wav", MediaType.parse("audio/wav"));
+        add("ogg", MediaType.OGG_VIDEO);
+        add("oga", MediaType.OGG_AUDIO);
         add("woff", MediaType.create("application", "x-font-woff"));
     }
 

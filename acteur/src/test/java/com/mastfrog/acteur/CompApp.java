@@ -26,6 +26,7 @@ import com.mastfrog.netty.http.client.HttpClient;
 import com.mastfrog.netty.http.test.harness.TestHarness;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.settings.SettingsBuilder;
+import com.mastfrog.util.net.PortFinder;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFuture;
@@ -87,6 +88,7 @@ public class CompApp extends Application {
 
         @Override
         protected void configure() {
+            System.setProperty(ServerModule.PORT, "" + new PortFinder().findAvailableServerPort());
             bind(HttpClient.class).toInstance(HttpClient.builder()
                     .noCompression()
                     .followRedirects().resolveAllHostsToLocalhost().threadCount(4)

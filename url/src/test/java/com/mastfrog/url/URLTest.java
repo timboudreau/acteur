@@ -15,6 +15,16 @@ import org.netbeans.validation.api.Problems;
  * @author Tim Boudreau
  */
 public class URLTest {
+
+    @Test
+    public void testWithProtocol() {
+        URL u = URL.parse("http://timboudreau.com/ws");
+        URL u2 = u.withProtocol(Protocols.WS);
+        assertEquals(u.getPath(), u2.getPath());
+        assertNotEquals(u.getProtocol(), u2.getProtocol());
+        assertEquals(Protocols.HTTP, u.getProtocol());
+        assertEquals(Protocols.WS, u2.getProtocol());
+    }
     
     @Test
     public void testHostEquality() {
