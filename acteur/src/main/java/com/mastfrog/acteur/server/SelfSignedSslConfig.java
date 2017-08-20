@@ -24,7 +24,7 @@
 package com.mastfrog.acteur.server;
 
 import com.mastfrog.acteur.Acteur;
-import com.mastfrog.acteur.HttpEvent;
+import com.mastfrog.acteur.Event;
 import com.mastfrog.acteur.Page;
 import com.mastfrog.acteur.errors.Err;
 import com.mastfrog.acteur.errors.ErrorResponse;
@@ -92,7 +92,7 @@ final class SelfSignedSslConfig extends ActeurSslConfig {
         }
 
         @Override
-        public ErrorResponse evaluate(Throwable t, Acteur acteur, Page page, HttpEvent evt) {
+        public ErrorResponse evaluate(Throwable t, Acteur acteur, Page page, Event<?> evt) {
             System.out.println("Evaluate " + t.getMessage() + " for " + acteur);
             if (t instanceof io.netty.handler.codec.DecoderException && t.getCause() instanceof javax.net.ssl.SSLException) {
                 System.out.println("Found an ssl ex");

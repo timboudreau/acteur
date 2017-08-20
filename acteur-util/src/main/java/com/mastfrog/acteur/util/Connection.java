@@ -29,7 +29,7 @@ package com.mastfrog.acteur.util;
  * @author Tim Boudreau
  */
 public enum Connection {
-    close, keep_alive;
+    close, keep_alive, upgrade;
     
     @Override
     public String toString() {
@@ -38,6 +38,8 @@ public enum Connection {
                 return name();
             case keep_alive:
                 return "keep-alive";
+            case upgrade:
+                return "Upgrade";
             default:
                 throw new AssertionError(this);
         }

@@ -1,4 +1,4 @@
-/* 
+/*
  * The MIT License
  *
  * Copyright 2013 Tim Boudreau.
@@ -75,6 +75,13 @@ public final class URL implements URLComponent, Validating, Comparable<URL> {
         this.path = path;
         this.parameters = query;
         this.anchor = anchor;
+    }
+
+    public URL withProtocol(Protocol protocol) {
+        if (protocol.equals(this.protocol)) {
+            return this;
+        }
+        return new URL(userName, password, protocol, host, port, path, parameters, anchor);
     }
 
     public static URLBuilder builder() {
@@ -160,7 +167,7 @@ public final class URL implements URLComponent, Validating, Comparable<URL> {
      * Get the protocol, if any, of this URL, as in
      * <code><b>http</b>://foo.com/stuff/index.html</code>.  If the protocol
      * is null, the URL is invalid.
-     * 
+     *
      * @return A protocol, or null.
      */
     public Protocol getProtocol() {
@@ -216,14 +223,14 @@ public final class URL implements URLComponent, Validating, Comparable<URL> {
 
     /**
      * Determine if the domain is the same as the passed internet domain.
-     * For example, "foo.com" and "www.foo.com" have the same domain.  
+     * For example, "foo.com" and "www.foo.com" have the same domain.
      * @param domain
      * @return True if the domain matches
      */
     public boolean isSameDomain (String domain) {
         return host == null ? false : host.isDomain(domain);
     }
-    
+
     /**
      * Get an aggregate of the host and port.
      * @return A host and port
@@ -289,7 +296,7 @@ public final class URL implements URLComponent, Validating, Comparable<URL> {
             anchor.appendTo(sb);
         }
     }
-    
+
     public String getPathAndQuery() {
         StringBuilder sb = new StringBuilder();
         if (path != null) {
@@ -333,7 +340,7 @@ public final class URL implements URLComponent, Validating, Comparable<URL> {
 
     /**
      * Get all components of this URL, drilling into nested components and
-     * not including their parents where necessary (as in 
+     * not including their parents where necessary (as in
      * <a href="Host.html"><code>Host</code></a>, <a href="Path.html"><code>Path</code></a>
      * and <a href="Parameters.html"><code>Parameters</code></a>).
      * @return An array of all low-level components of this URL.
@@ -471,11 +478,11 @@ public final class URL implements URLComponent, Validating, Comparable<URL> {
     public URL toSimpleURL() {
         return new URL(null, null, protocol, host, port, path, null, null);
     }
-    
+
     public URI toURI() throws URISyntaxException {
         return new URI(toString());
     }
-    
+
     public URL withParameter(String name, String value) {
         AbstractBuilder<ParametersElement, Parameters> b = ParsedParameters.builder();
         List<ParametersElement> els = new LinkedList<>();
@@ -489,7 +496,7 @@ public final class URL implements URLComponent, Validating, Comparable<URL> {
             }
         }
         b.add(new ParametersElement(name, value));
-        
+
         URL url = new URL(null, null, protocol, host, port, path, b.create(), null);
         return url;
     }
@@ -592,7 +599,7 @@ public final class URL implements URLComponent, Validating, Comparable<URL> {
             return true;
         }
         final URL other = (URL) obj;
-        boolean result = Objects.equals(protocol, other.protocol) && 
+        boolean result = Objects.equals(protocol, other.protocol) &&
                 Objects.equals(anchor, other.anchor) &&
                 Objects.equals(host, other.host) &&
                 Objects.equals(path, other.path) &&

@@ -26,6 +26,7 @@ import com.mastfrog.netty.http.client.HttpClient;
 import com.mastfrog.netty.http.test.harness.TestHarness;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.settings.SettingsBuilder;
+import com.mastfrog.util.net.PortFinder;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFuture;
@@ -41,10 +42,7 @@ import java.util.concurrent.ExecutorService;
 import static org.junit.Assert.assertNotNull;
 import org.openide.util.Exceptions;
 
-/**
- *
- * @author tim
- */
+@SuppressWarnings("deprecation")
 public class CompApp extends Application {
 
     public CompApp() {
@@ -90,6 +88,7 @@ public class CompApp extends Application {
 
         @Override
         protected void configure() {
+            System.setProperty(ServerModule.PORT, "" + new PortFinder().findAvailableServerPort());
             bind(HttpClient.class).toInstance(HttpClient.builder()
                     .noCompression()
                     .followRedirects().resolveAllHostsToLocalhost().threadCount(4)
@@ -110,7 +109,7 @@ public class CompApp extends Application {
         }
 
         @Override
-        public ErrorResponse evaluate(Throwable t, Acteur acteur, Page page, HttpEvent evt) {
+        public ErrorResponse evaluate(Throwable t, Acteur acteur, Page page, Event<?> evt) {
             System.out.println("EVALUATE " + t.getClass().getName());
             if (t instanceof ConfigurationException) {
 //                if (page instanceof Fails) {
@@ -125,7 +124,7 @@ public class CompApp extends Application {
 
         @Override
         @SuppressWarnings("unchecked")
-        public String render(ErrorResponse resp, HttpEvent evt) throws IOException {
+        public String render(ErrorResponse resp, Event<?> evt) throws IOException {
             Map<String, Object> m = (Map<String, Object>) resp.message();
             String s = (String) m.get("error");
             assertNotNull(s);
@@ -448,7 +447,7 @@ public class CompApp extends Application {
     public static class FirstActeur extends Acteur {
 
         @Inject
-        FirstActeur(Chain<Acteur> chain) {
+        FirstActeur(Chain<Acteur, ? extends Chain<Acteur,?>> chain) {
             chain.add(SecondActeur.class);
             next();
         }
@@ -457,7 +456,7 @@ public class CompApp extends Application {
     public static class SecondActeur extends Acteur {
 
         @Inject
-        SecondActeur(Chain<Acteur> chain) {
+        SecondActeur(Chain<Acteur, ? extends Chain<Acteur,?>> chain) {
             chain.add(ThirdActeur.class);
             next();
         }

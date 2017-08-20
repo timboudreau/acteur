@@ -41,7 +41,6 @@ import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpRequestDecoder;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseEncoder;
-import io.netty.util.AttributeKey;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
@@ -104,6 +103,7 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
             pipeline.addLast(PipelineDecorator.COMPRESSOR, compressor);
         }
         pipeline.addLast(PipelineDecorator.HANDLER, handler.get());
+
         decorator.onPipelineInitialized(pipeline);
     }
 

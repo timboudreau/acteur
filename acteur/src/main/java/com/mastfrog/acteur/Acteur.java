@@ -224,7 +224,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
         return super.response();
     }
 
-    static Acteur error(Acteur errSource, Page page, Throwable t, HttpEvent evt, boolean log) {
+    static Acteur error(Acteur errSource, Page page, Throwable t, Event<?> evt, boolean log) {
         try {
             return new ErrorActeur(errSource, evt, page, t, true, log);
         } catch (IOException ex) {

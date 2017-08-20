@@ -38,6 +38,9 @@ import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponse;
 import static io.netty.handler.codec.http.HttpResponseStatus.CONTINUE;
 import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
+import io.netty.handler.codec.http.websocketx.CloseWebSocketFrame;
+import io.netty.handler.codec.http.websocketx.PingWebSocketFrame;
+import io.netty.handler.codec.http.websocketx.PongWebSocketFrame;
 import io.netty.handler.codec.http.websocketx.WebSocketFrame;
 import io.netty.util.AsciiString;
 import java.net.InetSocketAddress;
@@ -81,9 +84,9 @@ final class UpstreamHandlerImpl extends ChannelInboundHandlerAdapter {
         application.internalOnError(cause);
     }
 
-    
     private static final AsciiString X_REAL_IP = new AsciiString("X-Real-IP");
     private static final AsciiString X_FORWARDED_FOR = new AsciiString("X-Forwarded-For");
+
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
         if (msg instanceof HttpRequest) {
             final HttpRequest request = (HttpRequest) msg;
@@ -103,6 +106,14 @@ final class UpstreamHandlerImpl extends ChannelInboundHandlerAdapter {
             EventImpl evt = new EventImpl(request, addr, ctx.channel(), paths, converter, ssl);
             evt.setNeverKeepAlive(neverKeepAlive);
             application.onEvent(evt, ctx.channel());
+        } else if (msg instanceof CloseWebSocketFrame) {
+            // XXX dispose of Closeables?
+//            handshaker.close(ctx.channel(), (CloseWebSocketFrame) frame.retain());
+            ctx.channel().close();
+            return;
+        } else if (msg instanceof PingWebSocketFrame) {
+            PingWebSocketFrame frame = (PingWebSocketFrame) msg;
+            ctx.write(new PongWebSocketFrame(frame.content().retain()));
         } else if (msg instanceof WebSocketFrame) {
             WebSocketFrame frame = (WebSocketFrame) msg;
             SocketAddress addr = ctx.channel().remoteAddress();

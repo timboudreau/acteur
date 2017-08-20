@@ -23,7 +23,6 @@
  */
 package com.mastfrog.acteur;
 
-import com.google.common.io.Closeables;
 import com.google.common.net.MediaType;
 import com.google.inject.name.Named;
 import com.mastfrog.acteur.errors.ResponseException;
@@ -32,6 +31,7 @@ import static com.mastfrog.acteur.server.ServerModule.DELAY_EXECUTOR;
 import com.mastfrog.acteur.util.CacheControl;
 import com.mastfrog.acteur.util.RequestID;
 import com.mastfrog.acteurbase.ArrayChain;
+import com.mastfrog.acteurbase.Chain;
 import com.mastfrog.acteurbase.ChainCallback;
 import com.mastfrog.acteurbase.ChainRunner;
 import com.mastfrog.acteurbase.ChainsRunner;
@@ -57,10 +57,15 @@ import static io.netty.handler.codec.http.HttpHeaders.Names.CONTENT_LENGTH;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpVersion;
+import io.netty.handler.codec.http.websocketx.BinaryWebSocketFrame;
+import io.netty.handler.codec.http.websocketx.WebSocketFrame;
+import io.netty.util.Attribute;
 import java.io.PrintStream;
 import java.nio.charset.Charset;
 import java.time.Duration;
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
@@ -70,6 +75,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Supplier;
 import javax.inject.Inject;
 import org.netbeans.validation.api.InvalidInputException;
 
@@ -101,9 +107,24 @@ class PagesImpl2 {
 
         Closables clos = new Closables(channel, application.control());
         ChainToPageConverter chainConverter = new ChainToPageConverter(id, event, clos);
-        Iterator<Page> pageIterator = new ScopeWrapIterator<>(application.getRequestScope(), application.iterator(), id, event, channel, clos);
-        Iterable<PageChain> pagesIterable
-                = CollectionUtils.toIterable(CollectionUtils.convertedIterator(chainConverter, pageIterator));
+
+        Iterable<PageChain> pagesIterable;
+        if (event.request() instanceof WebSocketFrame) {
+            Attribute<Supplier<? extends Chain<? extends Acteur, ?>>> s = channel.attr(WebSocketUpgradeActeur.CHAIN_KEY);
+            Supplier<? extends Chain<? extends Acteur, ?>> chainSupplier = s.get();
+            if (chainSupplier == null) {
+                throw new IllegalStateException("Got a WebSocketFrame on a channel with no websocket chain set up");
+            }
+
+            PageChain pageChain = (PageChain) chainSupplier.get();
+            pageChain.addToContext(event);
+            pageChain.page = channel.attr(WebSocketUpgradeActeur.PAGE_KEY).get();
+
+            pagesIterable = Collections.singleton(pageChain);
+        } else {
+            Iterator<Page> pageIterator = new ScopeWrapIterator<>(application.getRequestScope(), application.iterator(), id, event, channel, clos);
+            pagesIterable = CollectionUtils.toIterable(CollectionUtils.convertedIterator(chainConverter, pageIterator));
+        }
 
         CB callback = new CB(id, event, latch, channel);
 
@@ -112,6 +133,44 @@ class PagesImpl2 {
         ch.submit(pagesIterable, callback, closer.cancelled, id, event, clos);
 
         return latch;
+    }
+
+    static final class OneChainIterable implements Iterable<PageChain> {
+
+        private final Page page;
+        private final ReentrantScope scope;
+        private final Object[] contents;
+        private final PageChain chain;
+
+        public OneChainIterable(Page page, ReentrantScope scope, Object[] contents, PageChain chain) {
+            this.page = page;
+            this.scope = scope;
+            this.contents = contents;
+            this.chain = chain;
+        }
+
+        @Override
+        public Iterator<PageChain> iterator() {
+            return new Iterator<PageChain>() {
+                boolean used;
+
+                @Override
+                public boolean hasNext() {
+                    return !used;
+                }
+
+                @Override
+                public PageChain next() {
+                    if (used) {
+                        throw new IndexOutOfBoundsException("Already iterated");
+                    }
+                    used = true;
+                    return chain;
+                }
+
+            };
+        }
+
     }
 
     static class CancelOnChannelClose implements ChannelFutureListener {
@@ -142,7 +201,9 @@ class PagesImpl2 {
 
         @Override
         public void onBeforeRunOne(PageChain chain) {
-            Page.set(chain.page);
+            if (chain.page != null) {
+                Page.set(chain.page);
+            }
         }
 
         @Override
@@ -187,7 +248,32 @@ class PagesImpl2 {
 
         @Override
         public void receive(final Acteur acteur, final com.mastfrog.acteur.State state, final ResponseImpl response) {
-            if (response.isModified() && response.status != null) {
+            boolean isWebSocketResponse = event.request() instanceof WebSocketFrame && !(acteur instanceof WebSocketUpgradeActeur)
+                    && response.isModified();
+            if (isWebSocketResponse) {
+                if (response.getMessage() instanceof WebSocketFrame) {
+                    channel.writeAndFlush(response.getMessage());
+                    return;
+                } else if (response.getMessage() == null) {
+                    // If no message, that just means we don't have a reply to this
+                    // frame immediately - silently do not try to publish something
+                    // - this is not http request/response.
+                    return;
+                }
+                // XXX consider response.getDelay()?
+                // This is ugly - we create an HttpResponse just to extract a wad of binary
+                // data and send that as a WebSocketFrame.
+                Charset charset = application.getDependencies().getInstance(Charset.class);
+                try (QuietAutoCloseable cl = Page.set(state.getLockedPage())) {
+                    HttpResponse resp = response.toResponse(event, charset);
+                    if (resp instanceof FullHttpResponse) {
+                        BinaryWebSocketFrame frame = new BinaryWebSocketFrame(((FullHttpResponse) resp).content());
+                        channel.writeAndFlush(frame);
+                    }
+                } catch (Exception ex) {
+                    uncaughtException(Thread.currentThread(), ex);
+                }
+            } else if (response.isModified() && response.status != null) {
                 // Actually send the response
                 try (QuietAutoCloseable clos = Page.set(application.getDependencies().getInstance(Page.class))) {
                     // Abort if the client disconnected
@@ -279,7 +365,7 @@ class PagesImpl2 {
                     inUncaughtException = true;
                     try (AutoCloseable ac2 = application.getRequestScope().enter(id, event, channel)) {
                         Acteur err = Acteur.error(null, pg, thrwbl,
-                                application.getDependencies().getInstance(HttpEvent.class), true);
+                                application.getDependencies().getInstance(Event.class), true);
 
                         receive(err, err.getState(), err.getResponse());
                     }
@@ -384,6 +470,8 @@ class PagesImpl2 {
             if (event instanceof HttpEvent) {
                 Path pth = ((HttpEvent) event).path();
                 Thread.currentThread().setName(pth + " for " + r.getClass().getName());
+            } else {
+                Thread.currentThread().setName(id + " of " + r.getClass().getName());
             }
             PageChain result = new PageChain(application.getDependencies(), application.getRequestScope(), Acteur.class, r, r, id, event, clos);
             return result;
@@ -395,19 +483,53 @@ class PagesImpl2 {
         }
     }
 
-    static class PageChain extends ArrayChain<Acteur> {
+    static class PageChain extends ArrayChain<Acteur, PageChain> {
 
-        private final Page page;
-        private final Object[] ctx;
+        private Page page;
+        private Object[] ctx;
         private final AtomicBoolean first = new AtomicBoolean(true);
         private final ReentrantScope scope;
         private static final Object[] EMPTY = new Object[0];
+        boolean isReconstituted;
 
         PageChain(Dependencies deps, ReentrantScope scope, Class<? super Acteur> type, Page page, Object... ctx) {
             super(deps, type, page.acteurs());
             this.page = page;
             this.ctx = ctx;
             this.scope = scope;
+        }
+
+        PageChain(Dependencies deps, ReentrantScope scope, Class<? super Acteur> type, List<Object> pages, Object[] ctx) {
+            super(deps, type, pages);
+            isReconstituted = true;
+            this.scope = scope;
+            this.ctx = ctx;
+            this.page = null;
+        }
+
+        @Override
+        public Iterator<Acteur> iterator() {
+            Iterator<Acteur> orig = super.iterator();
+            Iterator<Acteur> result = orig;
+            if (isReconstituted) {
+                result = new Iterator<Acteur>() {
+                    @Override
+                    public boolean hasNext() {
+                        return orig.hasNext();
+                    }
+
+                    @Override
+                    public Acteur next() {
+                        // XXX why are we not getting the context here?
+                        try (QuietAutoCloseable cl1 = scope.enter(ctx)) {
+                            try (QuietAutoCloseable cl = Page.set(page)) {
+                                return orig.next();
+                            }
+                        }
+                    }
+                };
+            }
+            return result;
         }
 
         @Override
@@ -425,6 +547,44 @@ class PagesImpl2 {
         @Override
         public String toString() {
             return "Chain for " + page;
+        }
+
+        private Object[] combine(Object[] a, Object[] b) {
+            if (a.length == 0) {
+                return b;
+            } else if (b.length == 0) {
+                return a;
+            } else {
+                Object[] nue = new Object[a.length + b.length];
+                System.arraycopy(a, 0, nue, 0, a.length);
+                System.arraycopy(b, 0, nue, a.length, b.length);
+                return nue;
+            }
+        }
+
+        @Override
+        public Supplier<PageChain> remnantSupplier(Object... scopeContents) {
+            Object[] context = combine(ctx, scopeContents);
+            assert chainPosition != null : "Called out of sequence";
+            int pos = chainPosition.get();
+            final List<Object> rem = new ArrayList<>(types.size() - pos);
+            for (int i = pos; i < types.size(); i++) {
+                rem.add(types.get(i));
+            }
+            final Dependencies d = deps;
+            return () -> {
+                List<Object> l = new ArrayList<>(rem);
+                PageChain chain = new PageChain(d, scope, type, l, context);
+                chain.page = page;
+                return chain;
+            };
+        }
+
+        private void addToContext(Event<?> event) {
+            Object[] nue = new Object[ctx.length + 1];
+            System.arraycopy(ctx, 0, nue, 0, ctx.length);
+            nue[nue.length-1] = event;
+            ctx = nue;
         }
     }
 

@@ -42,7 +42,7 @@ import java.io.PrintStream;
  */
 final class ErrorActeur extends Acteur {
 
-    ErrorActeur(Acteur errSource, HttpEvent evt, Page page, Throwable t, boolean tryErrResponse, boolean log) throws IOException {
+    ErrorActeur(Acteur errSource, Event<?> evt, Page page, Throwable t, boolean tryErrResponse, boolean log) throws IOException {
         Throwable orig = t;
         while (t.getCause() != null) {
             t = t.getCause();

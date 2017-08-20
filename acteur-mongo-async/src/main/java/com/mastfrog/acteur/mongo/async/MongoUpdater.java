@@ -43,12 +43,12 @@ import java.util.concurrent.Callable;
  */
 public final class MongoUpdater {
 
-    private final Chain<Acteur> chain;
+    private final Chain<Acteur, ? extends Chain<Acteur,?>> chain;
     private final Deferral deferral;
     private final ApplicationControl ctrl;
 
     @Inject
-    MongoUpdater(Chain<Acteur> chain, Deferral deferral, ApplicationControl ctrl) {
+    MongoUpdater(Chain<Acteur, ? extends Chain<Acteur,?>> chain, Deferral deferral, ApplicationControl ctrl) {
         this.chain = chain;
         this.deferral = deferral;
         this.ctrl = ctrl;

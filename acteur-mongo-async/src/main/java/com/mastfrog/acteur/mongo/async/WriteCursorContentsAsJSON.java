@@ -48,12 +48,12 @@ import io.netty.handler.codec.http.HttpResponseStatus;
 public class WriteCursorContentsAsJSON extends Acteur {
 
     @Inject
-    WriteCursorContentsAsJSON(Deferral def, CursorControl ctrl, Chain<Acteur> chain, Closables clos, FindIterable<?> find) {
+    WriteCursorContentsAsJSON(Deferral def, CursorControl ctrl, Chain<Acteur, ? extends Chain<Acteur,?>> chain, Closables clos, FindIterable<?> find) {
         find(find, ctrl, def, chain, clos);
     }
 
     @SuppressWarnings("unchecked")
-    private <T> FindIterable<T> find(FindIterable<T> result, CursorControl ctrl, Deferral def, Chain<Acteur> chain, final Closables clos) {
+    private <T> FindIterable<T> find(FindIterable<T> result, CursorControl ctrl, Deferral def, Chain<Acteur, ? extends Chain<Acteur,?>> chain, final Closables clos) {
         result = ctrl.apply(result);
         final Resumer resumer = def.defer();
         if (ctrl.isFindOne()) {

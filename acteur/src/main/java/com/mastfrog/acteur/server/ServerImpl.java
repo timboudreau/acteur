@@ -354,7 +354,11 @@ final class ServerImpl implements Server {
                         && settings.getBoolean(SETTINGS_KEY_SYSTEM_EXIT_ON_BIND_FAILURE, true)) {
                     failure.printStackTrace(System.err);
                     System.err.flush();
-                    System.exit(1);
+                    if (!Boolean.getBoolean("unit.test") && System.getProperty("forkNumber") == null) {
+                        System.exit(1);
+                    } else {
+                        System.err.println("System.exit() skipped - in test");
+                    }
                 }
                 Exceptions.chuck(failure);
             }

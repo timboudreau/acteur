@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright 2015 Tim Boudreau.
+ * Copyright 2017 Tim Boudreau.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,31 +21,32 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.mastfrog.acteur.mongo.async;
-
-import com.google.inject.Inject;
-import com.mastfrog.acteur.Acteur;
-import com.mastfrog.acteurbase.Chain;
-import com.mongodb.async.client.FindIterable;
-import com.mongodb.async.client.MongoCollection;
-import io.netty.buffer.ByteBuf;
-import org.bson.conversions.Bson;
+package com.mastfrog.acteur.pubsub;
 
 /**
- * Acteur which can be used in &#064;Concluders to run a query and stream its
- * results. Expects to find an instance of Bson (Document, etc.) and
- * CursorControl available (passed to next() in a preceding acteur in the
- * chain).
+ * An ad-hoc name for a pub-sub channel, which multiple netty channels
+ * may be subscribed to.  The channels subscribed must have a handler that
+ * knows what to do with a WebSocketFrame.
  *
  * @author Tim Boudreau
  */
-public class QueryActeur extends Acteur {
+public final class ChannelId {
 
-    @SuppressWarnings("unchecked")
-    @Inject
-    QueryActeur(Bson query, CursorControl ctrl, MongoCollection<?> collection, Chain<Acteur, ? extends Chain<Acteur,?>> chain) {
-        FindIterable<ByteBuf> find = collection.find(query, ByteBuf.class);
-        chain.add(WriteCursorContentsAsJSON.class);
-        next(find);
+    private final String name;
+
+    public ChannelId(String name) {
+        this.name = name;
+    }
+
+    public boolean equals(Object o) {
+        return o instanceof ChannelId && ((ChannelId) o).name.equals(name);
+    }
+
+    public int hashCode() {
+        return name.hashCode() * 71;
+    }
+
+    public String toString() {
+        return name;
     }
 }

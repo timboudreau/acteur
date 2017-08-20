@@ -25,11 +25,10 @@ package com.mastfrog.acteur.errors;
 
 import com.google.common.collect.Lists;
 import com.mastfrog.acteur.Acteur;
-import com.mastfrog.acteur.HttpEvent;
+import com.mastfrog.acteur.Event;
 import com.mastfrog.acteur.Page;
 import com.mastfrog.settings.Settings;
 import java.util.Collections;
-import java.util.LinkedList;
 import java.util.List;
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -62,7 +61,7 @@ public final class ExceptionEvaluatorRegistry {
         }
         
         @Override
-        public ErrorResponse evaluate(Throwable t, Acteur acteur, Page page, HttpEvent evt) {
+        public ErrorResponse evaluate(Throwable t, Acteur acteur, Page page, Event<?> evt) {
             return new Err(t, true);
         }
     }
@@ -72,7 +71,7 @@ public final class ExceptionEvaluatorRegistry {
         Collections.sort(evaluators);
     }
 
-    public ErrorResponse evaluate(Throwable t, Acteur acteur, Page page, HttpEvent evt) {
+    public ErrorResponse evaluate(Throwable t, Acteur acteur, Page page, Event<?> evt) {
         for (ExceptionEvaluator e : evaluators) {
             ErrorResponse response = e.evaluate(t, acteur, page, evt);
             if (response != null) {
