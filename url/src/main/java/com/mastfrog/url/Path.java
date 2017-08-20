@@ -31,6 +31,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLDecoder;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -110,7 +111,7 @@ public final class Path implements URLComponent, Iterable<PathElement> {
             }
             if (sb.length() > 0) {
                 if (decode) {
-                    l.add(new PathElement(URLDecoder.decode(sb.toString()), false, decode));
+                    l.add(new PathElement(URLDecoder.decode(sb.toString(), "UTF-8"), false, decode));
 
                 } else {
                     l.add(new PathElement(sb.toString(), false));

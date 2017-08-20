@@ -653,9 +653,9 @@ public final class URL implements URLComponent, Validating, Comparable<URL> {
                         Problems p = h.getProblems();
                         if (p == null) {
                             p = new Problems();
-                            p.add("Host '" + h + "' reports itself invalid but lists no problems");
+                            p.append("Host '" + h + "' reports itself invalid but lists no problems");
                         }
-                        problems.putAll (p);
+                        problems.addAll (p);
                     } catch (NullArgumentException e) {
                         throw new IllegalStateException (h.toString() + " reports itself invalid but returns no problems", e);
                     }
@@ -666,25 +666,25 @@ public final class URL implements URLComponent, Validating, Comparable<URL> {
             Path p = getPath();
             if (p != null && !p.isValid()) {
                 if (p.isIllegal()) {
-                    problems.add (NbBundle.getMessage(URL.class, "RELATIVE_PATH_HAS_TO_MANY_BACKWARD_STEPS", p.toString()));
+                    problems.append (NbBundle.getMessage(URL.class, "RELATIVE_PATH_HAS_TO_MANY_BACKWARD_STEPS", p.toString()));
                 } else {
-                    problems.add (NbBundle.getMessage(URL.class, "PATH_CONTAINS_ILLEGAL_CHARACTERS", p.toString()));
+                    problems.append (NbBundle.getMessage(URL.class, "PATH_CONTAINS_ILLEGAL_CHARACTERS", p.toString()));
                 }
             }
             Port prt = getPort();
             if (prt != null) {
                 if (!prt.isValid()) {
                     if (prt.isIllegalChars()) {
-                        problems.add (NbBundle.getMessage(URL.class, "PORT_IS_NOT_A_NUMBER", prt.toString()));
+                        problems.append (NbBundle.getMessage(URL.class, "PORT_IS_NOT_A_NUMBER", prt.toString()));
                     } else {
-                        problems.add (NbBundle.getMessage(URL.class, "PORT_OUT_OF_RANGE", prt.toString()));
+                        problems.append (NbBundle.getMessage(URL.class, "PORT_OUT_OF_RANGE", prt.toString()));
                     }
                 }
             }
             if (!problems.hasFatal()) {
                 URLComponent comp = getInvalidComponent();
                 if (comp != null) {
-                    problems.add(NbBundle.getMessage (URL.class,
+                    problems.append(NbBundle.getMessage (URL.class,
                         "BAD_URL_COMPONENT", comp.getComponentName()),
                         Severity.FATAL);
                 }
