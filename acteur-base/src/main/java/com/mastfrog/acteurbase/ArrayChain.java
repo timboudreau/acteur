@@ -35,13 +35,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
 /**
- * Base class for Chain implementations - a thing you can add either
- * class objects of type T or objects of type T to, and it will provide
- * an <code>Iterator&lt;T&gt;</code> over the result.
+ * Base class for Chain implementations - a thing you can add either class
+ * objects of type T or objects of type T to, and it will provide an
+ * <code>Iterator&lt;T&gt;</code> over the result.
  *
  * @author Tim Boudreau
  */
-public class ArrayChain<T, C extends ArrayChain<T,C>> implements Chain<T, C> {
+public class ArrayChain<T, C extends ArrayChain<T, C>> implements Chain<T, C> {
 
     protected final List<Object> types = new LinkedList<>();
     protected final Dependencies deps;
@@ -86,7 +86,7 @@ public class ArrayChain<T, C extends ArrayChain<T,C>> implements Chain<T, C> {
         }
         return () -> {
             List<Object> l = new ArrayList<>(rem);
-            return (C) new ArrayChain<T,C>(deps, type, l);
+            return (C) new ArrayChain<T, C>(deps, type, l);
         };
     }
 
@@ -112,10 +112,34 @@ public class ArrayChain<T, C extends ArrayChain<T,C>> implements Chain<T, C> {
         return (C) this;
     }
 
+    private boolean validElement (Object obj) {
+        if (type.isInstance(obj)) {
+            return true;
+        }
+        if (obj instanceof Class<?>) {
+            Class<?> c = (Class<?>) obj;
+            if (type.isAssignableFrom(c)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @SuppressWarnings("unchecked")
+    public final C insert(T obj) {
+        Checks.notNull("obj", obj);
+        if (!validElement(obj)) {
+            throw new ConfigurationError("Not an instance of " + this.type.getName() + ": " + obj);
+        }
+        int pos = chainPosition.get();
+        types.add(pos, obj);
+        return (C) this;
+    }
+
     @SuppressWarnings("unchecked")
     public final C add(T obj) {
         Checks.notNull("obj", obj);
-        if (!this.type.isInstance(obj)) {
+        if (!validElement(obj)) {
             throw new ConfigurationError("Not an instance of " + this.type.getName() + ": " + obj);
         }
         types.add(obj);

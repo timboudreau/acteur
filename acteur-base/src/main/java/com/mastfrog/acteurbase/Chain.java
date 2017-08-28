@@ -64,5 +64,13 @@ public interface Chain<T, C extends Chain<T, C>> extends Iterable<T> {
         return new Object[0];
     }
 
+    /**
+     * Insert an object at the next position in the chain, while iterating it.
+     *
+     * @param obj A new object to include
+     * @return this
+     */
+    C insert(T obj);
+
     Supplier<C> remnantSupplier(Object... scopeTypes);
 }
