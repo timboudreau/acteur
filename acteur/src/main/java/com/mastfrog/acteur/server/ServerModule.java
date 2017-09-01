@@ -248,6 +248,15 @@ public class ServerModule<A extends Application> extends AbstractModule {
      * in minutes that the browser should regard the response as valid.
      */
     public static final String SETTINGS_KEY_CORS_MAX_AGE_MINUTES = "cors.max.age.minutes";
+
+    /**
+     * Guice #&064;Named binding for objects you want in the context for every request,
+     * which can be replaced by ones provided to the context by Acteurs.  This allows
+     * you to have always-there default instances of things, which can be replaced by
+     * ones customized by acteurs that handle the request.  Example:  A default mongodb
+     * cursor control object which specifies timeout, and which can be copied and customized.
+     */
+    public static final String GUICE_BINDING_DEFAULT_CONTEXT_OBJECTS = "default.context.objects";
     /**
      * If the default support for CORS requests is enabled, this is the value of
      * what hosts the response is valid for (what sites can use scripts from

@@ -117,12 +117,21 @@ public final class ChainRunner {
 
         class DeferralImpl implements Deferral {
 
+            Throwable stack;
+
             @Override
             public Resumer defer() {
                 if (deferred.compareAndSet(false, true)) {
+                    if (Boolean.getBoolean("acteur.debug")) {
+                        stack = new Exception("Defer");
+                    }
                     return ActeurInvoker.this;
                 } else {
-                    throw new IllegalStateException("Already deferred");
+                    if (stack != null) {
+                        throw new IllegalStateException("Already deferred", stack);
+                    } else {
+                        throw new IllegalStateException("Already deferred");
+                    }
                 }
             }
 
@@ -245,7 +254,11 @@ public final class ChainRunner {
             if (deferred.compareAndSet(true, false)) {
                 addToContext(addToContext);
                 Callable<?> next = this.next;
-                svc.submit(next);
+                if (next != null) {
+                    svc.submit(next);
+                } else {
+                    System.err.println("Next callback null - ?");
+                }
             } else {
                 throw new IllegalStateException("Not deferred");
             }

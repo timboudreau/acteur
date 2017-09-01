@@ -40,7 +40,7 @@ import org.bson.conversions.Bson;
 public final class CursorControl {
 
     private boolean findOne;
-    private int batchSize = 1;
+    private int batchSize = 10;
     private CursorType type = CursorType.NonTailable;
     private int limit = Integer.MAX_VALUE;
     private Duration maxTime;
@@ -48,10 +48,42 @@ public final class CursorControl {
     private Bson filter;
     private Boolean noTimeout;
 
-    static final CursorControl DEFAULT = new CursorControl();
-    static final CursorControl FIND_ONE = new CursorControl().findOne().batchSize(1);
+    static final CursorControl DEFAULT = new CursorControl().lock();
+    static final CursorControl FIND_ONE = new CursorControl().findOne().batchSize(1).lock();
     private Bson sort;
     private Bson modifiers;
+    private boolean locked;
+
+    public CursorControl() {
+
+    }
+
+    CursorControl(CursorControl orig) {
+        this.findOne = orig.findOne;
+        this.batchSize = orig.batchSize;
+        this.type = orig.type;
+        this.limit = orig.limit;
+        this.maxTime = orig.maxTime;
+        this.projection = orig.projection;
+        this.filter = orig.filter;
+        this.noTimeout = orig.noTimeout;
+        this.sort = orig.sort;
+        this.modifiers = orig.modifiers;
+    }
+
+    /**
+     * Make this CursorControl read-only.
+     *
+     * @return this
+     */
+    public CursorControl lock() {
+        locked = true;
+        return this;
+    }
+
+    public CursorControl copy() {
+        return new CursorControl(this);
+    }
 
     boolean isFindOne() {
         return findOne;
@@ -61,55 +93,74 @@ public final class CursorControl {
         return findOne(findOne);
     }
 
+    private void checkLocked() {
+        if (locked) {
+            throw new IllegalStateException("Read-only CursorControl - use copy()"
+                    + " to create a writable one");
+        }
+    }
+
     public CursorControl findOne(boolean findOne) {
+        checkLocked();
         this.findOne = findOne;
         this.batchSize = 1;
         return this;
     }
 
     public CursorControl batchSize(int batchSize) {
+        Checks.nonNegative("batchSize", batchSize);
+        checkLocked();
         this.batchSize = batchSize;
         return this;
     }
 
     public CursorControl cursorType(CursorType type) {
+        Checks.notNull("type", type);
+        checkLocked();
         this.type = type;
         return this;
     }
 
     public CursorControl limit(int limit) {
         Checks.nonNegative("limit", limit);
+        checkLocked();
         this.limit = limit;
         return this;
     }
 
     public CursorControl maxTime(Duration maxTime) {
+        checkLocked();
         this.noTimeout = null;
         this.maxTime = maxTime;
         return this;
     }
 
     public CursorControl projection(Bson projection) {
+        checkLocked();
         this.projection = projection;
         return this;
     }
 
     public CursorControl sort(Bson sort) {
+        checkLocked();
         this.sort = sort;
         return this;
     }
 
     public CursorControl filter(Bson filter) {
+        checkLocked();
         this.filter = filter;
         return this;
     }
 
     public CursorControl modifiers(Bson modifiers) {
+        checkLocked();
         this.modifiers = modifiers;
         return this;
     }
 
     public CursorControl noTimeout(boolean noTimeout) {
+        checkLocked();
         this.noTimeout = noTimeout;
         this.maxTime = null;
         return this;
