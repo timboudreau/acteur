@@ -53,7 +53,7 @@ import io.netty.handler.codec.http.FullHttpResponse;
 import static io.netty.handler.codec.http.HttpHeaderNames.CONTENT_ENCODING;
 import static io.netty.handler.codec.http.HttpHeaderNames.TRANSFER_ENCODING;
 import io.netty.handler.codec.http.HttpHeaders;
-import static io.netty.handler.codec.http.HttpHeaders.Names.CONTENT_LENGTH;
+import static io.netty.handler.codec.http.HttpHeaderNames.CONTENT_LENGTH;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpVersion;
@@ -102,13 +102,11 @@ class PagesImpl2 {
         ch = new ChainsRunner(application.getWorkerThreadPool(), application.getRequestScope(), chr);
     }
 
-    public CountDownLatch onEvent(RequestID id, Event<?> event, Channel channel) {
+    public CountDownLatch onEvent(RequestID id, Event<?> event, Channel channel, Object[] defaultContext) {
         CountDownLatch latch = new CountDownLatch(1);
 
-        Closables clos = new Closables(channel, application.control());
-        ChainToPageConverter chainConverter = new ChainToPageConverter(id, event, clos);
-
         Iterable<PageChain> pagesIterable;
+        Closables clos = null;
         if (event.request() instanceof WebSocketFrame) {
             Attribute<Supplier<? extends Chain<? extends Acteur, ?>>> s = channel.attr(WebSocketUpgradeActeur.CHAIN_KEY);
             Supplier<? extends Chain<? extends Acteur, ?>> chainSupplier = s.get();
@@ -117,60 +115,36 @@ class PagesImpl2 {
             }
 
             PageChain pageChain = (PageChain) chainSupplier.get();
+            clos = pageChain.findInContext(Closables.class);
+            if (clos == null) {
+                clos = new Closables(channel, application.control());
+            }
             pageChain.addToContext(event);
             pageChain.page = channel.attr(WebSocketUpgradeActeur.PAGE_KEY).get();
 
             pagesIterable = Collections.singleton(pageChain);
         } else {
-            Iterator<Page> pageIterator = new ScopeWrapIterator<>(application.getRequestScope(), application.iterator(), id, event, channel, clos);
+            clos = new Closables(channel, application.control());
+            ChainToPageConverter chainConverter = new ChainToPageConverter(id, event, clos);
+
+            Object[] ctx = new Object[]{id, event, channel, clos};
+            if (defaultContext != null && defaultContext.length > 0) {
+                Object[] nue = new Object[ctx.length + defaultContext.length];
+                System.arraycopy(defaultContext, 0, nue, 0, defaultContext.length);
+                System.arraycopy(ctx, 0, nue, defaultContext.length, ctx.length);
+                ctx = nue;
+            }
+
+            Iterator<Page> pageIterator = new ScopeWrapIterator<>(application.getRequestScope(), application.iterator(), (Object[]) ctx);
             pagesIterable = CollectionUtils.toIterable(CollectionUtils.convertedIterator(chainConverter, pageIterator));
         }
 
         CB callback = new CB(id, event, latch, channel);
-
         CancelOnChannelClose closer = new CancelOnChannelClose();
         channel.closeFuture().addListener(closer);
         ch.submit(pagesIterable, callback, closer.cancelled, id, event, clos);
 
         return latch;
-    }
-
-    static final class OneChainIterable implements Iterable<PageChain> {
-
-        private final Page page;
-        private final ReentrantScope scope;
-        private final Object[] contents;
-        private final PageChain chain;
-
-        public OneChainIterable(Page page, ReentrantScope scope, Object[] contents, PageChain chain) {
-            this.page = page;
-            this.scope = scope;
-            this.contents = contents;
-            this.chain = chain;
-        }
-
-        @Override
-        public Iterator<PageChain> iterator() {
-            return new Iterator<PageChain>() {
-                boolean used;
-
-                @Override
-                public boolean hasNext() {
-                    return !used;
-                }
-
-                @Override
-                public PageChain next() {
-                    if (used) {
-                        throw new IndexOutOfBoundsException("Already iterated");
-                    }
-                    used = true;
-                    return chain;
-                }
-
-            };
-        }
-
     }
 
     static class CancelOnChannelClose implements ChannelFutureListener {
@@ -507,6 +481,17 @@ class PagesImpl2 {
             this.page = null;
         }
 
+        public <T> T findInContext(Class<T> type) {
+            if (ctx != null) {
+                for (int i = ctx.length - 1; i >= 0; i--) {
+                    if (type.isInstance(ctx[i])) {
+                        return type.cast(ctx[i]);
+                    }
+                }
+            }
+            return null;
+        }
+
         @Override
         public Iterator<Acteur> iterator() {
             Iterator<Acteur> orig = super.iterator();
@@ -583,7 +568,7 @@ class PagesImpl2 {
         private void addToContext(Event<?> event) {
             Object[] nue = new Object[ctx.length + 1];
             System.arraycopy(ctx, 0, nue, 0, ctx.length);
-            nue[nue.length-1] = event;
+            nue[nue.length - 1] = event;
             ctx = nue;
         }
     }

@@ -71,22 +71,33 @@ final class CursorWriter<T> implements ChannelFutureListener, SingleResultCallba
         future.set(channel);
         return channel;
     }
-    
+
     private void addBuf(CompositeByteBuf buf, ByteBuf toAdd) {
         int writerIndex = buf.writerIndex();
         buf.addComponent(toAdd.retain());
         buf.writerIndex(writerIndex + toAdd.readableBytes());
     }
 
+    private boolean checkFailure(ChannelFuture f) {
+        if (!f.isSuccess()) {
+            try {
+                cursor.close();
+                f.channel().close();
+                return true;
+            } finally {
+                if (f.cause() != null) {
+                    ctrl.internalOnError(f.cause());
+                }
+            }
+        }
+        return false;
+    }
+
     @Override
     @SuppressWarnings("unchecked")
     public void operationComplete(ChannelFuture f) throws Exception {
         boolean done = this.done;
-        if (!f.isSuccess() && f.cause() != null) {
-            if (f.cause() != null) {
-                ctrl.internalOnError(f.cause());
-            }
-            cursor.close();
+        if (checkFailure(f)) {
             return;
         }
         List<Object> results = new LinkedList<>();
@@ -124,15 +135,20 @@ final class CursorWriter<T> implements ChannelFutureListener, SingleResultCallba
             addBuf(buf, constant.close());
         }
         if (buf.writerIndex() > 0) {
-            future(f.channel().writeAndFlush(new DefaultHttpContent(buf)));
+            f = future(f.channel().writeAndFlush(new DefaultHttpContent(buf)));
         } else {
-            future(f);
+            f = future(f);
         }
         if (done) {
-            future(f.channel().writeAndFlush(LastHttpContent.EMPTY_LAST_CONTENT));
-        }
-        if (done && closeConnection) {
-            future(f.addListener(CLOSE));
+            f.addListener((ChannelFutureListener) (ChannelFuture future1) -> {
+                if (checkFailure(future1)) {
+                    return;
+                }
+                future1 = future(future1.channel().writeAndFlush(LastHttpContent.EMPTY_LAST_CONTENT));
+                if (closeConnection) {
+                    future(future1.addListener(CLOSE));
+                }
+            });
         }
         if (!done) {
             f.addListener(fetchNext);

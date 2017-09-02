@@ -25,6 +25,7 @@
 package com.mastfrog.acteur.mongo.async;
 
 import com.google.inject.Inject;
+import com.mastfrog.settings.Settings;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.util.CharsetUtil;
@@ -41,10 +42,11 @@ class ConstantBuffers {
     private final ByteBuf close;
 
     @Inject
-    ConstantBuffers(ByteBufAllocator alloc) {
-        open = alloc.buffer(2).writeBytes("[\n".getBytes(CharsetUtil.UTF_8));
-        comma = alloc.buffer(2).writeBytes(",\n".getBytes(CharsetUtil.UTF_8));
-        close = alloc.buffer(2).writeBytes("]\n".getBytes(CharsetUtil.UTF_8));
+    ConstantBuffers(ByteBufAllocator alloc, Settings settings) {
+        boolean useNewlines = settings.getBoolean("cursorwriter.newlines", false);
+        open = alloc.buffer(2).writeBytes( (useNewlines ? "[\n" : "[").getBytes(CharsetUtil.US_ASCII));
+        comma = alloc.buffer(2).writeBytes((useNewlines ? ",\n" : ",").getBytes(CharsetUtil.US_ASCII));
+        close = alloc.buffer(2).writeBytes((useNewlines ? "]\n" : "]").getBytes(CharsetUtil.US_ASCII));
     }
 
     ByteBuf open() {

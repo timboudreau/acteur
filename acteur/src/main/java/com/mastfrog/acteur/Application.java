@@ -73,7 +73,6 @@ import java.lang.reflect.Modifier;
 import java.nio.charset.Charset;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -358,6 +357,7 @@ public class Application implements Iterable<Page> {
                 }
                 try {
                     Page p = (Page) deps.getInstance(type);
+                    p.application = this;
                     for (Object acteur : p.contents()) {
                         Class<?> at = null;
                         if (acteur instanceof Acteur.WrapperActeur) {
@@ -587,15 +587,7 @@ public class Application implements Iterable<Page> {
         // Enter request scope with the id and the event
         try (QuietAutoCloseable cl = scope.enter(event, id)) {
             onBeforeEvent(id, event);
-            if (defaultContextObjects != null) {
-
-                System.out.println("USING DEFAULT CONTEXT OBJECTS " + Arrays.asList(defaultContextObjects));
-                try (QuietAutoCloseable cl2 = scope.enter(defaultContextObjects)) {
-                    return runner.onEvent(id, event, channel);
-                }
-            } else {
-                return runner.onEvent(id, event, channel);
-            }
+            return runner.onEvent(id, event, channel, defaultContextObjects);
         } catch (Exception e) {
             internalOnError(e);
             CountDownLatch latch = new CountDownLatch(1);
