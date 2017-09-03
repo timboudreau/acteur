@@ -622,9 +622,10 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
                 try {
                     acteur = deps.getInstance(type);
                 } catch (Exception e) {
+                    e.printStackTrace(); //XXX
                     try {
-                        onError(e);
                         deps.getInstance(Application.class).internalOnError(e);
+                        onError(e);
                     } catch (UnsupportedEncodingException ex) {
                         Exceptions.chuck(ex);
                     }

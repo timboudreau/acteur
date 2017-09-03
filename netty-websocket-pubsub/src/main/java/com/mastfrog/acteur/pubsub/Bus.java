@@ -149,7 +149,6 @@ class Bus implements PubSubBus {
             }
             if (ch != null) {
                 WebSocketFrame fr = frame.retainedDuplicate();
-                System.out.println("Write and flush to " + ch.remoteAddress());
                 ch.writeAndFlush(fr).addListener(this);
             }
             if (!channels.hasNext() && !prom.isDone()) {

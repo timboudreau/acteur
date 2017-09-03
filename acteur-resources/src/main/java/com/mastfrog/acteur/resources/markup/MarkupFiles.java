@@ -155,8 +155,12 @@ public class MarkupFiles implements Provider<StaticResources> {
                 result = null;
             }
         }
-        if (result != null) {
-            System.err.println("Using markup files in " + result.getAbsolutePath());
+        if (Boolean.getBoolean("acteur.debug")) {
+            if (result != null) {
+                System.err.println("Using markup files in " + result.getAbsolutePath());
+            } else {
+                System.err.println("No markup files folder found - unpacking embedded markup tarball");
+            }
         }
         return result;
     }

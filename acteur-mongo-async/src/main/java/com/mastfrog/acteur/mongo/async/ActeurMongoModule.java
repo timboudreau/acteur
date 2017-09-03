@@ -29,6 +29,7 @@ import com.google.inject.Inject;
 import com.google.inject.TypeLiteral;
 import com.google.inject.name.Names;
 import com.google.inject.util.Providers;
+import com.mastfrog.acteur.mongo.async.MongoUpdater.MongoResult;
 import com.mastfrog.giulius.mongodb.async.GiuliusMongoAsyncModule;
 import com.mastfrog.giulius.mongodb.async.MongoAsyncConfig;
 import com.mastfrog.giulius.scope.ReentrantScope;
@@ -36,8 +37,10 @@ import com.mastfrog.acteur.mongo.async.WriteCursorContentsAsJSON.CursorResult;
 import com.mastfrog.acteur.mongo.async.WriteCursorContentsAsJSON.SingleResult;
 import com.mastfrog.giulius.mongodb.async.DynamicCodecs;
 import com.mastfrog.giulius.mongodb.async.MongoAsyncInitializer;
+import com.mastfrog.jackson.DurationSerializationMode;
 import com.mastfrog.jackson.JacksonConfigurer;
 import com.mastfrog.jackson.JacksonModule;
+import com.mastfrog.jackson.TimeSerializationMode;
 import com.mongodb.async.client.FindIterable;
 import com.mongodb.async.client.MongoClientSettings;
 import com.mongodb.async.client.MongoCollection;
@@ -69,6 +72,11 @@ public final class ActeurMongoModule extends AbstractModule implements MongoAsyn
         base.withDynamicCodecs(JacksonCodecs.class);
         base.withCodecProvider(AdditionalJacksonCodecs.class);
         withJacksonConfigurer(ObjectIdJacksonConfigurer.class);
+    }
+
+    public ActeurMongoModule withJavaTimeSerializationMode(TimeSerializationMode timeMode, DurationSerializationMode durationMode) {
+        jacksonModule.withJavaTimeSerializationMode(timeMode, durationMode);
+        return this;
     }
 
     public ActeurMongoModule withJacksonConfigurer(JacksonConfigurer configurer) {
@@ -124,7 +132,7 @@ public final class ActeurMongoModule extends AbstractModule implements MongoAsyn
     @Override
     protected void configure() {
         install(base);
-        scope.bindTypes(binder(), Bson.class, Document.class, MongoCollection.class, SingleResult.class, CursorResult.class, FindIterable.class);
+        scope.bindTypes(binder(), Bson.class, Document.class, MongoResult.class, MongoCollection.class, SingleResult.class, CursorResult.class, FindIterable.class);
         Provider<CursorControl> ctrlProvider = scope.provider(CursorControl.class, Providers.<CursorControl>of(CursorControl.DEFAULT));
         bind(CursorControl.class).toProvider(ctrlProvider);
         bind(GenerifiedFindIterable.literal).toProvider(GenerifiedFindIterable.class);
