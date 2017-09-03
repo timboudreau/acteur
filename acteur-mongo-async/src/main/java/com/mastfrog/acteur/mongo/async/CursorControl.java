@@ -90,7 +90,7 @@ public final class CursorControl {
     }
 
     public CursorControl findOne() {
-        return findOne(findOne);
+        return findOne(true);
     }
 
     private void checkLocked() {
