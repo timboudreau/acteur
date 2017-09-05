@@ -65,7 +65,7 @@ public class SslTest {
         AtomicReference<String> content = new AtomicReference<>();
         AtomicReference<HttpHeaders> headers = new AtomicReference<>();
         AtomicReference<HttpResponseStatus> status = new AtomicReference<>();
-        client.get().setTimeout(Duration.ofSeconds(5)).setURL("https://localhost:" + port + "/test").execute(new ResponseHandler<String>(String.class) {
+        client.get().setTimeout(Duration.ofSeconds(60)).setURL("https://localhost:" + port + "/test").execute(new ResponseHandler<String>(String.class) {
             @Override
             protected void onError(Throwable err) {
                 thrown.set(err);
