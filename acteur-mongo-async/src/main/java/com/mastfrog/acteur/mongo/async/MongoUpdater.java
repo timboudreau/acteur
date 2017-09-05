@@ -54,7 +54,7 @@ public final class MongoUpdater {
         this.ctrl = ctrl;
     }
 
-    public <T> Updates withCollection(MongoCollection<T> collection) {
+    public <T> Updates<T> withCollection(MongoCollection<T> collection) {
         return new UpdatesImpl<>(collection);
     }
 
