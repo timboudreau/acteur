@@ -40,15 +40,14 @@ import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.ByteBufInputStream;
 import java.io.IOException;
 import static java.util.Arrays.asList;
+import java.util.Base64;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import org.apache.commons.codec.binary.Base64;
 import org.bson.Document;
 import org.bson.codecs.BsonValueCodecProvider;
 import org.bson.codecs.DocumentCodecProvider;
 import org.bson.codecs.ValueCodecProvider;
-import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.types.ObjectId;
 import static org.junit.Assert.assertArrayEquals;
@@ -136,7 +135,7 @@ public class ByteBufCodecTest {
                     break;
                 case "bytes":
                     assertTrue(other.getClass().getName(), other instanceof String);
-                    other = Base64.decodeBase64((String) other);
+                    other = Base64.getDecoder().decode((String)other);
                     continue;
             }
             if (value instanceof byte[]) {
