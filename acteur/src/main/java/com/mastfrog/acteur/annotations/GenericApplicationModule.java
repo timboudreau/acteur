@@ -27,7 +27,7 @@ import java.util.Set;
  */
 public class GenericApplicationModule<T extends GenericApplication> extends ServerModule<T> { // non final for unit tests that need to hide arguments
 
-    private final Settings settings;
+    protected final Settings settings;
     private final Class<?>[] exclude;
     public static final String EXCLUDED_CLASSES = "excluded";
 
