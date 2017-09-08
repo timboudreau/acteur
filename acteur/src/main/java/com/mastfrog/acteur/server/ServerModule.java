@@ -88,6 +88,7 @@ import io.netty.handler.ssl.SslProvider;
 import io.netty.util.Attribute;
 import io.netty.util.AttributeKey;
 import io.netty.util.CharsetUtil;
+import io.netty.util.concurrent.FastThreadLocalThread;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -346,7 +347,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
                 binder().getProvider(Settings.class),
                 binder().getProvider(ByteBufAllocator.class)));
 
-        scope.bindTypes(binder(), Event.class, HttpEvent.class, RequestID.class,
+        scope.bindTypes(binder(), Event.class, HttpEvent.class, RequestID.class, WebSocketEvent.class,
                 Page.class, BasicCredentials.class, Closables.class);
         @SuppressWarnings("deprecation")
         ImplicitBindings implicit = appType.getAnnotation(ImplicitBindings.class);
@@ -961,7 +962,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
 
         @Override
         public Thread newThread(Runnable r) {
-            Thread t = new Thread(r);
+            Thread t = new FastThreadLocalThread(r);
             if ("event".equals(tg.getName())) {
                 t.setPriority(Thread.MAX_PRIORITY);
             } else {

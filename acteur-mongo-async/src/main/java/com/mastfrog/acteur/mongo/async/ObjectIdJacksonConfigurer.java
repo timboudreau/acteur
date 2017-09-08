@@ -31,6 +31,10 @@ import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.mastfrog.jackson.JacksonConfigurer;
 import java.io.IOException;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
+import java.util.Locale;
 import org.bson.types.ObjectId;
 
 /**
@@ -41,23 +45,55 @@ import org.bson.types.ObjectId;
  */
 class ObjectIdJacksonConfigurer implements JacksonConfigurer {
 
+    public static final DateTimeFormatter ISO_INSTANT;
+
+    static {
+        ISO_INSTANT = new DateTimeFormatterBuilder()
+                .parseCaseInsensitive()
+                .appendInstant()
+                .toFormatter(Locale.US);
+    }
+
     @Override
     public ObjectMapper configure(ObjectMapper m) {
         SimpleModule sm = new SimpleModule();
-        sm.addSerializer(new JsonSerializer<ObjectId>() {
-
-            @Override
-            public Class<ObjectId> handledType() {
-                return ObjectId.class;
-            }
-
-            @Override
-            public void serialize(ObjectId t, JsonGenerator jg, SerializerProvider sp) throws IOException, JsonProcessingException {
-                String raw = "ObjectId(\"" + t.toString() + "\")";
-                jg.writeRawValue(raw);
-            }
-        });
+        sm.addSerializer(OID);
+        sm.addSerializer(ZDT);
         m.registerModule(sm);
         return m;
+    }
+
+    private static final OIDSerializer OID = new OIDSerializer();
+
+    static final class OIDSerializer extends JsonSerializer<ObjectId> {
+
+        @Override
+        public Class<ObjectId> handledType() {
+            return ObjectId.class;
+        }
+
+        @Override
+        public void serialize(ObjectId t, JsonGenerator jg, SerializerProvider sp) throws IOException, JsonProcessingException {
+            String raw = "ObjectId(\"" + t.toString() + "\")";
+            jg.writeRawValue(raw);
+        }
+    }
+
+    private static final ZDTSerializer ZDT = new ZDTSerializer();
+
+    static final class ZDTSerializer extends JsonSerializer<ZonedDateTime> {
+
+        @Override
+        public Class<ZonedDateTime> handledType() {
+            return ZonedDateTime.class;
+        }
+
+        @Override
+        public void serialize(ZonedDateTime t, JsonGenerator jg, SerializerProvider sp) throws IOException, JsonProcessingException {
+            // ISODate("2017-09-03T08:24:29.382Z")
+            String raw = "ISODate(\"" + ISO_INSTANT.format(t) + "\")";
+            jg.writeRawValue(raw);
+        }
+
     }
 }

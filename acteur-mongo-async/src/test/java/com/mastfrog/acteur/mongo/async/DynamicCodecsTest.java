@@ -39,8 +39,8 @@ import com.mastfrog.giulius.mongodb.async.MongoHarness;
 import com.mastfrog.giulius.tests.GuiceRunner;
 import com.mastfrog.giulius.tests.TestWith;
 import com.mastfrog.giulius.scope.ReentrantScope;
-import com.mastfrog.jackson.JacksonModule;
 import com.mastfrog.util.Exceptions;
+import com.mastfrog.util.time.TimeUtil;
 import com.mongodb.WriteConcern;
 import com.mongodb.async.AsyncBatchCursor;
 import com.mongodb.async.SingleResultCallback;
@@ -48,9 +48,11 @@ import com.mongodb.async.client.FindIterable;
 import com.mongodb.async.client.MongoCollection;
 import com.mongodb.client.result.UpdateResult;
 import io.netty.buffer.ByteBufAllocator;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
@@ -75,7 +77,44 @@ import org.junit.runner.RunWith;
 @TestWith({M.class, MongoHarness.Module.class})
 public class DynamicCodecsTest {
 
-//    @Test
+    private static final ZonedDateTime ZDT = TimeUtil.fromUnixTimestamp(0);
+
+    @Test
+    public void testZonedDateTime(@Named("stuff") MongoCollection<Document> stuff) throws Throwable {
+        ObjectId id = new ObjectId();
+        Document a = new Document("one", "hello").append("zdt", ZDT).append("thing", id);
+        CB<Void> waitForInsert = new CB<Void>();
+        stuff.withWriteConcern(WriteConcern.FSYNC_SAFE).insertMany(Arrays.asList(a), waitForInsert);
+        waitForInsert.get();
+
+        final Document[] found = new Document[1];
+        final Throwable[] thrown = new Throwable[1];
+        final CountDownLatch latch = new CountDownLatch(1);
+        stuff.find().first((Document t, Throwable thrwbl) -> {
+            thrown[0] = thrwbl;
+            found[0] = t;
+            latch.countDown();
+        });
+        latch.await(10, TimeUnit.SECONDS);
+        if (thrown[0] != null) {
+            throw thrown[0];
+        }
+        Document doc = found[0];
+        assertNotNull(doc);
+        Object hello = doc.get("one");
+        assertNotNull(hello);
+        Object zdt = doc.get("zdt");
+        assertNotNull(zdt);
+        Object thing = doc.get("thing");
+        assertNotNull(thing);
+        assertTrue(hello instanceof String);
+        assertEquals("hello", hello);
+        assertTrue(thing + " not right type: " + thing.getClass().getSimpleName(), doc.get("thing") instanceof ObjectId);
+        assertTrue(zdt + " not right type: " + zdt.getClass().getSimpleName(), doc.get("zdt") instanceof Date);
+        assertEquals(TimeUtil.toUnixTimestamp(ZDT), ((Date) zdt).getTime());
+    }
+
+    @Test
     public void testJacksonCodecs(@Named("stuff") MongoCollection<Document> stuff) throws Throwable {
         Document a = new Document("one", "hello").append("two", "\tworldпрод\nhmm");
         Document b = new Document("one", "stuff").append("two", "moreStuff");
@@ -155,8 +194,7 @@ public class DynamicCodecsTest {
         assertNotNull(id);
         assertTrue("Wrong type for _id: " + id.getClass().getName(), id instanceof ObjectId);
 
-    
-        promises.updateWithQuery().equal("name", at.name).build().push("subThings", new Object[] {new SubThing("foo", 12), new SubThing("answer", 42)}).build().updateOne().then(su).onFailure(su).start();
+        promises.updateWithQuery().equal("name", at.name).build().push("subThings", new Object[]{new SubThing("foo", 12), new SubThing("answer", 42)}).build().updateOne().then(su).onFailure(su).start();
         UpdateResult res2 = su.get();
         assertNotNull(res2);
         assertEquals(1, res2.getMatchedCount());
@@ -310,6 +348,7 @@ public class DynamicCodecsTest {
             ActeurMongoModule m = new ActeurMongoModule(new ReentrantScope()).withCodec(ByteBufCodec.class)
                     .bindCollection("stuff")
                     .bindCollection("arr", ArrayThing.class)
+                    .registerJacksonType(ZonedDateTime.class)
                     .registerJacksonType(SubThing.class);
             bind(ByteBufAllocator.class).toInstance(ByteBufAllocator.DEFAULT);
 //            install(new JacksonModule(ActeurMongoModule.JACKSON_BINDING_NAME, false).withConfigurer(ObjectIdJacksonConfigurer.class));

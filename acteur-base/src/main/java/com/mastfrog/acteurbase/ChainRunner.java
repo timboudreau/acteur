@@ -256,8 +256,6 @@ public final class ChainRunner {
                 Callable<?> next = this.next;
                 if (next != null) {
                     svc.submit(next);
-                } else {
-                    System.err.println("Next callback null - ?");
                 }
             } else {
                 throw new IllegalStateException("Not deferred");

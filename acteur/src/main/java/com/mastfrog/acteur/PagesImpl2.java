@@ -23,6 +23,7 @@
  */
 package com.mastfrog.acteur;
 
+import com.mastfrog.acteur.websocket.WebSocketUpgradeActeur;
 import com.google.common.net.MediaType;
 import com.google.inject.name.Named;
 import com.mastfrog.acteur.errors.ResponseException;
@@ -155,7 +156,6 @@ class PagesImpl2 {
         public void operationComplete(ChannelFuture f) throws Exception {
             cancelled.set(true);
         }
-
     }
 
     class CB implements ChainCallback<Acteur, com.mastfrog.acteur.State, PageChain, Response, ResponseImpl>, ResponseSender {

@@ -13,7 +13,7 @@ import java.net.SocketAddress;
  *
  * @author Tim Boudreau
  */
-final class WebSocketEvent implements Event<WebSocketFrame> {
+public final class WebSocketEvent implements Event<WebSocketFrame> {
 
     private final WebSocketFrame frame;
     private final Channel channel;

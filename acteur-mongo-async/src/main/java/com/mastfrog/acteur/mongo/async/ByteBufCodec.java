@@ -24,10 +24,12 @@
 package com.mastfrog.acteur.mongo.async;
 
 import com.mastfrog.util.Streams;
+import com.mastfrog.util.time.TimeUtil;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.ByteBufInputStream;
 import java.io.IOException;
+import java.time.ZonedDateTime;
 import javax.inject.Inject;
 import org.bson.BSONException;
 import org.bson.BsonReader;
@@ -49,6 +51,10 @@ public class ByteBufCodec implements Codec<ByteBuf> {
     @Inject
     ByteBufCodec(ByteBufAllocator alloc) {
         this.alloc = alloc;
+    }
+
+    public void writeDateTime(BsonWriter writer, ZonedDateTime t, EncoderContext ec) {
+        writer.writeDateTime(TimeUtil.toUnixTimestamp(t));
     }
 
     @Override

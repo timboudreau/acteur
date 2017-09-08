@@ -23,6 +23,7 @@
  */
 package com.mastfrog.acteur;
 
+import com.mastfrog.acteur.websocket.WebSocketUpgradeActeur;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.inject.AbstractModule;
 import com.mastfrog.acteur.WebSocketTest.WSM;

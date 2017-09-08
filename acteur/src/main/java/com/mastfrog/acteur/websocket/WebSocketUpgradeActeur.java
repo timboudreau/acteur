@@ -21,9 +21,11 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.mastfrog.acteur;
+package com.mastfrog.acteur.websocket;
 
-import com.google.inject.ImplementedBy;
+import com.mastfrog.acteur.Acteur;
+import com.mastfrog.acteur.HttpEvent;
+import com.mastfrog.acteur.Page;
 import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.acteur.server.PathFactory;
 import com.mastfrog.acteur.spi.ApplicationControl;
@@ -43,12 +45,35 @@ import io.netty.handler.codec.http.websocketx.WebSocketServerHandshaker;
 import io.netty.handler.codec.http.websocketx.WebSocketServerHandshakerFactory;
 import io.netty.handler.codec.http.websocketx.WebSocketVersion;
 import io.netty.util.AttributeKey;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.function.Supplier;
 import javax.inject.Inject;
 
 /**
  * Use in &#064;Precursors annotation before acteurs which consume and produce
- * web socket responses.
+ * web socket responses. All acteurs following this one will be re-created and
+ * called for each web socket event - so effectively the programming model is
+ * still a chain of Acteurs; subsequent ones simply ask for a WebSocketEvent
+ * instead of an HttpEvent to get their payload. Such acteurs can reply with
+ * ok(someObject) to have the object converted to JSON per normal use and sent
+ * on the websocket instead of as an http response. Header methods do nothing,
+ * for obvious reasons, in acteurs that process websocket events.
+ * <p>
+ * As with any acteur, all objects provided by preceding acteurs in the chain may
+ * be injected into acteurs that process a websocket connection.  So the pattern
+ * looks more like:
+ * <ul>
+ * <li>Check url path (e.g. &#064;Path annotation handler as normal)</li>
+ * <li>Check method (e.g. &#064;Methods annotation handler as normal)</li>
+ * <li>Authenticate (e.g. &#064;Authenticated triggers whatever acteur subclass you bound to AuthenticationActeur)</li>
+ * <li>WebSocketUpgradeActeur
+ *      <ul>
+ *      <li>Event validity checker acteur
+ *      <li>Event processor acteur</li>
+ *      </ul>
+ * </ul>
+ * where the indented elements are constructed/called repeantedly for each WebSocketFrame.
  *
  * @author Tim Boudreau
  */
@@ -86,7 +111,7 @@ public class WebSocketUpgradeActeur extends Acteur {
                     Channel ch = future1.channel();
                     Object a = onConnect.connected(evt, ch);
                     Object b = connected(evt, ch); // allow subclasses
-                    ch.attr(CHAIN_KEY).set(chain.remnantSupplier(arrayOf(a, b)));
+                    ch.attr(CHAIN_KEY).set(chain.remnantSupplier(flatten(a, b)));
                     ch.attr(PAGE_KEY).set(page);
                     return;
                 } else if (future1.cause() != null) {
@@ -101,34 +126,39 @@ public class WebSocketUpgradeActeur extends Acteur {
 
     private Object[] arrayOf(Object a, Object b) {
         if (a != null && b != null) {
-            return new Object[] { a, b };
+            return new Object[]{a, b};
         } else if (a == null && b != null) {
-            return new Object[] { b };
+            return new Object[]{b};
         } else if (a != null && b == null) {
-            return new Object[] { a };
+            return new Object[]{a};
         } else {
             return new Object[0];
+        }
+    }
+
+    private static Object[] flatten(Object a, Object b) {
+        List<Object> result = new LinkedList<>();
+        populate(a, result);
+        populate(b, result);
+        return result.toArray(new Object[0]);
+    }
+
+    private static void populate(Object o, List<? super Object> into) {
+        if (o == null) {
+            return;
+        }
+        if (o instanceof Object[]) {
+            Object[] o1 = (Object[]) o;
+            for (Object o2 : o1) {
+                populate(o2, into);
+            }
+        } else {
+            into.add(o);
         }
     }
 
     Object connected(HttpEvent evt, Channel channel) {
         // do nothing
         return null;
-    }
-
-    @ImplementedBy(DefaultOnWebsocketConnect.class)
-    public interface OnWebsocketConnect {
-
-        Object connected(HttpEvent evt, Channel channel);
-
-    }
-
-    private static final class DefaultOnWebsocketConnect implements OnWebsocketConnect {
-
-        @Override
-        public Object connected(HttpEvent evt, Channel channel) {
-            // do nothing
-            return null;
-        }
     }
 }

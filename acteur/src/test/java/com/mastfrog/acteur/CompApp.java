@@ -37,6 +37,7 @@ import static io.netty.handler.codec.http.HttpResponseStatus.OK;
 import io.netty.util.CharsetUtil;
 import java.io.IOException;
 import java.util.Map;
+import java.util.Random;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import static org.junit.Assert.assertNotNull;
@@ -88,7 +89,8 @@ public class CompApp extends Application {
 
         @Override
         protected void configure() {
-            System.setProperty(ServerModule.PORT, "" + new PortFinder().findAvailableServerPort());
+            int startPort = 2000 + (1000 * new Random(System.currentTimeMillis()).nextInt(40));
+            System.setProperty(ServerModule.PORT, "" + new PortFinder(startPort, 65535, 1000).findAvailableServerPort());
             bind(HttpClient.class).toInstance(HttpClient.builder()
                     .noCompression()
                     .followRedirects().resolveAllHostsToLocalhost().threadCount(4)
@@ -110,7 +112,6 @@ public class CompApp extends Application {
 
         @Override
         public ErrorResponse evaluate(Throwable t, Acteur acteur, Page page, Event<?> evt) {
-            System.out.println("EVALUATE " + t.getClass().getName());
             if (t instanceof ConfigurationException) {
 //                if (page instanceof Fails) {
                 return Err.conflict("werg");

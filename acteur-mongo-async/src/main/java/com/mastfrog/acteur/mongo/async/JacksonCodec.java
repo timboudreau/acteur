@@ -37,6 +37,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.ZonedDateTime;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.inject.Named;
 import javax.inject.Provider;
@@ -68,6 +69,10 @@ final class JacksonCodec<T> implements Codec<T> {
 
     @Override
     public void encode(BsonWriter writer, T t, EncoderContext ec) {
+        if (t instanceof ZonedDateTime) { // XXX hack
+            json.get().writeDateTime(writer, (ZonedDateTime) t, ec);
+            return;
+        }
         try {
             byte[] bytes = mapper.get().writeValueAsBytes(t);
             json.get().encode(writer, Unpooled.wrappedBuffer(bytes), ec);
@@ -101,6 +106,12 @@ final class JacksonCodec<T> implements Codec<T> {
 
     @Override
     public T decode(BsonReader reader, DecoderContext dc) {
+//        switch(reader.getCurrentBsonType()) {
+//            case DATE_TIME :
+//                return (T) TimeUtil.fromUnixTimestamp(reader.readDateTime());
+//            case TIMESTAMP :
+//                return (T) TimeUtil.fromUnixTimestamp(reader.readTimestamp().asInt64().longValue());
+//        }
         ByteBuf buf = json.get().decode(reader, dc);
         try {
             return mapper.get().readValue((InputStream) new ByteBufInputStream(buf), type);
