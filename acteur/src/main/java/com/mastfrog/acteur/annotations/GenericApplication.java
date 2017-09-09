@@ -107,12 +107,12 @@ public class GenericApplication extends Application {
 
     private static StringBuilder pageTypeToString(Class<? extends Page> pg, StringBuilder into) {
         into.append(" * ");
-        String nm = pg.getClass().getSimpleName();
+        String nm = pg.getSimpleName();
         if (nm.endsWith("__GenPage")) {
             nm = nm.substring(0, nm.length() - "__GenPage".length());
         }
         String pkg = pg.getPackage().toString();
-        method(pg, into).append('\t');
+        method(pg, into).append('\t').append('\t');
         path(pg, into).append('\t').append(nm).append(" (").append(pkg).append(')').append('\n');
         return into;
     }
