@@ -124,18 +124,6 @@ public class WebSocketUpgradeActeur extends Acteur {
         }
     }
 
-    private Object[] arrayOf(Object a, Object b) {
-        if (a != null && b != null) {
-            return new Object[]{a, b};
-        } else if (a == null && b != null) {
-            return new Object[]{b};
-        } else if (a != null && b == null) {
-            return new Object[]{a};
-        } else {
-            return new Object[0];
-        }
-    }
-
     private static Object[] flatten(Object a, Object b) {
         List<Object> result = new LinkedList<>();
         populate(a, result);

@@ -36,6 +36,7 @@ import com.mongodb.async.client.MongoCollection;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import static io.netty.handler.codec.http.HttpResponseStatus.OK;
 import java.util.concurrent.Callable;
+import java.util.function.Consumer;
 
 /**
  *
@@ -98,26 +99,30 @@ public final class MongoUpdater {
 
         @Override
         public void insertOne(T obj, Object message, HttpResponseStatus onSuccess) {
+            insertOne(obj, message, onSuccess, null);
+        }
+
+        @Override
+        public void insertOne(T obj, Object message, HttpResponseStatus onSuccess, Consumer<Throwable> onInsert) {
             checkUsed();
             used = true;
-            collection.insertOne(obj, new VoidCallback(deferral.defer(), message == null ? obj : message, onSuccess));
+            collection.insertOne(obj, new VoidCallback(deferral.defer(), message == null ? obj : message, onSuccess, onInsert));
             chain.add(MongoResultActeur.class);
         }
+
 
         private class VoidCallback implements SingleResultCallback<Void> {
 
             private final Resumer resumer;
             private final Object message;
             private final HttpResponseStatus status;
+            private final Consumer<Throwable> onInsert;
 
-            public VoidCallback(Resumer resumer, Object message) {
-                this(resumer, message, OK);
-            }
-
-            public VoidCallback(Resumer resumer, Object message, HttpResponseStatus status) {
+            public VoidCallback(Resumer resumer, Object message, HttpResponseStatus status, Consumer<Throwable> onInsert) {
                 this.resumer = resumer;
                 this.message = message;
                 this.status = status == null ? OK : status;
+                this.onInsert = onInsert;
             }
 
             @Override
@@ -128,6 +133,9 @@ public final class MongoUpdater {
                     } catch (Exception e) {
                         ctrl.internalOnError(e);
                     }
+                }
+                if (onInsert != null) {
+                    onInsert.accept(thrwbl);
                 }
                 resumer.resume(new MongoResult(message, thrwbl, status));
             }
@@ -141,6 +149,8 @@ public final class MongoUpdater {
         public void insertOne(T obj, Object message);
 
         public void insertOne(T obj, Object message, HttpResponseStatus onSuccess);
+
+        public void insertOne(T obj, Object message, HttpResponseStatus onSuccess, Consumer<Throwable> onInsert);
 
         public Updates<T> onSuccess(Callable<?> r);
 

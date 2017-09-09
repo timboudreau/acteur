@@ -175,27 +175,24 @@ public final class ChainRunner {
                         ac = scope.enter(this.state);
                     }
                 }
-                S newState;
+                S newState = null;
                 try {
                     A a2 = null;
-                    try {
-                        onDone.onBeforeRunOne(chain);
-                        onDone.onBeforeRunOne(chain, responses);
-                        // Instantiate the next acteur, most likely causing its 
-                        // constructor to set its state
-                        a2 = iter.next();
-                        // Get the state, which may compute the state if it is lazy
-                        newState = a2.getState();
-                    } finally {
-                        onDone.onAfterRunOne(chain, a2);
-                    }
+                    onDone.onBeforeRunOne(chain);
+                    onDone.onBeforeRunOne(chain, responses);
+                    // Instantiate the next acteur, most likely causing its
+                    // constructor to set its state
+                    a2 = iter.next();
+                    // Get the state, which may compute the state if it is lazy
+                    newState = a2.getState();
+                    onDone.onAfterRunOne(chain, a2);
+                    // Add any objects it provided into the scope for the next
+                    // invocation
+                    addToContext(newState);
                     if (newState.isRejected()) {
                         onDone.onRejected(newState);
                         return null;
                     }
-                    // Add any objects it provided into the scope for the next 
-                    // invocation
-                    addToContext(newState);
                 } catch (Exception | Error e) {
                     Throwable t = e;
                     if (e instanceof ProvisionException && e.getCause() != null) {

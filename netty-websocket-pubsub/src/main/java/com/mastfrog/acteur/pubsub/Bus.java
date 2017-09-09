@@ -40,12 +40,14 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import javax.inject.Inject;
 import javax.inject.Named;
+import javax.inject.Singleton;
 
 /**
  * Implementation of PubSubBus.
  *
  * @author Tim Boudreau
  */
+@Singleton
 class Bus implements PubSubBus {
 
     private final ChannelRegistry<ChannelId> reg;
@@ -81,10 +83,8 @@ class Bus implements PubSubBus {
         marshallers.write(obj, buf);
         final BinaryWebSocketFrame frame = new BinaryWebSocketFrame(buf);
         Set<Channel> channels = reg.channels(to);
-        System.out.println("All channels for " + to + ": " + channels.size() + " - " + channels);
         channels.remove(origin);
         ChannelPromise p = origin.newPromise();
-        System.out.println("Publish " + obj + " to " + channels.size() + " channels for " + to);
         if (channels.isEmpty()) {
             return p.setSuccess();
         }
@@ -149,7 +149,10 @@ class Bus implements PubSubBus {
             }
             if (ch != null) {
                 WebSocketFrame fr = frame.retainedDuplicate();
-                ch.writeAndFlush(fr).addListener(this);
+                future = ch.writeAndFlush(fr).addListener(this);
+                if (channels.hasNext()) {
+                    future.addListener(this);
+                }
             }
             if (!channels.hasNext() && !prom.isDone()) {
                 prom.setSuccess();

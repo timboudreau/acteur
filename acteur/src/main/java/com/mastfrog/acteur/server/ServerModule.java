@@ -58,6 +58,7 @@ import com.mastfrog.acteur.util.ServerControl;
 import com.mastfrog.acteurbase.ActeurBaseModule;
 import com.mastfrog.acteurbase.Chain;
 import com.mastfrog.giulius.Dependencies;
+import com.mastfrog.giulius.InjectionInfo;
 import com.mastfrog.giulius.annotations.Defaults;
 import com.mastfrog.giulius.scope.ReentrantScope;
 import com.mastfrog.marshallers.netty.NettyContentMarshallers;
@@ -306,7 +307,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
     private final List<Module> otherModules = new ArrayList<>();
 
     public ServerModule(Class<A> appType, int workerThreadCount, int eventThreadCount, int backgroundThreadCount) {
-        this(new ReentrantScope(), appType, workerThreadCount, eventThreadCount, backgroundThreadCount);
+        this(new ReentrantScope(new InjectionInfo()), appType, workerThreadCount, eventThreadCount, backgroundThreadCount);
     }
 
     public ServerModule(ReentrantScope scope, Class<A> appType, int workerThreadCount, int eventThreadCount, int backgroundThreadCount) {

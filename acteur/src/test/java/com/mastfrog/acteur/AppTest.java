@@ -3,7 +3,6 @@ package com.mastfrog.acteur;
 import com.mastfrog.acteur.headers.Headers;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.net.MediaType;
-import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpVersion;
@@ -12,7 +11,6 @@ import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.TypeLiteral;
 import com.google.inject.name.Names;
-import com.mastfrog.acteur.Acteur.BaseState;
 import com.mastfrog.giulius.tests.GuiceRunner;
 import com.mastfrog.giulius.tests.TestWith;
 import com.mastfrog.giulius.scope.ReentrantScope;
@@ -26,6 +24,7 @@ import com.mastfrog.acteur.server.PathFactory;
 import com.mastfrog.acteur.server.ServerModule;
 import static com.mastfrog.acteur.server.ServerModule.DELAY_EXECUTOR;
 import com.mastfrog.acteur.util.RequestID;
+import com.mastfrog.giulius.InjectionInfo;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.util.Checks;
 import com.mastfrog.util.Codec;
@@ -54,7 +53,7 @@ import static org.junit.Assert.*;
 @TestWith(M.class)
 public class AppTest {
 
-    static ReentrantScope scope = new ReentrantScope();
+    static ReentrantScope scope = new ReentrantScope(new InjectionInfo());
 
     static class M extends AbstractModule {
 
@@ -62,7 +61,7 @@ public class AppTest {
         protected void configure() {
             bind(Charset.class).toInstance(CharsetUtil.UTF_8);
             bind(Application.class).to(App.class);
-            ReentrantScope scope = new ReentrantScope();
+            ReentrantScope scope = new ReentrantScope(new InjectionInfo());
             bind(ReentrantScope.class).toInstance(scope);
             ExecutorService exe = Executors.newSingleThreadExecutor();
             bind(ExecutorService.class).annotatedWith(Names.named(ServerModule.BACKGROUND_THREAD_POOL_NAME)).toInstance(exe);

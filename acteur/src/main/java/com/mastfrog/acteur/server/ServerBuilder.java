@@ -31,6 +31,7 @@ import com.mastfrog.acteur.annotations.GenericApplication.GenericApplicationSett
 import com.mastfrog.acteur.annotations.GenericApplicationModule;
 import com.mastfrog.acteur.util.Server;
 import com.mastfrog.giulius.DependenciesBuilder;
+import com.mastfrog.giulius.InjectionInfo;
 import com.mastfrog.giulius.SettingsBindings;
 import com.mastfrog.giulius.annotations.Namespace;
 import com.mastfrog.giulius.scope.ReentrantScope;
@@ -99,7 +100,7 @@ public final class ServerBuilder {
     public ServerBuilder(String namespace) {
         Checks.notNull("namespace", namespace);
         this.namespace = namespace;
-        this.scope = new ReentrantScope();
+        this.scope = new ReentrantScope(new InjectionInfo());
     }
 
     /**

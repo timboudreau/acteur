@@ -34,7 +34,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -94,6 +93,7 @@ final class ChannelRegistry<Identifier> {
             boolean result = channels.add(channel);
             if (result) {
                 idsForChannel.get(channel).add(id);
+                channelsForId.get(id).add(channel);
                 channel.closeFuture().addListener(remover);
             }
             return result;
@@ -117,15 +117,18 @@ final class ChannelRegistry<Identifier> {
     }
 
     public Future<Boolean> unsubscribe(Identifier from, Channel channel) {
-        return mutationThread.submit(new Callable<Boolean>() {
-            @Override
-            public Boolean call() throws Exception {
-                Set<Channel> channelsFor = channelsForId.get(from);
-                boolean result = channelsFor.remove(channel);
-                Set<Identifier> idsFor = idsForChannel.get(channel);
-                result |= idsFor.remove(from);
-                return result;
+        return mutationThread.submit(() -> {
+            Set<Channel> channelsFor = channelsForId.get(from);
+            boolean result = channelsFor.remove(channel);
+            if (channelsFor.isEmpty()) {
+                channelsForId.remove(from);
             }
+            Set<Identifier> idsFor = idsForChannel.get(channel);
+            result |= idsFor.remove(from);
+            if (idsFor.isEmpty()) {
+                idsForChannel.remove(channel);
+            }
+            return result;
         });
     }
 
