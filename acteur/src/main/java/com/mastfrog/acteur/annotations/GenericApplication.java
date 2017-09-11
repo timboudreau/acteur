@@ -10,6 +10,7 @@ import com.mastfrog.acteur.preconditions.Methods;
 import com.mastfrog.acteur.preconditions.Path;
 import com.mastfrog.acteur.preconditions.PathRegex;
 import com.mastfrog.util.Strings;
+import com.mastfrog.util.strings.AlignedText;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -78,23 +79,24 @@ public class GenericApplication extends Application {
     }
 
     private static void logClasses(List<Class<? extends Page>> originalOrder, Set<Class<?>> alreadyBound, Set<Class<?>> excluded, boolean helpEnabled) {
-            StringBuilder appInfo = new StringBuilder("Acteur application with the following HTTP calls:\n");
+        StringBuilder appInfo = new StringBuilder();
 
-            List<Class<? extends Page>> sorted = new ArrayList<>(originalOrder);
-            if (helpEnabled) {
-                sorted.add(Application.helpPageType());
+        List<Class<? extends Page>> sorted = new ArrayList<>(originalOrder);
+        if (helpEnabled) {
+            sorted.add(Application.helpPageType());
+        }
+        Collections.sort(sorted, (a, b) -> {
+            int oa = orderOf(a);
+            int ob = orderOf(b);
+            return oa == ob ? 0 : oa > ob ? 1 : -1;
+        });
+        for (Class<? extends Page> pageType : sorted) {
+            if (!alreadyBound.contains(pageType) && !excluded.contains(pageType)) {
+                pageTypeToString(pageType, appInfo);
             }
-            Collections.sort(sorted, (a, b) -> {
-                int oa = orderOf(a);
-                int ob = orderOf(b);
-                return oa == ob ? 0 : oa > ob ? 1 : -1;
-            });
-            for (Class<? extends Page> pageType : sorted) {
-                if (!alreadyBound.contains(pageType) && !excluded.contains(pageType)) {
-                    pageTypeToString(pageType, appInfo);
-                }
-            }
-            System.err.println(appInfo);
+        }
+        System.err.println("Acteur application with the following HTTP calls:\n");
+        System.err.println(AlignedText.formatTabbed(appInfo));
     }
 
     private static int orderOf(Class<? extends Page> pg) {
@@ -112,8 +114,9 @@ public class GenericApplication extends Application {
             nm = nm.substring(0, nm.length() - "__GenPage".length());
         }
         String pkg = pg.getPackage().toString();
+        into.append(nm).append('\t');
         method(pg, into).append('\t').append('\t');
-        path(pg, into).append('\t').append(nm).append(" (").append(pkg).append(')').append('\n');
+        path(pg, into).append('\t').append(" (").append(pkg).append(')').append('\n');
         return into;
     }
 
