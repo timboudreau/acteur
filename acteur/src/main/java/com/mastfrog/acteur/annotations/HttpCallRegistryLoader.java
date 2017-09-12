@@ -42,6 +42,7 @@ public final class HttpCallRegistryLoader implements Iterable<Class<? extends Pa
         // pluggable loaders in ServiceLoader for this, but this will do for now
         ClassLoader cl = type.getClassLoader();
         try {
+            Set<String> seenLines = new HashSet<>();
             for (URL url : CollectionUtils.toIterable(cl.getResources("META-INF/http/numble.list"))) {
                 try (final InputStream in = url.openStream()) {
                     String[] lines = Streams.readString(in, "UTF-8").split("\n");
@@ -49,9 +50,13 @@ public final class HttpCallRegistryLoader implements Iterable<Class<? extends Pa
                         // CRLF issues if build was done on Windows
                         // gives us class names ending in a \r
                         line = line.trim();
-                        if (line.isEmpty() || line.startsWith("#")) {
+                        if (line.isEmpty() || line.startsWith("#") || seenLines.contains(line)) {
                             continue;
                         }
+                        // If A and B depend on C, and D depends on both, D can
+                        // wind up with duplicates - harmless but has overhead, so
+                        // nip that in the bud here
+                        seenLines.add(line);
 //                        types.add(Class.forName(line));
                         types.add(cl.loadClass(line));
                     }

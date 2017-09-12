@@ -54,13 +54,16 @@ class Bus implements PubSubBus {
     private final NettyContentMarshallers marshallers;
     private final ByteBufAllocator alloc;
     private final ExecutorService threadPool;
+    private final BusListener.Registry listeners;
 
     @Inject
-    Bus(ShutdownHookRegistry shutdown, NettyContentMarshallers marshallers, ByteBufAllocator alloc, @Named("bus") ExecutorService threadPool) {
+    Bus(ShutdownHookRegistry shutdown, NettyContentMarshallers marshallers, ByteBufAllocator alloc, @Named("bus") ExecutorService threadPool,
+            BusListener.Registry listeners) {
         this.reg = new ChannelRegistry<>(shutdown);
         this.marshallers = marshallers;
         this.alloc = alloc;
         this.threadPool = threadPool;
+        this.listeners = listeners;
     }
 
     @Override
@@ -91,6 +94,7 @@ class Bus implements PubSubBus {
         threadPool.submit(() -> {
             new CHF(channels.iterator(), frame, p).operationComplete(null);
         });
+        listeners.onPublish(obj, to, origin);
         return p;
     }
 

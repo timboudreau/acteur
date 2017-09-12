@@ -85,7 +85,7 @@ public class BusTest {
         ChannelId first = new ChannelId("first");
         ChannelId second = new ChannelId("second");
         try (X x = new X()) {
-            Bus bus = new Bus(x, NettyContentMarshallers.getDefault(new ObjectMapper()), ByteBufAllocator.DEFAULT, Executors.newCachedThreadPool());
+            Bus bus = new Bus(x, NettyContentMarshallers.getDefault(new ObjectMapper()), ByteBufAllocator.DEFAULT, Executors.newCachedThreadPool(), new BusListener.Registry());
             assertTrue(bus.subscribe(c0, first).get());
             bus.subscribe(c1, first).get();
             bus.subscribe(c2, first).get();
