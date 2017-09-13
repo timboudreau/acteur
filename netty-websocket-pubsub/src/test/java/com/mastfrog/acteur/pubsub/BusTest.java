@@ -96,7 +96,7 @@ public class BusTest {
             assertTrue(bus.hasSubscribers(first));
             assertTrue(bus.hasSubscribers(second));
 
-            ChannelPromise prom = bus.publish("hello", first, c0);
+            ChannelPromise prom = bus.publish("hello", c0, first);
             await(prom);
             Thread.sleep(1000);
             ch1.assertLastMessageIs("hello");
@@ -105,7 +105,7 @@ public class BusTest {
             ch0.assertNoMessages();
             ch4.assertNoMessages();
 
-            prom = bus.publish("goodbye", first, c0);
+            prom = bus.publish("goodbye", c0, first);
             await(prom);
             ch1.assertLastMessageIs("goodbye");
             ch2.assertLastMessageIs("goodbye");
@@ -113,7 +113,7 @@ public class BusTest {
             ch0.assertNoMessages();
             ch4.assertNoMessages();
 
-            prom = bus.publish("whatevs", first, c1);
+            prom = bus.publish("whatevs", c1, first);
             await(prom);
             ch0.assertLastMessageIs("whatevs");
             ch1.assertLastMessageIs("goodbye");
@@ -121,7 +121,7 @@ public class BusTest {
             ch3.assertLastMessageIs("whatevs");
             ch4.assertNoMessages();
 
-            prom = bus.publish("woohoo", second, c1);
+            prom = bus.publish("woohoo", c1, second);
             await(prom);
             ch0.assertLastMessageIs("whatevs");
             ch1.assertLastMessageIs("goodbye");
@@ -130,7 +130,7 @@ public class BusTest {
             ch4.assertLastMessageIs("woohoo");
 
             bus.unsubscribe(c2, first).get();
-            prom = bus.publish("bye", first, c0);
+            prom = bus.publish("bye", c0, first);
             await(prom);
             ch0.assertLastMessageIs("whatevs");
             ch1.assertLastMessageIs("bye");
@@ -138,7 +138,7 @@ public class BusTest {
             ch2.assertLastMessageIs("whatevs");
 
             c3.close().sync();
-            prom = bus.publish("gone", first, c0);
+            prom = bus.publish("gone", c0, first);
             await(prom);
             ch2.assertLastMessageIs("whatevs");
             ch1.assertLastMessageIs("gone");

@@ -26,6 +26,9 @@ package com.mastfrog.acteur.pubsub;
 import com.google.inject.ImplementedBy;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelPromise;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.Future;
 
 /**
@@ -62,13 +65,17 @@ public interface PubSubBus {
      *
      * @param <T> The type of object
      * @param obj The payload
-     * @param to The id of the channel to send to
      * @param origin The channel that the message originated on (the message
-     * will not be resent to that channel)
-     * @return A promise
+ will not be resent to that channel)
+     * @param to The id of the channel to send to
      * @throws Exception If something goes wrong encoding the message
+     * @return the io.netty.channel.ChannelPromise
      */
-    <T> ChannelPromise publish(T obj, ChannelId to, Channel origin) throws Exception;
+    default <T> ChannelPromise publish(T obj, Channel origin, ChannelId... to) throws Exception {
+        return publish(obj, origin, new HashSet<>(Arrays.asList(to)));
+    }
+
+    <T> ChannelPromise publish(T obj, Channel origin, Set<ChannelId> to) throws Exception;
 
     /**
      * Subscribe a channel to messages on the passed channel id.  Subscribing

@@ -27,6 +27,7 @@ package com.mastfrog.acteur.pubsub;
 import io.netty.channel.Channel;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import javax.inject.Singleton;
 
 /**
@@ -37,7 +38,11 @@ import javax.inject.Singleton;
  */
 public abstract class BusListener {
 
-    protected abstract <T> void onPublish(T obj, ChannelId to, Channel origin);
+    protected BusListener(Registry reg) {
+        reg.register(this);
+    }
+
+    protected abstract <T> void onPublish(T obj, Set<ChannelId> to, Channel origin);
 
     @Singleton
     public static class Registry {
@@ -47,7 +52,7 @@ public abstract class BusListener {
             listeners.add(l);
         }
 
-        <T> void onPublish(T obj, ChannelId to, Channel origin) {
+        <T> void onPublish(T obj, Set<ChannelId> to, Channel origin) {
             for (BusListener l : listeners) {
                 l.onPublish(obj, to, origin);
             }

@@ -25,6 +25,7 @@ package com.mastfrog.acteur.pubsub;
 
 import com.mastfrog.giulius.ShutdownHookRegistry;
 import com.mastfrog.marshallers.netty.NettyContentMarshallers;
+import com.mastfrog.util.Checks;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.Channel;
@@ -34,6 +35,7 @@ import io.netty.channel.ChannelPromise;
 import io.netty.channel.embedded.EmbeddedChannel;
 import io.netty.handler.codec.http.websocketx.BinaryWebSocketFrame;
 import io.netty.handler.codec.http.websocketx.WebSocketFrame;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
@@ -81,19 +83,24 @@ class Bus implements PubSubBus {
     }
 
     @Override
-    public <T> ChannelPromise publish(T obj, ChannelId to, Channel origin) throws Exception {
+    public <T> ChannelPromise publish(T obj, Channel origin, Set<ChannelId> to) throws Exception {
+        Checks.notEmpty("to", to);
         ByteBuf buf = alloc.buffer();
         marshallers.write(obj, buf);
         final BinaryWebSocketFrame frame = new BinaryWebSocketFrame(buf);
-        Set<Channel> channels = reg.channels(to);
+        Set<Channel> channels = new HashSet<>(50);
+        for (ChannelId id : to) {
+            channels.addAll(reg.channels(id));
+        }
         channels.remove(origin);
         ChannelPromise p = origin.newPromise();
-        if (channels.isEmpty()) {
-            return p.setSuccess();
+        if (!channels.isEmpty()) {
+            threadPool.submit(() -> {
+                new CHF(channels.iterator(), frame, p).operationComplete(null);
+            });
+        } else {
+            p.setSuccess();
         }
-        threadPool.submit(() -> {
-            new CHF(channels.iterator(), frame, p).operationComplete(null);
-        });
         listeners.onPublish(obj, to, origin);
         return p;
     }
