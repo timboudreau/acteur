@@ -243,6 +243,7 @@ final class ServerImpl implements Server {
                 synchronized(this) {
                     localChannel = null;
                 }
+                afterStart.countDown();
             }
         }
 
