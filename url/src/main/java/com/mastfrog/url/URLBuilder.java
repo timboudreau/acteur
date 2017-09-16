@@ -140,6 +140,13 @@ public final class URLBuilder extends AbstractBuilder<PathElement, URL> {
         return addDomain (new Label(domain));
     }
 
+    public URLBuilder addQueryPairIfNotNullOrEmpty (String key, String value) {
+        if (value != null && !value.isEmpty()) {
+            addQueryPair(key, value);
+        }
+        return this;
+    }
+
     public URLBuilder addQueryPair (String key, String value) {
         Checks.notNull("value", value);
         Checks.notNull("key", key);
