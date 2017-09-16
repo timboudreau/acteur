@@ -33,10 +33,10 @@ import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.handler.codec.http.DefaultHttpResponse;
-import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponse;
 import static io.netty.handler.codec.http.HttpResponseStatus.CONTINUE;
+import io.netty.handler.codec.http.HttpUtil;
 import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
 import io.netty.handler.codec.http.websocketx.CloseWebSocketFrame;
 import io.netty.handler.codec.http.websocketx.PingWebSocketFrame;
@@ -109,7 +109,7 @@ final class UpstreamHandlerImpl extends ChannelInboundHandlerAdapter {
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
         if (msg instanceof HttpRequest) {
             final HttpRequest request = (HttpRequest) msg;
-            if (!aggregateChunks && HttpHeaders.is100ContinueExpected(request)) {
+            if (!aggregateChunks && HttpUtil.is100ContinueExpected(request)) {
                 send100Continue(ctx);
             }
             handleHttpRequest(ctx, request, false);

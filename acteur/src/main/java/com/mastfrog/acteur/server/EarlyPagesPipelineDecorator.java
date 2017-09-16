@@ -54,13 +54,10 @@ class EarlyPagesPipelineDecorator implements PipelineDecorator {
             pipeline.addAfter(DECODER, PRE_CONTENT_PAGE_HANDLER, handler);
             pipeline.remove(AGGREGATOR);
             // XXX HttpContentEncoder is in the wrong state for an early response, and complains
-            // that we have not yet received a request
+            // that we have not yet received a request. So it's this or manually set its state
+            // via reflection, which is nastier.
             pipeline.remove(COMPRESSOR);
         }
-    }
-
-    private void hackDecoder() {
-
     }
 
     @Override
@@ -91,7 +88,6 @@ class EarlyPagesPipelineDecorator implements PipelineDecorator {
 
         @Override
         protected void channelRead0(ChannelHandlerContext ctx, HttpRequest msg) throws Exception {
-            System.out.println("Send to early pages: " + msg.method() + " " + msg.uri());
             upstream.handleHttpRequest(ctx, msg, true);
         }
     }

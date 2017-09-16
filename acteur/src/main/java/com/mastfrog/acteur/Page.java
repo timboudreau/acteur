@@ -23,12 +23,14 @@
  */
 package com.mastfrog.acteur;
 
+import com.google.common.collect.Sets;
 import com.google.inject.ImplementedBy;
 import com.mastfrog.acteur.errors.ResponseException;
 import com.mastfrog.acteur.preconditions.Description;
 import com.mastfrog.acteur.preconditions.PageAnnotationHandler;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.util.Checks;
+import static com.mastfrog.util.Checks.notNull;
 import com.mastfrog.util.Exceptions;
 import com.mastfrog.util.collections.CollectionUtils;
 import com.mastfrog.util.thread.AutoCloseThreadLocal;
@@ -36,25 +38,25 @@ import com.mastfrog.util.thread.QuietAutoCloseable;
 import io.netty.handler.codec.http.HttpResponse;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Really an aggregation of Acteurs and a place to set header values; in recent
  * versions of Acteur it is rarely necessary to implement this - instead, simply
  * annotate your entry-point Acteur with &#064;HttpCall and one will be
- * generated for you under-the-hood, and use &#064;Precursors and 
+ * generated for you under-the-hood, and use &#064;Precursors and
  * &#064;Concluders to specify Acteurs that should run before/after that one.
  * <p>
  * This class was central to the Acteur 1.0 API, but at this point is mainly an
- * implementation class.  Page subclasses are still generated from annotations, but
- * are rarely used in application code at this point;  they are still useful in
- * unit and integration tests where you may have multiple applications for different
- * tests.
+ * implementation class. Page subclasses are still generated from annotations,
+ * but are rarely used in application code at this point; they are still useful
+ * in unit and integration tests where you may have multiple applications for
+ * different tests.
  * <p>
  * To implement, simply subclass and add zero or more
  * <code><a href="Acteur.html">Acteur</a></code> classes or instances using the
@@ -91,7 +93,7 @@ public abstract class Page implements Iterable<Acteur> {
 
     /**
      * Get a description used in the generated web API help.
-     * 
+     *
      * @return A description
      */
     protected String getDescription() {
@@ -139,20 +141,33 @@ public abstract class Page implements Iterable<Acteur> {
         CURRENT_PAGE.clear();
     }
 
+    private static final Set<Class<?>> CHECKED = Sets.newIdentityHashSet();
+    private static final Set<Class<?>> FAILED = Sets.newIdentityHashSet();
+
     protected final void add(Class<? extends Acteur> action) {
-        if ((action.getModifiers() & Modifier.ABSTRACT) != 0) {
-            if (action.getAnnotation(ImplementedBy.class) == null) {
-                throw new IllegalArgumentException(action + " is abstract");
+        if (!CHECKED.contains(notNull("acteur", action))) {
+            CHECKED.add(action);
+            if ((action.getModifiers() & Modifier.ABSTRACT) != 0) {
+                if (action.getAnnotation(ImplementedBy.class) == null) {
+                    FAILED.add(action);
+                    throw new IllegalArgumentException(action + " is abstract");
+                }
             }
+            if (action.isLocalClass()) {
+                FAILED.add(action);
+                throw new IllegalArgumentException(action + " is not a top-level class");
+            }
+            if (!Acteur.class.isAssignableFrom(action)) {
+                FAILED.add(action);
+                throw new IllegalArgumentException(action + " is not a subclass of "
+                        + Acteur.class.getName());
+            }
+            assert Application.checkConstructor(action);
         }
-        if (action.isLocalClass()) {
-            throw new IllegalArgumentException(action + " is not a top-level class");
+        if (FAILED.contains(action)) {
+            throw new IllegalArgumentException("Not a usable acteur class - " + action 
+                    + " see previous error");
         }
-        if (!Acteur.class.isAssignableFrom(action)) {
-            throw new IllegalArgumentException(action + " is not a subclass of "
-                    + Acteur.class.getName());
-        }
-        assert Application.checkConstructor(action);
         acteurs.add(action);
     }
 
@@ -166,10 +181,6 @@ public abstract class Page implements Iterable<Acteur> {
 
     final int countActeurs() {
         return acteurs.size();
-    }
-
-    final List<Object> getActeurs() {
-        return Collections.unmodifiableList(acteurs);
     }
 
     List<Object> acteurs() {
@@ -213,14 +224,15 @@ public abstract class Page implements Iterable<Acteur> {
     }
 
     /**
-     * Allows the page to modify the raw Netty HttpResponse after all Acteurs have
-     * run.
-     * 
+     * Allows the page to modify the raw Netty HttpResponse after all Acteurs
+     * have run.
+     *
      * @param event The event
      * @param acteur The acteur
      * @param response The response
-     * @deprecated This was a bad idea, which can result in invalid responses and bypasses
-     * important checking.  Simply use Acteur.add(Headers.WHATEVER, value) instead.
+     * @deprecated This was a bad idea, which can result in invalid responses
+     * and bypasses important checking. Simply use Acteur.add(Headers.WHATEVER,
+     * value) instead.
      */
     @Deprecated
     protected void decorateResponse(Event<?> event, Acteur acteur, HttpResponse response) {

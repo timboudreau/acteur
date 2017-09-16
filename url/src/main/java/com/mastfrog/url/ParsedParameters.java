@@ -1,4 +1,4 @@
-/* 
+/*
  * The MIT License
  *
  * Copyright 2013 Tim Boudreau.
@@ -25,8 +25,12 @@ package com.mastfrog.url;
 
 import com.mastfrog.util.AbstractBuilder;
 import com.mastfrog.util.Checks;
+import static com.mastfrog.util.Checks.notNull;
+import com.mastfrog.util.collections.CollectionUtils;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import org.openide.util.NbBundle;
 
@@ -36,11 +40,11 @@ import org.openide.util.NbBundle;
  *
  * @author Tim Boudreau
  */
-final class ParsedParameters extends Parameters implements URLComponent {
+public final class ParsedParameters extends Parameters implements URLComponent, Iterable<ParametersElement> {
     private static final long serialVersionUID = 1L;
     private final ParametersElement[] elements;
     private final ParametersDelimiter delimiter;
-    
+
     public ParsedParameters (ParametersElement... elements) {
         this (ParametersDelimiter.AMPERSAND, elements);
     }
@@ -56,6 +60,26 @@ final class ParsedParameters extends Parameters implements URLComponent {
 
     public ParametersDelimiter getDelimiter() {
         return delimiter;
+    }
+
+    public String getFirst(String param) {
+        notNull("param", param);
+        for (ParametersElement p : elements) {
+            if (p.getKey().equals(param)) {
+                return p.getValue();
+            }
+        }
+        return null;
+    }
+
+    public List<String> getAll(String param) {
+        List<String> result = new ArrayList<>(elements.length);
+        for (ParametersElement p : elements) {
+            if (p.getKey().equals(param)) {
+                result.add(p.getValue());
+            }
+        }
+        return result;
     }
 
     public static Parameters parse (String queryString) {
@@ -78,7 +102,11 @@ final class ParsedParameters extends Parameters implements URLComponent {
             } else if (queryString.startsWith("?=") && queryString.length() > 2) {
                 return new ParsedParameters (ParametersDelimiter.AMPERSAND, new ParametersElement(null, queryString.substring(2)));
             } else {
-                return new ParsedParameters (ParametersDelimiter.AMPERSAND, new ParametersElement(queryString, null));
+                String[] keyValue = queryString.split("=", 2);
+                if (keyValue.length == 1) {
+                    return new ParsedParameters (ParametersDelimiter.AMPERSAND, new ParametersElement(keyValue[0], null));
+                }
+                return new ParsedParameters (ParametersDelimiter.AMPERSAND, new ParametersElement(keyValue[0], keyValue[1]));
             }
         }
         ParametersElement[] els = new ParametersElement[parts.length];
@@ -189,6 +217,11 @@ final class ParsedParameters extends Parameters implements URLComponent {
         int hash = 5;
         hash = 11 * hash + Arrays.deepHashCode(this.elements);
         return hash;
+    }
+
+    @Override
+    public Iterator<ParametersElement> iterator() {
+        return CollectionUtils.toIterator(elements);
     }
 
     private static class QueryBuilder extends AbstractBuilder<ParametersElement, Parameters> {

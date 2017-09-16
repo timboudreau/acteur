@@ -68,6 +68,7 @@ import java.time.Duration;
 import java.util.Map.Entry;
 import java.util.Random;
 import javax.inject.Inject;
+import static org.junit.Assert.assertEquals;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -97,6 +98,7 @@ public class EarlyInterceptionTest {
                 .assertContent(expect);
 
         System.out.println("ICEPTED: " + interceptedContent);
+        assertEquals(0, interceptedContent);
     }
 
     private static final class EarlyInterceptionApplication extends Application {

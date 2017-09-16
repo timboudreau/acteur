@@ -26,6 +26,7 @@ package com.mastfrog.acteur.server;
 import com.google.inject.Provider;
 import com.google.inject.name.Named;
 import static com.mastfrog.acteur.server.ServerModule.EVENT_THREADS;
+import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_BIND_ADDRESS;
 import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_SYSTEM_EXIT_ON_BIND_FAILURE;
 import static com.mastfrog.acteur.server.ServerModule.WORKER_THREADS;
 import com.mastfrog.acteur.spi.ApplicationControl;
@@ -117,12 +118,13 @@ final class ServerImpl implements Server {
     public ServerControl start(int port) throws IOException {
         this.port = port;
         ServerControlImpl result = null;
+        final CountDownLatch afterStart = new CountDownLatch(1);
         try {
-            final CountDownLatch afterStart = new CountDownLatch(1);
             result = new ServerControlImpl(port, afterStart);
             ServerBootstrap bootstrap = bootstrapProvider.get();
 
-            String bindAddress = settings.getString("bindAddress");
+            String bindAddress = settings.getString(SETTINGS_KEY_BIND_ADDRESS, 
+                    settings.getString("bindAddress")); // legacy value
             InetAddress addr = null;
             if (bindAddress != null) {
                 addr = InetAddress.getByName(bindAddress);
@@ -145,11 +147,12 @@ final class ServerImpl implements Server {
                 app.get().enableDefaultCorsHandling();
             }
             afterStart.await();
-            return result.throwIfFailure();
+            return result.throwIfFailure(null);
         } catch (InterruptedException ex) {
             app.get().internalOnError(ex);
-            if (result != null && result.success) { // spurious interrupts during parallel tests
-                return result.throwIfFailure();
+            afterStart.countDown();
+            if (result != null) { // spurious interrupts during parallel tests?
+                return result.throwIfFailure(ex);
             } else {
                 return Exceptions.chuck(ex);
             }
@@ -245,7 +248,7 @@ final class ServerImpl implements Server {
                     workers.shutdownGracefully();
                 }
                 shuttingDown = false;
-                synchronized(this) {
+                synchronized (this) {
                     localChannel = null;
                 }
                 afterStart.countDown();
@@ -357,7 +360,7 @@ final class ServerImpl implements Server {
             }
         }
 
-        public synchronized ServerControl throwIfFailure() {
+        public synchronized ServerControl throwIfFailure(Throwable t) {
             if (failure != null) {
                 if (failure instanceof BindException
                         && settings.getBoolean(SETTINGS_KEY_SYSTEM_EXIT_ON_BIND_FAILURE, true)) {
@@ -368,6 +371,9 @@ final class ServerImpl implements Server {
                     } else {
                         System.err.println("System.exit() skipped - in test");
                     }
+                }
+                if (t != null) {
+                    failure.addSuppressed(t);
                 }
                 Exceptions.chuck(failure);
             }

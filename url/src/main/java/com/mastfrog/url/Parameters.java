@@ -46,6 +46,16 @@ public class Parameters implements URLComponent {
         return URLBuilder.isEncodableInLatin1(txt);
     }
 
+    public ParsedParameters toParsedParameters() {
+        if (this instanceof ParsedParameters) {
+            return (ParsedParameters) this;
+        }
+        if (txt == null) {
+            return new ParsedParameters();
+        }
+        return (ParsedParameters) ParsedParameters.parse(txt);
+    }
+
     @Override
     public String getComponentName() {
         return NbBundle.getMessage(Parameters.class, "parameters");

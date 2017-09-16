@@ -51,6 +51,7 @@ import javax.inject.Inject;
 final class HelpPage extends Page {
 
     @Inject
+    @SuppressWarnings("deprecation")
     HelpPage(ActeurFactory af, Settings settings) {
         String pattern = settings.getString(HELP_URL_PATTERN_SETTINGS_KEY, "^help$");
         add(af.matchPath(pattern));

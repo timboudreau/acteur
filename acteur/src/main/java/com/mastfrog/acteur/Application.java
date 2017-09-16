@@ -431,7 +431,6 @@ public class Application implements Iterable<Page> {
         }
         assert checkConstructor(page);
         if (page.getAnnotation(Early.class) != null) {
-            System.out.println("FOUND AN EARLY " + page.getSimpleName());
             if (earlyPageMatcher == null) {
                 earlyPageMatcher = new EarlyPages();
             }
@@ -667,7 +666,7 @@ public class Application implements Iterable<Page> {
 
     protected void send404(RequestID id, Event<?> event, Channel channel) {
         HttpResponse response = createNotFoundResponse(event);
-        onBeforeRespond(id, event, response.getStatus());
+        onBeforeRespond(id, event, response.status());
         ChannelFuture fut = channel.writeAndFlush(response);
         boolean keepAlive = event instanceof HttpEvent ? ((HttpEvent) event).requestsConnectionStayOpen() : false;
         if (keepAlive) {

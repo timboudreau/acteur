@@ -3,7 +3,6 @@ package com.mastfrog.acteur.annotations;
 import com.google.inject.ImplementedBy;
 import com.google.inject.name.Named;
 import com.mastfrog.acteur.Application;
-import com.mastfrog.acteur.ImplicitBindings;
 import com.mastfrog.acteur.Page;
 import static com.mastfrog.acteur.annotations.GenericApplicationModule.EXCLUDED_CLASSES;
 import com.mastfrog.acteur.preconditions.Methods;
@@ -51,7 +50,7 @@ public class GenericApplication extends Application {
         boolean helpEnabled = settings.helpEnabled;
 
         Set<Class<?>> excluded = new HashSet<>(Arrays.asList(excludePages));
-        ImplicitBindings implicit = getClass().getAnnotation(ImplicitBindings.class);
+        com.mastfrog.acteur.ImplicitBindings implicit = getClass().getAnnotation(com.mastfrog.acteur.ImplicitBindings.class);
         Set<Class<?>> alreadyBound = implicit == null ? Collections.<Class<?>>emptySet()
                 : new HashSet<>(Arrays.asList(implicit.value()));
         HttpCallRegistryLoader loader = new HttpCallRegistryLoader(getClass());

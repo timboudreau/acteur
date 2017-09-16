@@ -38,7 +38,6 @@ import com.mastfrog.acteur.BuiltInPageAnnotationHandler;
 import com.mastfrog.acteur.Closables;
 import com.mastfrog.acteur.Event;
 import com.mastfrog.acteur.HttpEvent;
-import com.mastfrog.acteur.ImplicitBindings;
 import com.mastfrog.acteur.Page;
 import com.mastfrog.acteur.errors.Err;
 import com.mastfrog.acteur.errors.ErrorResponse;
@@ -81,8 +80,6 @@ import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.socket.SocketChannel;
-import io.netty.handler.codec.http.Cookie;
-import io.netty.handler.codec.http.CookieDecoder;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.websocketx.WebSocketFrame;
 import io.netty.handler.ssl.SslProvider;
@@ -121,13 +118,19 @@ import org.netbeans.validation.api.InvalidInputException;
  * @author Tim Boudreau
  */
 @Defaults("realm=Users")
+@SuppressWarnings("deprecation")
 public class ServerModule<A extends Application> extends AbstractModule {
 
     /**
-     * The base path for all URLs in the application, allowing it to be "mounted"
-     * on a URL path - so a server such as NginX can reverse proxy it under the
-     * path <code>/foo</code>, and that is transparent to application code,
-     * and is used when generating redirect URLs.
+     * If set in settings, only this IP address will be bound when starting the
+     * server.
+     */
+    public static final String SETTINGS_KEY_BIND_ADDRESS = "server.bind.interface.address";
+    /**
+     * The base path for all URLs in the application, allowing it to be
+     * "mounted" on a URL path - so a server such as NginX can reverse proxy it
+     * under the path <code>/foo</code>, and that is transparent to application
+     * code, and is used when generating redirect URLs.
      */
     public static final String SETTINGS_KEY_BASE_PATH = "basepath";
     /**
@@ -390,7 +393,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
         scope.bindTypes(binder(), Event.class, HttpEvent.class, RequestID.class, WebSocketEvent.class,
                 Page.class, BasicCredentials.class, Closables.class);
         @SuppressWarnings("deprecation")
-        ImplicitBindings implicit = appType.getAnnotation(ImplicitBindings.class);
+        com.mastfrog.acteur.ImplicitBindings implicit = appType.getAnnotation(com.mastfrog.acteur.ImplicitBindings.class);
         if (implicit != null) {
             scope.bindTypes(binder(), implicit.value());
         }
@@ -895,7 +898,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
     }
 
     @SuppressWarnings("deprecation")
-    private static final class CookiesProvider implements Provider<Set<Cookie>> {
+    private static final class CookiesProvider implements Provider<Set<io.netty.handler.codec.http.Cookie>> {
 
         private final Provider<HttpEvent> ev;
 
@@ -905,12 +908,12 @@ public class ServerModule<A extends Application> extends AbstractModule {
         }
 
         @Override
-        public Set<Cookie> get() {
+        public Set<io.netty.handler.codec.http.Cookie> get() {
             HttpEvent evt = ev.get();
             String h = evt.header(HttpHeaderNames.COOKIE.toString());
             if (h != null) {
                 @SuppressWarnings("deprecation")
-                Set<Cookie> result = CookieDecoder.decode(h);
+                Set<io.netty.handler.codec.http.Cookie> result = io.netty.handler.codec.http.CookieDecoder.decode(h);
                 if (result != null) {
                     return result;
                 }
@@ -1118,6 +1121,6 @@ public class ServerModule<A extends Application> extends AbstractModule {
     }
 
     @SuppressWarnings("deprecation")
-    private static class CKTL extends TypeLiteral<Set<Cookie>> {
+    private static class CKTL extends TypeLiteral<Set<io.netty.handler.codec.http.Cookie>> {
     }
 }

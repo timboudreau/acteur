@@ -209,6 +209,7 @@ final class ResponseImpl extends Response {
         return delay;
     }
 
+    @SuppressWarnings("deprecation")
     private String cookieName(Object o) {
         if (o instanceof Cookie) {
             return ((Cookie) o).name();

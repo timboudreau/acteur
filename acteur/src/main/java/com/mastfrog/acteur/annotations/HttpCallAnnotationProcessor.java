@@ -358,6 +358,7 @@ public class HttpCallAnnotationProcessor extends IndexGeneratingProcessor {
                     ps.print('\n');
                 }
             }
+            ps.println("@" + GeneratedFrom.class.getName() + "(" + typeElement.asType().toString() + ".class)");
             ps.println("\npublic final class " + className + " extends Page {\n");
             ps.println("    " + className + "(){");
             for (String p : precursorClassNames) {

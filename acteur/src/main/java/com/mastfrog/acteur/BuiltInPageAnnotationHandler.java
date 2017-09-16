@@ -27,7 +27,6 @@ import com.mastfrog.acteur.auth.AuthenticationActeur;
 import com.mastfrog.acteur.preconditions.Authenticated;
 import com.mastfrog.acteur.preconditions.AuthenticatedIf;
 import com.mastfrog.acteur.preconditions.BannedUrlParameters;
-import com.mastfrog.acteur.preconditions.BasicAuth;
 import com.mastfrog.acteur.preconditions.InjectRequestBodyAs;
 import com.mastfrog.acteur.preconditions.InjectUrlParametersAs;
 import com.mastfrog.acteur.preconditions.MaximumPathLength;
@@ -64,13 +63,14 @@ public final class BuiltInPageAnnotationHandler extends PageAnnotationHandler {
     private final ActeurFactory af;
     private final Settings settings;
 
+    @SuppressWarnings("deprecation")
     private static final Class<?>[] TYPES = new Class<?>[]{Authenticated.class, AuthenticatedIf.class,
         Path.class, Methods.class, MaximumPathLength.class, BannedUrlParameters.class,
         RequireAtLeastOneUrlParameterFrom.class, RequiredUrlParameters.class,
         RequireParametersIfMethodMatches.class, ParametersMustBeNumbersIfPresent.class,
         MinimumRequestBodyLength.class, MaximumRequestBodyLength.class,
         UrlParametersMayNotBeCombined.class, UrlParametersMayNotBeCombinedSets.class,
-        InjectUrlParametersAs.class, BasicAuth.class, InjectRequestBodyAs.class
+        InjectUrlParametersAs.class, com.mastfrog.acteur.preconditions.BasicAuth.class, InjectRequestBodyAs.class
     };
 
     @Inject
@@ -155,7 +155,8 @@ public final class BuiltInPageAnnotationHandler extends PageAnnotationHandler {
             acteurs.add(af.injectRequestParametersAs(type));
         }
         boolean hasAuth = false;
-        BasicAuth auth = c.getAnnotation(BasicAuth.class);
+        @SuppressWarnings("deprecation")
+        com.mastfrog.acteur.preconditions.BasicAuth auth = c.getAnnotation(com.mastfrog.acteur.preconditions.BasicAuth.class);
         if (auth != null) {
             acteurs.add(Acteur.wrap(AuthenticationActeur.class, deps));
         }

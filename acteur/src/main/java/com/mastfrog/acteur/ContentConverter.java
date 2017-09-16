@@ -258,7 +258,7 @@ public class ContentConverter {
                 }
                 return TimeUtil.fromUnixTimestamp(parseDate(result));
             } else if (method.getReturnType() == Duration.class) {
-                long amt = -1;
+                long amt;
                 try {
                     amt = Long.parseLong(result);
                 } catch (NumberFormatException nfe) {
@@ -270,6 +270,7 @@ public class ContentConverter {
         }
     }
 
+    @SuppressWarnings("deprecation")
     private static long parseDate(String result) {
         long when;
         try {

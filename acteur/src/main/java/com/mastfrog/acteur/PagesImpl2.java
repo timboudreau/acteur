@@ -222,6 +222,7 @@ class PagesImpl2 {
         }
 
         @Override
+        @SuppressWarnings("deprecation")
         public void receive(final Acteur acteur, final com.mastfrog.acteur.State state, final ResponseImpl response) {
             boolean isWebSocketResponse = event.request() instanceof WebSocketFrame && !(acteur instanceof WebSocketUpgradeActeur)
                     && response.isModified();
