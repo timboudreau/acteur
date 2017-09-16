@@ -124,6 +124,44 @@ import org.netbeans.validation.api.InvalidInputException;
 public class ServerModule<A extends Application> extends AbstractModule {
 
     /**
+     * The base path for all URLs in the application, allowing it to be "mounted"
+     * on a URL path - so a server such as NginX can reverse proxy it under the
+     * path <code>/foo</code>, and that is transparent to application code,
+     * and is used when generating redirect URLs.
+     */
+    public static final String SETTINGS_KEY_BASE_PATH = "basepath";
+    /**
+     * The host name to use in URLs generated for redirects and similar, by
+     * PathFactory.
+     */
+    public static final String SETTINGS_KEY_URLS_HOST_NAME = "hostname";
+
+    /**
+     * The external port if running behind a proxy, for use when PathFactory
+     * generates redirect URLs.
+     */
+    public static final String SETTINGS_KEY_URLS_EXTERNAL_PORT = "external.port";
+
+    /**
+     * The secure port if running behind a proxy, for use when PathFactory
+     * generates redirect URLs.
+     */
+    public static final String SETTINGS_KEY_URLS_EXTERNAL_SECURE_PORT = "external.secure.port";
+
+    /**
+     * Whether or not methods on PathFactory which do not take a protocol or
+     * secure parameter should generate secure or insecure URLs.
+     */
+    public static final String SETTINGS_KEY_GENERATE_SECURE_URLS = "secure.urls";
+
+    /**
+     * URLs are generated using the host from InetAddress.getLocalHostName().
+     * Note that the result of this may be quite unpredictable..
+     */
+    public static final String SETTINGS_KEY_GENERATE_URLS_WITH_INET_ADDRESS_GET_LOCALHOST
+            = "urls.use.inetaddress.localhost";
+
+    /**
      * Name of the &#064;Named parameter that should be used in an annotation if
      * you want Guice to inject the specific thread pool used for processing
      * requests.
@@ -252,11 +290,12 @@ public class ServerModule<A extends Application> extends AbstractModule {
     public static final String SETTINGS_KEY_CORS_MAX_AGE_MINUTES = "cors.max.age.minutes";
 
     /**
-     * Guice #&064;Named binding for objects you want in the context for every request,
-     * which can be replaced by ones provided to the context by Acteurs.  This allows
-     * you to have always-there default instances of things, which can be replaced by
-     * ones customized by acteurs that handle the request.  Example:  A default mongodb
-     * cursor control object which specifies timeout, and which can be copied and customized.
+     * Guice #&064;Named binding for objects you want in the context for every
+     * request, which can be replaced by ones provided to the context by
+     * Acteurs. This allows you to have always-there default instances of
+     * things, which can be replaced by ones customized by acteurs that handle
+     * the request. Example: A default mongodb cursor control object which
+     * specifies timeout, and which can be copied and customized.
      */
     public static final String GUICE_BINDING_DEFAULT_CONTEXT_OBJECTS = "default.context.objects";
     /**
@@ -515,11 +554,11 @@ public class ServerModule<A extends Application> extends AbstractModule {
         }
     }
 
-    static class CL extends TypeLiteral<Chain<Acteur, ? extends Chain<Acteur,?>>> {
+    static class CL extends TypeLiteral<Chain<Acteur, ? extends Chain<Acteur, ?>>> {
 
     }
 
-    static class ChainProvider implements Provider<Chain<Acteur, ? extends Chain<Acteur,?>>> {
+    static class ChainProvider implements Provider<Chain<Acteur, ? extends Chain<Acteur, ?>>> {
 
         @SuppressWarnings("unchecked")
         private final Provider<Chain> chain;
@@ -532,7 +571,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
 
         @Override
         @SuppressWarnings("unchecked")
-        public Chain<Acteur, ? extends Chain<Acteur,?>> get() {
+        public Chain<Acteur, ? extends Chain<Acteur, ?>> get() {
             return chain.get();
         }
 

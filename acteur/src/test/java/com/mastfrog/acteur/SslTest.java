@@ -59,7 +59,7 @@ public class SslTest {
     private ServerControl serverControl;
     private HttpClient client;
 
-    @Test
+    @Test(timeout=65000)
     public void test() throws Throwable {
         AtomicReference<Throwable> thrown = new AtomicReference<>();
         AtomicReference<String> content = new AtomicReference<>();
@@ -84,7 +84,7 @@ public class SslTest {
                 content.set(obj);
                 headers.set(hdrs);
             }
-        }).await(10, TimeUnit.SECONDS);
+        }).await(60, TimeUnit.SECONDS);
 
         if (thrown.get() != null) {
             throw thrown.get();

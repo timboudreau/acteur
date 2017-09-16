@@ -90,8 +90,8 @@
                     <trimStackTrace>false</trimStackTrace>
                     <useFile>false</useFile>                    -->
                     <parallelMavenExecution>true</parallelMavenExecution>
-                    <perCoreThreadCount>4</perCoreThreadCount>
-                    <threadCount>8</threadCount>
+                    <perCoreThreadCount>1</perCoreThreadCount>
+                    <threadCount>1</threadCount>
                     <reuseForks>true</reuseForks>
                     <trimStackTrace>false</trimStackTrace>
                 </configuration>

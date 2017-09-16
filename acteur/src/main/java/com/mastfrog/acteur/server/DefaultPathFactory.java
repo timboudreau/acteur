@@ -28,11 +28,24 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
+import com.mastfrog.acteur.HttpEvent;
+import com.mastfrog.acteur.headers.Headers;
+import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_BASE_PATH;
+import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_GENERATE_SECURE_URLS;
+import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_URLS_EXTERNAL_PORT;
+import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_URLS_EXTERNAL_SECURE_PORT;
+import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_URLS_HOST_NAME;
+import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_GENERATE_URLS_WITH_INET_ADDRESS_GET_LOCALHOST;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.url.*;
 import com.mastfrog.util.Checks;
+import static com.mastfrog.util.Checks.notNull;
 import com.mastfrog.util.ConfigurationError;
 import com.mastfrog.util.Exceptions;
+import io.netty.handler.codec.http.HttpHeaderNames;
+import io.netty.util.AsciiString;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -44,38 +57,70 @@ import java.util.regex.Pattern;
 @Singleton
 class DefaultPathFactory implements PathFactory {
 
+    private static final AsciiString X_URL_SCHEME = new AsciiString("X-Url-Scheme");
+    private static final AsciiString X_FORWARDED_SSL = new AsciiString("X-Forwarded-Ssl");
+    private static final AsciiString FRONT_END_HTTPS = new AsciiString("Front-End-Https");
+
     private final int port;
     private final int securePort;
     private final String hostname;
     private final Path pth;
+    private final boolean secure;
 
     @Inject
     DefaultPathFactory(Settings settings) {
-        int port = settings.getInt(EXTERNAL_PORT, -1);
+        int port = settings.getInt(SETTINGS_KEY_URLS_EXTERNAL_PORT, -1);
         if (port == -1) {
-            port = settings.getInt(ServerModule.PORT, 80);
+            port = settings.getInt(ServerModule.PORT, Protocols.HTTP.getDefaultPort().intValue());
         }
         this.port = port;
-        int securePort = settings.getInt(EXTERNAL_SECURE_PORT, -1);
-        if (securePort == -1) {
-            securePort = settings.getInt("securePort", 443);
-        }
-        if (securePort < 0) {
-            throw new ConfigurationError(EXTERNAL_SECURE_PORT + " cannot be negative: " + securePort);
+        int secPort = settings.getInt(SETTINGS_KEY_URLS_EXTERNAL_SECURE_PORT,
+                settings.getInt("securePort", Protocols.HTTPS.getDefaultPort().intValue())); // legacy stuff
+
+        if (secPort < 0) {
+            throw new ConfigurationError(SETTINGS_KEY_URLS_EXTERNAL_SECURE_PORT + " cannot be negative: " + secPort);
         }
         if (port < 0) {
-            throw new ConfigurationError(EXTERNAL_PORT + " cannot be negative: " + securePort);
+            throw new ConfigurationError(SETTINGS_KEY_URLS_EXTERNAL_PORT + " cannot be negative: " + secPort);
         }
-        this.securePort = securePort;
-        hostname = settings.getString(HOSTNAME_SETTINGS_KEY, "localhost");
-        String path = settings.getString(BASE_PATH_SETTINGS_KEY, "");
+        this.securePort = secPort;
+        secure = settings.getBoolean(SETTINGS_KEY_GENERATE_SECURE_URLS, settings.getBoolean(ServerModule.SETTINGS_KEY_SSL_ENABLED,
+                settings.getBoolean("use.secure.urls", false))); // more legacy stuff
+
+        String hn = settings.getString(SETTINGS_KEY_URLS_HOST_NAME);
+        if (hn == null) {
+            if (settings.getBoolean(SETTINGS_KEY_GENERATE_URLS_WITH_INET_ADDRESS_GET_LOCALHOST, false)) {
+                try {
+                    hn = InetAddress.getLocalHost().getHostName();
+                } catch (UnknownHostException ex) {
+                    Exceptions.printStackTrace(ex);
+                    hn = "localhost";
+                }
+            } else {
+                hn = "localhost";
+            }
+        }
+        hostname = hn;
+        String path = settings.getString(SETTINGS_KEY_BASE_PATH, "");
         pth = Path.parse(path);
+        if (!pth.isValid()) {
+            throw new ConfigurationError(SETTINGS_KEY_BASE_PATH + " is not a valid URL path: '" + path + "'");
+        }
+    }
+
+    @Override
+    public int portForProtocol(Protocol protocol) {
+        if (protocol.isSecure()) {
+            return securePort;
+        } else {
+            return port;
+        }
     }
 
     private Path basePath() {
         return pth;
     }
-    private static final Pattern STRIP_QUERY = Pattern.compile("(.*?)\\?.*");
+    private static final Pattern STRIP_QUERY = Pattern.compile("(.*?)\\?(.*)");
 
     @Override
     public Path toExternalPath(String path) {
@@ -85,6 +130,11 @@ class DefaultPathFactory implements PathFactory {
     @Override
     public Path toExternalPath(Path path) {
         return Path.merge(basePath(), path);
+    }
+
+    @Override
+    public URL constructURL(Path path) {
+        return constructURL(path, secure);
     }
 
     private class LDR extends CacheLoader<String, Path> {
@@ -110,7 +160,6 @@ class DefaultPathFactory implements PathFactory {
         }
     }
     private final LoadingCache<String, Path> cache = CacheBuilder.newBuilder()
-            .softValues()
             .expireAfterAccess(5, TimeUnit.MINUTES)
             .concurrencyLevel(5)
             .initialCapacity(20)
@@ -127,7 +176,7 @@ class DefaultPathFactory implements PathFactory {
 
     @Override
     public URL constructURL(Protocol protocol, Path path) {
-        return constructURL(protocol, path, false);
+        return constructURL(protocol, path, secure);
     }
 
     public URL constructURL(Protocol protocol, Path path, boolean secure) {
@@ -149,7 +198,7 @@ class DefaultPathFactory implements PathFactory {
     @Override
     public URL constructURL(Path path, boolean secure) {
         if (basePath().size() > 0) {
-            path = Path.merge(basePath(), path);
+            path = Path.merge(basePath(), notNull("path", path));
         }
         Protocol protocol = secure ? Protocols.HTTPS : Protocols.HTTP;
 
@@ -158,5 +207,103 @@ class DefaultPathFactory implements PathFactory {
             b.setPort(secure ? securePort : port);
         }
         return b.create();
+    }
+
+    private static CharSequence findProtocol(HttpEvent evt) {
+        CharSequence proto = evt == null ? null : evt.header(Headers.X_FORWARDED_PROTO);
+        if (proto == null && evt != null) {
+            proto = evt.header(X_URL_SCHEME);
+        }
+        if (proto == null && evt != null) {
+            if ("on".equals(evt.header(X_FORWARDED_SSL))) {
+                proto = "https";
+            } else if ("on".equals(evt.header(FRONT_END_HTTPS))) {
+                proto = "https";
+            }
+        }
+        return proto;
+    }
+
+    @Override
+    public URL constructURL(String path, HttpEvent evt) {
+        int qix = path.indexOf('?');
+        String query = null;
+        String anchor = null;
+        if (qix > 0 && qix < path.length() - 1) {
+            query = path.substring(qix + 1);
+            path = path.substring(0, qix);
+            int aix = query.indexOf('#');
+            if (aix >= 0 && aix < query.length() - 2) {
+                anchor = query.substring(aix + 1);
+                query = query.substring(0, aix);
+            }
+        }
+        Path pth = Path.parse(path);
+        if (!pth.isValid()) {
+            throw new IllegalArgumentException("Invalid path '" + path + "'");
+        }
+        String host = evt == null ? null : evt.header(HttpHeaderNames.HOST);
+        CharSequence proto = findProtocol(evt);
+        URL base = constructURL(path);
+        if (host == null) {
+            if (query != null || anchor != null) {
+                URLBuilder bldr = new URLBuilder(base);
+                applyQueryString(query, bldr);
+                if (anchor != null) {
+                    bldr.setAnchor(anchor);
+                }
+                return bldr.create();
+            }
+            if (proto != null) {
+                URLBuilder bldr = new URLBuilder(base);
+                Protocol protocol = Protocols.forName(proto.toString());
+                bldr.setProtocol(protocol);
+                bldr.setPort(portForProtocol(protocol));
+                return bldr.create();
+            }
+            return base;
+        }
+        String[] hostPort = host.split(":");
+        URLBuilder bldr = new URLBuilder(constructURL(pth));
+        bldr.setHost(hostPort[0]);
+        if (hostPort.length > 1 && hostPort[1].length() > 0) {
+            try {
+                int portFromHostHeader = Integer.parseInt(hostPort[1]);
+                bldr.setPort(portFromHostHeader);
+            } catch (NumberFormatException nfe) {
+                throw new IllegalArgumentException("Port in host header is not a number: '" + hostPort[1] + "'");
+            }
+        }
+        // Preserve the query string
+        applyQueryString(query, bldr);
+        if (anchor != null) {
+            bldr.setAnchor(anchor);
+        }
+        if (proto != null) {
+            Protocol protocol = Protocols.forName(proto.toString());
+            bldr.setProtocol(protocol);
+            bldr.setPort(portForProtocol(protocol));
+        }
+        return bldr.create();
+    }
+
+    static boolean applyQueryString(String query, URLBuilder bldr) {
+        if (query == null || query.isEmpty()) {
+            return false;
+        }
+        boolean result = false;
+        for (String item : query.split("&")) {
+            int ix = item.indexOf('=');
+            if (ix >= 0) {
+                String[] kv = item.split("=", 2);
+                if (kv.length > 1) {
+                    bldr.addQueryPair(kv[0], kv[1]);
+                } else {
+                    bldr.addQueryPair(kv[0], "");
+                }
+                result = true;
+            }
+        }
+        return result;
     }
 }

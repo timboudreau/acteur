@@ -116,9 +116,10 @@ final class ServerImpl implements Server {
     @Override
     public ServerControl start(int port) throws IOException {
         this.port = port;
+        ServerControlImpl result = null;
         try {
             final CountDownLatch afterStart = new CountDownLatch(1);
-            final ServerControlImpl result = new ServerControlImpl(port, afterStart);
+            result = new ServerControlImpl(port, afterStart);
             ServerBootstrap bootstrap = bootstrapProvider.get();
 
             String bindAddress = settings.getString("bindAddress");
@@ -147,7 +148,11 @@ final class ServerImpl implements Server {
             return result.throwIfFailure();
         } catch (InterruptedException ex) {
             app.get().internalOnError(ex);
-            return Exceptions.chuck(ex);
+            if (result != null && result.success) { // spurious interrupts during parallel tests
+                return result.throwIfFailure();
+            } else {
+                return Exceptions.chuck(ex);
+            }
         }
     }
 
@@ -327,7 +332,8 @@ final class ServerImpl implements Server {
         }
 
         private Throwable failure;
-        private boolean initialized;
+        boolean initialized;
+        boolean success;
 
         @Override
         public synchronized void operationComplete(ChannelFuture f) throws Exception {
@@ -337,7 +343,9 @@ final class ServerImpl implements Server {
                 if (failure == null) {
                     localChannel = f.channel();
                     registry.add(new WeakRunnable(this));
+                    success = true;
                 } else {
+                    failure.printStackTrace();
                     events.shutdownGracefully();
                     workers.shutdownGracefully();
                 }

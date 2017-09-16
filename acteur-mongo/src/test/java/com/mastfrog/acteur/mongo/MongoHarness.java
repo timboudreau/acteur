@@ -183,14 +183,14 @@ public class MongoHarness {
                 try {
                     Socket s = new Socket("localhost", port);
                     s.close();
-                    Thread.sleep(50);
+                    Thread.sleep(CONNECT_WAIT_MILLIS);;
                     break;
                 } catch (ConnectException e) {
                     if (i > 1750) {
                         throw new IOException("Could not connect to mongodb "
                                 + "after " + i + " attempts.  Assuming it's dead.");
                     }
-                    Thread.yield();
+                    Thread.sleep(i > 1700 ? 400 : i > 1500 ? 250 : i > 1000 ? 125 : 50);
                 }
             }
             return result;
