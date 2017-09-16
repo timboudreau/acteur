@@ -97,8 +97,8 @@ public class WebSocketTest {
         @Override
         protected void configure() {
             System.setProperty(ServerModule.PORT, "" + new PortFinder().findAvailableServerPort());
-            System.setProperty(PathFactory.HOSTNAME_SETTINGS_KEY, "localhost");
-            install(new ServerModule(WsApp.class));
+            System.setProperty(ServerModule.SETTINGS_KEY_URLS_HOST_NAME, "localhost");
+            install(new ServerModule<>(WsApp.class));
         }
     }
 

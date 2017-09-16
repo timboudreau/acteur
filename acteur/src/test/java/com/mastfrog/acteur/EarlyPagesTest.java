@@ -56,6 +56,7 @@ public class EarlyPagesTest {
     };
 
     @Before
+    @SuppressWarnings("unchecked")
     public void setup() {
         for (Class<?> c : classes) {
             Class<? extends Page> pg = (Class<? extends Page>) c;

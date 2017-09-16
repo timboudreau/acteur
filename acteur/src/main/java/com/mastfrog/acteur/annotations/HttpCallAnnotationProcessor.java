@@ -319,7 +319,7 @@ public class HttpCallAnnotationProcessor extends IndexGeneratingProcessor {
                     }
                 }
                 if (am.getAnnotationType().toString().equals(Early.class.getName())) {
-                    denoumentClassNames.add(0, "com.mastfrog.acteur.annotations.InstallChunkHander");
+                    denoumentClassNames.add(0, "com.mastfrog.acteur.annotations.InstallChunkHandler");
                 }
                 if (am.getAnnotationType().toString().equals(Concluders.class.getName())) {
                     if (!am.getElementValues().entrySet().isEmpty()) {
