@@ -51,7 +51,6 @@ import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 import javax.inject.Inject;
 import org.netbeans.validation.api.InvalidInputException;
@@ -75,7 +74,7 @@ public class ActeurFactory {
     @Inject
     private Charset charset;
     @Inject
-    private PatternAndGlobCache cache;
+    private PathPatterns cache;
 
     @Inject
     private Provider<HttpEvent> event;
@@ -710,10 +709,10 @@ public class ActeurFactory {
     static final class MatchPath extends Acteur {
 
         private final Provider<HttpEvent> deps;
-        private final PatternAndGlobCache cache;
+        private final PathPatterns cache;
         private final String[] regexen;
 
-        MatchPath(Provider<HttpEvent> deps, PatternAndGlobCache cache, String... regexen) {
+        MatchPath(Provider<HttpEvent> deps, PathPatterns cache, String... regexen) {
             if (regexen.length == 0) {
                 throw new IllegalArgumentException("No regular expressions provided");
             }
@@ -746,104 +745,6 @@ public class ActeurFactory {
         }
     }
 
-    @Singleton
-    static class PatternAndGlobCache {
-
-        private final Map<String, Boolean> matchCache = new ConcurrentHashMap<>();
-        private final Map<String, String> exactPathForRegex = new ConcurrentHashMap<>();
-        private static final String INVALID = "::////";
-
-        String exactPathForRegex(String regex) {
-            String result = exactPathForRegex.get(regex);
-            if (result != null) {
-                if (!INVALID.equals(result)) {
-                    return result;
-                } else {
-                    return null;
-                }
-            }
-            StringBuilder sb = new StringBuilder();
-            char[] chars = regex.toCharArray();
-            boolean precedingWasBackslash = false;
-            boolean endMarkerFound = false;
-            boolean startMarkerFound = false;
-            loop:
-            for (int i = 0; i < chars.length; i++) {
-                char c = chars[i];
-                if (i == 0 && c == '^') {
-                    continue;
-                }
-                if (i == chars.length - 1 && c == '$') {
-                    endMarkerFound = true;
-                    continue;
-                }
-                if (i == 0 && c == '^') {
-                    startMarkerFound = true;
-                }
-                switch (c) {
-                    case '\\':
-                        if (i != chars.length - 1) {
-                            precedingWasBackslash = true;
-                        }
-                        break;
-                    case '*':
-                        if (precedingWasBackslash) {
-                            sb.append(c);
-                            continue;
-                        }
-                    case '[':
-                    case '+':
-                    case '?':
-                    case '^':
-                    case '$':
-                    case '&':
-                        exactPathForRegex.put(regex, INVALID);
-                        return null;
-                    default:
-                        sb.append(c);
-                }
-                precedingWasBackslash = c == '\\';
-            }
-            if (!endMarkerFound || !startMarkerFound) {
-                exactPathForRegex.put(regex, INVALID);
-                return null;
-            }
-            if (sb.length() > 0 && sb.charAt(0) == '/') {
-                result = sb.substring(1);
-            } else {
-                result = sb.toString();
-            }
-            exactPathForRegex.put(regex, result);
-            return result;
-        }
-
-        boolean isExactGlob(String s) {
-            Boolean match = matchCache.get(s);
-            if (match != null) {
-                return match;
-            }
-            boolean result = true;
-            for (char c : s.toCharArray()) {
-                if ('*' == c) {
-                    result = false;
-                    break;
-                }
-            }
-            matchCache.put(s, result);
-            return result;
-        }
-
-        private final Map<String, Pattern> patternCache = new ConcurrentHashMap<>();
-
-        Pattern getPattern(String regex) {
-            Pattern result = patternCache.get(regex);
-            if (result == null) {
-                result = Pattern.compile(regex);
-                patternCache.put(regex, result);
-            }
-            return result;
-        }
-    }
 
     /**
      * Checks the IF_NONE_MATCH header and compares it with the value from the
@@ -860,39 +761,6 @@ public class ActeurFactory {
         return CheckIfNoneMatchHeader.class;
     }
 
-    static String patternFromGlob(String pattern) {
-        if (pattern.length() > 0 && pattern.charAt(0) == '/') {
-            pattern = pattern.substring(1);
-        }
-        StringBuilder match = new StringBuilder("^\\/?");
-        for (char c : pattern.toCharArray()) {
-            switch (c) {
-                case '$':
-                case '.':
-                case '{':
-                case '}':
-                case '[':
-                case ']':
-                case ')':
-                case '(':
-                case '^':
-                case '/':
-                    match.append("\\").append(c);
-                    break;
-                case '*':
-                    match.append("[^\\/]*?");
-                    break;
-                case '?':
-                    match.append("[^\\/]?");
-                    break;
-                default:
-                    match.append(c);
-            }
-        }
-        match.append("$");
-        return match.toString();
-    }
-
     public Acteur globPathMatch(String... patterns) {
         if (patterns.length == 1 && cache.isExactGlob(patterns[0])) {
             String pattern = patterns[0];
@@ -903,7 +771,7 @@ public class ActeurFactory {
         }
         String[] rexen = new String[patterns.length];
         for (int i = 0; i < rexen.length; i++) {
-            rexen[i] = patternFromGlob(patterns[i]);
+            rexen[i] = PathPatterns.patternFromGlob(patterns[i]);
         }
         return matchPath(rexen);
     }

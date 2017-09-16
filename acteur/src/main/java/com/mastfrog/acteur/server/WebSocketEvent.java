@@ -5,6 +5,7 @@ import com.mastfrog.util.Codec;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.websocketx.WebSocketFrame;
 import java.io.IOException;
 import java.net.SocketAddress;
@@ -16,11 +17,11 @@ import java.net.SocketAddress;
 public final class WebSocketEvent implements Event<WebSocketFrame> {
 
     private final WebSocketFrame frame;
-    private final Channel channel;
+    private final ChannelHandlerContext channel;
     private final SocketAddress addr;
     private final Codec mapper;
 
-    public WebSocketEvent(WebSocketFrame frame, Channel channel, SocketAddress addr, Codec mapper) {
+    public WebSocketEvent(WebSocketFrame frame, ChannelHandlerContext channel, SocketAddress addr, Codec mapper) {
         this.frame = frame;
         this.channel = channel;
         this.addr = addr;
@@ -29,6 +30,11 @@ public final class WebSocketEvent implements Event<WebSocketFrame> {
 
     @Override
     public Channel channel() {
+        return channel.channel();
+    }
+
+    @Override
+    public ChannelHandlerContext ctx() {
         return channel;
     }
 

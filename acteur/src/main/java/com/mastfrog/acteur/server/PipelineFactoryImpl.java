@@ -58,11 +58,13 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
     private final PipelineDecorator decorator;
     private final ActeurSslConfig sslConfigProvider;
     boolean useSsl;
+    private final EarlyPagesPipelineDecorator earlyPages;
 
     @Inject
     PipelineFactoryImpl(Provider<ChannelHandler> handler, 
             Provider<ApplicationControl> app, Settings settings, 
-            PipelineDecorator decorator, ActeurSslConfig sslConfigProvider) {
+            PipelineDecorator decorator, ActeurSslConfig sslConfigProvider,
+            EarlyPagesPipelineDecorator earlyPages) {
         this.decorator = decorator;
         this.handler = handler;
         this.app = app;
@@ -71,6 +73,7 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
         httpCompression = settings.getBoolean(HTTP_COMPRESSION, true);
         maxContentLength = settings.getInt(MAX_CONTENT_LENGTH, 1048576);
         useSsl = settings.getBoolean(SETTINGS_KEY_SSL_ENABLED, false);
+        this.earlyPages = earlyPages;
     }
 
     @Override
@@ -104,7 +107,9 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
         }
         pipeline.addLast(PipelineDecorator.HANDLER, handler.get());
 
+        earlyPages.onCreatePipeline(pipeline);
         decorator.onPipelineInitialized(pipeline);
+        earlyPages.onPipelineInitialized(pipeline);
     }
 
     private static class SelectiveCompressor extends HttpContentCompressor {

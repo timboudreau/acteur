@@ -57,6 +57,12 @@ public interface PipelineDecorator {
      */
     public static final String HANDLER = "handler";
 
+    /**
+     * Name of the handler for &#064; early pages/acteurs.  Only
+     * present if the application has some.
+     */
+    public static final String PRE_CONTENT_PAGE_HANDLER = "early";
+
     public static final String SSL_HANDLER = "ssl";
 
     default void onBeforeInstallSslHandler(ChannelPipeline pipeline) {

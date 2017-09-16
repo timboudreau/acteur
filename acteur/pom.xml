@@ -81,6 +81,14 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>2.20</version>
                 <configuration>
+<!--                    <parallelMavenExecution>false</parallelMavenExecution>
+                    <reuseForks>false</reuseForks>
+                    <parallel>none</parallel>
+                    <threadCount>0</threadCount>
+                    <forkMode>never</forkMode>
+                    <forkCount>0</forkCount>
+                    <trimStackTrace>false</trimStackTrace>
+                    <useFile>false</useFile>                    -->
                     <parallelMavenExecution>true</parallelMavenExecution>
                     <perCoreThreadCount>4</perCoreThreadCount>
                     <threadCount>8</threadCount>

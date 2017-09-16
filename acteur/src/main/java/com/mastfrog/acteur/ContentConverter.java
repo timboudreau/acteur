@@ -69,7 +69,11 @@ public class ContentConverter {
     public String toString(ByteBuf content, Charset encoding) throws IOException {
         String result;
         content.resetReaderIndex();
-        result = content.readCharSequence(content.readableBytes(), encoding).toString();
+        CharSequence cs = content.readCharSequence(content.readableBytes(), encoding);
+        if (cs == null) {
+            return null;
+        }
+        result = cs.toString();
         content.resetReaderIndex();
         if (result.length() > 0 && result.charAt(0) == '"') {
             result = result.substring(1);

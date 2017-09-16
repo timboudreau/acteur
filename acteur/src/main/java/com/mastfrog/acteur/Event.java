@@ -25,6 +25,7 @@ package com.mastfrog.acteur;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelHandlerContext;
 import java.io.IOException;
 import java.net.SocketAddress;
 
@@ -71,6 +72,8 @@ public interface Event<T> {
      * cannot be parsed
      */
     <T> T jsonContent(Class<T> type) throws IOException;
+
+    ChannelHandlerContext ctx();
 
     /**
      * Get the raw request body, if any.

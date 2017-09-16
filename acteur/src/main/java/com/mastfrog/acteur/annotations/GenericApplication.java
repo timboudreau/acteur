@@ -26,6 +26,7 @@ import javax.inject.Inject;
  *
  * @author Tim Boudreau
  */
+@SuppressWarnings("deprecation")
 public class GenericApplication extends Application {
 
     public GenericApplication(boolean withHelp) {

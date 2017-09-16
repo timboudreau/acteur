@@ -187,6 +187,10 @@ public interface HttpEvent extends Event<HttpRequest> {
      */
     boolean isSsl();
 
+    default boolean isPreContent() {
+        return false;
+    }
+
     /**
      * Get the HTTP method for this request
      *

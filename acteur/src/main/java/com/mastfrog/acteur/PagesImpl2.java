@@ -135,8 +135,9 @@ class PagesImpl2 {
                 System.arraycopy(ctx, 0, nue, defaultContext.length, ctx.length);
                 ctx = nue;
             }
-
-            Iterator<Page> pageIterator = new ScopeWrapIterator<>(application.getRequestScope(), application.iterator(), (Object[]) ctx);
+            boolean early = event instanceof HttpEvent && ((HttpEvent) event).isPreContent();
+            Iterator<Page> baseIterator = early ? application.earlyPagesIterator() : application.iterator();
+            Iterator<Page> pageIterator = new ScopeWrapIterator<>(application.getRequestScope(), baseIterator, (Object[]) ctx);
             pagesIterable = CollectionUtils.toIterable(CollectionUtils.convertedIterator(chainConverter, pageIterator));
         }
 
@@ -285,7 +286,7 @@ class PagesImpl2 {
                     final HttpResponse resp = httpResponse;
                     try {
                         Closables closables = application.getDependencies().getInstance(Closables.class);
-                        Callable<ChannelFuture> c = new ResponseTrigger(response, resp, state, acteur, closables);
+                        Callable<ChannelFuture> c = new ResponseTrigger(response, resp, state, acteur, closables, event);
                         Duration delay = response.getDelay();
                         if (delay == null) {
                             c.call();
@@ -374,13 +375,15 @@ class PagesImpl2 {
             private final State state;
             private final Acteur acteur;
             private final Closables closeables;
+            private final Event<?> evt;
 
-            ResponseTrigger(ResponseImpl response, HttpResponse resp, State state, Acteur acteur, Closables closeables) {
+            ResponseTrigger(ResponseImpl response, HttpResponse resp, State state, Acteur acteur, Closables closeables, Event<?> evt) {
                 this.response = response;
                 this.resp = resp;
                 this.state = state;
                 this.acteur = acteur;
                 this.closeables = closeables;
+                this.evt = evt;
             }
 
             @Override
@@ -390,6 +393,12 @@ class PagesImpl2 {
 
                 // Send the headers
                 ChannelFuture fut = channel.writeAndFlush(resp);
+
+                fut.addListener((ChannelFutureListener) (ChannelFuture future) -> {
+                    if (!future.isSuccess() && future.cause() != null) {
+                        application.internalOnError(future.cause());
+                    }
+                });
 
                 final Page pg = state.getLockedPage();
                 ChannelFuture bodyFuture = response.sendMessage(event, fut, resp);

@@ -49,6 +49,7 @@ import io.netty.handler.codec.http.websocketx.TextWebSocketFrame;
 import io.netty.handler.codec.http.websocketx.WebSocketFrame;
 import java.io.DataInput;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -66,7 +67,7 @@ import org.junit.runner.RunWith;
 @TestWith({WSM.class, TestHarnessModule.class})
 public class WebSocketTest {
 
-    @Test(timeout = 7000)
+    @Test(timeout = 60000)
     public void test(TestHarness harn, PathFactory factory, ObjectMapper mapper) throws Throwable {
         URL url = factory.constructURL(Path.parse("/ws"), false);
         System.out.println("URL is " + url);
@@ -74,6 +75,7 @@ public class WebSocketTest {
         Map<String,Object> payload = map("ix").to(10).map("name").to("first").build();
 
         ResponseFuture fut = harn.post("ws")
+                .setTimeout(Duration.ofSeconds(60000))
                 .addHeader(Headers.CONNECTION, Connection.upgrade)
                 .addHeader(stringHeader("origin"), url.toString())
                 .addHeader(stringHeader("Upgrade"), "websocket")

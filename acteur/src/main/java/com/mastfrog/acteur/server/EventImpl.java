@@ -36,11 +36,11 @@ import com.mastfrog.acteur.headers.Method;
 import com.mastfrog.url.Path;
 import com.mastfrog.util.Codec;
 import com.mastfrog.util.collections.CollectionUtils;
-import com.mastfrog.util.collections.Converter;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufHolder;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaderValues;
 import io.netty.handler.codec.http.HttpRequest;
@@ -65,9 +65,10 @@ final class EventImpl implements HttpEvent {
     private final Path path;
     private final SocketAddress address;
     private boolean neverKeepAlive = false;
-    private final Channel channel;
+    private final ChannelHandlerContext channel;
     private ContentConverter converter;
     private boolean ssl;
+    private boolean early;
 
     public EventImpl(HttpRequest req, PathFactory paths) {
         this.req = req;
@@ -78,7 +79,7 @@ final class EventImpl implements HttpEvent {
         this.converter = new ContentConverter(codec, Providers.of(Charset.defaultCharset()), null, null);
     }
 
-    public EventImpl(HttpRequest req, SocketAddress addr, Channel channel, PathFactory paths, ContentConverter converter, boolean ssl) {
+    public EventImpl(HttpRequest req, SocketAddress addr, ChannelHandlerContext channel, PathFactory paths, ContentConverter converter, boolean ssl) {
         this.req = req;
         this.path = paths.toPath(req.uri());
         address = addr;
@@ -86,7 +87,17 @@ final class EventImpl implements HttpEvent {
         this.converter = converter;
         this.ssl = ssl;
     }
-    
+
+    @Override
+    public boolean isPreContent() {
+        return early;
+    }
+
+    EventImpl early() {
+        early = true;
+        return this;
+    }
+
     private static final AsciiString HTTPS = AsciiString.of("https");
     public boolean isSsl() {
         boolean result = ssl;
@@ -110,6 +121,11 @@ final class EventImpl implements HttpEvent {
 
     @Override
     public Channel channel() {
+        return channel.channel();
+    }
+
+    @Override
+    public ChannelHandlerContext ctx() {
         return channel;
     }
 
@@ -140,7 +156,11 @@ final class EventImpl implements HttpEvent {
         } else {
             encoding = CharsetUtil.UTF_8;
         }
-        return converter.toString(content(), encoding);
+        ByteBuf content = content();
+        if (content == null) {
+            return "";
+        }
+        return converter.toString(content, encoding);
     }
 
     @Override

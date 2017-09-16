@@ -87,30 +87,35 @@ final class UpstreamHandlerImpl extends ChannelInboundHandlerAdapter {
     private static final AsciiString X_REAL_IP = new AsciiString("X-Real-IP");
     private static final AsciiString X_FORWARDED_FOR = new AsciiString("X-Forwarded-For");
 
+    public void handleHttpRequest(ChannelHandlerContext ctx, HttpRequest request, boolean early) {
+        SocketAddress addr = ctx.channel().remoteAddress();
+        if (decodeRealIP) {
+            String hdr = request.headers().get(X_REAL_IP);
+            if (hdr == null) {
+                hdr = request.headers().get(X_FORWARDED_FOR);
+            }
+            if (hdr != null) {
+                addr = InetSocketAddress.createUnresolved(hdr, addr instanceof InetSocketAddress ? ((InetSocketAddress) addr).getPort() : 80);
+            }
+        }
+        EventImpl evt = new EventImpl(request, addr, ctx, paths, converter, ssl);
+        if (early) {
+            evt.early();
+        }
+        evt.setNeverKeepAlive(neverKeepAlive);
+        application.onEvent(evt, ctx.channel());
+    }
+
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
         if (msg instanceof HttpRequest) {
             final HttpRequest request = (HttpRequest) msg;
             if (!aggregateChunks && HttpHeaders.is100ContinueExpected(request)) {
                 send100Continue(ctx);
             }
-            SocketAddress addr = ctx.channel().remoteAddress();
-            if (decodeRealIP) {
-                String hdr = request.headers().get(X_REAL_IP);
-                if (hdr == null) {
-                    hdr = request.headers().get(X_FORWARDED_FOR);
-                }
-                if (hdr != null) {
-                    addr = InetSocketAddress.createUnresolved(hdr, addr instanceof InetSocketAddress ? ((InetSocketAddress) addr).getPort() : 80);
-                }
-            }
-            EventImpl evt = new EventImpl(request, addr, ctx.channel(), paths, converter, ssl);
-            evt.setNeverKeepAlive(neverKeepAlive);
-            application.onEvent(evt, ctx.channel());
+            handleHttpRequest(ctx, request, false);
         } else if (msg instanceof CloseWebSocketFrame) {
-            // XXX dispose of Closeables?
 //            handshaker.close(ctx.channel(), (CloseWebSocketFrame) frame.retain());
             ctx.channel().close();
-            return;
         } else if (msg instanceof PingWebSocketFrame) {
             PingWebSocketFrame frame = (PingWebSocketFrame) msg;
             ctx.write(new PongWebSocketFrame(frame.content().retain()));
@@ -118,7 +123,7 @@ final class UpstreamHandlerImpl extends ChannelInboundHandlerAdapter {
             WebSocketFrame frame = (WebSocketFrame) msg;
             SocketAddress addr = ctx.channel().remoteAddress();
             // XXX - any way to decode real IP?
-            WebSocketEvent wsEvent = new WebSocketEvent(frame, ctx.channel(), addr, mapper);
+            WebSocketEvent wsEvent = new WebSocketEvent(frame, ctx, addr, mapper);
 
             application.onEvent(wsEvent, ctx.channel());
         } else {

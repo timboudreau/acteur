@@ -23,7 +23,7 @@
  */
 package com.mastfrog.acteur;
 
-import com.mastfrog.acteur.ActeurFactory.PatternAndGlobCache;
+import com.mastfrog.acteur.PathPatterns;
 import java.util.regex.Pattern;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -38,7 +38,7 @@ import org.junit.Test;
  */
 public class PatternAndGlobCacheTest {
 
-    PatternAndGlobCache cache = new PatternAndGlobCache();
+    PathPatterns cache = new PathPatterns();
 
     @Test
     public void testGlobs() {
@@ -71,7 +71,7 @@ public class PatternAndGlobCacheTest {
         assertRegexToExact("foo[0-9]+bar", null);
     }
 
-    private PatternAndGlobCache assertReused(String regex) {
+    private PathPatterns assertReused(String regex) {
         Pattern p = cache.getPattern(regex);
         Pattern p1 = cache.getPattern(regex);
         if (p != null && p1 != null) {

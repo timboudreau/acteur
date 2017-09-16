@@ -99,19 +99,19 @@ public class VerifyDateTimeBehavior {
 
     @Test
     public void testPatternFromGlob() {
-        String pattern = ActeurFactory.patternFromGlob("foo/?ar");
+        String pattern = PathPatterns.patternFromGlob("foo/?ar");
         Pattern p = Pattern.compile(pattern);
         assertTrue(p.matcher("foo/bar").find());
         assertTrue(p.matcher("foo/car").find());
         assertTrue(p.matcher("foo/war").find());
         assertFalse(p.matcher("foo/warg").find());
-        p = Pattern.compile(pattern = ActeurFactory.patternFromGlob("foo/*/bar/*/baz"));
+        p = Pattern.compile(pattern = PathPatterns.patternFromGlob("foo/*/bar/*/baz"));
         assertTrue(p.matcher("foo/goo/bar/moo/baz").find());
         assertTrue(p.matcher("/foo/goo/bar/moo/baz").find());
         assertTrue(p.matcher("/foo/saldfhjalsdfhasdhfj/bar/moo/baz").find());
         assertFalse(p.matcher("foo/goo/bar/moo/wuggles").find());
         assertFalse(p.matcher("/foo/goo/bar/moo/baz/wunk").find());
         assertFalse(p.matcher("/foo/foo/bar/").find());
-        assertEquals(ActeurFactory.patternFromGlob("/foo"), ActeurFactory.patternFromGlob("foo"));
+        assertEquals(PathPatterns.patternFromGlob("/foo"), PathPatterns.patternFromGlob("foo"));
     }
 }

@@ -75,6 +75,7 @@ import org.openide.util.lookup.ServiceProvider;
  */
 @ServiceProvider(service = Processor.class)
 @SupportedAnnotationTypes({"com.mastfrog.acteur.annotations.HttpCall",
+    "com.mastfrog.acteur.annotations.Early",
     "com.mastfrog.acteur.preconditions.InjectRequestBodyAs",
     "com.mastfrog.acteur.preconditions.InjectUrlParametersAs"
 })
@@ -209,6 +210,7 @@ public class HttpCallAnnotationProcessor extends IndexGeneratingProcessor {
         Set<Element> all = new HashSet<>(roundEnv.getElementsAnnotatedWith(HttpCall.class));
         all.addAll(roundEnv.getElementsAnnotatedWith(InjectUrlParametersAs.class));
         all.addAll(roundEnv.getElementsAnnotatedWith(InjectRequestBodyAs.class));
+        all.addAll(roundEnv.getElementsAnnotatedWith(Early.class));
         List<String> failed = new LinkedList<>();
         
         // Add in any types that could not be generated on a previous round because
@@ -251,7 +253,8 @@ public class HttpCallAnnotationProcessor extends IndexGeneratingProcessor {
                     }
                 } else {
                     StringBuilder lines = new StringBuilder();
-                    lines.append(canonicalize(e.asType(), processingEnv.getTypeUtils())).append(":").append(order);
+                    String canonicalName = canonicalize(e.asType(), processingEnv.getTypeUtils());
+                    lines.append(canonicalName).append(":").append(order);
                     List<String> bindingTypes = bindingTypes(e);
                     if (!bindingTypes.isEmpty()) {
                         lines.append('{');
@@ -314,6 +317,9 @@ public class HttpCallAnnotationProcessor extends IndexGeneratingProcessor {
                         }
                         continue;
                     }
+                }
+                if (am.getAnnotationType().toString().equals(Early.class.getName())) {
+                    denoumentClassNames.add(0, "com.mastfrog.acteur.annotations.InstallChunkHander");
                 }
                 if (am.getAnnotationType().toString().equals(Concluders.class.getName())) {
                     if (!am.getElementValues().entrySet().isEmpty()) {

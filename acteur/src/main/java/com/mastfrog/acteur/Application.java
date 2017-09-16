@@ -29,6 +29,7 @@ import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import com.mastfrog.acteur.Acteur.WrapperActeur;
 import com.mastfrog.acteur.annotations.Concluders;
+import com.mastfrog.acteur.annotations.Early;
 import com.mastfrog.acteur.annotations.HttpCall;
 import com.mastfrog.acteur.annotations.Precursors;
 import com.mastfrog.acteur.headers.HeaderValueType;
@@ -61,6 +62,7 @@ import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
 import io.netty.handler.codec.http.HttpHeaderNames;
+import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpVersion;
@@ -122,7 +124,7 @@ public class Application implements Iterable<Page> {
     @Inject(optional = true)
     @Named(SETTINGS_KEY_CORS_ALLOW_ORIGIN)
     String corsAllowOrigin = "*";
-    
+
     @Inject(optional = true)
     @Named("application.name")
     String name;
@@ -138,6 +140,9 @@ public class Application implements Iterable<Page> {
     @Inject(optional = true)
     @Named(GUICE_BINDING_DEFAULT_CONTEXT_OBJECTS)
     private Object[] defaultContextObjects;
+
+    private EarlyPages earlyPageMatcher;
+    private List<Object> earlyPages = new ArrayList<>();
 
     private final RequestID.Factory ids = new RequestID.Factory();
 
@@ -161,7 +166,17 @@ public class Application implements Iterable<Page> {
             add(helpPageType());
         }
     }
-    
+
+    public boolean hasEarlyPages() {
+        return !this.earlyPages.isEmpty();
+    }
+
+    public boolean isEarlyPageMatch(HttpRequest req) {
+        boolean result = earlyPageMatcher != null && earlyPageMatcher.match(req);
+        System.out.println("isEarlyPageMatch? " + result + " for " + req.uri() + " with " + earlyPageMatcher);
+        return result;
+    }
+
     List<Object> rawPages() {
         return this.pages;
     }
@@ -325,7 +340,9 @@ public class Application implements Iterable<Page> {
 
     Map<String, Object> describeYourself() {
         Map<String, Object> m = new HashMap<>();
-        for (Object o : this.pages) {
+        List<Object> allPagesAndPageTypes = new ArrayList<>(this.earlyPages);
+        allPagesAndPageTypes.addAll(this.pages);
+        for (Object o : allPagesAndPageTypes) {
             if (o instanceof Class<?>) {
                 Class<?> type = (Class<?>) o;
                 Map<String, Object> pageDescription = new HashMap<>();
@@ -413,11 +430,29 @@ public class Application implements Iterable<Page> {
             throw new ConfigurationError(page + " is not a subclass of " + Page.class.getName());
         }
         assert checkConstructor(page);
-        pages.add(page);
+        if (page.getAnnotation(Early.class) != null) {
+            System.out.println("FOUND AN EARLY " + page.getSimpleName());
+            if (earlyPageMatcher == null) {
+                earlyPageMatcher = new EarlyPages();
+            }
+            earlyPageMatcher.add(page);
+            earlyPages.add(page);
+        } else {
+            pages.add(page);
+        }
     }
 
+    @SuppressWarnings("unchecked")
     protected final void add(Page page) {
-        pages.add(page);
+        if (page.getClass().getAnnotation(Early.class) != null) {
+            if (earlyPageMatcher == null) {
+                earlyPageMatcher = new EarlyPages();
+            }
+            earlyPageMatcher.add((Class<? extends Page>) page.getClass());
+            earlyPages.add(page);
+        } else {
+            pages.add(page);
+        }
     }
 
     static boolean checkConstructor(Class<?> type) {
@@ -466,6 +501,7 @@ public class Application implements Iterable<Page> {
     private static final HeaderValueType<CharSequence> X_REQ_PATH = Headers.header(new AsciiString("X-Req-Path"));
     private static final HeaderValueType<CharSequence> X_ACTEUR = Headers.header(new AsciiString("X-Acteur"));
     private static final HeaderValueType<CharSequence> X_PAGE = Headers.header(new AsciiString("X-Page"));
+
     HttpResponse _decorateResponse(Event<?> event, Page page, Acteur action, HttpResponse response) {
         Headers.write(Headers.SERVER, getName(), response);
         Headers.write(Headers.DATE, ZonedDateTime.now(), response);
@@ -621,7 +657,11 @@ public class Application implements Iterable<Page> {
     public Iterator<Page> iterator() {
         return iterators.iterable(pages, Page.class).iterator();
     }
-    
+
+    Iterator<Page> earlyPagesIterator() {
+        return iterators.iterable(earlyPages, Page.class).iterator();
+    }
+
     @Inject
     private InstantiatingIterators iterators;
 
