@@ -36,6 +36,10 @@
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
+            <artifactId>giulius-threadpool</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
             <artifactId>netty-http-test-harness</artifactId>
             <scope>test</scope>
         </dependency>
@@ -60,7 +64,7 @@
         <dependency>
             <groupId>io.netty</groupId>
             <artifactId>netty-handler</artifactId>
-        </dependency>        
+        </dependency>
         <dependency>
             <groupId>org.javassist</groupId>
             <artifactId>javassist</artifactId>
@@ -81,7 +85,7 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>2.20</version>
                 <configuration>
-<!--                    <parallelMavenExecution>false</parallelMavenExecution>
+                    <!--                    <parallelMavenExecution>false</parallelMavenExecution>
                     <reuseForks>false</reuseForks>
                     <parallel>none</parallel>
                     <threadCount>0</threadCount>

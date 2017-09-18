@@ -25,12 +25,12 @@ package com.mastfrog.acteur.server;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.inject.AbstractModule;
+import com.google.inject.Key;
 import com.google.inject.Module;
 import com.google.inject.Provider;
 import com.google.inject.Scopes;
 import com.google.inject.Singleton;
 import com.google.inject.TypeLiteral;
-import com.google.inject.name.Named;
 import com.google.inject.name.Names;
 import com.mastfrog.acteur.Acteur;
 import com.mastfrog.acteur.Application;
@@ -46,9 +46,11 @@ import com.mastfrog.acteur.errors.ExceptionEvaluatorRegistry;
 import static com.mastfrog.acteur.headers.Headers.COOKIE_B;
 import static com.mastfrog.acteur.headers.Headers.X_FORWARDED_PROTO;
 import com.mastfrog.acteur.headers.Method;
-import com.mastfrog.acteur.server.ServerModule.TF;
 import com.mastfrog.acteur.spi.ApplicationControl;
 import com.mastfrog.acteur.sse.EventChannelName;
+import com.mastfrog.giulius.thread.ConventionalThreadSupplier;
+import com.mastfrog.giulius.thread.ThreadModule;
+import com.mastfrog.giulius.thread.ThreadPoolType;
 import com.mastfrog.acteur.util.BasicCredentials;
 import com.mastfrog.acteur.util.HttpMethod;
 import com.mastfrog.acteur.util.RequestID;
@@ -102,12 +104,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.ForkJoinWorkerThread;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.atomic.AtomicInteger;
 import javax.inject.Inject;
 import org.netbeans.validation.api.InvalidInputException;
 
@@ -234,6 +230,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
      * Number of background thread pool threads. The background thread pool is
      * used by a few things which chunk responses.
      */
+    @Deprecated
     public static final String BACKGROUND_THREADS = "backgroundThreads";
     /**
      * The port to run on
@@ -348,6 +345,22 @@ public class ServerModule<A extends Application> extends AbstractModule {
     private final int backgroundThreads;
     private final List<Module> otherModules = new ArrayList<>();
 
+    static final class FastThreadLocalThreadSupplier implements ConventionalThreadSupplier {
+
+        @Override
+        public Thread newThread(ThreadGroup group, Runnable run, Settings settings, int stackSize, String bindingName, String threadName) {
+            int stack = this.findStackSize(settings, stackSize, bindingName);
+            if (stack <= 0) {
+                return new FastThreadLocalThread(group, run, threadName);
+            } else {
+                return new FastThreadLocalThread(group, run, threadName, stack);
+            }
+        }
+    }
+    private static final ConventionalThreadSupplier FTL_THREADS = new FastThreadLocalThreadSupplier();
+
+    ;
+
     public ServerModule(Class<A> appType, int workerThreadCount, int eventThreadCount, int backgroundThreadCount) {
         this(new ReentrantScope(new InjectionInfo()), appType, workerThreadCount, eventThreadCount, backgroundThreadCount);
     }
@@ -403,47 +416,49 @@ public class ServerModule<A extends Application> extends AbstractModule {
         // to another server
         install(new ActeurBaseModule(scope));
 
-        Provider<ApplicationControl> appControlProvider = binder().getProvider(ApplicationControl.class);
-        Provider<Settings> set = binder().getProvider(Settings.class);
+        ThreadModule threads = new ThreadModule();
+        threads.builder(EVENT_THREADS)
+                .withDefaultThreadCount(4)
+                .withThreadPriority(Thread.MAX_PRIORITY)
+                .withThreadSupplier(FTL_THREADS)
+                .eager()
+                .forkJoin()
+                .withExplicitThreadCount(eventThreads).bind();
 
-        TF eventThreadFactory = new TF(EVENT_THREADS, appControlProvider);
-        TF workerThreadFactory = new TF(WORKER_THREADS, appControlProvider);
-        TF backgroundThreadFactory = new TF(BACKGROUND_THREAD_POOL_NAME, appControlProvider);
+        threads.builder(WORKER_THREADS)
+                .withDefaultThreadCount(8)
+                .withExplicitThreadCount(workerThreads)
+                .withThreadSupplier(FTL_THREADS)
+                .eager()
+                .forkJoin()
+                .bind();
 
-        bind(ThreadGroup.class).annotatedWith(Names.named(BACKGROUND_THREAD_POOL_NAME)).toInstance(backgroundThreadFactory.tg);
-        bind(ThreadGroup.class).annotatedWith(Names.named(WORKER_THREADS)).toInstance(workerThreadFactory.tg);
-        bind(ThreadGroup.class).annotatedWith(Names.named(EVENT_THREADS)).toInstance(eventThreadFactory.tg);
+        threads.builder(BACKGROUND_THREAD_POOL_NAME)
+                .withDefaultThreadCount(32)
+                .withExplicitThreadCount(backgroundThreads)
+                .legacyThreadCountName(BACKGROUND_THREADS)
+                .withThreadSupplier(FTL_THREADS)
+                .daemon()
+                .workStealing()
+                .bind();
 
-        ThreadCount workerThreadCount = new ThreadCount(set, 8, workerThreads, WORKER_THREADS);
-        ThreadCount eventThreadCount = new ThreadCount(set, 8, eventThreads, EVENT_THREADS);
-        ThreadCount backgroundThreadCount = new ThreadCount(set, 128, backgroundThreads, BACKGROUND_THREADS);
+        threads.builder(DELAY_EXECUTOR)
+                .withDefaultThreadCount(4)
+                .withThreadSupplier(FTL_THREADS)
+                .daemon()
+                .withThreadPoolType(ThreadPoolType.SCHEDULED)
+                .bind();
 
-        bind(ThreadCount.class).annotatedWith(Names.named(EVENT_THREADS)).toInstance(eventThreadCount);
-        bind(ThreadCount.class).annotatedWith(Names.named(WORKER_THREADS)).toInstance(workerThreadCount);
-        bind(ThreadCount.class).annotatedWith(Names.named(BACKGROUND_THREAD_POOL_NAME)).toInstance(backgroundThreadCount);
+        install(threads);
+        bind(UncaughtExceptionHandler.class).to(Uncaught.class);
 
-        bind(ThreadFactory.class).annotatedWith(Names.named(WORKER_THREADS)).toInstance(workerThreadFactory);
-        bind(ThreadFactory.class).annotatedWith(Names.named(EVENT_THREADS)).toInstance(eventThreadFactory);
-        bind(ThreadFactory.class).annotatedWith(Names.named(BACKGROUND_THREAD_POOL_NAME)).toInstance(backgroundThreadFactory);
-
-        Provider<ExecutorService> workerProvider
-                = new ExecutorServiceProvider(workerThreadFactory, workerThreadCount, set);
-        Provider<ExecutorService> backgroundProvider
-                = new ExecutorServiceProvider(backgroundThreadFactory, backgroundThreadCount, set);
+        Provider<ExecutorService> workerProvider = getProvider(Key.<ExecutorService>get(ExecutorService.class, Names.named(EVENT_THREADS)));
+        Provider<ExecutorService> backgroundProvider = getProvider(Key.<ExecutorService>get(ExecutorService.class, Names.named(BACKGROUND_THREAD_POOL_NAME)));
 
         bind(ExecutorService.class).annotatedWith(Names.named(
-                WORKER_THREAD_POOL_NAME)).toProvider(workerProvider);
-
+                SCOPED_WORKER_THREAD_POOL_NAME)).toProvider(scope.wrapThreadPool(workerProvider));
         bind(ExecutorService.class).annotatedWith(Names.named(
-                BACKGROUND_THREAD_POOL_NAME)).toProvider(backgroundProvider);
-
-        bind(ExecutorService.class).annotatedWith(Names.named(
-                SCOPED_WORKER_THREAD_POOL_NAME)).toProvider(
-                        new WrappedWorkerThreadPoolProvider(workerProvider, scope));
-
-        bind(ExecutorService.class).annotatedWith(Names.named(
-                SCOPED_BACKGROUND_THREAD_POOL_NAME)).toProvider(
-                        new WrappedWorkerThreadPoolProvider(backgroundProvider, scope));
+                SCOPED_BACKGROUND_THREAD_POOL_NAME)).toProvider(scope.wrapThreadPool(backgroundProvider));
 
         bind(Duration.class).toProvider(UptimeProvider.class);
         bind(new CKTL()).toProvider(CookiesProvider.class);
@@ -468,7 +483,6 @@ public class ServerModule<A extends Application> extends AbstractModule {
         bind(Method.class).toProvider(MethodProvider2.class);
         bind(Path.class).toProvider(PathProvider.class);
         bind(BuiltInPageAnnotationHandler.class).asEagerSingleton();
-        bind(ScheduledExecutorService.class).annotatedWith(Names.named(DELAY_EXECUTOR)).toProvider(DelayExecutorProvider.class);
         // allow Chain<Acteur> to be injected
         bind(new CL()).toProvider(ChainProvider.class);
         bind(NettyContentMarshallers.class).toProvider(MarshallersProvider.class).in(Scopes.SINGLETON);
@@ -578,32 +592,6 @@ public class ServerModule<A extends Application> extends AbstractModule {
             return chain.get();
         }
 
-    }
-
-    @Singleton
-    private static final class DelayExecutorProvider implements Provider<ScheduledExecutorService> {
-
-        private final ThreadFactory workerThreadFactory;
-        private final int count;
-        private volatile ScheduledExecutorService exe;
-
-        @Inject
-        DelayExecutorProvider(@Named(ServerModule.WORKER_THREADS) ThreadFactory workerThreadFactory, Settings settings) {
-            this.workerThreadFactory = workerThreadFactory;
-            count = settings.getInt(SETTINGS_KEY_DELAY_THREAD_POOL_THREADS, DEFAULT_DELAY_THREADS);
-        }
-
-        @Override
-        public ScheduledExecutorService get() {
-            if (exe == null) {
-                synchronized (this) {
-                    if (exe == null) {
-                        exe = Executors.newScheduledThreadPool(count, workerThreadFactory);
-                    }
-                }
-            }
-            return exe;
-        }
     }
 
     private static final class PathProvider implements Provider<Path> {
@@ -881,22 +869,6 @@ public class ServerModule<A extends Application> extends AbstractModule {
         }
     }
 
-    private static final class WrappedWorkerThreadPoolProvider implements Provider<ExecutorService> {
-
-        private final Provider<ExecutorService> svc;
-        private final ReentrantScope scope;
-
-        public WrappedWorkerThreadPoolProvider(Provider<ExecutorService> svc, ReentrantScope scope) {
-            this.svc = svc;
-            this.scope = scope;
-        }
-
-        @Override
-        public ExecutorService get() {
-            return scope.wrapThreadPool(svc.get());
-        }
-    }
-
     @SuppressWarnings("deprecation")
     private static final class CookiesProvider implements Provider<Set<io.netty.handler.codec.http.Cookie>> {
 
@@ -941,111 +913,18 @@ public class ServerModule<A extends Application> extends AbstractModule {
         }
     }
 
-    private static final class ExecutorServiceProvider implements Provider<ExecutorService> {
+    static final class Uncaught implements UncaughtExceptionHandler {
 
-        final TF tf;
-        private volatile ExecutorService svc;
-        private final ThreadCount count;
-        private final Provider<Settings> settings;
+        private final Provider<ApplicationControl> ctrl;
 
-        public ExecutorServiceProvider(TF tf, ThreadCount count, Provider<Settings> settings) {
-            this.tf = tf;
-            this.count = count;
-            this.settings = settings;
-        }
-
-        private ExecutorService create() {
-            boolean useForkJoin = settings.get().getBoolean(SETTINGS_KEY_USE_FORK_JOIN_POOL, true);
-            switch (tf.name()) {
-                case BACKGROUND_THREAD_POOL_NAME:
-                    if (useForkJoin) {
-                        return new ForkJoinPool(count.get(), tf, tf, true);
-                    } else {
-                        return Executors.newCachedThreadPool(tf);
-                    }
-                default:
-                    if (useForkJoin) {
-                        return new ForkJoinPool(count.get(), tf, tf, true);
-                    } else {
-                        return Executors.newFixedThreadPool(count.get(), tf);
-                    }
-            }
+        @Inject
+        Uncaught(Provider<ApplicationControl> ctrl) {
+            this.ctrl = ctrl;
         }
 
         @Override
-        public ExecutorService get() {
-            if (svc == null) {
-                synchronized (this) {
-                    if (svc == null) {
-                        svc = create();
-                    }
-                }
-            }
-            return svc;
-        }
-    }
-
-    static final class TF implements ThreadFactory, UncaughtExceptionHandler, ForkJoinPool.ForkJoinWorkerThreadFactory {
-
-        private final String name;
-        private final Provider<ApplicationControl> app;
-        private final AtomicInteger count = new AtomicInteger();
-        private final ThreadGroup tg;
-
-        public TF(String name, Provider<ApplicationControl> app) {
-            this.name = name;
-            this.app = app;
-            tg = new ThreadGroup(Thread.currentThread().getThreadGroup(), name + "s");
-            tg.setDaemon(true);
-        }
-
-        public String name() {
-            return name;
-        }
-
-        @Override
-        public Thread newThread(Runnable r) {
-            Thread t = new FastThreadLocalThread(r);
-            if ("event".equals(tg.getName())) {
-                t.setPriority(Thread.MAX_PRIORITY);
-            } else {
-                t.setPriority(Thread.NORM_PRIORITY);
-            }
-            t.setUncaughtExceptionHandler(this);
-            String nm = name + "-" + count.getAndIncrement();
-            t.setName(nm);
-            return t;
-        }
-
-        @Override
-        public void uncaughtException(Thread on, Throwable error) {
-            app.get().internalOnError(error);
-        }
-
-        public String toString() {
-            return "ThreadFactory " + name;
-        }
-
-        @Override
-        public ForkJoinWorkerThread newThread(ForkJoinPool pool) {
-            FWT t = new FWT(pool);
-            if ("event".equals(tg.getName())) {
-                t.setPriority(Thread.MAX_PRIORITY);
-            } else {
-                t.setPriority(Thread.NORM_PRIORITY - 1);
-            }
-            t.setUncaughtExceptionHandler(this);
-            String nm = name + "-" + count.getAndIncrement();
-            t.setName(nm);
-            return t;
-        }
-
-        static class FWT extends java.util.concurrent.ForkJoinWorkerThread {
-
-            public FWT(ForkJoinPool pool) {
-                super(pool);
-            }
-
+        public void uncaughtException(Thread t, Throwable e) {
+            ctrl.get().internalOnError(e);
         }
     }
 
