@@ -68,6 +68,8 @@ final class HelpPage extends Page {
             this.html = "true".equals(evt.urlParameter("html"));
             if (html) {
                 add(Headers.CONTENT_TYPE, MediaType.HTML_UTF_8.withCharset(charset));
+            } else {
+                add(Headers.CONTENT_TYPE, MediaType.JSON_UTF_8);
             }
             setChunked(true);
             setResponseWriter(new HelpWriter(html, app));

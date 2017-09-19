@@ -103,7 +103,7 @@ public class MarkupFiles implements Provider<StaticResources> {
      * but able to serve files that did not exist on VM startup.
      */
     public static final String SETTINGS_KEY_USE_DYN_FILE_RESOURCES = "markup.files.dynamic";
-    public static final boolean DEFAULT_USE_DYN_FILE_RESOURCES = false;
+    public static final boolean DEFAULT_USE_DYN_FILE_RESOURCES = true;
 
     @Inject
     @SuppressWarnings("unchecked")
