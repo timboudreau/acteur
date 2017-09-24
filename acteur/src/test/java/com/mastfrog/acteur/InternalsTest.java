@@ -23,11 +23,13 @@
  */
 package com.mastfrog.acteur;
 
+import com.google.inject.Inject;
 import com.mastfrog.acteur.InternalsTest.ITM;
 import com.mastfrog.acteur.headers.Headers;
 import static com.mastfrog.acteur.headers.Method.GET;
 import com.mastfrog.acteur.preconditions.Methods;
 import com.mastfrog.acteur.preconditions.Path;
+import com.mastfrog.acteur.server.ServerLifecycleHook;
 import com.mastfrog.acteur.server.ServerModule;
 import com.mastfrog.giulius.tests.GuiceRunner;
 import com.mastfrog.giulius.tests.TestWith;
@@ -35,12 +37,14 @@ import com.mastfrog.netty.http.test.harness.TestHarness;
 import com.mastfrog.netty.http.test.harness.TestHarnessModule;
 import com.mastfrog.util.net.PortFinder;
 import com.mastfrog.util.time.TimeUtil;
+import io.netty.channel.Channel;
 import static io.netty.handler.codec.http.HttpResponseStatus.NOT_MODIFIED;
 import static io.netty.handler.codec.http.HttpResponseStatus.OK;
 import java.time.Duration;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoField;
+import java.util.concurrent.atomic.AtomicInteger;
 import static org.junit.Assert.assertEquals;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -70,6 +74,7 @@ public class InternalsTest {
 
     @Test
     public void testDateHeaderHandling(TestHarness harn) throws Throwable {
+        assertEquals("Startup hook was not run", 1, HOOK_RAN.get());
         ZonedDateTime when = harn.get("lm").go().assertHasHeader(Headers.LAST_MODIFIED)
                 .assertContent("Got here.")
                 .getHeader(Headers.LAST_MODIFIED);
@@ -90,8 +95,24 @@ public class InternalsTest {
         @Override
         protected void configure() {
             System.setProperty(ServerModule.PORT, "" + new PortFinder().findAvailableServerPort());
+            bind(HookImpl.class).asEagerSingleton();
             super.configure();
         }
+    }
+
+    private static final AtomicInteger HOOK_RAN = new AtomicInteger();
+    static final class HookImpl extends ServerLifecycleHook {
+
+        @Inject
+        public HookImpl(Registry reg) {
+            super(reg);
+        }
+
+        @Override
+        protected void onStartup(Application application, Channel channel) throws Exception {
+            HOOK_RAN.incrementAndGet();
+        }
+
     }
 
     static final ZonedDateTime ZERO = TimeUtil.fromUnixTimestamp(0).withZoneSameInstant(ZoneId.systemDefault());

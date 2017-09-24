@@ -77,6 +77,7 @@ final class ServerImpl implements Server {
     private final Provider<ServerBootstrap> bootstrapProvider;
     private final Provider<ApplicationControl> app;
     private final Settings settings;
+    private final ServerLifecycleHook.Registry hooks;
 
     @Inject
     ServerImpl(
@@ -89,7 +90,8 @@ final class ServerImpl implements Server {
             Provider<ServerBootstrap> bootstrapProvider,
             ShutdownHookRegistry registry,
             Provider<ApplicationControl> app,
-            Settings settings) {
+            Settings settings,
+            ServerLifecycleHook.Registry hooks) {
         this.port = settings.getInt(ServerModule.PORT, DEFAULT_PORT);
         this.pipelineFactory = pipelineFactory;
         this.eventThreadFactory = eventThreadFactory;
@@ -101,6 +103,7 @@ final class ServerImpl implements Server {
         this.registry = registry;
         this.app = app;
         this.settings = settings;
+        this.hooks = hooks;
     }
 
     @Override
@@ -141,7 +144,7 @@ final class ServerImpl implements Server {
             }
 
             // Bind and start to accept incoming connections.
-            bootstrap.bind().addListener(result);
+            bootstrap.bind().addListener(result).addListener(hooks.listener());
             System.err.println("Starting " + this);
             if (settings.getBoolean(ServerModule.SETTINGS_KEY_CORS_ENABLED, true)) {
                 // XXX ugly place to do this
@@ -364,7 +367,7 @@ final class ServerImpl implements Server {
         public synchronized ServerControl throwIfFailure(Throwable t) {
             if (failure != null) {
                 if (failure instanceof BindException
-                        && settings.getBoolean(SETTINGS_KEY_SYSTEM_EXIT_ON_BIND_FAILURE, true)) {
+                        && isExitOnBindFailure(settings)) {
                     failure.printStackTrace(System.err);
                     System.err.flush();
                     if (!Boolean.getBoolean("unit.test") && System.getProperty("forkNumber") == null) {
@@ -380,5 +383,9 @@ final class ServerImpl implements Server {
             }
             return this;
         }
+    }
+
+    static boolean isExitOnBindFailure(Settings settings) {
+        return settings.getBoolean(SETTINGS_KEY_SYSTEM_EXIT_ON_BIND_FAILURE, true);
     }
 }
