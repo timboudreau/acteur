@@ -113,7 +113,7 @@ class Bus implements PubSubBus {
     @Override
     public <T> ChannelPromise broadcast(T obj, Channel origin) throws Exception {
         ChannelPromise p = origin.newPromise();
-        Set<Channel> all = reg.allChannels();
+        Set<Channel> all = new HashSet<>(reg.allChannels());
         all.remove(origin);
         if (all.isEmpty()) {
             return p.setSuccess();

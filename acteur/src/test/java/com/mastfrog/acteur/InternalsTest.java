@@ -46,6 +46,7 @@ import java.time.ZonedDateTime;
 import java.time.temporal.ChronoField;
 import java.util.concurrent.atomic.AtomicInteger;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -74,7 +75,6 @@ public class InternalsTest {
 
     @Test
     public void testDateHeaderHandling(TestHarness harn) throws Throwable {
-        assertEquals("Startup hook was not run", 1, HOOK_RAN.get());
         ZonedDateTime when = harn.get("lm").go().assertHasHeader(Headers.LAST_MODIFIED)
                 .assertContent("Got here.")
                 .getHeader(Headers.LAST_MODIFIED);
@@ -84,6 +84,7 @@ public class InternalsTest {
         harn.get("lm").addHeader(Headers.IF_MODIFIED_SINCE, WHEN).go().assertStatus(NOT_MODIFIED);
         harn.get("lm").addHeader(Headers.IF_MODIFIED_SINCE, WHEN.plus(Duration.ofHours(1))).go().assertStatus(NOT_MODIFIED);
         harn.get("lm").addHeader(Headers.IF_MODIFIED_SINCE, WHEN.minus(Duration.ofHours(1))).go().assertStatus(OK);
+        assertTrue("Startup hook was not run", HOOK_RAN.get() > 0);
     }
 
     static final class ITM extends ServerModule<ITApp> {
@@ -110,7 +111,7 @@ public class InternalsTest {
 
         @Override
         protected void onStartup(Application application, Channel channel) throws Exception {
-            HOOK_RAN.incrementAndGet();
+            int amt = HOOK_RAN.incrementAndGet();
         }
 
     }

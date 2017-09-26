@@ -24,6 +24,7 @@
 
 package com.mastfrog.acteur.server;
 
+import com.google.inject.Singleton;
 import com.mastfrog.acteur.Application;
 import com.mastfrog.acteur.spi.ApplicationControl;
 import static com.mastfrog.util.Checks.notNull;
@@ -72,6 +73,7 @@ public abstract class ServerLifecycleHook {
         // do nothing
     }
 
+    @Singleton
     public static final class Registry {
         private final List<ServerLifecycleHook> hooks = new ArrayList<>();
         private final List<ServerLifecycleHook> forShutdown = new ArrayList<>();
@@ -119,7 +121,6 @@ public abstract class ServerLifecycleHook {
                         forShutdown.add(hook);
                     } catch (Exception ex) {
                         startupExceptionsThrown = true;
-                        System.err.println("Server startup hook threw exception: " + hook);
                         ctrl.get().internalOnError(ex);
                     }
                 }
