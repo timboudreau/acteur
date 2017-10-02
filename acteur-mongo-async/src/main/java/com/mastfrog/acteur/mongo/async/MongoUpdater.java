@@ -106,10 +106,11 @@ public final class MongoUpdater {
         public void insertOne(T obj, Object message, HttpResponseStatus onSuccess, Consumer<Throwable> onInsert) {
             checkUsed();
             used = true;
-            collection.insertOne(obj, new VoidCallback(deferral.defer(), message == null ? obj : message, onSuccess, onInsert));
             chain.add(MongoResultActeur.class);
+            deferral.defer((Resumer resumer) -> {
+                collection.insertOne(obj, new VoidCallback(resumer, message == null ? obj : message, onSuccess, onInsert));
+            });
         }
-
 
         private class VoidCallback implements SingleResultCallback<Void> {
 
