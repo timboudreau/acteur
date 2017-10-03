@@ -39,6 +39,8 @@ import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.codec.http.HttpContentCompressor;
+import io.netty.handler.codec.http.HttpHeaderNames;
+import static io.netty.handler.codec.http.HttpHeaderNames.CONTENT_LENGTH;
 import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpRequestDecoder;
@@ -104,9 +106,6 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
 
         pipeline.addLast(PipelineDecorator.DECODER, decoder);
         pipeline.addLast(PipelineDecorator.ENCODER, encoder);
-
-        UpstreamHandlerImpl upstream = (UpstreamHandlerImpl) handler.get();
-
         if (aggregateChunks) {
             ChannelHandler aggregator = new SelectiveAggregator(maxContentLength, application);
             pipeline.addLast(PipelineDecorator.AGGREGATOR, aggregator);
@@ -115,7 +114,7 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
             ChannelHandler compressor = new SelectiveCompressor();
             pipeline.addLast(PipelineDecorator.COMPRESSOR, compressor);
         }
-        pipeline.addLast(PipelineDecorator.HANDLER, upstream);
+        pipeline.addLast(PipelineDecorator.HANDLER, handler.get());
 
         earlyPages.onCreatePipeline(pipeline);
         decorator.onPipelineInitialized(pipeline);
@@ -127,6 +126,9 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
         protected Result beginEncode(HttpResponse headers, String acceptEncoding) throws Exception {
             if (headers.headers().contains("X-Internal-Compress")) {
                 headers.headers().remove("X-Internal-Compress");
+                return null;
+            }
+            if (headers.headers().contains(HttpHeaderNames.CONTENT_LENGTH) && headers.headers().getInt(CONTENT_LENGTH, 0) == 0) {
                 return null;
             }
             return super.beginEncode(headers, acceptEncoding);
@@ -169,8 +171,6 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
                 if (e != null && e) {
                     return false;
                 }
-
-
                 if (msg instanceof HttpRequest) {
                     HttpRequest req = (HttpRequest) msg;
                     if (app.isEarlyPageMatch(req)) {

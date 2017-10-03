@@ -245,7 +245,7 @@ public class EventSink {
         String stringMessage = ren.toString(msg.message).replace("\n", "\ndata: "); //XXX support multiline
         builder.append("\nid: ").append(msg.id).append("-").append(msg.timestamp)
                 .append("\ndata: ").append(stringMessage).append('\n').append('\n');
-        return alloc.buffer(builder.length()).writeBytes(builder.toString().getBytes(CharsetUtil.UTF_8));
+        return alloc.ioBuffer(builder.length()).writeBytes(builder.toString().getBytes(CharsetUtil.UTF_8));
     }
 
     private class Runner implements Runnable {

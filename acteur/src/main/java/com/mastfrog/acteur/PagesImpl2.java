@@ -135,7 +135,7 @@ class PagesImpl2 {
             }
             boolean early = event instanceof HttpEvent && ((HttpEvent) event).isPreContent();
             Iterator<Page> baseIterator = early ? application.earlyPagesIterator() : application.iterator();
-            Iterator<Page> pageIterator = new ScopeWrapIterator<>(application.getRequestScope(), baseIterator, (Object[]) ctx);
+            Iterator<Page> pageIterator = baseIterator;
             pagesIterable = CollectionUtils.toIterable(CollectionUtils.convertedIterator(chainConverter, pageIterator));
         }
 
@@ -578,37 +578,6 @@ class PagesImpl2 {
             System.arraycopy(ctx, 0, nue, 0, ctx.length);
             nue[nue.length - 1] = event;
             ctx = nue;
-        }
-    }
-
-    static class ScopeWrapIterator<T> implements Iterator<T> {
-
-        private final ReentrantScope scope;
-
-        private final Iterator<T> delegate;
-        private final Object[] ctx;
-
-        ScopeWrapIterator(ReentrantScope scope, Iterator<T> delegate, Object... ctx) {
-            this.scope = scope;
-            this.delegate = delegate;
-            this.ctx = ctx;
-        }
-
-        @Override
-        public boolean hasNext() {
-            return delegate.hasNext();
-        }
-
-        @Override
-        public T next() {
-            try (QuietAutoCloseable clos = scope.enter(ctx)) {
-                return delegate.next();
-            }
-        }
-
-        @Override
-        public void remove() {
-            delegate.remove();
         }
     }
 }

@@ -45,7 +45,9 @@ import java.io.InputStream;
  * constructor.
  *
  * @author Tim Boudreau
+ * @deprecated Use Netty's FileRegion unless you are extremely memory constrained
  */
+@Deprecated
 public class FileWriter implements ChannelFutureListener {
 
     public static final int DEFAULT_BUFFER_SIZE = 1024;
@@ -72,7 +74,7 @@ public class FileWriter implements ChannelFutureListener {
         if (!f.channel().isOpen()) {
             return;
         }
-        ByteBuf buf = f.channel().alloc().buffer(bufferSize);
+        ByteBuf buf = f.channel().alloc().ioBuffer(bufferSize);
         int bytes = buf.writeBytes(stream, bufferSize);
         if (bytes == -1) {
             stream.close();

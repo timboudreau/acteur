@@ -581,19 +581,23 @@ final class ResponseImpl extends Response {
         if (buf != null) {
             long size = buf.readableBytes();
             add(Headers.CONTENT_LENGTH, size);
-
-            DefaultFullHttpResponse r = new DefaultFullHttpResponse(
-                    HttpVersion.HTTP_1_1, status, buf);
-            resp = r;
+            if (size == 0L) {
+                resp = new DefaultFullHttpResponse(HTTP_1_1, status);
+            } else {
+                resp = new DefaultFullHttpResponse(HTTP_1_1, status, buf);
+            }
         } else {
             HttpVersion version = isHttp10StyleResponse() ? HTTP_1_0 : HTTP_1_1;
-            resp = new DefaultHttpResponse(version, status, false, false);
+            resp = listener != null ? new DefaultHttpResponse(version, status, false, false)
+                    : new DefaultFullHttpResponse(version, status, false, false);
         }
+        boolean hasContentLength = false;
         for (Entry<?> e : headers) {
             // Remove things which cause problems for non-modified responses -
             // browsers will hold the connection open regardless
             if (this.status == NOT_MODIFIED || this.status == NO_CONTENT) {
                 if (e.decorator.is(CONTENT_LENGTH)) {
+                    hasContentLength = false;
                     continue;
                 } else if (e.decorator.is(CONTENT_ENCODING)) {
                     continue;
@@ -601,7 +605,11 @@ final class ResponseImpl extends Response {
                     continue;
                 }
             }
+            hasContentLength |= Headers.CONTENT_LENGTH.equals(e.decorator);
             e.write(resp);
+        }
+        if (buf == null && listener == null && !hasContentLength && status != NOT_MODIFIED && status != NO_CONTENT && !resp.headers().contains(HttpHeaderNames.CONTENT_LENGTH)) {
+            resp.headers().add(HttpHeaderNames.CONTENT_LENGTH, 0);
         }
         // Ensure a 0 content length is present for items with no content
 

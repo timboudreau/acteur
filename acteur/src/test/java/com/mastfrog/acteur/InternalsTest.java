@@ -39,6 +39,7 @@ import com.mastfrog.util.net.PortFinder;
 import com.mastfrog.util.time.TimeUtil;
 import io.netty.channel.Channel;
 import static io.netty.handler.codec.http.HttpResponseStatus.NOT_MODIFIED;
+import static io.netty.handler.codec.http.HttpResponseStatus.NO_CONTENT;
 import static io.netty.handler.codec.http.HttpResponseStatus.OK;
 import java.time.Duration;
 import java.time.ZoneId;
@@ -46,6 +47,7 @@ import java.time.ZonedDateTime;
 import java.time.temporal.ChronoField;
 import java.util.concurrent.atomic.AtomicInteger;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -87,6 +89,21 @@ public class InternalsTest {
         assertTrue("Startup hook was not run", HOOK_RAN.get() > 0);
     }
 
+    @Test
+    public void testEmptyResponsesHaveZeroLengthContentLengthHeader(TestHarness harn) throws Throwable {
+        harn.get("/nothing").go().await().assertHeader(Headers.CONTENT_LENGTH, 0L).assertStatus(OK);
+    }
+
+    @Test
+    public void testEmptyResponsesForContentlessCodesHaveNoContentLengthHeader(TestHarness harn) throws Throwable {
+        assertNull("Should not have had a content length header", harn.get("/less").go().await()
+                .assertStatus(NOT_MODIFIED)
+                .getHeader(Headers.CONTENT_LENGTH));
+        assertNull("Should not have had a content length header", harn.get("/evenless").go().await()
+                .assertStatus(NO_CONTENT)
+                .getHeader(Headers.CONTENT_LENGTH));
+    }
+
     static final class ITM extends ServerModule<ITApp> {
 
         ITM() {
@@ -123,6 +140,9 @@ public class InternalsTest {
         ITApp() {
             add(SharedHeadersPage.class);
             add(LastModifiedPage.class);
+            add(DoLittlePage.class);
+            add(DoLessPage.class);
+            add(DoEvenLessPage.class);
         }
 
         @Methods(GET)
@@ -150,6 +170,46 @@ public class InternalsTest {
                 ok("Got here.");
             }
         }
+
+        @Methods(GET)
+        @Path("/nothing")
+        static class DoLittlePage extends Page {
+            DoLittlePage() {
+                add(DoLittleActeur.class);
+            }
+            static class DoLittleActeur extends Acteur {
+                DoLittleActeur() {
+                    ok();
+                }
+            }
+        }
+
+        @Methods(GET)
+        @Path("/less")
+        static class DoLessPage extends Page {
+            DoLessPage() {
+                add(DoLessActeur.class);
+            }
+            static class DoLessActeur extends Acteur {
+                DoLessActeur() {
+                    reply(NOT_MODIFIED);
+                }
+            }
+        }
+
+        @Methods(GET)
+        @Path("/evenless")
+        static class DoEvenLessPage extends Page {
+            DoEvenLessPage() {
+                add(DoEvenLessActeur.class);
+            }
+            static class DoEvenLessActeur extends Acteur {
+                DoEvenLessActeur() {
+                    reply(NO_CONTENT);
+                }
+            }
+        }
+
 
         @Methods(GET)
         @Path("/shared")

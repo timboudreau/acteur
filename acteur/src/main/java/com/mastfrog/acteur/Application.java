@@ -525,10 +525,10 @@ public class Application implements Iterable<Page> {
      * @return
      */
     protected HttpResponse createNotFoundResponse(Event<?> event) {
-        ByteBuf buf = event.channel().alloc().buffer(90);
         String msg = "<html><head>"
                 + "<title>Not Found</title></head><body><h1>Not Found</h1>"
                 + event + " was not found\n<body></html>\n";
+        ByteBuf buf = event.channel().alloc().ioBuffer(msg.length());
         buf.writeBytes(msg.getBytes(charset));
         DefaultFullHttpResponse resp = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1,
                 HttpResponseStatus.NOT_FOUND, buf);
