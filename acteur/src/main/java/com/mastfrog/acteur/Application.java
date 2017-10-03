@@ -518,6 +518,8 @@ public class Application implements Iterable<Page> {
         return decorateResponse(event, page, action, response);
     }
 
+    @Inject(optional=true)
+    FailureResponseFactory failureResponses;
     /**
      * Create a 404 response
      *
@@ -525,6 +527,9 @@ public class Application implements Iterable<Page> {
      * @return
      */
     protected HttpResponse createNotFoundResponse(Event<?> event) {
+        if (failureResponses != null) {
+            return failureResponses.createNotFoundResponse(event);
+        }
         String msg = "<html><head>"
                 + "<title>Not Found</title></head><body><h1>Not Found</h1>"
                 + event + " was not found\n<body></html>\n";

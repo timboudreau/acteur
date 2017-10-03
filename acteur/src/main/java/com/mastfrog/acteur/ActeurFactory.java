@@ -41,6 +41,7 @@ import com.mastfrog.util.Strings;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import static io.netty.handler.codec.http.HttpResponseStatus.SEE_OTHER;
 import io.netty.handler.codec.http.websocketx.WebSocketFrame;
+import io.netty.util.CharsetUtil;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
@@ -327,11 +328,17 @@ public class ActeurFactory {
             final ContentConverter converter = deps.getInstance(ContentConverter.class);
             Event<?> event = deps.getInstance(Event.class);
             if (event.request() instanceof WebSocketFrame) {
+                WebSocketFrame frame = (WebSocketFrame) event.request();
                 try {
-                    T obj = converter.readObject(((WebSocketFrame) event).content(), MediaType.JSON_UTF_8, type);
+                    T obj = converter.readObject(frame.content(), MediaType.JSON_UTF_8, type);
                     return new Acteur.ConsumedLockedState(obj);
                 } catch (IOException | InvalidInputException ex) {
-                    return new Acteur.RespondWith(Err.badRequest("Bad or no JSON\n" + stackTrace(ex)));
+                    CharSequence seq = "";
+                    frame.content().resetReaderIndex();
+                    if (frame.content().readableBytes() > 0) {
+                        seq = frame.content().readCharSequence(frame.content().readableBytes(), CharsetUtil.UTF_8);
+                    }
+                    return new Acteur.RespondWith(Err.badRequest("Bad or no JSON in '" + seq + "'"));
                 }
             } else {
                 HttpEvent evt = deps.getInstance(HttpEvent.class);

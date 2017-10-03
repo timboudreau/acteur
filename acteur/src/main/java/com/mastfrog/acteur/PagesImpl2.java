@@ -41,7 +41,6 @@ import com.mastfrog.giulius.scope.ReentrantScope;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.url.Path;
 import com.mastfrog.util.Exceptions;
-import com.mastfrog.util.collections.ArrayUtils;
 import com.mastfrog.util.collections.CollectionUtils;
 import com.mastfrog.util.collections.Converter;
 import com.mastfrog.util.thread.QuietAutoCloseable;
@@ -129,13 +128,11 @@ class PagesImpl2 {
             clos = new Closables(channel, application.control());
             ChainToPageConverter chainConverter = new ChainToPageConverter(id, event, clos);
 
-            Object[] ctx = new Object[]{id, event, channel, clos};
-            if (defaultContext != null && defaultContext.length > 0) {
-                ctx = ArrayUtils.concatenate(defaultContext, ctx);
-            }
             boolean early = event instanceof HttpEvent && ((HttpEvent) event).isPreContent();
-            Iterator<Page> baseIterator = early ? application.earlyPagesIterator() : application.iterator();
-            Iterator<Page> pageIterator = baseIterator;
+            Iterator<Page> pageIterator = early ? application.earlyPagesIterator() : application.iterator();
+            if (defaultContext != null && defaultContext.length > 0) {
+                pageIterator = new ScopeWrapIterator<>(application.getRequestScope(), pageIterator, defaultContext);
+            }
             pagesIterable = CollectionUtils.toIterable(CollectionUtils.convertedIterator(chainConverter, pageIterator));
         }
 
@@ -264,9 +261,6 @@ class PagesImpl2 {
                     // Allow the application to add headers
                     httpResponse = application._decorateResponse(event, state.getLockedPage(), acteur, httpResponse);
 
-                    // Allow the page to add headers
-                    state.getLockedPage().decorateResponse(event, acteur, httpResponse);
-
                     // As long as Page.decorateResponse exists we need to sanity check this here:
                     switch (httpResponse.status().code()) {
                         case 204:
@@ -347,18 +341,24 @@ class PagesImpl2 {
                     inUncaughtException = false;
                 }
             } catch (Throwable ex) {
+                thrwbl.addSuppressed(ex);
                 try {
                     if (channel.isOpen()) {
-                        ByteBuf buf = channel.alloc().ioBuffer();
-                        try (PrintStream ps = new PrintStream(new ByteBufOutputStream(buf))) {
-                            ex.printStackTrace(ps);
+                        HttpResponse resp;
+                        if (application.failureResponses != null) {
+                            resp = application.failureResponses.createFallbackResponse(ex);
+                        } else {
+                            ByteBuf buf = channel.alloc().ioBuffer();
+                            try (PrintStream ps = new PrintStream(new ByteBufOutputStream(buf))) {
+                                thrwbl.printStackTrace(ps);
+                            }
+                            resp = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.INTERNAL_SERVER_ERROR, buf);
+                            Headers.write(Headers.CONTENT_TYPE, MediaType.PLAIN_TEXT_UTF_8, resp);
+                            Headers.write(Headers.CONTENT_LENGTH, (long) buf.writerIndex(), resp);
+                            Headers.write(Headers.CONTENT_LANGUAGE, Locale.ENGLISH, resp);
+                            Headers.write(Headers.CACHE_CONTROL, CacheControl.PRIVATE_NO_CACHE_NO_STORE, resp);
+                            Headers.write(Headers.DATE, ZonedDateTime.now(), resp);
                         }
-                        DefaultFullHttpResponse resp = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.INTERNAL_SERVER_ERROR, buf);
-                        Headers.write(Headers.CONTENT_TYPE, MediaType.PLAIN_TEXT_UTF_8, resp);
-                        Headers.write(Headers.CONTENT_LENGTH, (long) buf.writerIndex(), resp);
-                        Headers.write(Headers.CONTENT_LANGUAGE, Locale.ENGLISH, resp);
-                        Headers.write(Headers.CACHE_CONTROL, CacheControl.PRIVATE_NO_CACHE_NO_STORE, resp);
-                        Headers.write(Headers.DATE, ZonedDateTime.now(), resp);
                         channel.writeAndFlush(resp).addListener(ChannelFutureListener.CLOSE);
                     }
                 } finally {
@@ -578,6 +578,37 @@ class PagesImpl2 {
             System.arraycopy(ctx, 0, nue, 0, ctx.length);
             nue[nue.length - 1] = event;
             ctx = nue;
+        }
+    }
+
+    static class ScopeWrapIterator<T> implements Iterator<T> {
+
+        private final ReentrantScope scope;
+
+        private final Iterator<T> delegate;
+        private final Object[] ctx;
+
+        ScopeWrapIterator(ReentrantScope scope, Iterator<T> delegate, Object... ctx) {
+            this.scope = scope;
+            this.delegate = delegate;
+            this.ctx = ctx;
+        }
+
+        @Override
+        public boolean hasNext() {
+            return delegate.hasNext();
+        }
+
+        @Override
+        public T next() {
+            try (QuietAutoCloseable clos = scope.enter(ctx)) {
+                return delegate.next();
+            }
+        }
+
+        @Override
+        public void remove() {
+            delegate.remove();
         }
     }
 }

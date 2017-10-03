@@ -35,7 +35,6 @@ import com.mastfrog.util.Exceptions;
 import com.mastfrog.util.collections.CollectionUtils;
 import com.mastfrog.util.thread.AutoCloseThreadLocal;
 import com.mastfrog.util.thread.QuietAutoCloseable;
-import io.netty.handler.codec.http.HttpResponse;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -221,21 +220,6 @@ public abstract class Page implements Iterable<Acteur> {
                 throw new AssertionError("?: " + o + " in " + this);
             }
         }
-    }
-
-    /**
-     * Allows the page to modify the raw Netty HttpResponse after all Acteurs
-     * have run.
-     *
-     * @param event The event
-     * @param acteur The acteur
-     * @param response The response
-     * @deprecated This was a bad idea, which can result in invalid responses
-     * and bypasses important checking. Simply use Acteur.add(Headers.WHATEVER,
-     * value) instead.
-     */
-    @Deprecated
-    protected void decorateResponse(Event<?> event, Acteur acteur, HttpResponse response) {
     }
 
     @SuppressWarnings("deprecation")
