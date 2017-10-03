@@ -32,13 +32,15 @@ import static com.mastfrog.acteur.headers.Method.POST;
 import com.mastfrog.acteur.preconditions.Methods;
 import com.mastfrog.acteur.preconditions.Path;
 import com.mastfrog.acteur.server.PathFactory;
-import com.mastfrog.acteur.server.PipelineDecorator;
-import static com.mastfrog.acteur.server.PipelineDecorator.AGGREGATOR;
-import static com.mastfrog.acteur.server.PipelineDecorator.DECODER;
+import static com.mastfrog.acteur.server.PipelineDecorator.HANDLER;
 import com.mastfrog.acteur.server.ServerModule;
 import com.mastfrog.acteur.util.ErrorInterceptor;
 import com.mastfrog.acteur.util.Server;
+import com.mastfrog.acteurbase.Deferral;
+import com.mastfrog.acteurbase.Deferral.Resumer;
 import com.mastfrog.giulius.Dependencies;
+import com.mastfrog.giulius.InjectionInfo;
+import com.mastfrog.giulius.scope.ReentrantScope;
 import com.mastfrog.giulius.tests.GuiceRunner;
 import com.mastfrog.giulius.tests.TestWith;
 import com.mastfrog.netty.http.client.HttpClient;
@@ -48,19 +50,18 @@ import com.mastfrog.settings.Settings;
 import com.mastfrog.settings.SettingsBuilder;
 import com.mastfrog.util.net.PortFinder;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
+import io.netty.buffer.CompositeByteBuf;
 import io.netty.channel.ChannelHandler;
-import io.netty.channel.ChannelHandler.Sharable;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelPipeline;
 import io.netty.channel.SimpleChannelInboundHandler;
-import io.netty.handler.codec.http.DefaultHttpHeaders;
-import io.netty.handler.codec.http.DefaultHttpResponse;
-import io.netty.handler.codec.http.HttpMessage;
-import io.netty.handler.codec.http.HttpObjectAggregator;
-import io.netty.handler.codec.http.HttpRequest;
+import io.netty.handler.codec.http.DefaultHttpRequest;
+import io.netty.handler.codec.http.HttpContent;
+import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import static io.netty.handler.codec.http.HttpResponseStatus.BAD_REQUEST;
 import io.netty.handler.codec.http.HttpVersion;
+import io.netty.handler.codec.http.LastHttpContent;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -69,6 +70,7 @@ import java.util.Map.Entry;
 import java.util.Random;
 import javax.inject.Inject;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -83,10 +85,15 @@ public class EarlyInterceptionTest {
     private static final Duration TIMEOUT = Duration.ofSeconds(60);
 
     @Test(timeout = 60000)
-    public void test(TestHarness harn) throws Throwable {
+    public void test(TestHarness harn, Application app) throws Throwable {
+        assertTrue("No early pages found", app.hasEarlyPages());
+        assertTrue("URI not matched", app.isEarlyPageMatch(new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.POST, "/intercept")));
+
         if (true) {
+            // XXX fix netty-http-test-harness to deal with early redirects
             return;
         }
+
         String msg = "hello";
         String expect = "Received: hello";
         harn.post("/intercept")
@@ -94,11 +101,12 @@ public class EarlyInterceptionTest {
                 .setBody(msg, MediaType.PLAIN_TEXT_UTF_8)
                 .log()
                 .go()
-//                .await()
+                .await()
                 .assertContent(expect);
 
         System.out.println("ICEPTED: " + interceptedContent);
         assertEquals(0, interceptedContent);
+        Thread.sleep(500);
     }
 
     private static final class EarlyInterceptionApplication extends Application {
@@ -124,8 +132,9 @@ public class EarlyInterceptionTest {
         static class InterceptActeur extends Acteur {
 
             @Inject
-            InterceptActeur(HttpEvent evt, PathFactory pths) throws URISyntaxException, IOException {
-                add(Headers.LOCATION, pths.constructURL(com.mastfrog.url.Path.parse("/receive?tok=12345"), false).toURI());
+            InterceptActeur(HttpEvent evt, PathFactory pths, Deferral defer) throws URISyntaxException, IOException {
+//                add(Headers.LOCATION, pths.constructURL(com.mastfrog.url.Path.parse("/receive?tok=12345"), false).toURI());
+                add(Headers.LOCATION, new URI("/receive?tok=12345"));
                 reply(HttpResponseStatus.TEMPORARY_REDIRECT);
                 ByteBuf buf = evt.content();
                 if (buf == null) {
@@ -138,7 +147,30 @@ public class EarlyInterceptionTest {
                 evt.ctx().pipeline().forEach((Entry<String, ChannelHandler> t) -> {
                     System.out.println("  " + t.getKey() + " - " + t.getValue());
                 });
-                evt.ctx().pipeline().addAfter(DECODER, AGGREGATOR, new HttpObjectAggregator(8192, true));
+//                evt.ctx().pipeline().addAfter(DECODER, "aggie", new HttpObjectAggregator(8192, true));
+                evt.ctx().pipeline().addAfter(HANDLER, "bytes", new Bytes(defer.defer(), evt.channel().alloc()));
+            }
+        }
+    }
+
+    static class Bytes extends SimpleChannelInboundHandler<HttpContent> {
+
+        private final Resumer resumer;
+        final CompositeByteBuf buf;
+
+        public Bytes(Resumer resumer, ByteBufAllocator alloc) {
+            super(HttpContent.class);
+            this.resumer = resumer;
+            buf = alloc.compositeBuffer();
+        }
+
+        @Override
+        protected void channelRead0(ChannelHandlerContext chc, HttpContent i) throws Exception {
+            System.out.println("BYTES RECEIVE " + i.content().readableBytes() + " for " + i);
+            buf.addComponent(i.content());
+            buf.writerIndex(buf.writerIndex() + i.content().readableBytes());
+            if (i instanceof LastHttpContent) {
+                resumer.resume(this);
             }
         }
     }
@@ -158,7 +190,7 @@ public class EarlyInterceptionTest {
             ReceiveActeur(HttpEvent evt) throws URISyntaxException, IOException {
                 evt.content().resetReaderIndex();
                 System.out.println("READABLE: " + evt.content().readableBytes());
-                String received = evt.content() != null ?  evt.stringContent() : "[nothing]";
+                String received = evt.content() != null ? evt.stringContent() : "[nothing]";
                 ok("Received: " + received);
                 System.out.println("\n\n\nReceived: " + received);
                 System.out.println("PIPELINE: ");
@@ -185,6 +217,7 @@ public class EarlyInterceptionTest {
     }
 
     static class IceptModule extends AbstractModule {
+        private final ReentrantScope scope = new ReentrantScope(new InjectionInfo());
 
         @Override
         protected void configure() {
@@ -196,66 +229,10 @@ public class EarlyInterceptionTest {
                     .resolveAllHostsToLocalhost()
                     .threadCount(4)
                     .setUserAgent(EarlyInterceptionTest.class.getName()).build());
-            install(new ServerModule<EarlyInterceptionApplication>(EarlyInterceptionApplication.class));
+            install(new ServerModule<>(scope, EarlyInterceptionApplication.class, 2, 2, 1));
+            scope.bindTypes(binder(), Bytes.class);
             bind(ErrorInterceptor.class).to(TestHarness.class);
-//            bind(PipelineDecorator.class).to(PLDec.class);
         }
-    }
-
-    static final class PLDec implements PipelineDecorator {
-
-        private final H h;
-
-        @Inject
-        PLDec(PathFactory fac) throws URISyntaxException {
-            this.h = new H(fac);
-        }
-
-        @Override
-        public void onCreatePipeline(ChannelPipeline pipeline) {
-        }
-
-        @Override
-        public void onPipelineInitialized(ChannelPipeline pipeline) {
-            pipeline.addBefore(AGGREGATOR, "early", h);
-        }
-
-        @Sharable
-        static final class H extends SimpleChannelInboundHandler<HttpMessage> {
-
-            private final PathFactory fac;
-            private final URI uri;
-
-            H(PathFactory fac) throws URISyntaxException {
-                this.fac = fac;
-                uri = fac.constructURL(com.mastfrog.url.Path.parse("/receive?tok=1234"), false).toURI();
-            }
-
-            @Override
-            public boolean acceptInboundMessage(Object msg) throws Exception {
-                return msg instanceof HttpRequest;
-            }
-
-            @Override
-            protected void channelRead0(ChannelHandlerContext ctx, HttpMessage msg) throws Exception {
-                System.out.println("URI " + ((HttpRequest) msg).uri());
-                System.out.println("READ 0 " + msg.getClass().getName());
-                System.out.println("MSG: " + msg);
-                if (((HttpRequest) msg).uri().startsWith("/intercept")) {
-                    DefaultHttpResponse resp = new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.TEMPORARY_REDIRECT,
-                            new DefaultHttpHeaders()
-                                    .add("Location", uri.toString())
-                                    .add("Content-Length", 0)
-                                    .add("Connection", "keep-alive"));
-                    System.out.println("Send quick redirect");
-                    ctx.writeAndFlush(resp);
-                } else {
-                    ctx.fireChannelRead(msg);
-                }
-            }
-
-        }
-
     }
 
     public static void main(String[] args) throws IOException, InterruptedException {

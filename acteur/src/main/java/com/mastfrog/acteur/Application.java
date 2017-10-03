@@ -173,7 +173,6 @@ public class Application implements Iterable<Page> {
 
     public boolean isEarlyPageMatch(HttpRequest req) {
         boolean result = earlyPageMatcher != null && earlyPageMatcher.match(req);
-        System.out.println("isEarlyPageMatch? " + result + " for " + req.uri() + " with " + earlyPageMatcher);
         return result;
     }
 
@@ -616,7 +615,6 @@ public class Application implements Iterable<Page> {
      */
     @Benchmark(value = "httpEvents", publish = Kind.CALL_COUNT)
     private CountDownLatch onEvent(final Event<?> event, final Channel channel) {
-        //XXX get rid of channel param?
         // Create a new incremented id for this request
         final RequestID id = ids.next();
         // Enter request scope with the id and the event

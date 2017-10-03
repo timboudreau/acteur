@@ -41,6 +41,7 @@ import com.mastfrog.giulius.scope.ReentrantScope;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.url.Path;
 import com.mastfrog.util.Exceptions;
+import com.mastfrog.util.collections.ArrayUtils;
 import com.mastfrog.util.collections.CollectionUtils;
 import com.mastfrog.util.collections.Converter;
 import com.mastfrog.util.thread.QuietAutoCloseable;
@@ -130,10 +131,7 @@ class PagesImpl2 {
 
             Object[] ctx = new Object[]{id, event, channel, clos};
             if (defaultContext != null && defaultContext.length > 0) {
-                Object[] nue = new Object[ctx.length + defaultContext.length];
-                System.arraycopy(defaultContext, 0, nue, 0, defaultContext.length);
-                System.arraycopy(ctx, 0, nue, defaultContext.length, ctx.length);
-                ctx = nue;
+                ctx = ArrayUtils.concatenate(defaultContext, ctx);
             }
             boolean early = event instanceof HttpEvent && ((HttpEvent) event).isPreContent();
             Iterator<Page> baseIterator = early ? application.earlyPagesIterator() : application.iterator();

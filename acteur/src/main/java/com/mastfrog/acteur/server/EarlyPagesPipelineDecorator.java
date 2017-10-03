@@ -52,7 +52,7 @@ class EarlyPagesPipelineDecorator implements PipelineDecorator {
     public void onCreatePipeline(ChannelPipeline pipeline) {
         if (handler != null) {
             pipeline.addAfter(DECODER, PRE_CONTENT_PAGE_HANDLER, handler);
-            pipeline.remove(AGGREGATOR);
+//            pipeline.remove(AGGREGATOR);
             // XXX HttpContentEncoder is in the wrong state for an early response, and complains
             // that we have not yet received a request. So it's this or manually set its state
             // via reflection, which is nastier.
