@@ -172,7 +172,9 @@ public class MarkupFiles implements Provider<StaticResources> {
             archiveName += ".tar.gz";
         }
         File destDir = new File(tmp, "html-" + uniq);
-        System.err.println("Decompressing markup archive to " + destDir);
+        if (Boolean.getBoolean("acteur.debug")) {
+            System.err.println("Decompressing markup archive to " + destDir);
+        }
         try (InputStream in = relativeTo.getResourceAsStream(archiveName)) {
             if (in == null) {
                 throw new IOException("Markup files missing from archive: " + archiveName + " in " + relativeTo.getPackage().getName().replace('.', '/'));
@@ -234,7 +236,9 @@ public class MarkupFiles implements Provider<StaticResources> {
 
         @Override
         public void run() {
-            System.err.println("Deleting unarchived markup in " + markupDir);
+            if (Boolean.getBoolean("acteur.debug")) {
+                System.err.println("Deleting unarchived markup in " + markupDir);
+            }
             delete(markupDir);
         }
 
@@ -242,7 +246,9 @@ public class MarkupFiles implements Provider<StaticResources> {
             if (file.isFile()) {
                 if (files.contains(file)) {
                     if (!file.delete()) {
-                        System.err.println("Could not delete " + file);
+                        if (Boolean.getBoolean("acteur.debug")) {
+                            System.err.println("Could not delete " + file);
+                        }
                     }
                 }
             } else if (file.isDirectory()) {

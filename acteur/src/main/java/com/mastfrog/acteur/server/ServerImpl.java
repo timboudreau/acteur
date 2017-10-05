@@ -145,7 +145,9 @@ final class ServerImpl implements Server {
 
             // Bind and start to accept incoming connections.
             bootstrap.bind().addListener(result).addListener(hooks.listener());
-            System.err.println("Starting " + this);
+            if (settings.getBoolean("acteur.debug", false)) {
+                System.err.println("Starting " + this);
+            }
             if (settings.getBoolean(ServerModule.SETTINGS_KEY_CORS_ENABLED, true)) {
                 // XXX ugly place to do this
                 app.get().enableDefaultCorsHandling();

@@ -81,7 +81,6 @@ public class StaticResourcesTest {
 
     @BeforeClass
     public static void setUpTempFiles() throws Exception {
-        System.out.println("RESOURCES IN " + tmpdir);
         for (String file : FILES) {
             File f = new File(tmpdir, file);
             assertTrue(f.createNewFile());
@@ -112,7 +111,6 @@ public class StaticResourcesTest {
 
                 @Override
                 public FileVisitResult visitFile(java.nio.file.Path file, BasicFileAttributes attrs) throws IOException {
-                    System.out.println("Delete " + file);
                     Files.delete(file);
                     return FileVisitResult.CONTINUE;
                 }
@@ -124,12 +122,10 @@ public class StaticResourcesTest {
 
                 @Override
                 public FileVisitResult postVisitDirectory(java.nio.file.Path dir, IOException exc) throws IOException {
-                    System.out.println("rmdir " + dir);
                     Files.delete(dir);
                     return FileVisitResult.CONTINUE;
                 }
             });
-            System.out.println("rmdir " + p);
             Files.deleteIfExists(p);
         }
     }
@@ -138,7 +134,7 @@ public class StaticResourcesTest {
     public void test(TestHarness har, StaticResources resources) throws Throwable {
         ZonedDateTime helloLastModified;
         ZonedDateTime aLastModified;
-        helloLastModified = har.get("static/hello.txt").log().go()
+        helloLastModified = har.get("static/hello.txt").go()
                 .assertHasContent()
                 .assertStatus(OK)
                 .assertHasHeader(LAST_MODIFIED.name())
@@ -170,7 +166,6 @@ public class StaticResourcesTest {
 
         har.get("static/hello.txt")
                 .addHeader(IF_MODIFIED_SINCE, helloLastModified)
-                .log()
                 .go()
                 .assertStatus(NOT_MODIFIED);
 
@@ -179,7 +174,6 @@ public class StaticResourcesTest {
                 .go().assertStatus(NOT_MODIFIED);
 
         har.get("static/another.txt")
-                .log()
                 .addHeader(IF_MODIFIED_SINCE, helloLastModified.plus(Duration.ofDays(1)))
                 .go().await().assertStatus(NOT_MODIFIED);
 
@@ -188,30 +182,30 @@ public class StaticResourcesTest {
                 .go().await().assertStatus(OK);
 
         if (resources instanceof DynamicFileResources || cb.getHeader(ACCEPT_RANGES) != null) {
-            har.get("static/another.txt").log()
+            har.get("static/another.txt")
                     .addHeader(RANGE, ByteRanges.of(1, 4))
                     .go().await().assertHasHeader(RANGE)
                     .assertContent("his");
 
-            har.get("static/another.txt").log()
+            har.get("static/another.txt")
                     .addHeader(RANGE, new ByteRanges(4))
                     .go().await().assertHasHeader(RANGE)
                     .assertStatus(OK).assertContent(" is another file.  It has some data in it.\n");
 
-            har.get("static/another.txt").log()
+            har.get("static/another.txt")
                     .addHeader(RANGE, ByteRanges.of(0, 4))
                     .go().await()
                     .assertHasHeader(RANGE)
                     .assertStatus(OK)
                     .assertContent("This");
 
-            har.get("static/another.txt").log()
+            har.get("static/another.txt")
                     .addHeader(RANGE, ByteRanges.of(5, 15))
                     .go().await().assertHasHeader(RANGE)
                     .assertContent("is another");
 
             ByteRanges compound = ByteRanges.builder().add(5, 15).add(25, 30).build();
-            har.get("static/another.txt").log()
+            har.get("static/another.txt")
                     .addHeader(RANGE, compound)
                     .go().await().assertStatus(NOT_IMPLEMENTED);
         }

@@ -79,7 +79,7 @@ import org.openide.util.lookup.ServiceProvider;
     "com.mastfrog.acteur.preconditions.InjectRequestBodyAs",
     "com.mastfrog.acteur.preconditions.InjectUrlParametersAs"
 })
-@SupportedSourceVersion(SourceVersion.RELEASE_6)
+@SupportedSourceVersion(SourceVersion.RELEASE_8)
 public class HttpCallAnnotationProcessor extends IndexGeneratingProcessor {
     
     public HttpCallAnnotationProcessor() {

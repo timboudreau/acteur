@@ -62,7 +62,6 @@ public class PathFactoryTest extends GuiceTest {
 
         path = Path.parse("loading-small.gif", true);
         String s = URLEncoder.encode("loading-small.gif", "UTF-8");
-        System.err.println("S is " + s);
         path = dpf.toPath("loading%2dsmall.gif");
         assertEquals("loading-small.gif", path.toString());
     }

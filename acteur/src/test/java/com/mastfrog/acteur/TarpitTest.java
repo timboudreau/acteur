@@ -28,7 +28,7 @@ public class TarpitTest {
         Settings settings = new SettingsBuilder()
                 .add(com.mastfrog.acteur.auth.AuthenticateBasicActeur.SETTINGS_KEY_TARPIT_DELAY_RESPONSE_AFTER, "2")
                 .add(com.mastfrog.acteur.auth.AuthenticateBasicActeur.SETTINGS_KEY_TARPIT_DELAY_SECONDS, "2").build();
-        Dependencies deps = new Dependencies(settings, new MM());
+        Dependencies deps = new Dependencies(settings, new MM(), new SilentRequestLogger());
         deps.getInstance(Server.class).start().await();
     }
 

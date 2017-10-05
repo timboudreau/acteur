@@ -226,7 +226,6 @@ public class DynamicFileResources implements StaticResources {
                             return Status.DONE;
                         } else {
                             for (Range range : ranges) {
-                                System.out.println("WRITE RANGE " + range);
                                 long count = range.end(length) - range.start(length);
                                 FileRegion reg = new DefaultFileRegion(file, range.start(length), count);
                                 out.write(reg);

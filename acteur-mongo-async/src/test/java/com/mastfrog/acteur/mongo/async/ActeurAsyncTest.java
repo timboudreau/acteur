@@ -58,7 +58,6 @@ import io.netty.buffer.ByteBuf;
 import static io.netty.handler.codec.http.HttpResponseStatus.OK;
 import java.io.IOException;
 import java.time.Duration;
-import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
@@ -84,7 +83,6 @@ public class ActeurAsyncTest {
         Thing[] objs = harn.get("/stuff")
                 .setTimeout(Duration.ofSeconds(18))
                 .go().assertStatus(OK).throwIfError().content(Thing[].class);
-        System.out.println("\n\nCT IS " + Arrays.toString(objs) + "\n\n");
 
         assertEquals(objs.length, 200);
         maybeFail();
@@ -93,7 +91,6 @@ public class ActeurAsyncTest {
                 .setTimeout(Duration.ofSeconds(18))
                 .go().assertStatus(OK).throwIfError().content(Thing.class);
 
-        System.out.println("THING ONE: " + one);
 
     }
 
@@ -155,7 +152,6 @@ public class ActeurAsyncTest {
                 Document doc = new Document("name", "Thing-" + i).append("rand", r.nextInt(100));
                 docs.add(doc);
             }
-            System.out.println("Initial doc insert start");
             final CountDownLatch latch = new CountDownLatch(1);
             ((MongoCollection) collection).insertMany(docs, new SingleResultCallback<Void>() {
 
@@ -165,13 +161,11 @@ public class ActeurAsyncTest {
                         failure = thrwbl;
                         thrwbl.printStackTrace();;
                     }
-                    System.out.println("Initial documents inserted");
                     latch.countDown();
                 }
             });
             try {
                 latch.await(10, TimeUnit.SECONDS);
-                System.out.println("Done waiting for insert");
             } catch (InterruptedException ex) {
                 Exceptions.chuck(ex);
             }

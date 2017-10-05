@@ -45,7 +45,7 @@ import org.junit.runner.RunWith;
  *
  * @author Tim Boudreau
  */
-@TestWith({TestHarnessModule.class, CTM.class})
+@TestWith({TestHarnessModule.class, CTM.class, SilentRequestLogger.class})
 @RunWith(GuiceRunner.class)
 public class CookieTest {
 
@@ -75,7 +75,6 @@ public class CookieTest {
                 .assertHasHeader(Headers.SET_COOKIE_B.name())
                 .assertContent("Set three cookies");
         Iterable<Cookie> cookies = res.getHeaders(SET_COOKIE_B);
-        System.out.println("COOKIES: " + cookies);
         assertTrue("No cookies found", cookies.iterator().hasNext());
         int ct = 0;
         StringBuilder sb = new StringBuilder();
@@ -168,6 +167,5 @@ public class CookieTest {
                 ok("Set encodable cookie");
             }
         }
-
     }
 }

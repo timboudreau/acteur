@@ -58,20 +58,16 @@ public class CompApp extends Application {
     }
 
     public static void main(String[] args) throws Exception {
-        System.setProperty("acteur.debug", "true");
         Settings s = new SettingsBuilder().add("neverKeepAlive", false)
-                .add("acteur.debug", true)
                 .add("aggregateChunks", true)
                 .build();
         Dependencies deps = Dependencies.builder().add(new ServerModule<>(CompApp.class)).add(s, Namespace.DEFAULT).build();
         Server server = deps.getInstance(Server.class);
-        System.out.println("GOT SERVER " + server);
         server.start().await();
     }
 
     @Override
     public void onError(Throwable err) {
-        System.out.println("OUCH! ");
         this.err = err;
     }
 
@@ -181,7 +177,6 @@ public class CompApp extends Application {
 
                 @Override
                 public boolean test(HttpEvent evt) {
-                    System.out.println("TEST");
                     return "true".equals(evt.getParameter("a"));
                 }
 
@@ -192,7 +187,6 @@ public class CompApp extends Application {
 
             @Inject
             ABranch() {
-                System.out.println("abranch");
                 ok("A");
             }
         }
@@ -201,7 +195,6 @@ public class CompApp extends Application {
 
             @Inject
             BBranch() {
-                System.out.println("bbranch");
                 ok("B");
             }
         }
@@ -233,16 +226,10 @@ public class CompApp extends Application {
                 ByteBuf buf = evt.getContent();
 //                String content = buf.readCharSequence(buf.readableBytes(), CharsetUtil.UTF_8).toString();
 
-                System.out.println("CONTENT length: " + content.length());
-                System.out.println("INBOUND CONTENT: '" + content + "' " + evt.header(Headers.CONTENT_TYPE) + " length " + evt.header(Headers.CONTENT_LENGTH) + " encoding " + evt.getHeader(Headers.TRANSFER_ENCODING));
-                System.out.println("BUFFER " + buf + " rb " + buf.readableBytes() + " ri " + buf.readerIndex() + " wi " + buf.writerIndex());
 
                 if (content.isEmpty()) {
                     reply(BAD_REQUEST, "Empty content");
-                } else {
-                    System.out.println("Content is not empty: " + content.length());
                 }
-                System.out.println("ECHO MESSAGE '" + content + "'");
                 setState(new RespondWith(200, content));
             }
         }
@@ -261,7 +248,6 @@ public class CompApp extends Application {
 
             @Inject
             DeferActeur(HttpEvent evt) {
-                System.out.println("DEFER ACTEUR RUN");
                 setResponseWriter(DeferredOutputWriter.class);
                 setState(new RespondWith(200));
             }
@@ -288,7 +274,6 @@ public class CompApp extends Application {
 
             @Override
             public synchronized Status write(Event<?> evt, Output out) throws Exception {
-                System.out.println("Deferring write");
                 this.out = out;
                 Thread t = new Thread(this);
                 t.setDaemon(true);
@@ -323,7 +308,6 @@ public class CompApp extends Application {
                 if (max == null) {
                     max = 5;
                 }
-                System.out.println("Created an iterWriter");
                 msg = evt.getParameter("msg");
                 if (msg == null) {
                     msg = "Iteration ";
@@ -354,12 +338,10 @@ public class CompApp extends Application {
                 entryCount++;
                 try {
                     String message = msg + iteration + "\n";
-                    System.out.println("MESSAGE: " + message + "");
                     f = f.channel().writeAndFlush(Unpooled.copiedBuffer(message, CharsetUtil.UTF_8));
                     if (iteration++ < max) {
                         f.addListener(this);
                     } else {
-                        System.out.println("Close channel");
                         f.addListener(CLOSE);
                     }
                 } finally {
@@ -396,7 +378,6 @@ public class CompApp extends Application {
                 @Inject
                 IterWriter(HttpEvent evt) {
                     max = evt.getIntParameter("iters").get();
-                    System.out.println("Created an iterWriter");
                     msg = evt.getParameter("msg");
                     if (msg == null) {
                         msg = "Iteration ";
@@ -405,7 +386,6 @@ public class CompApp extends Application {
 
                 @Override
                 public Status write(Event<?> evt, Output out, int iteration) throws Exception {
-                    System.out.println("Iteration " + iteration + "\n");
                     out.write(msg + iteration + "\n");
                     if (iteration < max) {
                         return Status.NOT_DONE;

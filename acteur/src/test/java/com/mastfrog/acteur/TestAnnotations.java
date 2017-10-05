@@ -11,6 +11,7 @@ import com.mastfrog.acteur.server.ServerModule;
 import com.mastfrog.giulius.tests.GuiceRunner;
 import com.mastfrog.giulius.tests.TestWith;
 import com.mastfrog.netty.http.test.harness.TestHarness;
+import com.mastfrog.netty.http.test.harness.TestHarnessModule;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import static io.netty.handler.codec.http.HttpResponseStatus.BAD_REQUEST;
 import static io.netty.handler.codec.http.HttpResponseStatus.NOT_FOUND;
@@ -31,7 +32,7 @@ import org.junit.runner.RunWith;
  * @author Tim Boudreau
  */
 @RunWith(GuiceRunner.class)
-@TestWith(M.class)
+@TestWith({M.class, TestHarnessModule.class, SilentRequestLogger.class})
 public class TestAnnotations {
 
     @Test(timeout=8000)

@@ -52,7 +52,6 @@ import com.mastfrog.util.net.PortFinder;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.CompositeByteBuf;
-import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.http.DefaultHttpRequest;
@@ -66,7 +65,6 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.Duration;
-import java.util.Map.Entry;
 import java.util.Random;
 import javax.inject.Inject;
 import static org.junit.Assert.assertEquals;
@@ -79,7 +77,7 @@ import org.junit.runner.RunWith;
  * @author Tim Boudreau
  */
 @RunWith(GuiceRunner.class)
-@TestWith({IceptModule.class, TestHarnessModule.class})
+@TestWith({IceptModule.class, TestHarnessModule.class, SilentRequestLogger.class})
 public class EarlyInterceptionTest {
 
     private static final Duration TIMEOUT = Duration.ofSeconds(60);
@@ -99,12 +97,10 @@ public class EarlyInterceptionTest {
         harn.post("/intercept")
                 .setTimeout(TIMEOUT)
                 .setBody(msg, MediaType.PLAIN_TEXT_UTF_8)
-                .log()
                 .go()
                 .await()
                 .assertContent(expect);
 
-        System.out.println("ICEPTED: " + interceptedContent);
         assertEquals(0, interceptedContent);
         Thread.sleep(500);
     }
@@ -142,12 +138,6 @@ public class EarlyInterceptionTest {
                 } else {
                     interceptedContent = buf.readableBytes();
                 }
-                System.out.println("INTERCEPTED " + interceptedContent);
-                System.out.println("PIPELINE: ");
-                evt.ctx().pipeline().forEach((Entry<String, ChannelHandler> t) -> {
-                    System.out.println("  " + t.getKey() + " - " + t.getValue());
-                });
-//                evt.ctx().pipeline().addAfter(DECODER, "aggie", new HttpObjectAggregator(8192, true));
                 evt.ctx().pipeline().addAfter(HANDLER, "bytes", new Bytes(defer.defer(), evt.channel().alloc()));
             }
         }
@@ -166,7 +156,6 @@ public class EarlyInterceptionTest {
 
         @Override
         protected void channelRead0(ChannelHandlerContext chc, HttpContent i) throws Exception {
-            System.out.println("BYTES RECEIVE " + i.content().readableBytes() + " for " + i);
             buf.addComponent(i.content());
             buf.writerIndex(buf.writerIndex() + i.content().readableBytes());
             if (i instanceof LastHttpContent) {
@@ -189,14 +178,8 @@ public class EarlyInterceptionTest {
             @Inject
             ReceiveActeur(HttpEvent evt) throws URISyntaxException, IOException {
                 evt.content().resetReaderIndex();
-                System.out.println("READABLE: " + evt.content().readableBytes());
                 String received = evt.content() != null ? evt.stringContent() : "[nothing]";
                 ok("Received: " + received);
-                System.out.println("\n\n\nReceived: " + received);
-                System.out.println("PIPELINE: ");
-                evt.ctx().pipeline().forEach((Entry<String, ChannelHandler> t) -> {
-                    System.out.println("  " + t.getKey() + " - " + t.getValue());
-                });
             }
         }
     }

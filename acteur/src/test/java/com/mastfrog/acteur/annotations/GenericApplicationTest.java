@@ -6,7 +6,7 @@ import com.google.inject.AbstractModule;
 import com.google.inject.TypeLiteral;
 import com.google.inject.name.Names;
 import com.mastfrog.acteur.Page;
-import com.mastfrog.acteur.headers.Headers;
+import com.mastfrog.acteur.SilentRequestLogger;
 import com.mastfrog.acteur.server.ServerBuilder;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.giulius.tests.GuiceRunner;
@@ -35,16 +35,12 @@ import org.junit.runner.RunWith;
  *
  * @author Tim Boudreau
  */
-@TestWith({GenericApplicationModule.class, TestHarnessModule.class})
+@TestWith({GenericApplicationModule.class, TestHarnessModule.class, SilentRequestLogger.class})
 @RunWith(GuiceRunner.class)
 public class GenericApplicationTest {
     
-    static {
-        System.setProperty("acteur.debug", "true");
-    }
-
     public static void main(String[] args) throws IOException, InterruptedException {
-        Settings s = new SettingsBuilder().add("acteur.debug", "true").build();
+        Settings s = new SettingsBuilder().build();
         new ServerBuilder().add(s).build().start(8080).await();
     }
 
@@ -72,10 +68,8 @@ public class GenericApplicationTest {
         Map<String, Object> m = new MapBuilder().put("host", "timboudreau.com")
                 .put("port", 8080).put("bool", false).build();
 
-        CallResult res = harn.put("/numble").log().setTimeout(Duration.ofSeconds(20))
+        CallResult res = harn.put("/numble").setTimeout(Duration.ofSeconds(20))
                 .setBody(m, MediaType.JSON_UTF_8).go().await().assertCode(200);
-        System.out.println("ACTEUR: " + res.getHeader(Headers.header("X-Acteur")));
-        System.out.println("PAGE: " + res.getHeader(Headers.header("X-Page")));
         Map<String, Object> nue = res.content(Map.class);
         assertEquals(m, nue);
     }
@@ -89,7 +83,6 @@ public class GenericApplicationTest {
         GenericApplication app = deps.getInstance(GenericApplication.class);
         int ix = 0;
         for (Page p : app) {
-            System.out.println(ix + " - " + p);
             switch (ix++) {
                 case 0:
                     assertTrue(ix + " " + p.getClass().getName(), p instanceof NumblePage__GenPage);
@@ -109,7 +102,6 @@ public class GenericApplicationTest {
                 default:
                     throw new AssertionError(ix);
             }
-            System.out.println("PAGE " + p);
         }
         assertEquals(5, ix);
     }
@@ -119,7 +111,6 @@ public class GenericApplicationTest {
 
         @Override
         protected void configure() {
-            System.out.println("Configure dummy module");
             bind(Short.class).toInstance((short) 537);
         }
     }
@@ -133,7 +124,6 @@ public class GenericApplicationTest {
 
         @Override
         protected void configure() {
-            System.out.println("Configure dummy module");
             bind(StringBuilder.class).toInstance(new StringBuilder("Kilroy was here"));
         }
     }

@@ -50,7 +50,7 @@ import org.junit.runner.RunWith;
 import static org.junit.Assert.*;
 
 @RunWith(GuiceRunner.class)
-@TestWith(M.class)
+@TestWith({M.class, SilentRequestLogger.class})
 public class AppTest {
 
     static ReentrantScope scope = new ReentrantScope(new InjectionInfo());
@@ -151,9 +151,7 @@ public class AppTest {
             BasicCredentials credentials = event.header(Headers.AUTHORIZATION);
             if (credentials != null) {
                 next(credentials);
-                System.err.println("CREDENTIALS " + credentials.username + " pw=" + credentials.password);
             } else {
-                System.err.println("NO CREDENTIALS");
                 reply(HttpResponseStatus.UNAUTHORIZED);
             }
         }
@@ -165,10 +163,8 @@ public class AppTest {
         ConvertHeadersAction(HttpEvent event) {
             ReqParams p = event.urlParametersAs(ReqParams.class);
             if (p == null) {
-                System.err.println("PARAM name is " + p.name() + " realname " + p.realname());
                 setState(new RejectedState());
             } else {
-                System.err.println("PARAMS " + p.getClass().getName());
                 next(p);
             }
         }
@@ -194,7 +190,6 @@ public class AppTest {
         WriteResponseAction(BasicCredentials creds, Thing thing) {
             Checks.notNull("creds", creds);
             Checks.notNull("thing", thing);
-            System.err.println("Got to write response action");
             done = true;
             add(Headers.DATE, ZonedDateTime.now());
             add(Headers.CONTENT_TYPE, MediaType.PLAIN_TEXT_UTF_8);
@@ -226,9 +221,6 @@ public class AppTest {
         CacheControl cc1 = Headers.read(Headers.CACHE_CONTROL, req);
         assertEquals(cc, cc1);
 
-        System.err.println("Cache-Control: " + req.headers().get(Headers.CACHE_CONTROL.name()));
-
-        System.err.println("AUTH HEADER IS " + req.headers().get(HttpHeaderNames.AUTHORIZATION));
         assertNotNull(req.headers().get(HttpHeaderNames.AUTHORIZATION));
         BasicCredentials c = Headers.read(Headers.AUTHORIZATION, req);
         assertNotNull(c);
@@ -283,12 +275,10 @@ public class AppTest {
         @Override
         public void receive(Acteur action, com.mastfrog.acteur.State state, ResponseImpl response) {
             assertNotNull(state);
-            System.err.println("Received " + state);
             synchronized (this) {
                 this.received = state;
                 notifyAll();
             }
-            System.err.println(response);
         }
 
         @Override

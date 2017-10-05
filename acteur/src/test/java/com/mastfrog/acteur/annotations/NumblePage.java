@@ -63,8 +63,6 @@ public class NumblePage extends Acteur {
 
     @Inject
     NumblePage(ReentrantScope scope, HttpEvent evt, Provider<NumblePageParams> params) throws JsonProcessingException, IOException {
-        System.out.println("CONTAINS PARAMS? " + scope.contains(NumblePageParams.class));
-        System.out.println("SCOPE CONTENTS: " + scope.toString());
         ok(params.get().toJSON());
     }
 

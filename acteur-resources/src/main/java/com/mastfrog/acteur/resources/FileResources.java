@@ -28,7 +28,6 @@ import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.mastfrog.acteur.Event;
 import com.mastfrog.acteur.HttpEvent;
-import com.mastfrog.acteur.Page;
 import com.mastfrog.acteur.Response;
 import com.mastfrog.acteur.ResponseWriter;
 import com.mastfrog.acteur.headers.HeaderValueType;
@@ -39,6 +38,7 @@ import com.mastfrog.giulius.DeploymentMode;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.url.Path;
 import com.mastfrog.util.Checks;
+import com.mastfrog.util.Exceptions;
 import com.mastfrog.util.Streams;
 import com.mastfrog.util.Strings;
 import com.mastfrog.util.streams.HashingOutputStream;
@@ -54,8 +54,8 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.compression.JZlibDecoder;
 import io.netty.handler.codec.compression.ZlibWrapper;
 import io.netty.handler.codec.http.DefaultHttpContent;
+import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaderValues;
-import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.LastHttpContent;
 import java.io.BufferedInputStream;
 import java.io.File;
@@ -63,6 +63,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.time.Duration;
 import java.time.ZonedDateTime;
@@ -74,7 +75,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.zip.GZIPOutputStream;
-import org.openide.util.Exceptions;
 
 /**
  * Resources based on java.io.File. Note that this implementation caches all
@@ -115,7 +115,7 @@ public final class FileResources implements StaticResources {
         debug = settings.getBoolean("acteur.debug", false);
         String resourcesBasePath = settings.getString(RESOURCES_BASE_PATH, "");
         for (String name : l) {
-            String pth = Strings.join(resourcesBasePath, name);
+            String pth = Strings.joinPath(resourcesBasePath, name);
             if (debug) {
                 System.out.println("STATIC RES: " + name + " -> " + pth);
             }
@@ -150,7 +150,11 @@ public final class FileResources implements StaticResources {
     @Override
     public Resource get(String path) {
         if (path.indexOf('%') >= 0) {
-            path = URLDecoder.decode(path);
+            try {
+                path = URLDecoder.decode(path, "UTF-8");
+            } catch (UnsupportedEncodingException ex) {
+                Exceptions.chuck(ex);
+            }
         }
         return names.get(path);
     }
@@ -331,7 +335,7 @@ public final class FileResources implements StaticResources {
         if (!internalGzip) {
             return false;
         }
-        String hdr = evt.header(HttpHeaders.Names.ACCEPT_ENCODING);
+        String hdr = evt.header(HttpHeaderNames.ACCEPT_ENCODING);
         return hdr != null && hdr.toLowerCase().contains("gzip");
     }
 

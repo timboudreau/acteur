@@ -12,6 +12,7 @@ import static com.mastfrog.acteur.headers.Method.PUT;
 import com.mastfrog.acteur.preconditions.Methods;
 import com.mastfrog.acteur.server.ServerModule;
 import com.mastfrog.acteur.util.CacheControl;
+import com.mastfrog.acteur.util.RequestID;
 import com.mastfrog.giulius.tests.GuiceRunner;
 import com.mastfrog.netty.http.test.harness.TestHarness;
 import com.mastfrog.netty.http.test.harness.TestHarnessModule;
@@ -20,6 +21,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import static io.netty.handler.codec.http.HttpResponseStatus.OK;
+import java.time.Duration;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -32,13 +34,29 @@ import org.junit.runner.RunWith;
 public class PutTest {
 
     // Just subclasses ServerModule to provide the application class
-    static class SM extends ServerModule<EchoServer> {
+    static class SM extends ServerModule<EchoServer> implements RequestLogger {
         SM() {
             super(EchoServer.class, 2, 2, 3);
         }
+
+        @Override
+        protected void configure() {
+            super.configure();
+            bind(RequestLogger.class).toInstance(this);
+        }
+
+        @Override
+        public void onBeforeEvent(RequestID rid, Event<?> event) {
+            // do nothing
+        }
+
+        @Override
+        public void onRespond(RequestID rid, Event<?> event, HttpResponseStatus status) {
+            // do nothing
+        }
     }
 
-    @Test(timeout = 5000L)
+    @Test(timeout = 180000L)
     public void testPuts(TestHarness harn) throws Throwable {
         harn.get("foo/bar/baz").go().assertStatus(OK).assertContent("Hello world");
         harn.get("/").go().assertStatus(OK).assertContent("Hello world");
@@ -47,7 +65,7 @@ public class PutTest {
                     .setBody("Test " + i + " iter", MediaType.PLAIN_TEXT_UTF_8).go()
                     .assertStatus(OK).assertContent("Test " + i + " iter");
         }
-        harn.get(veryLongUrl(3500)).go().assertStatus(OK);
+        harn.get(veryLongUrl(35)).setTimeout(Duration.ofMinutes(2)).go().await().assertStatus(OK);
     }
 
     private String veryLongUrl(int amt) {

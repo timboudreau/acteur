@@ -61,6 +61,7 @@ public class ResourcesPage extends Page {
     public static final String SETTINGS_KEY_STATIC_RESOURCES_BASE_URL_PATH = "static.base.url.path";
 
     @Inject
+    @SuppressWarnings("deprecation")
     public ResourcesPage(ActeurFactory af, StaticResources r, Settings settings) {
         String base = settings.getString(SETTINGS_KEY_STATIC_RESOURCES_BASE_URL_PATH);
         if (base != null && !base.isEmpty()) {

@@ -24,7 +24,7 @@
             <artifactId>javax.inject</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.mastfrog</groupId>
+            <groupId>${project.groupId}</groupId>
             <artifactId>giulius-tests</artifactId>
             <scope>test</scope>
         </dependency>

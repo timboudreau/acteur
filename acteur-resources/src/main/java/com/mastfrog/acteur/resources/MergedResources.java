@@ -35,6 +35,7 @@ import java.util.Set;
  * @author Tim Boudreau
  */
 public class MergedResources implements StaticResources {
+
     private final StaticResources[] resources;
     private boolean warned;
 
@@ -67,7 +68,9 @@ public class MergedResources implements StaticResources {
             warned = true;
             Set<String> s = new HashSet<>(result);
             if (s.size() != result.size()) {
-                System.err.println("Duplicate resources in " + result);
+                if (Boolean.getBoolean("acteur.debug")) {
+                    System.err.println("Duplicate resources in " + result);
+                }
             }
         }
         return result.isEmpty() ? null : result.toArray(new String[result.size()]);

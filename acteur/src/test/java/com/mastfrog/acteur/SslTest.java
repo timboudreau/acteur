@@ -101,12 +101,13 @@ public class SslTest {
     
     @Before
     public void setup() throws IOException {
-        port = new PortFinder().findAvailableServerPort();
+        port = new PortFinder(12000, 65535).findAvailableServerPort();
         SettingsBuilder set = new SettingsBuilder().add(ServerModule.PORT, port);
         if (useOpenSSL) {
             set.add(ServerModule.SETTINGS_KEY_SSL_ENGINE, SslProvider.OPENSSL_REFCNT.name());
         }
         Server server = new ServerBuilder().applicationClass(SslApp.class).ssl()
+                .add(SilentRequestLogger.class)
                 .add(set.build()).build();
         this.serverControl = server.start();
         client = HttpClient.builder().useCompression().build();

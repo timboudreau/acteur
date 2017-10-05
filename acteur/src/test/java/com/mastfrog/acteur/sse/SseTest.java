@@ -24,11 +24,13 @@
 
 package com.mastfrog.acteur.sse;
 
+import com.mastfrog.acteur.SilentRequestLogger;
 import com.mastfrog.giulius.tests.GuiceRunner;
 import com.mastfrog.giulius.tests.TestWith;
 import com.mastfrog.netty.http.client.StateType;
 import com.mastfrog.netty.http.test.harness.TestHarness;
 import com.mastfrog.netty.http.test.harness.TestHarness.CallResult;
+import com.mastfrog.netty.http.test.harness.TestHarnessModule;
 import com.mastfrog.util.thread.Receiver;
 import io.netty.buffer.ByteBuf;
 import io.netty.handler.codec.http.HttpContent;
@@ -50,15 +52,14 @@ import org.junit.runner.RunWith;
  * @author tim
  */
 @RunWith(GuiceRunner.class)
-@TestWith(SseApp.Module.class)
+@TestWith({SseApp.Module.class, TestHarnessModule.class, SilentRequestLogger.class})
 public class SseTest {
 
     @Test(timeout = 90000)
     public void test(TestHarness harn) throws Throwable {
         long when = System.currentTimeMillis();
-        System.err.println("PORT " + harn.getPort());
         System.err.flush();
-        harn.get("/foo").setTimeout(Duration.ofSeconds(60)).log().go().assertStatus(NOT_FOUND);
+        harn.get("/foo").setTimeout(Duration.ofSeconds(60)).go().assertStatus(NOT_FOUND);
         final StringBuilder content = new StringBuilder();
         final CallResult[] res = new CallResult[1];
         final AtomicInteger count = new AtomicInteger();

@@ -64,13 +64,12 @@ import org.junit.runner.RunWith;
  * @author Tim Boudreau
  */
 @RunWith(GuiceRunner.class)
-@TestWith({WSM.class, TestHarnessModule.class})
+@TestWith({WSM.class, TestHarnessModule.class, SilentRequestLogger.class})
 public class WebSocketTest {
 
     @Test(timeout = 60000)
     public void test(TestHarness harn, PathFactory factory, ObjectMapper mapper) throws Throwable {
         URL url = factory.constructURL(Path.parse("/ws"), false);
-        System.out.println("URL is " + url);
 
         Map<String,Object> payload = map("ix").to(10).map("name").to("first").build();
 
@@ -80,11 +79,10 @@ public class WebSocketTest {
                 .addHeader(stringHeader("origin"), url.toString())
                 .addHeader(stringHeader("Upgrade"), "websocket")
                 .dontAggregateResponse()
-                .log()
                 .onEvent(new Receiver<com.mastfrog.netty.http.client.State<?>>() {
                     @Override
                     public void receive(State<?> object) {
-                        System.out.println("STATE " + object + " - " + object.get());
+//                        System.out.println("STATE " + object + " - " + object.get());
                     }
                 }).execute();
         fut.sendOn(StateType.HeadersReceived, new TextWebSocketFrame(mapper.writeValueAsString(payload)));
@@ -124,7 +122,6 @@ public class WebSocketTest {
                 @SuppressWarnings("unchecked")
                 WsActeur(WebSocketFrame frame, ObjectMapper mapper) throws IOException {
                     Map<String, Object> m = mapper.readValue((DataInput) new ByteBufInputStream(frame.content()), Map.class);
-                    System.out.println("READ " + m);
                     Object o = m.get("ix");
                     assertNotNull(o);
                     assertTrue(o instanceof Number);

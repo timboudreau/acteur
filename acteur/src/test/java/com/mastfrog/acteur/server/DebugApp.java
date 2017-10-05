@@ -42,7 +42,6 @@ import java.io.IOException;
 public class DebugApp extends Application {
 
     DebugApp() {
-        System.out.println("create app");
         add(HelloPage.class);
     }
 
@@ -61,7 +60,6 @@ public class DebugApp extends Application {
         @Inject
         @SuppressWarnings("deprecation")
         HelloPage(ActeurFactory af) {
-            System.out.println("create page");
             add(af.matchMethods(Method.GET));
             add(af.matchPath("hello"));
             add(HelloActeur.class);
@@ -76,7 +74,6 @@ public class DebugApp extends Application {
 
         @Inject
         HelloActeur(HttpEvent evt) {
-            System.out.println("create acteur");
             ok("Hello world\n");
         }
     }

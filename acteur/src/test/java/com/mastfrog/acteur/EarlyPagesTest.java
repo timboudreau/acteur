@@ -67,7 +67,6 @@ public class EarlyPagesTest {
     @Test
     @SuppressWarnings("unchecked")
     public void testSomeMethod() {
-        System.out.println(pgs);
         for (Class<?> c : classes) {
             Class<? extends Page> pg = (Class<? extends Page>) c;
             ShouldMatch shoulds = pg.getAnnotation(ShouldMatch.class);

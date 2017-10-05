@@ -42,7 +42,6 @@ public class TestMultiplePages {
         P() {
             add(ActA.class);
             add(Act.class);
-            System.out.println("Create P on " + Thread.currentThread());
         }
     }
 
@@ -70,7 +69,6 @@ public class TestMultiplePages {
     private static final class ActA extends Acteur {
 
         ActA() {
-            System.out.println("ActA on " + Thread.currentThread());
             next();
         }
     }
@@ -81,7 +79,6 @@ public class TestMultiplePages {
         Act(HttpEvent evt, RequestID id) {
             setResponseBodyWriter(BlockingBodyWriter.class);
             setState(new RespondWith(HttpResponseStatus.OK));
-            System.out.println("Create Act on " + Thread.currentThread());
         }
     }
 
@@ -102,7 +99,6 @@ public class TestMultiplePages {
         public void operationComplete(ChannelFuture future) throws Exception {
             future = future.channel().write(Unpooled.copiedBuffer(id
                     + " Okay, here goes nothing", CharsetUtil.UTF_8));
-            System.out.println("Initial response on " + Thread.currentThread());
             future.addListener(CLOSE);
         }
     }

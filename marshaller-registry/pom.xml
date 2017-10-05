@@ -19,7 +19,7 @@
             <artifactId>guava</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.mastfrog</groupId>
+            <groupId>${project.groupId}</groupId>
             <artifactId>util</artifactId>
         </dependency>
         <dependency>

@@ -118,7 +118,6 @@ public class ByteBufCodecTest {
         assertNotNull(buf);
 
         String content = Streams.readString(new ByteBufInputStream(buf));
-        System.out.println("CONTENT: " + content);
         buf.resetReaderIndex();
 
         Map m = new ObjectMapper().readValue(content, Map.class);
@@ -183,7 +182,6 @@ public class ByteBufCodecTest {
 
         @Override
         public synchronized void onResult(T t, Throwable thrwbl) {
-            System.out.println("ONRES " + t);
             result = t;
             if (thrwbl != null) {
                 thrwbl.printStackTrace();

@@ -138,7 +138,6 @@ public class DynamicCodecsTest {
 
                     @Override
                     public void onResult(List<Thing> t, Throwable thrwbl) {
-                        System.out.println("ON RESULT " + t + " - " + thrwbl);
                         if (thrwbl != null) {
                             th.set(thrwbl);
                         }
@@ -169,7 +168,6 @@ public class DynamicCodecsTest {
         insertOne(at, promises);
         ArrayThing found = findOne(promises);
         assertEquals("Stored and retrieved do not match", at, found);
-        System.out.println("FOUND " + found);
 
         SubThing toPush = new SubThing("skiddoo", 23);
         SyncTrigger<UpdateResult> su = new SyncTrigger<>();
@@ -182,7 +180,6 @@ public class DynamicCodecsTest {
         ArrayThing found2 = findOne(promises);
         assertNotNull(found2);
         assertEquals(1, found2.subThings.length);
-        System.out.println("FOUND 2 " + found2);
         assertNotEquals(at, found2);
 
         ArrayThing found3 = findOne(promises, new Document("_id", at._id));
@@ -213,7 +210,6 @@ public class DynamicCodecsTest {
 
         @Override
         public void trigger(T obj, Throwable thrown) {
-            System.out.println("SyncT " + obj + " - " + thrown);
             ref.set(obj);
             th.set(thrown);
             latch.countDown();

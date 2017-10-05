@@ -56,15 +56,11 @@ import org.junit.runner.RunWith;
  *
  * @author Tim Boudreau
  */
-@TestWith({TestHarnessModule.class, ITM.class})
+@TestWith({TestHarnessModule.class, ITM.class, SilentRequestLogger.class})
 @RunWith(GuiceRunner.class)
 public class InternalsTest {
 
     private static final ZonedDateTime WHEN = ZonedDateTime.now().with(ChronoField.MILLI_OF_SECOND, 0);
-
-    static {
-        System.setProperty("acteur.debug", "true");
-    }
 
     @Test
     public void testHeadersSharedBetweenActeurs(TestHarness harn) throws Throwable {
@@ -233,7 +229,6 @@ public class InternalsTest {
 
                 A2() {
                     ZonedDateTime found = response().get(Headers.LAST_MODIFIED);
-                    System.out.println("FOUND " + found);
                     ok("Found " + (found == null ? "null" : Headers.ISO2822DateFormat.format(ZERO)));
                 }
             }

@@ -29,12 +29,14 @@ import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import com.google.inject.TypeLiteral;
 import com.mastfrog.acteur.Application;
-import com.mastfrog.acteur.ImplicitBindings;
-import com.mastfrog.acteur.resources.Resource;
+import com.mastfrog.acteur.Event;
+import com.mastfrog.acteur.RequestLogger;
 import com.mastfrog.acteur.server.ServerModule;
+import com.mastfrog.acteur.util.RequestID;
 import com.mastfrog.netty.http.client.HttpClient;
 import com.mastfrog.util.Exceptions;
-import com.mastfrog.util.GUIDFactory;
+import com.mastfrog.util.strings.RandomStrings;
+import io.netty.handler.codec.http.HttpResponseStatus;
 import java.io.File;
 import java.util.Arrays;
 import java.util.List;
@@ -44,7 +46,8 @@ import static org.junit.Assert.assertTrue;
  *
  * @author tim
  */
-@ImplicitBindings(Resource.class)
+@SuppressWarnings("deprecation")
+@com.mastfrog.acteur.ImplicitBindings(Resource.class)
 public class ResourcesApp extends Application {
 
     ResourcesApp() {
@@ -55,7 +58,7 @@ public class ResourcesApp extends Application {
     static String[] FILES = new String[]{
         "hello.txt", "another.txt"
     };
-    static String STUFF = GUIDFactory.get().newGUID(18, 10);
+    static String STUFF = new RandomStrings().get(1800);
 
     static {
         try {
@@ -66,12 +69,27 @@ public class ResourcesApp extends Application {
             Exceptions.chuck(ex);
         }
     }
+
+    static final class SilentRequestLogger implements RequestLogger {
+
+        @Override
+        public void onBeforeEvent(RequestID rid, Event<?> event) {
+            // do nothing
+        }
+
+        @Override
+        public void onRespond(RequestID rid, Event<?> event, HttpResponseStatus status) {
+            // do nothing
+        }
+
+    }
     
     static class Compression extends AbstractModule {
 
         @Override
         protected void configure() {
             bind(HttpClient.class).toInstance(HttpClient.builder().useCompression().build());
+            bind(RequestLogger.class).to(SilentRequestLogger.class);
         }
     }
 
@@ -80,6 +98,7 @@ public class ResourcesApp extends Application {
         @Override
         protected void configure() {
             bind(HttpClient.class).toInstance(HttpClient.builder().noCompression().build());
+            bind(RequestLogger.class).to(SilentRequestLogger.class);
         }
         
     }
@@ -91,6 +110,7 @@ public class ResourcesApp extends Application {
             install(new ServerModule<>(ResourcesApp.class));
             bind(File.class).toInstance(tmpdir);
             bind(StaticResources.class).to(DynamicFileResources.class);
+            bind(RequestLogger.class).to(SilentRequestLogger.class);
         }
     }
 
@@ -101,6 +121,7 @@ public class ResourcesApp extends Application {
             install(new ServerModule<>(ResourcesApp.class));
             bind(File.class).toInstance(tmpdir);
             bind(StaticResources.class).to(FileResources.class);
+            bind(RequestLogger.class).to(SilentRequestLogger.class);
         }
     }
     static class FileResourcesModule2 extends AbstractModule {
@@ -110,6 +131,7 @@ public class ResourcesApp extends Application {
             install(new ServerModule<>(ResourcesApp.class));
             bind(File.class).toInstance(tmpdir);
             bind(StaticResources.class).to(FileResources.class);
+            bind(RequestLogger.class).to(SilentRequestLogger.class);
         }
     }
     static class ClasspathResourcesModule extends AbstractModule {
@@ -120,6 +142,7 @@ public class ResourcesApp extends Application {
             bind(StaticResources.class).to(ClasspathResources.class);
             bind(ClasspathResourceInfo.class).toInstance(new ClasspathResourceInfo(ResourcesApp.class,
                     "hello.txt", "another.txt"));
+            bind(RequestLogger.class).to(SilentRequestLogger.class);
         }
     }
 
@@ -127,12 +150,13 @@ public class ResourcesApp extends Application {
 
         @Override
         protected void configure() {
-            install(new ServerModule<ResourcesApp>(ResourcesApp.class));
+            install(new ServerModule<>(ResourcesApp.class));
             bind(File.class).toInstance(tmpdir);
             bind(StaticResources.class).to(MergedResources.class);
             bind(ClasspathResourceInfo.class).toInstance(new ClasspathResourceInfo(ResourcesApp.class,
                     "hello.txt", "another.txt"));
             bind(new TL()).toProvider(P.class);
+            bind(RequestLogger.class).to(SilentRequestLogger.class);
         }
 
         static final class TL extends TypeLiteral<List<StaticResources>> {

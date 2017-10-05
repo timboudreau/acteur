@@ -77,6 +77,7 @@ final class ChannelRegistry<Identifier> {
             });
             channelsForId.clear();
             idsForChannel.clear();
+            return null;
         });
         reg.add(mutationThread);
     }

@@ -45,6 +45,7 @@ import com.mastfrog.acteur.util.CacheControl;
 import com.mastfrog.giulius.DeploymentMode;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.util.Checks;
+import com.mastfrog.util.Exceptions;
 import com.mastfrog.util.Streams;
 import com.mastfrog.util.Strings;
 import com.mastfrog.util.streams.HashingOutputStream;
@@ -64,6 +65,7 @@ import io.netty.handler.codec.http.LastHttpContent;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoField;
@@ -120,7 +122,11 @@ public final class ClasspathResources implements StaticResources {
     @Override
     public Resource get(String path) {
         if (path.indexOf('%') >= 0) {
-            path = URLDecoder.decode(path);
+            try {
+                path = URLDecoder.decode(path, "UTF-8");
+            } catch (UnsupportedEncodingException ex) {
+                return Exceptions.chuck(ex);
+            }
         }
         return names.get(path);
     }

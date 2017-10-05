@@ -31,19 +31,15 @@ public class VerifyDateTimeBehavior {
         ZonedDateTime x = zeroed;
         for (int i = 0; i < 10; i++) {
             CharSequence pd = Headers.DATE.toCharSequence(zeroed);
-            System.out.println(pd);
             x = Headers.DATE.convert(pd);
-            System.out.println("HEY " + i + "\t" + pd + "\n\n");
         }
 
         String val = Headers.DATE.toCharSequence(zeroed).toString();
 
-        System.err.println("HDATE " + val);
 
         ZonedDateTime parsed = Headers.DATE.toValue(val);
         String val2 = Headers.DATE.toCharSequence(parsed).toString();
 
-        System.err.println("HDATE " + val2);
 
         assertEquals(val, val2);
 
@@ -57,20 +53,12 @@ public class VerifyDateTimeBehavior {
 
         ZonedDateTime withZulu = dt.withZoneSameInstant(ZoneId.of("GMT"));
 
-        System.err.println("WITH ZULU: " + Headers.DATE.toCharSequence(withZulu));
-
-        System.out.println("ZONES:");
-        System.out.println(ZoneId.getAvailableZoneIds());
-        System.out.println("---------");
-        System.out.println(ZoneId.SHORT_IDS);
 
         ZonedDateTime withEST = zeroed.withZoneSameInstant(ZoneId.of("America/New_York"));
 //                zeroed.toDateTime(DateTimeZone.forID("EST"));
 
-        System.err.println("EST " + withEST);
         assertEquals(TimeUtil.toUnixTimestamp(zeroed), TimeUtil.toUnixTimestamp(withEST));
 
-        System.err.println("WITH EST: " + Headers.DATE.toCharSequence(withEST));
 
         String ss = "Tue, 25 Sep 1973 13:10:30 EST";
         String ss1 = "Tue, 25 Sep 1973 13:10:30 -05:00";
@@ -80,8 +68,6 @@ public class VerifyDateTimeBehavior {
         ZonedDateTime ugh1 = Headers.DATE.toValue(ss1);
         assertEquals(ugh.toInstant(), ugh1.toInstant());
 
-        System.err.println("UGH   " + ugh);
-        System.err.println("UGH 1 " + ugh1);
         assertEquals(TimeUtil.toUnixTimestamp(ugh), TimeUtil.toUnixTimestamp(ugh1));
 //        assertEquals(dt, parsed);
 

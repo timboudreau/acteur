@@ -34,7 +34,7 @@ import org.openide.util.lookup.ServiceProvider;
  */
 @ServiceProvider(service = Processor.class)
 @SupportedAnnotationTypes("com.mastfrog.acteur.annotations.GuiceModule")
-@SupportedSourceVersion(SourceVersion.RELEASE_6)
+@SupportedSourceVersion(SourceVersion.RELEASE_8)
 public class GuiceModuleAnnotationProcessor extends AbstractProcessor {
 
     public static final String META_INF_PATH = "META-INF/http/modules.list";
