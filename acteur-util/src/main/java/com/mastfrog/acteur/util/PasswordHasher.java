@@ -26,14 +26,14 @@ package com.mastfrog.acteur.util;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.util.ConfigurationError;
 import com.mastfrog.util.Exceptions;
-import com.mastfrog.util.GUIDFactory;
+import com.mastfrog.util.UniqueIDs;
 import java.nio.charset.Charset;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.Base64;
-//import java.util.Base64;
 import javax.inject.Inject;
+//import java.util.Base64;
 import javax.inject.Singleton;
 
 /**
@@ -58,11 +58,11 @@ public final class PasswordHasher {
     public static final String DEFAULT_HASHING_ALGORITHM = "SHA-512";
     public static final String SETTINGS_KEY_RANDOM_SALT_LENGTH = "randomSaltLength";
     public static final int DEFAULT_RANDOM_SALT_LENGTH = 48;
-    private final GUIDFactory guids;
+    private UniqueIDs guids = UniqueIDs.noFile();
     private final int saltLength;
 
     @Inject
-    PasswordHasher(Settings settings, Charset charset, GUIDFactory guids) throws NoSuchAlgorithmException {
+    PasswordHasher(Settings settings, Charset charset) throws NoSuchAlgorithmException {
         this.charset = charset;
         saltLength = settings.getInt(SETTINGS_KEY_RANDOM_SALT_LENGTH, DEFAULT_RANDOM_SALT_LENGTH);
         if (saltLength <= 0) {
@@ -78,7 +78,6 @@ public final class PasswordHasher {
         this.algorithm = alg;
         // fail early
         hash("abcd", alg);
-        this.guids = guids;
     }
 
     private String[] findSalt(String hashed) {
@@ -180,7 +179,7 @@ public final class PasswordHasher {
 
     public String encryptPassword(String password) {
         try {
-            String randomSalt = guids.newGUID(1, saltLength);
+            String randomSalt = guids.newId();
             String result = encryptPassword(password, randomSalt, algorithm);
             return result;
         } catch (NoSuchAlgorithmException ex) {

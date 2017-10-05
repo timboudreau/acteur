@@ -10,8 +10,8 @@ import com.mastfrog.acteur.spi.ApplicationControl;
 import com.mastfrog.giulius.DeploymentMode;
 import com.mastfrog.giulius.ShutdownHookRegistry;
 import com.mastfrog.settings.Settings;
-import com.mastfrog.util.GUIDFactory;
 import com.mastfrog.util.Streams;
+import com.mastfrog.util.strings.RandomStrings;
 import io.netty.buffer.ByteBufAllocator;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -167,7 +167,7 @@ public class MarkupFiles implements Provider<StaticResources> {
 
     private File unpackMarkupArchive(Class<?> relativeTo, String archiveName, ShutdownHookRegistry onShutdown, ApplicationControl ctrl) throws IOException, FileNotFoundException {
         File tmp = new File(System.getProperty("java.io.tmpdir"));
-        String uniq = GUIDFactory.get().newGUID(1, 7);
+        String uniq = new RandomStrings().get(7) + "-" + Long.toString(System.currentTimeMillis(), 36);
         if (!archiveName.endsWith(".tar.gz")) {
             archiveName += ".tar.gz";
         }

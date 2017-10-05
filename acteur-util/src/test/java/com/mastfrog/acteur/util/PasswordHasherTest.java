@@ -1,7 +1,6 @@
 package com.mastfrog.acteur.util;
 
 import com.mastfrog.settings.SettingsBuilder;
-import com.mastfrog.util.GUIDFactory;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.security.NoSuchAlgorithmException;
@@ -20,7 +19,7 @@ public class PasswordHasherTest {
     @Test
     public void testCheckPassword() throws IOException, NoSuchAlgorithmException {
         assertTrue(true);
-        PasswordHasher h = new PasswordHasher(new SettingsBuilder().build(), Charset.forName("UTF-8"), GUIDFactory.get());
+        PasswordHasher h = new PasswordHasher(new SettingsBuilder().build(), Charset.forName("UTF-8"));
 
         String pw = "password";
         String enc = h.encryptPassword(pw);

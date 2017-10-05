@@ -24,7 +24,6 @@
 package com.mastfrog.acteur.util;
 
 import com.mastfrog.settings.Settings;
-import com.mastfrog.util.GUIDFactory;
 import org.junit.Test;
 import static org.junit.Assert.*;
 
@@ -36,9 +35,8 @@ public class RotatingRealmProviderTest {
     
     @Test
     public void testDurationConversionWorks() {
-        RotatingRealmProvider prov = new RotatingRealmProvider(Settings.EMPTY, GUIDFactory.get());
+        RotatingRealmProvider prov = new RotatingRealmProvider(Settings.EMPTY);
         Realm realm = prov.get();
-        System.out.println("Realm: " + realm);
         assertEquals(realm, prov.get());
     }
     

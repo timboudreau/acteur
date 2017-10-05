@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.mastfrog.util.Checks;
-import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
 import org.netbeans.validation.api.InvalidInputException;
 import org.netbeans.validation.api.Problems;
 
@@ -26,7 +26,6 @@ public class LoginInfo {
 
     private final String user;
     private final char[] password;
-    private static final Random random = new Random();
 
     @JsonCreator
     public LoginInfo(@JsonProperty("user") String user, @JsonProperty("password") char[] password) {
@@ -47,7 +46,7 @@ public class LoginInfo {
         char[] result = new char[password.length];
         System.arraycopy(password, 0, result, 0, result.length);
         for (int i = 0; i < password.length; i++) {
-            password[i] = (char) random.nextInt();
+            password[i] = (char) ThreadLocalRandom.current().nextInt();
         }
         return result;
     }
