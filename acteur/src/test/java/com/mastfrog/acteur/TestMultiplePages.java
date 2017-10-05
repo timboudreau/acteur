@@ -21,10 +21,11 @@ import org.junit.Test;
 public class TestMultiplePages {
 
     @Test
+    @SuppressWarnings("deprecation")
     public void test() throws InterruptedException, IOException {
         ServerModule<A> m = new ServerModule<>(A.class, 1, 2, 64);
-        m.start(9773);
-//        Thread.sleep(240000);
+        // XXX what is this test for?
+        m.start(9773).shutdown(true);
     }
 
     private static class A extends Application {

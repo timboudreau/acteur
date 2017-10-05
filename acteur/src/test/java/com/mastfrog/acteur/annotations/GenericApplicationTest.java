@@ -17,8 +17,8 @@ import com.mastfrog.netty.http.test.harness.TestHarness.CallResult;
 import com.mastfrog.netty.http.test.harness.TestHarnessModule;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.settings.SettingsBuilder;
-import com.mastfrog.util.GUIDFactory;
 import com.mastfrog.util.collections.MapBuilder;
+import com.mastfrog.util.strings.RandomStrings;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.Arrays;
@@ -62,7 +62,7 @@ public class GenericApplicationTest {
         HttpCallRegistryLoader ldr = new HttpCallRegistryLoader(GenericApplicationTest.class);
         Set<Class<?>> types = ldr.implicitBindings();
         assertNotNull("Types is null", types);
-        Set<Class<?>> expect = new LinkedHashSet<>(Arrays.asList(new Class<?>[]{String.class, Integer.class, GUIDFactory.class, FakePage.Foo.Bar.class, FakePage.Foo.class, com.mastfrog.acteur.annotations.NumblePageParams.class}));
+        Set<Class<?>> expect = new LinkedHashSet<>(Arrays.asList(new Class<?>[]{String.class, Integer.class, RandomStrings.class, FakePage.Foo.Bar.class, FakePage.Foo.class, com.mastfrog.acteur.annotations.NumblePageParams.class}));
         assertTrue("GOT " + types, types.equals(expect));
     }
 

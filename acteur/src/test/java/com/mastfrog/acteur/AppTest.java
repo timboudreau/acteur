@@ -69,6 +69,7 @@ public class AppTest {
             bind(ScheduledExecutorService.class).annotatedWith(Names.named(DELAY_EXECUTOR)).toInstance(Executors.newScheduledThreadPool(2));
             bind(Codec.class).toInstance(new Codec() {
                 final ObjectMapper mapper = new ObjectMapper();
+
                 @Override
                 public <T> String writeValueAsString(T object) throws IOException {
                     return mapper.writeValueAsString(object);
@@ -91,15 +92,15 @@ public class AppTest {
             });
             //Generic madness - Event != Event<?>
             final Provider<Event> e = binder().getProvider(Event.class);
-            bind(new TypeLiteral<Event<?>>(){}).toProvider(new Provider<Event<?>>() {
+            bind(new TypeLiteral<Event<?>>() {
+            }).toProvider(new Provider<Event<?>>() {
 
                 @Override
                 public Event<?> get() {
                     return e.get();
                 }
-                
+
             });
-            
 
             scope.bindTypes(binder(), Event.class, HttpEvent.class,
                     Page.class, BasicCredentials.class, Thing.class);
@@ -109,7 +110,7 @@ public class AppTest {
                 public Thread newThread(Runnable r) {
                     throw new UnsupportedOperationException("Not supported yet.");
                 }
-            });            
+            });
         }
     }
 
@@ -131,6 +132,7 @@ public class AppTest {
     static class P extends Page {
 
         @Inject
+        @SuppressWarnings("deprecation")
         P(ActeurFactory f) {
             add(f.matchMethods(Method.GET));
             add(f.matchPath("^root/captcha/image.*"));
@@ -234,7 +236,7 @@ public class AppTest {
         assertEquals("abcdefg", c.password);
 
         ObjectMapper m = new ObjectMapper();
-        m.writeValue((OutputStream)new ByteBufOutputStream(buf), new Thing());
+        m.writeValue((OutputStream) new ByteBufOutputStream(buf), new Thing());
         return EventImplFactory.newEvent(req, paths);
     }
 

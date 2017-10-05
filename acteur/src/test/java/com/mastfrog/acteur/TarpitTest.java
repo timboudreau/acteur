@@ -2,9 +2,7 @@ package com.mastfrog.acteur;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
-import com.mastfrog.acteur.auth.AuthenticateBasicActeur;
-import static com.mastfrog.acteur.auth.AuthenticateBasicActeur.SETTINGS_KEY_TARPIT_DELAY_RESPONSE_AFTER;
-import static com.mastfrog.acteur.auth.AuthenticateBasicActeur.SETTINGS_KEY_TARPIT_DELAY_SECONDS;
+import com.mastfrog.acteur.auth.AuthenticationActeur;
 import com.mastfrog.acteur.auth.Authenticator;
 import com.mastfrog.acteur.server.ServerModule;
 import com.mastfrog.acteur.util.BasicCredentials;
@@ -25,12 +23,16 @@ import java.util.Map;
  */
 public class TarpitTest {
 
+    @SuppressWarnings("deprecation")
     public static void main(String[] args) throws IOException, InterruptedException {
-        Settings settings = new SettingsBuilder().add(SETTINGS_KEY_TARPIT_DELAY_RESPONSE_AFTER, "2").add(SETTINGS_KEY_TARPIT_DELAY_SECONDS, "2").build();
+        Settings settings = new SettingsBuilder()
+                .add(com.mastfrog.acteur.auth.AuthenticateBasicActeur.SETTINGS_KEY_TARPIT_DELAY_RESPONSE_AFTER, "2")
+                .add(com.mastfrog.acteur.auth.AuthenticateBasicActeur.SETTINGS_KEY_TARPIT_DELAY_SECONDS, "2").build();
         Dependencies deps = new Dependencies(settings, new MM());
         deps.getInstance(Server.class).start().await();
     }
 
+    @SuppressWarnings("deprecation")
     @ImplicitBindings(Integer.class)
     static class App extends Application {
 
@@ -42,10 +44,11 @@ public class TarpitTest {
     static class P extends Page {
 
         @Inject
+        @SuppressWarnings("deprecation")
         P(ActeurFactory af) {
             add(af.matchMethods(Method.GET));
             add(af.matchPath("foo"));
-            add(AuthenticateBasicActeur.class);
+            add(AuthenticationActeur.class);
             add(Stuff.class);
         }
     }

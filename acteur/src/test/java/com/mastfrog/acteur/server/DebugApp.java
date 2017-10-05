@@ -59,13 +59,14 @@ public class DebugApp extends Application {
     private static final class HelloPage extends Page {
 
         @Inject
+        @SuppressWarnings("deprecation")
         HelloPage(ActeurFactory af) {
             System.out.println("create page");
             add(af.matchMethods(Method.GET));
             add(af.matchPath("hello"));
             add(HelloActeur.class);
         }
-        
+
         public String toString() {
             return "HELLOPAGE";
         }

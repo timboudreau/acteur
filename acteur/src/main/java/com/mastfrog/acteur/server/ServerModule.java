@@ -70,6 +70,8 @@ import com.mastfrog.settings.SettingsBuilder;
 import com.mastfrog.url.Path;
 import com.mastfrog.url.Protocol;
 import com.mastfrog.url.Protocols;
+import static com.mastfrog.util.Checks.nonNegative;
+import static com.mastfrog.util.Checks.nonZero;
 import com.mastfrog.util.Codec;
 import com.mastfrog.util.ConfigurationError;
 import com.mastfrog.util.Strings;
@@ -81,6 +83,7 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
+import io.netty.channel.DefaultMaxBytesRecvByteBufAllocator;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.websocketx.WebSocketFrame;
@@ -331,9 +334,48 @@ public class ServerModule<A extends Application> extends AbstractModule {
      */
     public static final String SETTINGS_KEY_SYSTEM_EXIT_ON_BIND_FAILURE = "system.exit.on.bind.failure";
 
+    /**
+     * If enabled, serve HTTPS by default.
+     */
     public static final String SETTINGS_KEY_SSL_ENABLED = "ssl.enabled";
 
+    /**
+     * If enabled, turn on websocket support for the server process.
+     */
     public static final String SETTINGS_KEY_WEBSOCKETS_ENABLED = "websocket.enabled";
+    /**
+     * Low level socket option for outbound connections; default value is true, disabling Nagle's algorithm.
+     */
+    public static final String SETTINGS_KEY_SOCKET_TCP_NODELAY = "acteur.outbound.socket.tcp.nodelay";
+    /**
+     * Low level socket option for outbound connections.
+     */
+    public static final String SETTINGS_KEY_SOCKET_CONNECT_TIMEOUT_MILLIS = "acteur.inbound.socket.connect.timeout.millis";
+    /**
+     * Low level socket option for outbound connections.
+     */
+    public static final String SETTINGS_KEY_SOCKET_MAX_MESSAGES_PER_READ = "acteur.inbound.socket.max.messages.per.read";
+    /**
+     * Low level socket option for outbound connections.
+     */
+    public static final String SETTINGS_KEY_SOCKET_MAX_MESSAGES_PER_INDIVIDUAL_READ = "acteur.inbound.socket.max.messages.per.individual.read";
+    /**
+     * Low level socket option for outbound connections.
+     */
+    public static final String SETTINGS_KEY_SOCKET_SO_RCVBUF = "acteur.inbound.socket.rcvbuf.size";
+    /**
+     * Low level socket option for outbound connections.
+     */
+    public static final String SETTINGS_KEY_SOCKET_SO_SNDBUF = "acteur.outbound.socket.sndbuf.size";
+    /**
+     * Low level socket option for outbound connections.
+     */
+    public static final String SETTINGS_KEY_SOCKET_WRITE_SPIN_COUNT = "acteur.outbound.socket.write.spin.count";
+    /**
+     * Default value for TCP_NODELAY for outbound connections.
+     */
+    public static final boolean DEFAULT_TCP_NODELAY = true;
+
     public static final boolean DEFAULT_WEBSOCKET_ENABLED = false;
 
     static final AttributeKey<Boolean> SSL_ATTRIBUTE_KEY = AttributeKey.newInstance("ssl");
@@ -864,8 +906,36 @@ public class ServerModule<A extends Application> extends AbstractModule {
         @Override
         public ServerBootstrap get() {
             ServerBootstrap result = new ServerBootstrap();
-            result = result.childOption(ChannelOption.ALLOCATOR, allocator.get());
-            return configureServerBootstrap(result, settings.get());
+            ByteBufAllocator alloc = allocator.get();
+            Settings settings = this.settings.get();
+            Set<String> keys = settings.allKeys();
+            result.option(ChannelOption.ALLOCATOR, alloc);
+            result = result.childOption(ChannelOption.ALLOCATOR, alloc);
+            result = result.childOption(ChannelOption.TCP_NODELAY, settings.getBoolean(SETTINGS_KEY_SOCKET_TCP_NODELAY, DEFAULT_TCP_NODELAY));
+            if (keys.contains(SETTINGS_KEY_SOCKET_MAX_MESSAGES_PER_READ) && keys.contains(SETTINGS_KEY_SOCKET_MAX_MESSAGES_PER_INDIVIDUAL_READ)) {
+                int maxOverall = nonNegative(SETTINGS_KEY_SOCKET_MAX_MESSAGES_PER_READ, nonZero(SETTINGS_KEY_SOCKET_MAX_MESSAGES_PER_READ, settings.getInt(SETTINGS_KEY_SOCKET_MAX_MESSAGES_PER_READ)));
+                int maxIndividual = nonNegative(SETTINGS_KEY_SOCKET_MAX_MESSAGES_PER_INDIVIDUAL_READ, nonZero(SETTINGS_KEY_SOCKET_MAX_MESSAGES_PER_INDIVIDUAL_READ, settings.getInt(SETTINGS_KEY_SOCKET_MAX_MESSAGES_PER_INDIVIDUAL_READ)));
+                result = result.option(ChannelOption.RCVBUF_ALLOCATOR, new DefaultMaxBytesRecvByteBufAllocator(maxOverall, maxIndividual));
+            } else if (keys.contains(SETTINGS_KEY_SOCKET_MAX_MESSAGES_PER_READ) != keys.contains(SETTINGS_KEY_SOCKET_MAX_MESSAGES_PER_INDIVIDUAL_READ)) {
+                throw new ConfigurationError("Either both " + SETTINGS_KEY_SOCKET_MAX_MESSAGES_PER_READ + " *and* " + SETTINGS_KEY_SOCKET_MAX_MESSAGES_PER_INDIVIDUAL_READ
+                        + " must be set, or neither of them.");
+            }
+            if (keys.contains(SETTINGS_KEY_SOCKET_SO_RCVBUF)) {
+                result = result.option(ChannelOption.SO_SNDBUF, nonNegative(SETTINGS_KEY_SOCKET_SO_RCVBUF, settings.getInt(SETTINGS_KEY_SOCKET_SO_RCVBUF)));
+            }
+            if (keys.contains(SETTINGS_KEY_SOCKET_SO_SNDBUF)) {
+                result = result.childOption(ChannelOption.SO_SNDBUF, nonNegative(SETTINGS_KEY_SOCKET_SO_SNDBUF, settings.getInt(SETTINGS_KEY_SOCKET_SO_SNDBUF)));
+            }
+            if (keys.contains(SETTINGS_KEY_SOCKET_CONNECT_TIMEOUT_MILLIS)) {
+                result = result.option(ChannelOption.CONNECT_TIMEOUT_MILLIS,
+                        nonNegative(SETTINGS_KEY_SOCKET_CONNECT_TIMEOUT_MILLIS, settings.getInt(SETTINGS_KEY_SOCKET_CONNECT_TIMEOUT_MILLIS)));
+            }
+            if (keys.contains(SETTINGS_KEY_SOCKET_WRITE_SPIN_COUNT)) {
+                result = result.childOption(ChannelOption.WRITE_SPIN_COUNT,
+                        nonNegative(SETTINGS_KEY_SOCKET_WRITE_SPIN_COUNT,
+                                nonZero(SETTINGS_KEY_SOCKET_WRITE_SPIN_COUNT, settings.getInt(SETTINGS_KEY_SOCKET_WRITE_SPIN_COUNT))));
+            }
+            return configureServerBootstrap(result, settings);
         }
     }
 
