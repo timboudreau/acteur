@@ -58,6 +58,7 @@ abstract class ArrayHeaderValueType<T, R> extends AbstractHeader<T> {
         return toCharSequence((T) rs);
     }
 
+    @SuppressWarnings("unchecked")
     public CharSequence toString(Collection<R> all) {
         if (all.size() == 1) {
             return toStringSingle(all.iterator().next());

@@ -29,7 +29,6 @@ import com.mastfrog.acteur.util.CacheControl;
 import com.mastfrog.acteur.util.Connection;
 import com.mastfrog.acteur.util.Realm;
 import com.mastfrog.util.Checks;
-import io.netty.handler.codec.http.Cookie;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpMessage;
 import io.netty.util.AsciiString;
@@ -104,12 +103,12 @@ public final class Headers {
     public static final HeaderValueType<CharSequence> X_FORWARDED_PROTO = header(new AsciiString("x-forwarded-proto"));
     @Deprecated
     @SuppressWarnings("deprecation")
-    public static final HeaderValueType<Cookie> SET_COOKIE = new SetCookieHeader();
+    public static final HeaderValueType<io.netty.handler.codec.http.Cookie> SET_COOKIE = new SetCookieHeader();
     public static final HeaderValueType<io.netty.handler.codec.http.cookie.Cookie> SET_COOKIE_B = new SetCookieHeaderNetty428(HttpHeaderNames.SET_COOKIE, false);
     public static final HeaderValueType<io.netty.handler.codec.http.cookie.Cookie> SET_COOKIE_B_STRICT = new SetCookieHeaderNetty428(HttpHeaderNames.SET_COOKIE, false);
     @Deprecated
     @SuppressWarnings("deprecation")
-    public static final HeaderValueType<Cookie[]> COOKIE = new CookieHeader();
+    public static final HeaderValueType<io.netty.handler.codec.http.Cookie[]> COOKIE = new CookieHeader();
     public static final HeaderValueType<io.netty.handler.codec.http.cookie.Cookie[]> COOKIE_B = new CookieHeaderNetty428(false);
     public static final HeaderValueType<io.netty.handler.codec.http.cookie.Cookie[]> COOKIE_B_STRICT = new CookieHeaderNetty428(true);
     public static final HeaderValueType<CharSequence[]> WEBSOCKET_PROTOCOLS = new WebSocketProtocolsHeader();

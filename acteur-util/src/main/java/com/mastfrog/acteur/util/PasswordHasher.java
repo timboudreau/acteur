@@ -71,8 +71,9 @@ public final class PasswordHasher {
         String salt = settings.getString(SETTINGS_KEY_PASSWORD_SALT, DEFAULT_SALT);
         String alg = settings.getString(SETTINGS_KEY_HASHING_ALGORITHM, DEFAULT_HASHING_ALGORITHM);
         if (settings.getBoolean("productionMode", false) && DEFAULT_SALT.equals(salt)) {
-            throw new ConfigurationError("Default password salt should not be used in "
-                    + "production mode.");
+            new ConfigurationError("Default password salt should not be used in "
+                    + "production mode.").printStackTrace();
+            System.exit(1);
         }
         saltBytes = salt.getBytes(charset);
         this.algorithm = alg;

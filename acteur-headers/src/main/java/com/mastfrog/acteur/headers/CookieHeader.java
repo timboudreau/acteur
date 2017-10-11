@@ -24,9 +24,6 @@
 package com.mastfrog.acteur.headers;
 
 import com.mastfrog.util.Checks;
-import io.netty.handler.codec.http.ClientCookieEncoder;
-import io.netty.handler.codec.http.Cookie;
-import io.netty.handler.codec.http.CookieDecoder;
 import io.netty.handler.codec.http.HttpHeaderNames;
 
 /**
@@ -34,25 +31,24 @@ import io.netty.handler.codec.http.HttpHeaderNames;
  * @author Tim Boudreau
  */
 @SuppressWarnings("deprecation")
-final class CookieHeader extends AbstractHeader<Cookie[]> {
+final class CookieHeader extends AbstractHeader<io.netty.handler.codec.http.Cookie[]> {
 
     @SuppressWarnings("deprecation")
     CookieHeader() {
-        super(Cookie[].class, HttpHeaderNames.COOKIE);
+        super(io.netty.handler.codec.http.Cookie[].class, HttpHeaderNames.COOKIE);
     }
 
     @Override
     @SuppressWarnings("deprecation")
-    public String toString(Cookie[] value) {
+    public String toString(io.netty.handler.codec.http.Cookie[] value) {
         Checks.notNull("value", value);
-        return ClientCookieEncoder.encode(value);
+        return io.netty.handler.codec.http.ClientCookieEncoder.encode(value);
     }
 
     @Override
     @SuppressWarnings("deprecation")
-    public Cookie[] toValue(CharSequence value) {
+    public io.netty.handler.codec.http.Cookie[] toValue(CharSequence value) {
         Checks.notNull("value", value);
-        return CookieDecoder.decode(value.toString()).toArray(new Cookie[0]);
+        return io.netty.handler.codec.http.CookieDecoder.decode(value.toString()).toArray(new io.netty.handler.codec.http.Cookie[0]);
     }
-
 }

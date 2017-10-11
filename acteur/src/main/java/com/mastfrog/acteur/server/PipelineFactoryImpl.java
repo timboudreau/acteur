@@ -33,6 +33,7 @@ import com.mastfrog.acteur.spi.ApplicationControl;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.util.thread.AutoCloseThreadLocal;
 import com.mastfrog.util.thread.QuietAutoCloseable;
+import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInitializer;
@@ -47,6 +48,7 @@ import io.netty.handler.codec.http.HttpRequestDecoder;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseEncoder;
 import io.netty.util.AttributeKey;
+import java.util.List;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
@@ -102,7 +104,7 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
         decorator.onCreatePipeline(pipeline);
 
         ChannelHandler decoder = new HttpRequestDecoder();
-        ChannelHandler encoder = new HttpResponseEncoder();
+        ChannelHandler encoder = application.hasEarlyPages() ? new HackHttpResponseEncoder() : new HttpResponseEncoder();
 
         pipeline.addLast(PipelineDecorator.DECODER, decoder);
         pipeline.addLast(PipelineDecorator.ENCODER, encoder);
@@ -118,6 +120,19 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
 
         earlyPages.onCreatePipeline(pipeline);
         decorator.onPipelineInitialized(pipeline);
+    }
+
+    static final class HackHttpResponseEncoder extends HttpResponseEncoder {
+
+        @Override
+        protected void encode(ChannelHandlerContext ctx, Object msg, List<Object> out) throws Exception {
+            if (msg instanceof ByteBuf && ((ByteBuf) msg).readableBytes() > 0) {
+                out.add(((ByteBuf) msg).retain());
+                return;
+            }
+            super.encode(ctx, msg, out); //To change body of generated methods, choose Tools | Templates.
+        }
+
     }
 
     static final class SelectiveCompressor extends HttpContentCompressor {

@@ -101,7 +101,7 @@ public final class ChainRunner {
         private final ChainCallback<A, S, P, T, R> onDone;
         private final AtomicBoolean deferred = new AtomicBoolean();
         private Callable<?> next;
-        final Deferral deferral = new DeferralImpl();
+        final DeferralImpl deferral = new DeferralImpl();
         private final P chain;
         private final AtomicBoolean cancelled;
         private final AtomicReference<DeferredCode> deferredCode = new AtomicReference<>();
@@ -139,9 +139,16 @@ public final class ChainRunner {
             public Resumer defer(DeferredCode code) {
                 if (deferred.compareAndSet(false, true)) {
                     deferredCode.set(code);
+                    if (Boolean.getBoolean("acteur.debug")) {
+                        stack = new Exception("Defer with code");
+                    }
                     return ActeurInvoker.this;
                 } else {
-                    throw new IllegalStateException("Already deferred");
+                    if (stack != null) {
+                        throw new IllegalStateException("Already deferred at", stack);
+                    } else {
+                        throw new IllegalStateException("Already deferred");
+                    }
                 }
             }
         }
@@ -237,7 +244,6 @@ public final class ChainRunner {
                 }
                 return null;
             } catch (Exception | Error e) {
-                e.printStackTrace();
                 onDone.onFailure(e);
                 return null;
             }
@@ -248,6 +254,9 @@ public final class ChainRunner {
             if (cancelled.get()) {
                 return;
             }
+            if (Boolean.getBoolean("acteur.debug")) {
+                System.err.println("Resume.");
+            }
             if (deferred.compareAndSet(true, false)) {
                 addToContext(addToContext);
                 Callable<?> next = this.next;
@@ -255,7 +264,10 @@ public final class ChainRunner {
                     svc.submit(next);
                 }
             } else {
-                throw new IllegalStateException("Not deferred");
+                Exception ise = new IllegalStateException("Not deferred");
+                if (deferral.stack != null) {
+                    ise.addSuppressed(deferral.stack);
+                }
             }
         }
     }

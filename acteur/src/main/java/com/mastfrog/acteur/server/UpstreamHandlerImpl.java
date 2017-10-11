@@ -101,7 +101,6 @@ final class UpstreamHandlerImpl extends ChannelInboundHandlerAdapter {
         EventImpl evt = new EventImpl(request, addr, ctx, paths, converter, ssl);
         if (early) {
             evt.early();
-            System.out.println("Handle Early Event " + request.uri());
         }
         evt.setNeverKeepAlive(neverKeepAlive);
         application.onEvent(evt, ctx.channel());

@@ -96,13 +96,13 @@ public class EarlyInterceptionTest {
         String expect = "Received: hello";
         harn.post("/intercept")
                 .setTimeout(TIMEOUT)
+                .log()
                 .setBody(msg, MediaType.PLAIN_TEXT_UTF_8)
                 .go()
                 .await()
                 .assertContent(expect);
 
         assertEquals(0, interceptedContent);
-        Thread.sleep(500);
     }
 
     private static final class EarlyInterceptionApplication extends Application {

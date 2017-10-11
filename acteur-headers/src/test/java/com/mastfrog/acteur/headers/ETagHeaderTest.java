@@ -1,7 +1,7 @@
-/* 
+/*
  * The MIT License
  *
- * Copyright 2013 Tim Boudreau.
+ * Copyright 2017 Tim Boudreau.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,36 +23,23 @@
  */
 package com.mastfrog.acteur.headers;
 
-import io.netty.handler.codec.http.HttpHeaderNames;
-import java.util.Set;
+import static org.junit.Assert.assertEquals;
+import org.junit.Test;
 
 /**
  *
  * @author Tim Boudreau
  */
-@SuppressWarnings("deprecation")
-final class SetCookieHeader extends AbstractHeader<io.netty.handler.codec.http.Cookie> {
+public class ETagHeaderTest {
 
-    @SuppressWarnings("deprecation")
-    SetCookieHeader() {
-        super(io.netty.handler.codec.http.Cookie.class, HttpHeaderNames.SET_COOKIE);
-    }
-
-    @Override
-    @SuppressWarnings("deprecation")
-    public String toString(io.netty.handler.codec.http.Cookie value) {
-        return io.netty.handler.codec.http.ServerCookieEncoder.encode(value);
-    }
-
-    @Override
-    @SuppressWarnings("deprecation")
-    public io.netty.handler.codec.http.Cookie toValue(CharSequence value) {
-        Set<io.netty.handler.codec.http.Cookie> ck = io.netty.handler.codec.http.CookieDecoder.decode(value.toString());
-        if (ck.isEmpty()) {
-            new NullPointerException("Does not decode to cookies: '" + value + "'").printStackTrace();
-            return null;
-        }
-        return ck.iterator().next();
+    @Test
+    public void testHeaderIsQuotedCorrectly() {
+        String unquoted = "abcd";
+        String quoted = "\"abcd\"";
+        assertEquals(quoted, Headers.ETAG.toCharSequence(unquoted).toString());
+        assertEquals(quoted, Headers.ETAG.toCharSequence(quoted).toString());
+        assertEquals(unquoted, Headers.ETAG.toValue(unquoted).toString());
+        assertEquals(unquoted, Headers.ETAG.toValue(quoted).toString());
     }
 
 }

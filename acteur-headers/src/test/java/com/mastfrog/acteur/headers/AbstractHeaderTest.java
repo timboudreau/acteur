@@ -37,6 +37,7 @@ public class AbstractHeaderTest {
 
     
     @Test
+    @SuppressWarnings("deprecation")
     public void testNames() {
         assertTrue(Headers.SET_COOKIE_B.is(HttpHeaderNames.SET_COOKIE));
         assertTrue(Headers.SET_COOKIE_B.is("Set-Cookie"));

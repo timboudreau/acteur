@@ -40,10 +40,10 @@ class ETagHeader extends AbstractHeader<CharSequence> {
             char first = value.charAt(0);
             char last = value.charAt(length -1);
             if (first == '"' && last == '"') {
-                return value.subSequence(1, length-1);
+                return value;
             }
         }
-        return value;
+        return new StringBuilder(value.length() + 2).append('"').append(value).append('"').toString();
     }
 
     @Override
@@ -55,5 +55,4 @@ class ETagHeader extends AbstractHeader<CharSequence> {
         }
         return value;
     }
-
 }

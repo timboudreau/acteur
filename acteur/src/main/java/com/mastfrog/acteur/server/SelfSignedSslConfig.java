@@ -88,16 +88,12 @@ final class SelfSignedSslConfig extends ActeurSslConfig {
 
         public SuppressUnknownCAExceptions(ExceptionEvaluatorRegistry registry) {
             super(registry);
-            System.out.println("Registered handler");
         }
 
         @Override
         public ErrorResponse evaluate(Throwable t, Acteur acteur, Page page, Event<?> evt) {
-            System.out.println("Evaluate " + t.getMessage() + " for " + acteur);
             if (t instanceof io.netty.handler.codec.DecoderException && t.getCause() instanceof javax.net.ssl.SSLException) {
-                System.out.println("Found an ssl ex");
                 if (t.getMessage() != null && t.getMessage().contains("Received fatal alert")) {
-                    System.out.println("Close the channel");
                     evt.channel().close();
                     return Err.gone("X");
                 }

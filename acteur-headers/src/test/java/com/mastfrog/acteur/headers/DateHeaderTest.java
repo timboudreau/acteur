@@ -25,7 +25,6 @@ package com.mastfrog.acteur.headers;
 
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import static org.junit.Assert.assertEquals;
 import org.junit.Test;
 
@@ -38,10 +37,8 @@ public class DateHeaderTest {
     @Test
     public void testConversion() {
         ZonedDateTime expect = ZonedDateTime.of(1973, 12, 25, 13, 10, 30, 0, ZoneId.of("America/New_York"));
-        System.out.println(Headers.ISO2822DateFormat.format(expect));
-        System.out.println(DateTimeFormatter.RFC_1123_DATE_TIME.format(expect));
 
-        String good = Headers.DATE.toString(expect);
+        String good = Headers.DATE.toCharSequence(expect).toString();
         String malformed1 = "Tue, 25 Dec 1973 13:10:30 -05:00";
         String malformed2 = "Tue, 25 Dec 1973 13:10:30 EST";
         String malformed3 = "Mon, 25 Dec 73 13:10:30 -05:00";
@@ -54,13 +51,6 @@ public class DateHeaderTest {
         ZonedDateTime m3 = Headers.DATE.toValue(malformed3);
         ZonedDateTime m4 = Headers.DATE.toValue(malformed4);
         ZonedDateTime m5 = Headers.DATE.toValue(malformed5);
-
-        System.out.println("Good: " + good + "\t" + Headers.DATE.toCharSequence(m0) + "\n");
-        System.out.println("Mal1: " + malformed1 + "\t" + Headers.DATE.toCharSequence(m1) + "\n");
-        System.out.println("Mal2: " + malformed2 + "\t" + Headers.DATE.toCharSequence(m2) + "\n");
-        System.out.println("Mal3: " + malformed3 + "\t" + Headers.DATE.toCharSequence(m3) + "\n");
-        System.out.println("Mal4: " + malformed4 + "\t" + Headers.DATE.toCharSequence(m4) + "\n");
-        System.out.println("Mal5: " + malformed5 + "\t" + Headers.DATE.toCharSequence(m5) + "\n");
 
         assertEqualsDT(expect, m0);
         assertEqualsDT(expect, m1);
