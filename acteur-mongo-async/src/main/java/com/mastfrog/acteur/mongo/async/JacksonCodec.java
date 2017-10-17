@@ -73,6 +73,10 @@ final class JacksonCodec<T> implements Codec<T> {
             json.get().writeDateTime(writer, (ZonedDateTime) t, ec);
             return;
         }
+        if (t instanceof Enum<?>) {
+            writer.writeString(((Enum<?>)t).name());
+            return;
+        }
         try {
             byte[] bytes = mapper.get().writeValueAsBytes(t);
             json.get().encode(writer, Unpooled.wrappedBuffer(bytes), ec);
