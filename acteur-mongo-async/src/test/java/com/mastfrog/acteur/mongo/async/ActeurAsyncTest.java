@@ -25,16 +25,21 @@ package com.mastfrog.acteur.mongo.async;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.net.MediaType;
 import com.google.inject.AbstractModule;
+import com.google.inject.Scopes;
 import com.google.inject.name.Named;
 import com.mastfrog.acteur.Acteur;
+import com.mastfrog.acteur.HttpEvent;
 import com.mastfrog.acteur.annotations.Concluders;
 import com.mastfrog.acteur.annotations.GenericApplication;
 import com.mastfrog.acteur.annotations.GenericApplicationModule;
 import com.mastfrog.acteur.annotations.HttpCall;
 import com.mastfrog.acteur.headers.Headers;
+import static com.mastfrog.acteur.headers.Method.DELETE;
 import static com.mastfrog.acteur.headers.Method.GET;
+import static com.mastfrog.acteur.headers.Method.PUT;
 import com.mastfrog.acteur.mongo.async.ActeurAsyncTest.M;
 import com.mastfrog.acteur.preconditions.Methods;
 import com.mastfrog.acteur.preconditions.Path;
@@ -47,27 +52,38 @@ import com.mastfrog.giulius.mongodb.async.MongoHarness;
 import com.mastfrog.giulius.tests.GuiceRunner;
 import com.mastfrog.giulius.tests.TestWith;
 import com.mastfrog.giulius.scope.ReentrantScope;
+import com.mastfrog.jackson.JacksonModule;
+import com.mastfrog.netty.http.client.HttpClient;
 import com.mastfrog.netty.http.test.harness.TestHarness;
 import com.mastfrog.netty.http.test.harness.TestHarnessModule;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.settings.SettingsBuilder;
+import static com.mastfrog.util.Checks.notNull;
 import com.mastfrog.util.Exceptions;
+import com.mastfrog.util.collections.StringObjectMap;
+import com.mongodb.WriteConcern;
 import com.mongodb.async.SingleResultCallback;
 import com.mongodb.async.client.MongoCollection;
 import io.netty.buffer.ByteBuf;
+import static io.netty.handler.codec.http.HttpResponseStatus.CREATED;
 import static io.netty.handler.codec.http.HttpResponseStatus.OK;
 import java.io.IOException;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import javax.inject.Inject;
+import javax.inject.Provider;
 import org.bson.Document;
+import org.bson.types.ObjectId;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
 
 /**
  *
@@ -91,7 +107,49 @@ public class ActeurAsyncTest {
                 .setTimeout(Duration.ofSeconds(18))
                 .go().assertStatus(OK).throwIfError().content(Thing.class);
 
+        assertNotNull("Null thing", one);
 
+        StringObjectMap m = harn.delete("oneThing", one._id.toHexString())
+                .setTimeout(Duration.ofMinutes(2))
+                .go().assertStatus(OK).throwIfError().content(StringObjectMap.class);
+
+        assertEquals(1, m.get("count"));
+        assertEquals(Boolean.TRUE, m.get("acknowledged"));
+        System.out.println("M: " + m);
+
+        Thing[] things2 = harn.get("/stuff")
+                .setTimeout(Duration.ofSeconds(18))
+                .go().assertStatus(OK).throwIfError().content(Thing[].class);
+        assertEquals(199, things2.length);
+
+        for (Thing t : things2) {
+            assertNotEquals(one.name, t.name);
+        }
+
+        List<Thing> more = Arrays.asList(new Thing("skiddoo", 23), new Thing("meaning", 42));
+
+        harn.put("manythings")
+                .setBody(more, MediaType.JSON_UTF_8)
+                .setTimeout(Duration.ofSeconds(4))
+                .go().assertStatus(CREATED).throwIfError().content(Thing[].class);
+
+        Thing[] things3 = harn.get("/stuff")
+                .setTimeout(Duration.ofSeconds(4))
+                .go().assertStatus(OK).throwIfError().content(Thing[].class);
+        assertEquals(201, things2.length);
+
+        int foundCount = 0;
+        for (Thing t : things3) {
+            if ("skiddoo".equals(t.name)) {
+                assertEquals(23, t.rand);
+                foundCount++;
+            }
+            if ("meaning".equals(t.name)) {
+                assertEquals(42, t.rand);
+                foundCount++;
+            }
+        }
+        assertEquals(Arrays.asList(things3).toString(), 2, foundCount);
     }
 
     private static void maybeFail() throws Throwable {
@@ -114,6 +172,27 @@ public class ActeurAsyncTest {
             install(new ActeurMongoModule(scope).bindCollection("stuff", "stuff").withInitializer(Populator.class));
             install(new GenericApplicationModule<>(scope, settings, GenericApplication.class));
             bind(ErrorInterceptor.class).to(TestHarness.class);
+            bind(HttpClient.class).toProvider(HttpClientProvider.class).in(Scopes.SINGLETON);
+            install(new JacksonModule());
+        }
+    }
+
+    static final class HttpClientProvider implements Provider<HttpClient> {
+
+        private final ObjectMapper mapper;
+        private HttpClient client;
+
+        @Inject
+        HttpClientProvider(ObjectMapper m) {
+            this.mapper = m;
+        }
+
+        @Override
+        public synchronized HttpClient get() {
+            if (client == null) {
+                client = HttpClient.builder().setObjectMapper(mapper).build();
+            }
+            return client;
         }
     }
 
@@ -128,6 +207,7 @@ public class ActeurAsyncTest {
         Server server = new ServerBuilder("async", scope)
                 .add(new ActeurMongoModule(scope)
                         .bindCollection("stuff", "stuff")
+                        .registerJacksonType(Thing.class)
                         .withInitializer(Populator.class))
                 .add(settings)
                 .build();
@@ -181,7 +261,7 @@ public class ActeurAsyncTest {
         @Inject
         GetAllStuff(@Named("stuff") MongoCollection<Document> stuff) {
             next(stuff.withDocumentClass(ByteBuf.class).find(), new CursorControl().batchSize(20).projection(
-                    new Document("name", 1).append("rand", 1).append("_id", 0)));
+                    new Document("name", 1).append("rand", 1).append("_id", 1)));
         }
     }
 
@@ -196,7 +276,47 @@ public class ActeurAsyncTest {
 //            next(stuff.withDocumentClass(ByteBuf.class).find(), new CursorControl().findOne(true).projection(
 //                    new Document("name", 1).append("rand", 1).append("_id", 0)));
             next(stuff, new Document(), new CursorControl().findOne(true).projection(
-                    new Document("name", 1).append("rand", 1).append("_id", 0)));
+                    new Document("name", 1).append("rand", 1).append("_id", 1)));
+        }
+    }
+
+    @HttpCall
+    @Path("/oneThing/*")
+    @Methods(DELETE)
+    static class DeleteOneStuff extends Acteur {
+
+        @Inject
+        DeleteOneStuff(HttpEvent evt, MongoUpdater ud, @Named("stuff") MongoCollection<Document> stuff) {
+            ObjectId what = new ObjectId(evt.path().lastElement().toString());
+            ud.withCollection(stuff.withWriteConcern(WriteConcern.FSYNC_SAFE)).deleteOne(new Document("_id", what));
+            next();
+        }
+    }
+
+    @HttpCall
+    @Path("/manythings")
+    @Methods(PUT)
+    static class InsertManyStuff extends Acteur {
+
+        @Inject
+        InsertManyStuff(HttpEvent evt, MongoUpdater up, @Named("stuff") MongoCollection<Document> stuff) throws IOException {
+            Thing[] things = evt.jsonContent(Thing[].class);
+            if (things.length == 0) {
+                badRequest("Not enough things");
+                return;
+            }
+            up.withCollection(stuff.withDocumentClass(Thing.class))
+                    .onSuccess(() -> {
+                        System.out.println("SUCCESS");
+                        return null;
+                    }).insertMany(Arrays.asList(things), null, CREATED, (Throwable t) -> {
+                System.out.println("INSERT MANY DONE");
+                if (t != null) {
+                    System.out.println("THROWN!");
+                    t.printStackTrace();
+                }
+            });
+            next();
         }
     }
 
@@ -215,11 +335,19 @@ public class ActeurAsyncTest {
 
         public final String name;
         public final int rand;
+        public final ObjectId _id;
 
-        @JsonCreator
-        public Thing(@JsonProperty("name") String name, @JsonProperty("rand") int rand) {
+        public Thing(String name, int rand) {
             this.name = name;
             this.rand = rand;
+            this._id = new ObjectId();
+        }
+
+        @JsonCreator
+        public Thing(@JsonProperty("name") String name, @JsonProperty("rand") int rand, @JsonProperty(value = "_id", required = false) ObjectId _id) {
+            this.name = name;
+            this.rand = rand;
+            this._id = notNull("_id", _id);
         }
 
         public String toString() {

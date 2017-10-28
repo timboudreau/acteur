@@ -30,13 +30,18 @@ import com.mastfrog.acteur.spi.ApplicationControl;
 import com.mastfrog.acteurbase.Chain;
 import com.mastfrog.acteurbase.Deferral;
 import com.mastfrog.acteurbase.Deferral.Resumer;
+import static com.mastfrog.util.collections.CollectionUtils.map;
 import com.mongodb.WriteConcern;
 import com.mongodb.async.SingleResultCallback;
 import com.mongodb.async.client.MongoCollection;
+import com.mongodb.client.result.DeleteResult;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import static io.netty.handler.codec.http.HttpResponseStatus.OK;
+import java.util.List;
 import java.util.concurrent.Callable;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import org.bson.conversions.Bson;
 
 /**
  *
@@ -44,12 +49,12 @@ import java.util.function.Consumer;
  */
 public final class MongoUpdater {
 
-    private final Chain<Acteur, ? extends Chain<Acteur,?>> chain;
+    private final Chain<Acteur, ? extends Chain<Acteur, ?>> chain;
     private final Deferral deferral;
     private final ApplicationControl ctrl;
 
     @Inject
-    MongoUpdater(Chain<Acteur, ? extends Chain<Acteur,?>> chain, Deferral deferral, ApplicationControl ctrl) {
+    MongoUpdater(Chain<Acteur, ? extends Chain<Acteur, ?>> chain, Deferral deferral, ApplicationControl ctrl) {
         this.chain = chain;
         this.deferral = deferral;
         this.ctrl = ctrl;
@@ -103,6 +108,83 @@ public final class MongoUpdater {
         }
 
         @Override
+        public void insertMany(List<T> objs) {
+            insertMany(objs, null, OK, null);
+        }
+
+        @Override
+        public void insertMany(List<T> objs, Object message) {
+            insertMany(objs, message, OK, null);
+        }
+
+        @Override
+        public void insertMany(List<T> objs, Object message, HttpResponseStatus onSuccess) {
+            insertMany(objs, message, onSuccess, null);
+        }
+
+        @Override
+        public void insertMany(List<T> objs, Object message, HttpResponseStatus onSuccess, Consumer<Throwable> onInsert) {
+            checkUsed();
+            used = true;
+            chain.add(MongoResultActeur.class);
+            deferral.defer((Resumer resumer) -> {
+                System.out.println("INSERT INTO " + collection.getNamespace().getCollectionName() + " in " + collection.getNamespace().getDatabaseName() + " size " + objs.size());
+                collection.insertMany(objs, new VoidCallback(resumer, message == null ? objs : message, onSuccess, onInsert));
+            });
+        }
+
+        @Override
+        public void deleteOne(Bson obj) {
+            deleteOne(obj, null, OK);
+        }
+
+        @Override
+        public void deleteOne(Bson obj, Object message) {
+            deleteOne(obj, message, OK, null);
+        }
+
+        @Override
+        public void deleteOne(Bson obj, Object message, HttpResponseStatus onSuccess) {
+            deleteOne(obj, message, onSuccess, null);
+        }
+
+        public void deleteOne(Bson obj, Object message, HttpResponseStatus onSuccess, BiConsumer<Throwable, DeleteResult> onDelete) {
+            deleteSome(obj, message, onSuccess, onDelete, false);
+        }
+
+        @Override
+        public void deleteMany(Bson obj) {
+            deleteMany(obj, null, OK);
+        }
+
+        @Override
+        public void deleteMany(Bson obj, Object message) {
+            deleteMany(obj, message, OK, null);
+        }
+
+        @Override
+        public void deleteMany(Bson obj, Object message, HttpResponseStatus onSuccess) {
+            deleteMany(obj, message, onSuccess, null);
+        }
+
+        public void deleteMany(Bson obj, Object message, HttpResponseStatus onSuccess, BiConsumer<Throwable, DeleteResult> onDelete) {
+            deleteSome(obj, message, onSuccess, onDelete, true);
+        }
+
+        private void deleteSome(Bson obj, Object message, HttpResponseStatus onSuccess, BiConsumer<Throwable, DeleteResult> onDelete, boolean isMany) {
+            checkUsed();
+            used = true;
+            chain.add(MongoResultActeur.class);
+            deferral.defer((Resumer resumer) -> {
+                if (isMany) {
+                    collection.deleteMany(obj, new DeleteCallback(resumer, message, onSuccess, onDelete));
+                } else {
+                    collection.deleteOne(obj, new DeleteCallback(resumer, message, onSuccess, onDelete));
+                }
+            });
+        }
+
+        @Override
         public void insertOne(T obj, Object message, HttpResponseStatus onSuccess, Consumer<Throwable> onInsert) {
             checkUsed();
             used = true;
@@ -110,6 +192,40 @@ public final class MongoUpdater {
             deferral.defer((Resumer resumer) -> {
                 collection.insertOne(obj, new VoidCallback(resumer, message == null ? obj : message, onSuccess, onInsert));
             });
+        }
+
+        private class DeleteCallback implements SingleResultCallback<DeleteResult> {
+
+            private final Resumer resumer;
+            private final Object message;
+            private final HttpResponseStatus status;
+            private final BiConsumer<Throwable, DeleteResult> onDelete;
+
+            public DeleteCallback(Resumer resumer, Object message, HttpResponseStatus status, BiConsumer<Throwable, DeleteResult> onDelete) {
+                this.resumer = resumer;
+                this.message = message;
+                this.status = status == null ? OK : status;
+                this.onDelete = onDelete;
+            }
+
+            @Override
+            public void onResult(DeleteResult t, Throwable thrwbl) {
+                if (thrwbl == null && onSuccess != null) {
+                    try {
+                        onSuccess.call();
+                    } catch (Exception e) {
+                        ctrl.internalOnError(e);
+                    }
+                }
+                if (onDelete != null) {
+                    onDelete.accept(thrwbl, t);
+                }
+                Object msg = message;
+                if (msg == null) {
+                    msg = map("count").to(t.getDeletedCount()).map("acknowledged").to(t.wasAcknowledged()).build();
+                }
+                resumer.resume(new MongoResult(msg, thrwbl, status));
+            }
         }
 
         private class VoidCallback implements SingleResultCallback<Void> {
@@ -153,9 +269,33 @@ public final class MongoUpdater {
 
         public void insertOne(T obj, Object message, HttpResponseStatus onSuccess, Consumer<Throwable> onInsert);
 
-        public Updates<T> onSuccess(Callable<?> r);
+        void insertMany(List<T> objs);
 
-        public Updates<T> withWriteConcern(WriteConcern concern);
+        void insertMany(List<T> objs, Object message);
+
+        void insertMany(List<T> objs, Object message, HttpResponseStatus onSuccess);
+
+        void insertMany(List<T> objs, Object message, HttpResponseStatus onSuccess, Consumer<Throwable> onInsert);
+
+        void deleteOne(Bson obj);
+
+        void deleteOne(Bson obj, Object message);
+
+        void deleteOne(Bson obj, Object message, HttpResponseStatus onSuccess);
+
+        void deleteOne(Bson obj, Object message, HttpResponseStatus onSuccess, BiConsumer<Throwable, DeleteResult> onDelete);
+
+        void deleteMany(Bson obj);
+
+        void deleteMany(Bson obj, Object message);
+
+        void deleteMany(Bson obj, Object message, HttpResponseStatus onSuccess);
+
+        void deleteMany(Bson obj, Object message, HttpResponseStatus onSuccess, BiConsumer<Throwable, DeleteResult> onDelete);
+
+        Updates<T> onSuccess(Callable<?> r);
+
+        Updates<T> withWriteConcern(WriteConcern concern);
     }
 
     public static class MongoResult {

@@ -341,7 +341,9 @@ class PagesImpl2 {
                     inUncaughtException = false;
                 }
             } catch (Throwable ex) {
-                thrwbl.addSuppressed(ex);
+                if (ex != thrwbl) {
+                    thrwbl.addSuppressed(ex);
+                }
                 try {
                     if (channel.isOpen()) {
                         HttpResponse resp;
