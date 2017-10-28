@@ -72,6 +72,9 @@
                     <perCoreThreadCount>1</perCoreThreadCount>
                     <threadCount>1</threadCount>
                     <reuseForks>false</reuseForks>
+                    <systemPropertyVariables>
+                        <acteur.debug>false</acteur.debug>
+                    </systemPropertyVariables>
                 </configuration>
             </plugin>
         </plugins>

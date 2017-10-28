@@ -72,7 +72,12 @@ public class ObjectIdToJSONConfigurer implements JacksonConfigurer {
                 return new ObjectId(idString);
             } else {
                 dc.handleInstantiationProblem(ObjectId.class, idString, new IllegalArgumentException(
-                        "Not a valid object id: " + idString));
+                        "Not a valid object id: '" + idString + "' at " + dc.getParser().getCurrentName() + " byte "
+                        + dc.getParser().getCurrentLocation().getByteOffset() + " line "
+                        + dc.getParser().getCurrentLocation().getLineNr()
+                        + " pos " + dc.getParser().getCurrentLocation().getCharOffset()
+                        + " text " + dc.getParser().getText()
+                ));
                 return null;
             }
         }

@@ -84,6 +84,7 @@ import org.junit.runner.RunWith;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 /**
  *
@@ -93,12 +94,21 @@ import static org.junit.Assert.assertNotNull;
 @TestWith({M.class, TestHarnessModule.class, MongoHarness.Module.class})
 public class ActeurAsyncTest {
 
+//    static {
+    // for debugging
+//        System.setProperty("acteur.debug", "true");
+//        System.setProperty("mongo.tmplog", "true");
+//    }
+
     @Test(timeout = 20000L)
-    public void test(TestHarness harn) throws Throwable {
+    public void test(TestHarness harn, ObjectMapper mapper, @Named("stuff") MongoCollection<Document> stuff) throws Throwable {
         harn.get("/hello").go().assertStatus(OK).assertContent("Hello world");
-        Thing[] objs = harn.get("/stuff")
+        String s = harn.get("/stuff")
                 .setTimeout(Duration.ofSeconds(18))
-                .go().assertStatus(OK).throwIfError().content(Thing[].class);
+                .go().await().assertStatus(OK).throwIfError().content();
+
+        System.out.println("RESPONSE:\n\n" + s + "\n\n");
+        Thing[] objs = mapper.readValue(s, Thing[].class);
 
         assertEquals(objs.length, 200);
         maybeFail();
@@ -115,11 +125,13 @@ public class ActeurAsyncTest {
 
         assertEquals(1, m.get("count"));
         assertEquals(Boolean.TRUE, m.get("acknowledged"));
-        System.out.println("M: " + m);
 
-        Thing[] things2 = harn.get("/stuff")
+        s = harn.get("/stuff")
                 .setTimeout(Duration.ofSeconds(18))
-                .go().assertStatus(OK).throwIfError().content(Thing[].class);
+                .go()
+                .await()
+                .assertStatus(OK).throwIfError().content();
+        Thing[] things2 = mapper.readValue(s, Thing[].class);
         assertEquals(199, things2.length);
 
         for (Thing t : things2) {
@@ -130,13 +142,34 @@ public class ActeurAsyncTest {
 
         harn.put("manythings")
                 .setBody(more, MediaType.JSON_UTF_8)
-                .setTimeout(Duration.ofSeconds(4))
-                .go().assertStatus(CREATED).throwIfError().content(Thing[].class);
+                .setTimeout(Duration.ofSeconds(20))
+                .go()
+                .await()
+                .assertStatus(CREATED).throwIfError().content(Thing[].class);
 
-        Thing[] things3 = harn.get("/stuff")
+        assertTrue(manythingsCalled);
+
+        CountDownLatch latch = new CountDownLatch(1);
+        Throwable[] th = new Throwable[1];
+        Document[] d = new Document[1];
+        stuff.find(new Document("name", "skiddoo")).first((Document t, Throwable thrwbl) -> {
+            th[0] = thrwbl;
+            d[0] = t;
+            latch.countDown();
+        });
+        latch.await(10, TimeUnit.SECONDS);
+        if (th[0] != null) {
+            throw th[0];
+        }
+        assertNotNull("Documents not added", d[0]);
+
+        s = harn.get("/stuff")
                 .setTimeout(Duration.ofSeconds(4))
-                .go().assertStatus(OK).throwIfError().content(Thing[].class);
-        assertEquals(201, things2.length);
+                .go()
+                .await()
+                .assertStatus(OK).throwIfError().content();
+        Thing[] things3 = mapper.readValue(s, Thing[].class);
+        assertEquals(201, things3.length);
 
         int foundCount = 0;
         for (Thing t : things3) {
@@ -169,11 +202,14 @@ public class ActeurAsyncTest {
 
         @Override
         protected void configure() {
-            install(new ActeurMongoModule(scope).bindCollection("stuff", "stuff").withInitializer(Populator.class));
+            install(new ActeurMongoModule(scope)
+                    .registerJacksonType(Thing.class)
+                    .bindCollection("stuff", "stuff")
+                    .withInitializer(Populator.class));
             install(new GenericApplicationModule<>(scope, settings, GenericApplication.class));
             bind(ErrorInterceptor.class).to(TestHarness.class);
             bind(HttpClient.class).toProvider(HttpClientProvider.class).in(Scopes.SINGLETON);
-            install(new JacksonModule());
+            install(new JacksonModule().withConfigurer(ObjectIdToJSONConfigurer.class));
         }
     }
 
@@ -201,7 +237,7 @@ public class ActeurAsyncTest {
         Settings settings = new SettingsBuilder("async")
                 .add(GiuliusMongoAsyncModule.SETTINGS_KEY_DATABASE_NAME, "demo")
                 .add(GiuliusMongoAsyncModule.SETTINGS_KEY_MONGO_HOST, "localhost")
-                .add(GiuliusMongoAsyncModule.SETTINGS_KEY_MONGO_PORT, 27001)
+                .add(GiuliusMongoAsyncModule.SETTINGS_KEY_MONGO_PORT, 27017)
                 .build();
 
         Server server = new ServerBuilder("async", scope)
@@ -260,7 +296,7 @@ public class ActeurAsyncTest {
 
         @Inject
         GetAllStuff(@Named("stuff") MongoCollection<Document> stuff) {
-            next(stuff.withDocumentClass(ByteBuf.class).find(), new CursorControl().batchSize(20).projection(
+            next(stuff.withDocumentClass(ByteBuf.class).find(), new CursorControl().batchSize(220).limit(500).projection(
                     new Document("name", 1).append("rand", 1).append("_id", 1)));
         }
     }
@@ -293,6 +329,8 @@ public class ActeurAsyncTest {
         }
     }
 
+
+    static boolean manythingsCalled;
     @HttpCall
     @Path("/manythings")
     @Methods(PUT)
@@ -308,6 +346,7 @@ public class ActeurAsyncTest {
             up.withCollection(stuff.withDocumentClass(Thing.class))
                     .onSuccess(() -> {
                         System.out.println("SUCCESS");
+                        manythingsCalled = true;
                         return null;
                     }).insertMany(Arrays.asList(things), null, CREATED, (Throwable t) -> {
                 System.out.println("INSERT MANY DONE");
@@ -315,6 +354,7 @@ public class ActeurAsyncTest {
                     System.out.println("THROWN!");
                     t.printStackTrace();
                 }
+
             });
             next();
         }
