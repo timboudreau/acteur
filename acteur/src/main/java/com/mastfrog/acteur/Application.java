@@ -32,6 +32,7 @@ import com.mastfrog.acteur.annotations.Concluders;
 import com.mastfrog.acteur.annotations.Early;
 import com.mastfrog.acteur.annotations.HttpCall;
 import com.mastfrog.acteur.annotations.Precursors;
+import com.mastfrog.acteur.debug.Probe;
 import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.acteur.preconditions.Description;
 import com.mastfrog.settings.SettingsBuilder;
@@ -140,6 +141,9 @@ public class Application implements Iterable<Page> {
     @Inject(optional = true)
     @Named(GUICE_BINDING_DEFAULT_CONTEXT_OBJECTS)
     private Object[] defaultContextObjects;
+
+    @Inject
+    Probe probe;
 
     private EarlyPages earlyPageMatcher;
     private List<Object> earlyPages = new ArrayList<>();
@@ -622,6 +626,7 @@ public class Application implements Iterable<Page> {
     private CountDownLatch onEvent(final Event<?> event, final Channel channel) {
         // Create a new incremented id for this request
         final RequestID id = ids.next();
+        probe.onBeforeProcessRequest(id, event);
         // Enter request scope with the id and the event
         try (QuietAutoCloseable cl = scope.enter(event, id)) {
             onBeforeEvent(id, event);
@@ -670,6 +675,7 @@ public class Application implements Iterable<Page> {
     protected void send404(RequestID id, Event<?> event, Channel channel) {
         HttpResponse response = createNotFoundResponse(event);
         onBeforeRespond(id, event, response.status());
+        probe.onFallthrough(id, event);
         ChannelFuture fut = channel.writeAndFlush(response);
         boolean keepAlive = event instanceof HttpEvent ? ((HttpEvent) event).requestsConnectionStayOpen() : false;
         if (keepAlive) {

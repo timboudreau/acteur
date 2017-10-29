@@ -39,6 +39,8 @@ import com.mastfrog.giulius.mongodb.async.MongoHarness;
 import com.mastfrog.giulius.tests.GuiceRunner;
 import com.mastfrog.giulius.tests.TestWith;
 import com.mastfrog.giulius.scope.ReentrantScope;
+import com.mastfrog.jackson.DurationSerializationMode;
+import com.mastfrog.jackson.TimeSerializationMode;
 import com.mastfrog.util.Exceptions;
 import com.mastfrog.util.time.TimeUtil;
 import com.mongodb.WriteConcern;
@@ -87,19 +89,12 @@ public class DynamicCodecsTest {
         stuff.withWriteConcern(WriteConcern.FSYNC_SAFE).insertMany(Arrays.asList(a), waitForInsert);
         waitForInsert.get();
 
-        final Document[] found = new Document[1];
-        final Throwable[] thrown = new Throwable[1];
-        final CountDownLatch latch = new CountDownLatch(1);
-        stuff.find().first((Document t, Throwable thrwbl) -> {
-            thrown[0] = thrwbl;
-            found[0] = t;
-            latch.countDown();
+        Document doc = SRC.run((SingleResultCallback<Document> cb) -> {
+            stuff.find().first(cb);
         });
-        latch.await(10, TimeUnit.SECONDS);
-        if (thrown[0] != null) {
-            throw thrown[0];
-        }
-        Document doc = found[0];
+
+        System.out.println("DOC: " + doc);
+
         assertNotNull(doc);
         Object hello = doc.get("one");
         assertNotNull(hello);
@@ -344,7 +339,8 @@ public class DynamicCodecsTest {
             ActeurMongoModule m = new ActeurMongoModule(new ReentrantScope()).withCodec(ByteBufCodec.class)
                     .bindCollection("stuff")
                     .bindCollection("arr", ArrayThing.class)
-                    .registerJacksonType(ZonedDateTime.class)
+                    .withJavaTimeSerializationMode(TimeSerializationMode.TIME_AS_ISO_STRING, DurationSerializationMode.DURATION_AS_MILLIS)
+//                    .registerJacksonType(ZonedDateTime.class)
                     .registerJacksonType(SubThing.class);
             bind(ByteBufAllocator.class).toInstance(ByteBufAllocator.DEFAULT);
 //            install(new JacksonModule(ActeurMongoModule.JACKSON_BINDING_NAME, false).withConfigurer(ObjectIdJacksonConfigurer.class));

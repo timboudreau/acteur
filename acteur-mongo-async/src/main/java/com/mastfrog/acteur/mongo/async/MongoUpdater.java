@@ -128,7 +128,6 @@ public final class MongoUpdater {
             used = true;
             chain.add(MongoResultActeur.class);
             deferral.defer((Resumer resumer) -> {
-                System.out.println("INSERT INTO " + collection.getNamespace().getCollectionName() + " in " + collection.getNamespace().getDatabaseName() + " size " + objs.size());
                 collection.insertMany(objs, new VoidCallback(resumer, message == null ? objs : message, onSuccess, onInsert));
             });
         }

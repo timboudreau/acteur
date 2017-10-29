@@ -36,10 +36,12 @@ import com.mastfrog.giulius.scope.ReentrantScope;
 import com.mastfrog.acteur.mongo.async.WriteCursorContentsAsJSON.CursorResult;
 import com.mastfrog.acteur.mongo.async.WriteCursorContentsAsJSON.SingleResult;
 import com.mastfrog.giulius.mongodb.async.DynamicCodecs;
+import com.mastfrog.giulius.mongodb.async.Java8DateTimeCodecProvider;
 import com.mastfrog.giulius.mongodb.async.MongoAsyncInitializer;
 import com.mastfrog.jackson.DurationSerializationMode;
 import com.mastfrog.jackson.JacksonConfigurer;
 import com.mastfrog.jackson.JacksonModule;
+import com.mastfrog.jackson.LocaleJacksonConfigurer;
 import com.mastfrog.jackson.TimeSerializationMode;
 import com.mongodb.async.client.FindIterable;
 import com.mongodb.async.client.MongoClientSettings;
@@ -68,10 +70,12 @@ public final class ActeurMongoModule extends AbstractModule implements MongoAsyn
 
     public ActeurMongoModule(ReentrantScope scope) {
         this.scope = scope;
+        base.withCodecProvider(Java8DateTimeCodecProvider.class);
         base.withCodec(ByteBufCodec.class);
         base.withDynamicCodecs(JacksonCodecs.class);
         base.withCodecProvider(AdditionalJacksonCodecs.class);
         withJacksonConfigurer(ObjectIdJacksonConfigurer.class);
+        withJacksonConfigurer(LocaleJacksonConfigurer.class);
     }
 
     public ActeurMongoModule withJavaTimeSerializationMode(TimeSerializationMode timeMode, DurationSerializationMode durationMode) {

@@ -70,6 +70,9 @@ public interface ChainCallback<A extends AbstractActeur<T, R, S>, S extends Acte
         //do nothing
     }
 
+    default void onAfterRunOne(P chain, A acteur, ActeurState state) {
+        onAfterRunOne(chain, acteur);
+    }
     /**
      * Called after each AbstractActeur is run.
      *

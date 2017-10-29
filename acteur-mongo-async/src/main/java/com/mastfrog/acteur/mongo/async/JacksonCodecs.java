@@ -29,6 +29,7 @@ import com.google.inject.Inject;
 import com.google.inject.util.Providers;
 import static com.mastfrog.acteur.mongo.async.ActeurMongoModule.JACKSON_BINDING_NAME;
 import com.mastfrog.giulius.mongodb.async.DynamicCodecs;
+import com.mastfrog.giulius.mongodb.async.Java8DateTimeCodecProvider;
 import java.time.ZonedDateTime;
 import javax.inject.Named;
 import javax.inject.Provider;
@@ -43,6 +44,7 @@ import org.bson.types.ObjectId;
 class JacksonCodecs implements DynamicCodecs {
     private final Provider<ObjectMapper> mapper;
     private final ByteBufCodec bufCodec;
+    private final Java8DateTimeCodecProvider timeCodecs = new Java8DateTimeCodecProvider();
     
     @Inject
     JacksonCodecs(@Named(JACKSON_BINDING_NAME) Provider<ObjectMapper> mapper, ByteBufCodec bufCodec) {
@@ -52,6 +54,10 @@ class JacksonCodecs implements DynamicCodecs {
 
     @Override
     public <T> Codec<T> createCodec(Class<T> type, CodecConfigurationException ex) {
+        Codec<T> result = timeCodecs.createCodec(type, ex);
+        if (result != null) {
+            return result;
+        }
         if (ObjectId.class == type) { // Don't let jackson take over objectids and store them as strings
             return null;
         }

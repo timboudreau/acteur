@@ -100,7 +100,7 @@ final class JacksonCodec<T> implements Codec<T> {
             try (FileOutputStream out = new FileOutputStream(file)) {
                 Streams.copy(in, out);
             }
-            System.out.println("Wrote debug data " + file);
+            System.err.println("Wrote debug data " + file);
         } catch (IOException e) {
             e.printStackTrace();
         } finally {

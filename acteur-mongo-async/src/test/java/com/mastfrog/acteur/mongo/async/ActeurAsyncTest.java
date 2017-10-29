@@ -107,7 +107,6 @@ public class ActeurAsyncTest {
                 .setTimeout(Duration.ofSeconds(18))
                 .go().await().assertStatus(OK).throwIfError().content();
 
-        System.out.println("RESPONSE:\n\n" + s + "\n\n");
         Thing[] objs = mapper.readValue(s, Thing[].class);
 
         assertEquals(objs.length, 200);

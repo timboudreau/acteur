@@ -42,7 +42,7 @@ import org.openide.util.lookup.ServiceProvider;
  * @author Tim Boudreau
  */
 @ServiceProvider(service = JacksonConfigurer.class)
-public class ObjectIdToJSONConfigurer implements JacksonConfigurer {
+public final class ObjectIdToJSONConfigurer implements JacksonConfigurer {
 
     @Override
     public ObjectMapper configure(ObjectMapper om) {

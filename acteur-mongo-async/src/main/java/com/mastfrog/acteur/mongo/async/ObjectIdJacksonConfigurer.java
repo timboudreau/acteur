@@ -30,11 +30,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.mastfrog.jackson.JacksonConfigurer;
+import com.mastfrog.util.time.TimeUtil;
 import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeFormatterBuilder;
-import java.util.Locale;
 import org.bson.types.ObjectId;
 
 /**
@@ -45,20 +45,13 @@ import org.bson.types.ObjectId;
  */
 class ObjectIdJacksonConfigurer implements JacksonConfigurer {
 
-    public static final DateTimeFormatter ISO_INSTANT;
-
-    static {
-        ISO_INSTANT = new DateTimeFormatterBuilder()
-                .parseCaseInsensitive()
-                .appendInstant()
-                .toFormatter(Locale.US);
-    }
-
     @Override
     public ObjectMapper configure(ObjectMapper m) {
         SimpleModule sm = new SimpleModule();
         sm.addSerializer(OID);
         sm.addSerializer(ZDT);
+        sm.addSerializer(LDT);
+        sm.addSerializer(ODT);
         m.registerModule(sm);
         return m;
     }
@@ -91,9 +84,43 @@ class ObjectIdJacksonConfigurer implements JacksonConfigurer {
         @Override
         public void serialize(ZonedDateTime t, JsonGenerator jg, SerializerProvider sp) throws IOException, JsonProcessingException {
             // ISODate("2017-09-03T08:24:29.382Z")
-            String raw = "ISODate(\"" + ISO_INSTANT.format(t) + "\")";
+            String raw = "ISODate(\"" + TimeUtil.toIsoFormat(t) + "\")";
             jg.writeRawValue(raw);
         }
-
     }
+
+    private static final ODTSerializer ODT = new ODTSerializer();
+
+    static final class ODTSerializer extends JsonSerializer<OffsetDateTime> {
+
+        @Override
+        public Class<OffsetDateTime> handledType() {
+            return OffsetDateTime.class;
+        }
+
+        @Override
+        public void serialize(OffsetDateTime t, JsonGenerator jg, SerializerProvider sp) throws IOException, JsonProcessingException {
+            // ISODate("2017-09-03T08:24:29.382Z")
+            String raw = "ISODate(\"" + TimeUtil.toIsoFormat(t) + "\")";
+            jg.writeRawValue(raw);
+        }
+    }
+
+    private static final LDTSerializer LDT = new LDTSerializer();
+
+    static final class LDTSerializer extends JsonSerializer<LocalDateTime> {
+
+        @Override
+        public Class<LocalDateTime> handledType() {
+            return LocalDateTime.class;
+        }
+
+        @Override
+        public void serialize(LocalDateTime t, JsonGenerator jg, SerializerProvider sp) throws IOException, JsonProcessingException {
+            // ISODate("2017-09-03T08:24:29.382Z")
+            String raw = "ISODate(\"" + TimeUtil.toIsoFormat(t) + "\")";
+            jg.writeRawValue(raw);
+        }
+    }
+
 }

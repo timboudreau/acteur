@@ -192,7 +192,7 @@ public final class ChainRunner {
                     a2 = iter.next();
                     // Get the state, which may compute the state if it is lazy
                     newState = a2.getState();
-                    onDone.onAfterRunOne(chain, a2);
+                    onDone.onAfterRunOne(chain, a2, newState);
                     // Add any objects it provided into the scope for the next
                     // invocation
                     addToContext(newState);

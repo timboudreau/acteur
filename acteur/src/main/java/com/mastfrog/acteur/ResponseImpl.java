@@ -115,6 +115,15 @@ final class ResponseImpl extends Response {
         }
     }
 
+    boolean hasListener() {
+        return listener != null;
+    }
+
+    Object message() {
+        return message;
+    }
+
+
     boolean isModified() {
         return modified;
     }

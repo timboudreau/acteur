@@ -31,6 +31,7 @@ import com.mastfrog.acteur.headers.Headers;
 import static com.mastfrog.acteur.server.ServerModule.DELAY_EXECUTOR;
 import com.mastfrog.acteur.util.CacheControl;
 import com.mastfrog.acteur.util.RequestID;
+import com.mastfrog.acteurbase.ActeurState;
 import com.mastfrog.acteurbase.ArrayChain;
 import com.mastfrog.acteurbase.Chain;
 import com.mastfrog.acteurbase.ChainCallback;
@@ -122,7 +123,7 @@ class PagesImpl2 {
             }
             pageChain.addToContext(event);
             pageChain.page = channel.attr(WebSocketUpgradeActeur.PAGE_KEY).get();
-
+            application.probe.onBeforeRunPage(id, event, pageChain.page);
             pagesIterable = Collections.singleton(pageChain);
         } else {
             clos = new Closables(channel, application.control());
@@ -183,9 +184,16 @@ class PagesImpl2 {
 
         @Override
         public void onAfterRunOne(PageChain chain, Acteur acteur) {
-            if (Page.get() == chain.page) {
+            Page p = Page.get();
+            if (p == chain.page) {
                 Page.clear();
             }
+            application.probe.onActeurWasRun(id, event, p, acteur, null);
+        }
+
+        public void onAfterRunOne(PageChain chain, Acteur acteur, ActeurState state) {
+            application.probe.onActeurWasRun(id, event, Page.get(), acteur, state);
+            onAfterRunOne(chain, acteur);
         }
 
         @Override
@@ -219,6 +227,7 @@ class PagesImpl2 {
         @Override
         @SuppressWarnings("deprecation")
         public void receive(final Acteur acteur, final com.mastfrog.acteur.State state, final ResponseImpl response) {
+            application.probe.onBeforeSendResponse(id, event, acteur, response.status, response.hasListener(), response.message());
             boolean isWebSocketResponse = event.request() instanceof WebSocketFrame && !(acteur instanceof WebSocketUpgradeActeur)
                     && response.isModified();
             if (isWebSocketResponse) {
@@ -287,6 +296,7 @@ class PagesImpl2 {
                             if (debug) {
                                 System.err.println("Response will be delayed for " + delay);
                             }
+                            application.probe.onInfo("Response delayed {0}", delay);
                             final ScheduledFuture<?> s = scheduler.schedule(c, delay.toMillis(), TimeUnit.MILLISECONDS);
                             // Ensure the task is discarded if the connection is broken
                             channel.closeFuture().addListener(new CancelOnClose(s));
@@ -315,6 +325,7 @@ class PagesImpl2 {
                     // and write a plain response
                     throw thrwbl;
                 }
+                application.probe.onThrown(id, event, thrwbl);
                 // Certain things we just bail out on
                 if (thrwbl instanceof ThreadDeath || thrwbl instanceof OutOfMemoryError) {
                     Exceptions.chuck(thrwbl);
@@ -344,6 +355,7 @@ class PagesImpl2 {
                 if (ex != thrwbl) {
                     thrwbl.addSuppressed(ex);
                 }
+                application.probe.onThrown(id, event, thrwbl);
                 try {
                     if (channel.isOpen()) {
                         HttpResponse resp;
@@ -457,7 +469,8 @@ class PagesImpl2 {
             } else {
                 Thread.currentThread().setName(id + " of " + r.getClass().getName());
             }
-            PageChain result = new PageChain(application.getDependencies(), application.getRequestScope(), Acteur.class, r, r, id, event, clos);
+            application.probe.onBeforeRunPage(id, event, r);
+            PageChain result = new PageChain(application, application.getDependencies(), application.getRequestScope(), Acteur.class, r, r, id, event, clos);
             return result;
         }
 
@@ -475,20 +488,23 @@ class PagesImpl2 {
         private final ReentrantScope scope;
         private static final Object[] EMPTY = new Object[0];
         boolean isReconstituted;
+        private Application app;
 
-        PageChain(Dependencies deps, ReentrantScope scope, Class<? super Acteur> type, Page page, Object... ctx) {
+        PageChain(Application app, Dependencies deps, ReentrantScope scope, Class<? super Acteur> type, Page page, Object... ctx) {
             super(deps, type, page.acteurs());
             this.page = page;
             this.ctx = ctx;
             this.scope = scope;
+            this.app = app;
         }
 
-        PageChain(Dependencies deps, ReentrantScope scope, Class<? super Acteur> type, List<Object> pages, Object[] ctx) {
+        PageChain(Application app, Dependencies deps, ReentrantScope scope, Class<? super Acteur> type, List<Object> pages, Object[] ctx) {
             super(deps, type, pages);
             isReconstituted = true;
             this.scope = scope;
             this.ctx = ctx;
             this.page = null;
+            this.app = app;
         }
 
         public <T> T findInContext(Class<T> type) {
@@ -569,7 +585,7 @@ class PagesImpl2 {
             final Dependencies d = deps;
             return () -> {
                 List<Object> l = new ArrayList<>(rem);
-                PageChain chain = new PageChain(d, scope, type, l, context);
+                PageChain chain = new PageChain(app, d, scope, type, l, context);
                 chain.page = page;
                 return chain;
             };
