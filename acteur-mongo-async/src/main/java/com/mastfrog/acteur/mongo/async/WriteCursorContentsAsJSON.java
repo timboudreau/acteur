@@ -38,6 +38,7 @@ import com.mongodb.async.SingleResultCallback;
 import com.mongodb.async.client.FindIterable;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.handler.codec.http.HttpResponseStatus;
+import static io.netty.handler.codec.http.HttpResponseStatus.GONE;
 
 /**
  *
@@ -48,20 +49,25 @@ import io.netty.handler.codec.http.HttpResponseStatus;
 public class WriteCursorContentsAsJSON extends Acteur {
 
     @Inject
-    WriteCursorContentsAsJSON(Deferral def, CursorControl ctrl, Chain<Acteur, ? extends Chain<Acteur,?>> chain, Closables clos, FindIterable<?> find) {
+    WriteCursorContentsAsJSON(Deferral def, CursorControl ctrl, Chain<Acteur, ? extends Chain<Acteur, ?>> chain, Closables clos, FindIterable<?> find) {
         find(find, ctrl, def, chain, clos);
     }
 
     @SuppressWarnings("unchecked")
-    private <T> FindIterable<T> find(FindIterable<T> result, CursorControl ctrl, Deferral def, Chain<Acteur, ? extends Chain<Acteur,?>> chain, final Closables clos) {
+    private <T> FindIterable<T> find(FindIterable<T> result, CursorControl ctrl, Deferral def, Chain<Acteur, ? extends Chain<Acteur, ?>> chain, final Closables clos) {
         result = ctrl.apply(result);
-        final Resumer resumer = def.defer();
+        final FindIterable<T> it = result;
+        def.defer((Resumer resumer) -> {
+            if (ctrl.isFindOne()) {
+                it.first(new SingleResultResume<T>(resumer));
+            } else {
+                it.batchCursor(new CursorResultResume<T>(clos, resumer));
+            }
+        });
         if (ctrl.isFindOne()) {
             chain.add(SendSingleResult.class);
-            result.first(new SingleResultResume<T>(resumer));
         } else {
             chain.add(SendCursorResult.class);
-            result.batchCursor(new CursorResultResume<T>(clos, resumer));
         }
         next(result);
         return result;
@@ -117,7 +123,11 @@ public class WriteCursorContentsAsJSON extends Acteur {
             if (result.thrown != null) {
                 reply(Err.of(result.thrown));
             } else {
-                ok(result.result);
+                if (result.result == null) {
+                    reply(GONE, "No such object");
+                } else {
+                    ok(result.result);
+                }
             }
         }
     }

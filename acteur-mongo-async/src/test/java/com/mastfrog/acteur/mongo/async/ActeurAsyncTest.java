@@ -27,6 +27,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.net.MediaType;
+import static com.google.common.net.MediaType.JSON_UTF_8;
 import com.google.inject.AbstractModule;
 import com.google.inject.Scopes;
 import com.google.inject.name.Named;
@@ -41,6 +42,7 @@ import static com.mastfrog.acteur.headers.Method.DELETE;
 import static com.mastfrog.acteur.headers.Method.GET;
 import static com.mastfrog.acteur.headers.Method.PUT;
 import com.mastfrog.acteur.mongo.async.ActeurAsyncTest.M;
+import com.mastfrog.acteur.preconditions.InjectRequestBodyAs;
 import com.mastfrog.acteur.preconditions.Methods;
 import com.mastfrog.acteur.preconditions.Path;
 import com.mastfrog.acteur.server.ServerBuilder;
@@ -60,6 +62,7 @@ import com.mastfrog.settings.Settings;
 import com.mastfrog.settings.SettingsBuilder;
 import static com.mastfrog.util.Checks.notNull;
 import com.mastfrog.util.Exceptions;
+import static com.mastfrog.util.collections.CollectionUtils.map;
 import com.mastfrog.util.collections.StringObjectMap;
 import com.mongodb.WriteConcern;
 import com.mongodb.async.SingleResultCallback;
@@ -182,6 +185,30 @@ public class ActeurAsyncTest {
             }
         }
         assertEquals(Arrays.asList(things3).toString(), 2, foundCount);
+
+        StringObjectMap updateResults = harn.put("/stuff/" + things3[0]._id.toHexString())
+                .setBody(map("name").to("gerbil").build(), JSON_UTF_8)
+                .setTimeout(Duration.ofSeconds(5))
+                .go()
+                .await()
+                .assertStatus(OK).throwIfError().content(StringObjectMap.class);
+
+        assertEquals(1, updateResults.get("matched"));
+        assertEquals(1, updateResults.get("updated"));
+        assertTrue((Boolean) updateResults.get("acknowledged"));
+
+        s = harn.get("/stuff")
+                .setTimeout(Duration.ofSeconds(4))
+                .go()
+                .await()
+                .assertStatus(OK).throwIfError().content();
+        Thing[] things4 = mapper.readValue(s, Thing[].class);
+        assertEquals(201, things3.length);
+        for (Thing t : things4) {
+            if (things3[0]._id.equals(t._id)) {
+                assertEquals("gerbil", t.name);
+            }
+        }
     }
 
     private static void maybeFail() throws Throwable {
@@ -314,6 +341,21 @@ public class ActeurAsyncTest {
                     new Document("name", 1).append("rand", 1).append("_id", 1)));
         }
     }
+
+    @HttpCall
+    @Path("/stuff/*")
+    @Methods(PUT)
+    @InjectRequestBodyAs(StringObjectMap.class)
+    static class UpdateOneStuff extends Acteur {
+
+        @Inject
+        UpdateOneStuff(HttpEvent evt, MongoUpdater ud, @Named("stuff") MongoCollection<Document> stuff, StringObjectMap body) {
+            ObjectId what = new ObjectId(evt.path().lastElement().toString());
+            ud.withCollection(stuff.withWriteConcern(WriteConcern.FSYNC_SAFE)).updateOne(new Document("_id", what), body);
+            next();
+        }
+    }
+
 
     @HttpCall
     @Path("/oneThing/*")

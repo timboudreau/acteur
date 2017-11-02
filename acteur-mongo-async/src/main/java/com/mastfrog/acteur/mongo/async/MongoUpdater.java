@@ -35,12 +35,16 @@ import com.mongodb.WriteConcern;
 import com.mongodb.async.SingleResultCallback;
 import com.mongodb.async.client.MongoCollection;
 import com.mongodb.client.result.DeleteResult;
+import com.mongodb.client.result.UpdateResult;
 import io.netty.handler.codec.http.HttpResponseStatus;
+import static io.netty.handler.codec.http.HttpResponseStatus.BAD_REQUEST;
 import static io.netty.handler.codec.http.HttpResponseStatus.OK;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import org.bson.Document;
 import org.bson.conversions.Bson;
 
 /**
@@ -193,11 +197,77 @@ public final class MongoUpdater {
             });
         }
 
+        @Override
+        public void updateOne(Document query, Map<String, Object> m) {
+            updateOne(query, m, null);
+        }
+
+        @Override
+        public void updateOne(Document query, Map<String, Object> m, Object message) {
+            updateOne(query, m, message, OK, null);
+        }
+
+        @Override
+        public void updateOne(Document query, Map<String, Object> m, Object message, HttpResponseStatus status) {
+            updateOne(query, m, message, status, null);
+        }
+
+        @Override
+        public void updateOne(Document query, Map<String, Object> m, Object message, HttpResponseStatus status, BiConsumer<Throwable, UpdateResult> onUpdate) {
+            checkUsed();
+            used = true;
+            chain.add(MongoResultActeur.class);
+            deferral.defer((Resumer resumer) -> {
+                collection.updateOne(query, new Document("$set", new Document(m)), new UpdateResultCallback(resumer, message, status, onUpdate));
+            });
+        }
+
+        private class UpdateResultCallback implements SingleResultCallback<UpdateResult> {
+
+            private final Resumer resumer;
+            private final Object message;
+            private HttpResponseStatus status;
+            private final BiConsumer<Throwable, UpdateResult> onDelete;
+
+            public UpdateResultCallback(Resumer resumer, Object message, HttpResponseStatus status, BiConsumer<Throwable, UpdateResult> onDelete) {
+                this.resumer = resumer;
+                this.message = message;
+                this.status = status == null ? OK : status;
+                this.onDelete = onDelete;
+            }
+
+            @Override
+            public void onResult(UpdateResult t, Throwable thrwbl) {
+                if (thrwbl == null && onSuccess != null) {
+                    try {
+                        onSuccess.call();
+                    } catch (Exception e) {
+                        ctrl.internalOnError(e);
+                    }
+                }
+                if (onDelete != null) {
+                    onDelete.accept(thrwbl, t);
+                }
+                Object msg = message;
+                if (msg == null) {
+                    msg = map("matched").to(t.getMatchedCount())
+                            .map("acknowledged").to(t.wasAcknowledged())
+                            .map("updated").to(t.getModifiedCount())
+                            .map("upsert_id").to(t.getUpsertedId())
+                            .build();
+                }
+                if (t.getModifiedCount() == 0) {
+                    status = BAD_REQUEST;
+                }
+                resumer.resume(new MongoResult(msg, thrwbl, status));
+            }
+        }
+
         private class DeleteCallback implements SingleResultCallback<DeleteResult> {
 
             private final Resumer resumer;
             private final Object message;
-            private final HttpResponseStatus status;
+            private HttpResponseStatus status;
             private final BiConsumer<Throwable, DeleteResult> onDelete;
 
             public DeleteCallback(Resumer resumer, Object message, HttpResponseStatus status, BiConsumer<Throwable, DeleteResult> onDelete) {
@@ -222,6 +292,9 @@ public final class MongoUpdater {
                 Object msg = message;
                 if (msg == null) {
                     msg = map("count").to(t.getDeletedCount()).map("acknowledged").to(t.wasAcknowledged()).build();
+                }
+                if (t.getDeletedCount() == 0 && t.wasAcknowledged()) {
+                    status = BAD_REQUEST;
                 }
                 resumer.resume(new MongoResult(msg, thrwbl, status));
             }
@@ -291,6 +364,14 @@ public final class MongoUpdater {
         void deleteMany(Bson obj, Object message, HttpResponseStatus onSuccess);
 
         void deleteMany(Bson obj, Object message, HttpResponseStatus onSuccess, BiConsumer<Throwable, DeleteResult> onDelete);
+
+        void updateOne(Document query, Map<String, Object> m);
+
+        void updateOne(Document query, Map<String, Object> m, Object message);
+
+        void updateOne(Document query, Map<String, Object> m, Object message, HttpResponseStatus status);
+
+        void updateOne(Document query, Map<String, Object> m, Object message, HttpResponseStatus status, BiConsumer<Throwable, UpdateResult> onUpdate);
 
         Updates<T> onSuccess(Callable<?> r);
 
