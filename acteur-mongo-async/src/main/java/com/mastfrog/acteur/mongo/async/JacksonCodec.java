@@ -46,6 +46,7 @@ import org.bson.BsonWriter;
 import org.bson.codecs.Codec;
 import org.bson.codecs.DecoderContext;
 import org.bson.codecs.EncoderContext;
+import org.bson.types.ObjectId;
 
 /**
  * Uses Jackson to enable MongoDB to support types without writing custom codecs
@@ -75,6 +76,10 @@ final class JacksonCodec<T> implements Codec<T> {
         }
         if (t instanceof Enum<?>) {
             writer.writeString(((Enum<?>)t).name());
+            return;
+        }
+        if (t instanceof ObjectId) {
+            writer.writeObjectId((ObjectId) t);
             return;
         }
         try {
@@ -116,9 +121,14 @@ final class JacksonCodec<T> implements Codec<T> {
 //            case TIMESTAMP :
 //                return (T) TimeUtil.fromUnixTimestamp(reader.readTimestamp().asInt64().longValue());
 //        }
+        switch(reader.getCurrentBsonType()) {
+            case OBJECT_ID :
+                return (T) reader.readObjectId();
+        }
         ByteBuf buf = json.get().decode(reader, dc);
         try {
-            return mapper.get().readValue((InputStream) new ByteBufInputStream(buf), type);
+            T result = mapper.get().readValue((InputStream) new ByteBufInputStream(buf), type);
+            return result;
         } catch (JsonMappingException ex) {
             debugWrite(buf);
             buf.resetReaderIndex();
