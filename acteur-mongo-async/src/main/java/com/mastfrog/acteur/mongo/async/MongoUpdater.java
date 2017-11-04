@@ -73,6 +73,8 @@ public final class MongoUpdater {
         private MongoCollection<T> collection;
         private boolean used;
         private Callable<?> onSuccess;
+        private volatile HttpResponseStatus onFailure;
+        private volatile Object failureMessage;
 
         public UpdatesImpl(MongoCollection<T> collection) {
             this.collection = collection;
@@ -222,6 +224,17 @@ public final class MongoUpdater {
             });
         }
 
+        public Updates onFailure(HttpResponseStatus status, Object failureMessage) {
+            checkUsed();
+            this.onFailure = status;
+            this.failureMessage = failureMessage;
+            return this;
+        }
+
+        public Updates onFailure(HttpResponseStatus status) {
+            return onFailure(status, null);
+        }
+
         private class UpdateResultCallback implements SingleResultCallback<UpdateResult> {
 
             private final Resumer resumer;
@@ -257,7 +270,10 @@ public final class MongoUpdater {
                             .build();
                 }
                 if (t.getModifiedCount() == 0) {
-                    status = BAD_REQUEST;
+                    status = onFailure == null ? BAD_REQUEST : onFailure;
+                    if (failureMessage != null) {
+                        msg = failureMessage;
+                    }
                 }
                 resumer.resume(new MongoResult(msg, thrwbl, status));
             }
@@ -294,7 +310,10 @@ public final class MongoUpdater {
                     msg = map("count").to(t.getDeletedCount()).map("acknowledged").to(t.wasAcknowledged()).build();
                 }
                 if (t.getDeletedCount() == 0 && t.wasAcknowledged()) {
-                    status = BAD_REQUEST;
+                    status = onFailure == null ?  BAD_REQUEST : onFailure;
+                    if (failureMessage != null) {
+                        msg = failureMessage;
+                    }
                 }
                 resumer.resume(new MongoResult(msg, thrwbl, status));
             }
@@ -332,6 +351,10 @@ public final class MongoUpdater {
     }
 
     public interface Updates<T> {
+
+        public Updates onFailure(HttpResponseStatus status);
+
+        public Updates onFailure(HttpResponseStatus status, Object failureMessage);
 
         public void insertOne(T obj);
 

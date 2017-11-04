@@ -70,11 +70,16 @@ class Bus implements PubSubBus {
 
     @Override
     public Future<Boolean> subscribe(Channel channel, ChannelId to) {
+        listeners.onSubscribe(to, channel);
+        channel.closeFuture().addListener((ChannelFuture f) -> {
+            listeners.onUnsubscribe(to, channel);
+        });
         return reg.register(to, channel);
     }
 
     @Override
     public Future<Boolean> unsubscribe(Channel channel, ChannelId from) {
+        listeners.onUnsubscribe(from, channel);
         return reg.unsubscribe(from, channel);
     }
 

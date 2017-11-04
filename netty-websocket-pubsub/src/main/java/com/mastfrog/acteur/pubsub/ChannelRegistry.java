@@ -134,6 +134,9 @@ final class ChannelRegistry<Identifier> {
     }
 
     public void unregister(Channel channel) {
+        if (mutationThread.isShutdown()) {
+            return;
+        }
         mutationThread.submit(() -> {
             Map<Identifier, Set<Channel>> alsoRemove = new HashMap<>();
             Set<Identifier> ids = idsForChannel.get(channel);

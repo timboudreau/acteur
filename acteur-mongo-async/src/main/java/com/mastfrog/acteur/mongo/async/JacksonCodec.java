@@ -114,6 +114,7 @@ final class JacksonCodec<T> implements Codec<T> {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public T decode(BsonReader reader, DecoderContext dc) {
 //        switch(reader.getCurrentBsonType()) {
 //            case DATE_TIME :

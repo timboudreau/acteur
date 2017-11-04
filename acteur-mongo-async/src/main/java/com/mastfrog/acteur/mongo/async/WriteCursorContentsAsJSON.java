@@ -141,7 +141,6 @@ public class WriteCursorContentsAsJSON extends Acteur {
             this.cursor = t;
             this.thrwbl = thrwbl;
         }
-
     }
 
     static class SendCursorResult extends Acteur {

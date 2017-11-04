@@ -21,7 +21,6 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-
 package com.mastfrog.acteur.pubsub;
 
 import io.netty.channel.Channel;
@@ -31,8 +30,8 @@ import java.util.Set;
 import javax.inject.Singleton;
 
 /**
- * Listener which can be notified of <i>all</i> events published on the
- * bus.  To use, simply implement and bind as an eager singleton.
+ * Listener which can be notified of <i>all</i> events published on the bus. To
+ * use, simply implement and bind as an eager singleton.
  *
  * @author Tim Boudreau
  */
@@ -44,8 +43,17 @@ public abstract class BusListener {
 
     protected abstract <T> void onPublish(T obj, Set<ChannelId> to, Channel origin);
 
+    protected void onSubscribe(ChannelId to, Channel origin) {
+        // do nothing
+    }
+
+    protected void onUnsubscribe(ChannelId to, Channel origin) {
+        // do nothing
+    }
+
     @Singleton
     public static class Registry {
+
         private final List<BusListener> listeners = new ArrayList<>();
 
         void register(BusListener l) {
@@ -55,6 +63,18 @@ public abstract class BusListener {
         <T> void onPublish(T obj, Set<ChannelId> to, Channel origin) {
             for (BusListener l : listeners) {
                 l.onPublish(obj, to, origin);
+            }
+        }
+
+        void onSubscribe(ChannelId to, Channel origin) {
+            for (BusListener l : listeners) {
+                l.onSubscribe(to, origin);
+            }
+        }
+
+        void onUnsubscribe(ChannelId to, Channel origin) {
+            for (BusListener l : listeners) {
+                l.onUnsubscribe(to, origin);
             }
         }
     }
