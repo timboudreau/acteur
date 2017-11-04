@@ -75,7 +75,7 @@ final class JacksonCodec<T> implements Codec<T> {
             return;
         }
         if (t instanceof Enum<?>) {
-            writer.writeString(((Enum<?>)t).name());
+            writer.writeString(((Enum<?>) t).name());
             return;
         }
         if (t instanceof ObjectId) {
@@ -122,9 +122,11 @@ final class JacksonCodec<T> implements Codec<T> {
 //            case TIMESTAMP :
 //                return (T) TimeUtil.fromUnixTimestamp(reader.readTimestamp().asInt64().longValue());
 //        }
-        switch(reader.getCurrentBsonType()) {
-            case OBJECT_ID :
-                return (T) reader.readObjectId();
+        if (reader.getCurrentBsonType() != null) { // May be null with older MongoDB
+            switch (reader.getCurrentBsonType()) {
+                case OBJECT_ID:
+                    return (T) reader.readObjectId();
+            }
         }
         ByteBuf buf = json.get().decode(reader, dc);
         try {
