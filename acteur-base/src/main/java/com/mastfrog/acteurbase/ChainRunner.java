@@ -28,6 +28,7 @@ import com.mastfrog.acteurbase.Deferral.DeferredCode;
 import com.mastfrog.acteurbase.Deferral.Resumer;
 import com.mastfrog.giulius.scope.ReentrantScope;
 import com.mastfrog.util.Checks;
+import com.mastfrog.util.Exceptions;
 import com.mastfrog.util.thread.QuietAutoCloseable;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -54,6 +55,8 @@ public final class ChainRunner {
 
     private final ExecutorService svc;
     private final ReentrantScope scope;
+    private static final boolean firstSync = Boolean.getBoolean("acteur.chain.init.sync");
+    private static final boolean allSync = Boolean.getBoolean("acteur.unsupported.sync");
 
     @Inject
     public ChainRunner(ExecutorService svc, ReentrantScope scope) {
@@ -84,9 +87,21 @@ public final class ChainRunner {
         // Enter the scope, with the Chain (so it can be dynamically added to)
         // and the deferral, which can be used to pause the chain
         try (QuietAutoCloseable ac = scope.enter(chain, cc.deferral)) {
-            // Wrap the callable so whenn it is invoked, we will be in the
-            // scope with the same contents as before
-            svc.submit(scope.wrap(cc));
+            // Non-default:  Eliminates the possibility that payload bytes will be processed before
+            // the headers, *if* the first acteur in the first chain fully processes the request
+            // - useful for some applications that use @Early, and may provide
+            // a slight performance boost
+            if (firstSync) {
+                try {
+                    cc.call();
+                } catch (Exception ex) {
+                    Exceptions.chuck(ex);
+                }
+            } else {
+//                 Wrap the callable so whenn it is invoked, we will be in the
+//                 scope with the same contents as before
+                svc.submit(scope.wrap(cc));
+            }
         }
     }
 
@@ -237,7 +252,11 @@ public final class ChainRunner {
                             code.run(this);
                         }
                     } else if (!cancelled.get()) {
-                        svc.submit(scope.wrap(this));
+                        if (allSync) {
+                            this.call();
+                        } else {
+                            svc.submit(scope.wrap(this));
+                        }
                     }
                 } else {
                     onDone.onDone(newState, responses);
