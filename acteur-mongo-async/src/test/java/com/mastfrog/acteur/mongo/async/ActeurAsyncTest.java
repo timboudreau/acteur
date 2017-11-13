@@ -57,6 +57,7 @@ import com.mastfrog.giulius.scope.ReentrantScope;
 import com.mastfrog.jackson.JacksonModule;
 import com.mastfrog.netty.http.client.HttpClient;
 import com.mastfrog.netty.http.test.harness.TestHarness;
+import com.mastfrog.netty.http.test.harness.TestHarness.CallResult;
 import com.mastfrog.netty.http.test.harness.TestHarnessModule;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.settings.SettingsBuilder;
@@ -69,12 +70,15 @@ import com.mongodb.async.SingleResultCallback;
 import com.mongodb.async.client.MongoCollection;
 import io.netty.buffer.ByteBuf;
 import static io.netty.handler.codec.http.HttpResponseStatus.CREATED;
+import static io.netty.handler.codec.http.HttpResponseStatus.NOT_MODIFIED;
 import static io.netty.handler.codec.http.HttpResponseStatus.OK;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -82,6 +86,7 @@ import javax.inject.Inject;
 import javax.inject.Provider;
 import org.bson.Document;
 import org.bson.types.ObjectId;
+import static org.junit.Assert.assertArrayEquals;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import static org.junit.Assert.assertEquals;
@@ -209,6 +214,30 @@ public class ActeurAsyncTest {
                 assertEquals("gerbil", t.name);
             }
         }
+
+        CallResult cr = harn.get("/etagstuff")
+                .setTimeout(Duration.ofSeconds(4))
+                .go()
+                .await()
+                .assertStatus(OK)
+                .assertHasHeader(Headers.ETAG)
+                .assertHasHeader(Headers.LAST_MODIFIED)
+                .throwIfError();
+        s = cr.content();
+        Thing[] things5 = mapper.readValue(s, Thing[].class);
+
+        assertArrayEquals(things4, things5);
+        String etag = cr.getHeader(Headers.ETAG).toString();
+
+        harn.get("/etagstuff")
+                .addHeader(Headers.IF_NONE_MATCH, etag)
+                .setTimeout(Duration.ofSeconds(4))
+                .go()
+                .await()
+                .assertStatus(NOT_MODIFIED)
+                .throwIfError();
+
+
     }
 
     private static void maybeFail() throws Throwable {
@@ -328,6 +357,19 @@ public class ActeurAsyncTest {
     }
 
     @HttpCall
+    @Path("/etagstuff")
+    @Methods(GET)
+    @Concluders(QueryWithCacheHeadersActeur.class)
+    static class GetAllStuffWithETag extends Acteur {
+
+        @Inject
+        GetAllStuffWithETag(@Named("stuff") MongoCollection<Document> stuff) {
+            next(stuff.withDocumentClass(ByteBuf.class), new Document(), new CursorControl().batchSize(220).limit(500),
+                    new CacheHeaderInfo("name", "_id").setLastModifiedField("lastModified"));
+        }
+    }
+
+    @HttpCall
     @Path("/oneThing")
     @Methods(GET)
     @Concluders(QueryActeur.class)
@@ -417,22 +459,60 @@ public class ActeurAsyncTest {
         public final String name;
         public final int rand;
         public final ObjectId _id;
+        public final Date lastModified;
 
         public Thing(String name, int rand) {
             this.name = name;
             this.rand = rand;
             this._id = new ObjectId();
+            this.lastModified = new Date();
         }
 
         @JsonCreator
-        public Thing(@JsonProperty("name") String name, @JsonProperty("rand") int rand, @JsonProperty(value = "_id", required = false) ObjectId _id) {
+        public Thing(@JsonProperty("name") String name, @JsonProperty("rand") int rand, @JsonProperty(value = "_id", required = false) ObjectId _id, @JsonProperty("lastModified") Date lastModified) {
             this.name = name;
             this.rand = rand;
             this._id = notNull("_id", _id);
+            this.lastModified = lastModified;
         }
 
         public String toString() {
             return name + ":" + rand;
         }
+
+        @Override
+        public int hashCode() {
+            int hash = 5;
+            hash = 37 * hash + Objects.hashCode(this.name);
+            hash = 37 * hash + this.rand;
+            hash = 37 * hash + Objects.hashCode(this._id);
+            return hash;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj == null) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            final Thing other = (Thing) obj;
+            if (this.rand != other.rand) {
+                return false;
+            }
+            if (!Objects.equals(this.name, other.name)) {
+                return false;
+            }
+            if (!Objects.equals(this._id, other._id)) {
+                return false;
+            }
+            return true;
+        }
+
+
     }
 }

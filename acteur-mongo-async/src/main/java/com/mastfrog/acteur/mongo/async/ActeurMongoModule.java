@@ -30,6 +30,7 @@ import com.google.inject.TypeLiteral;
 import com.google.inject.name.Names;
 import com.google.inject.util.Providers;
 import com.mastfrog.acteur.mongo.async.MongoUpdater.MongoResult;
+import com.mastfrog.acteur.mongo.async.QueryWithCacheHeadersActeur.EtagResult;
 import com.mastfrog.giulius.mongodb.async.GiuliusMongoAsyncModule;
 import com.mastfrog.giulius.mongodb.async.MongoAsyncConfig;
 import com.mastfrog.giulius.scope.ReentrantScope;
@@ -136,7 +137,8 @@ public final class ActeurMongoModule extends AbstractModule implements MongoAsyn
     @Override
     protected void configure() {
         install(base);
-        scope.bindTypes(binder(), Bson.class, Document.class, MongoResult.class, MongoCollection.class, SingleResult.class, CursorResult.class, FindIterable.class);
+        scope.bindTypes(binder(), Bson.class, Document.class, MongoResult.class, MongoCollection.class, SingleResult.class, 
+                CursorResult.class, FindIterable.class, EtagResult.class, CacheHeaderInfo.class);
         Provider<CursorControl> ctrlProvider = scope.provider(CursorControl.class, Providers.<CursorControl>of(CursorControl.DEFAULT));
         bind(CursorControl.class).toProvider(ctrlProvider);
         bind(GenerifiedFindIterable.literal).toProvider(GenerifiedFindIterable.class);
