@@ -307,6 +307,22 @@ public class ServerModule<A extends Application> extends AbstractModule {
      * this server without the browser blocking them). The default is *.
      */
     public static final String SETTINGS_KEY_CORS_ALLOW_ORIGIN = "cors.allow.origin";
+
+    /**
+     * If the default support for CORS requests is enabled, this is the value of
+     * what hosts the response is valid for (what sites can use scripts from
+     * this server without the browser blocking them). The default is *.
+     */
+    public static final String SETTINGS_KEY_CORS_ALLOW_HEADERS = "cors.allow.headers";
+
+    /**
+     * If the default support for CORS requests is enabled, this is the value of
+     * what hosts the response is valid for (what sites can use scripts from
+     * this server without the browser blocking them). The default is *.
+     */
+    public static final String SETTINGS_KEY_CORS_CACHE_CONTROL_MAX_AGE = "cors.cache.control.max.age.days";
+
+
     /**
      * Default value for @link(ServerModule.SETTINGS_KEY_CORS_ENABLED}.
      */

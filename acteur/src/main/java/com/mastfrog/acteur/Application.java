@@ -42,8 +42,6 @@ import com.mastfrog.acteur.util.CacheControl;
 import com.mastfrog.acteur.util.CacheControlTypes;
 import com.mastfrog.acteur.server.ServerModule;
 import static com.mastfrog.acteur.server.ServerModule.GUICE_BINDING_DEFAULT_CONTEXT_OBJECTS;
-import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_CORS_ALLOW_ORIGIN;
-import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_CORS_MAX_AGE_MINUTES;
 import com.mastfrog.acteur.util.ErrorInterceptor;
 import com.mastfrog.acteur.spi.ApplicationControl;
 import com.mastfrog.acteur.util.ErrorHandlers;
@@ -53,7 +51,6 @@ import com.mastfrog.parameters.Param;
 import com.mastfrog.parameters.Params;
 import com.mastfrog.util.ConfigurationError;
 import com.mastfrog.util.Checks;
-import com.mastfrog.util.time.TimeUtil;
 import com.mastfrog.util.perf.Benchmark;
 import com.mastfrog.util.perf.Benchmark.Kind;
 import com.mastfrog.util.thread.QuietAutoCloseable;
@@ -62,7 +59,6 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
-import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
@@ -122,17 +118,12 @@ public class Application implements Iterable<Page> {
     private ErrorHandlers errorHandlers;
     @Inject
     private Charset charset;
-    @Inject(optional = true)
-    @Named(SETTINGS_KEY_CORS_ALLOW_ORIGIN)
-    String corsAllowOrigin = "*";
+    @Inject
+    CORSResponseDecorator corsDecorator;
 
     @Inject(optional = true)
     @Named("application.name")
     String name;
-
-    @Inject(optional = true)
-    @Named(SETTINGS_KEY_CORS_MAX_AGE_MINUTES)
-    long corsMaxAgeMinutes = 5;
 
     @Inject(optional = true)
     @Named("acteur.debug")
@@ -513,11 +504,8 @@ public class Application implements Iterable<Page> {
             Headers.write(X_ACTEUR, action.getClass().getName(), response);
             Headers.write(X_PAGE, page.getClass().getName(), response);
         }
-        if (corsEnabled && !response.headers().contains(HttpHeaderNames.ACCESS_CONTROL_ALLOW_ORIGIN)) {
-            Headers.write(Headers.ACCESS_CONTROL_ALLOW_ORIGIN.toStringHeader(), corsAllowOrigin, response);
-            if (!response.headers().contains(HttpHeaderNames.ACCESS_CONTROL_MAX_AGE)) {
-                Headers.write(Headers.ACCESS_CONTROL_MAX_AGE, TimeUtil.minutes(corsMaxAgeMinutes), response);
-            }
+        if (corsEnabled) {
+            corsDecorator.decorateApplicationResponse(response);
         }
         return decorateResponse(event, page, action, response);
     }
