@@ -39,6 +39,7 @@ import com.mastfrog.jackson.JacksonModule;
 import com.mastfrog.jackson.TimeSerializationMode;
 import com.mastfrog.util.time.TimeUtil;
 import static com.mastfrog.util.time.TimeUtil.ISO_INSTANT;
+import com.mongodb.WriteConcern;
 import com.mongodb.async.SingleResultCallback;
 import com.mongodb.async.client.MongoCollection;
 import io.netty.buffer.ByteBufAllocator;
@@ -75,18 +76,21 @@ public class Java8TimeSerializationTest {
         return mapper.readValue(mapper.writeValueAsBytes(o), new TypeReference<Map<String, Object>>() {
         });
     }
+
     @Test
+    @SuppressWarnings("deprecation")
     public void testJava8ElementsInDocument(@Named("more") MongoCollection<Document> c) throws IOException, Throwable {
         Document d = new Document("now", ZonedDateTime.now()).append("offset", OffsetDateTime.now())
                 .append("local", LocalDateTime.now());
 
         SRC.<Void>run((SingleResultCallback<Void> cb) -> {
-            c.insertOne(d, cb);
+            c.withWriteConcern(WriteConcern.FSYNC_SAFE).insertOne(d, cb);
         });
 
         Document g = SRC.<Document>run((SingleResultCallback<Document> cb) -> {
             c.find().first(cb);
         });
+        assertNotNull(g);
 
         assertTrue(g.get("now") instanceof Date);
         assertTrue(g.get("offset") instanceof Date);
@@ -138,8 +142,7 @@ public class Java8TimeSerializationTest {
             ActeurMongoModule m = new ActeurMongoModule(new ReentrantScope()).withCodec(ByteBufCodec.class)
                     .bindCollection("times", TimeThing.class)
                     .bindCollection("more")
-                    .withJavaTimeSerializationMode(TimeSerializationMode.TIME_AS_ISO_STRING, DurationSerializationMode.DURATION_AS_STRING)
-                    ;
+                    .withJavaTimeSerializationMode(TimeSerializationMode.TIME_AS_ISO_STRING, DurationSerializationMode.DURATION_AS_STRING);
             bind(ByteBufAllocator.class).toInstance(ByteBufAllocator.DEFAULT);
             install(new JacksonModule().withJavaTimeSerializationMode(TimeSerializationMode.TIME_AS_ISO_STRING, DurationSerializationMode.DURATION_AS_STRING));
             install(m);

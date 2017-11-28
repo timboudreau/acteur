@@ -44,9 +44,11 @@ import com.mastfrog.jackson.JacksonConfigurer;
 import com.mastfrog.jackson.JacksonModule;
 import com.mastfrog.jackson.LocaleJacksonConfigurer;
 import com.mastfrog.jackson.TimeSerializationMode;
+import com.mongodb.async.client.AggregateIterable;
 import com.mongodb.async.client.FindIterable;
 import com.mongodb.async.client.MongoClientSettings;
 import com.mongodb.async.client.MongoCollection;
+import com.mongodb.async.client.MongoIterable;
 import java.util.HashSet;
 import java.util.Set;
 import javax.inject.Named;
@@ -137,11 +139,13 @@ public final class ActeurMongoModule extends AbstractModule implements MongoAsyn
     @Override
     protected void configure() {
         install(base);
-        scope.bindTypes(binder(), Bson.class, Document.class, MongoResult.class, MongoCollection.class, SingleResult.class, 
-                CursorResult.class, FindIterable.class, EtagResult.class, CacheHeaderInfo.class);
+        scope.bindTypes(binder(), Bson.class, Document.class, MongoResult.class, MongoCollection.class, SingleResult.class,
+                CursorResult.class, FindIterable.class, EtagResult.class, CacheHeaderInfo.class, AggregateIterable.class, MongoIterable.class);
         Provider<CursorControl> ctrlProvider = scope.provider(CursorControl.class, Providers.<CursorControl>of(CursorControl.DEFAULT));
         bind(CursorControl.class).toProvider(ctrlProvider);
         bind(GenerifiedFindIterable.literal).toProvider(GenerifiedFindIterable.class);
+        bind(GenerifiedMongoIterable.literal).toProvider(GenerifiedMongoIterable.class);
+        bind(GenerifiedAggregateIterable.literal).toProvider(GenerifiedAggregateIterable.class);
         bind(GenerifiedMongoCollection.literal).toProvider(GenerifiedMongoCollection.class);
         bind(new TypeLiteral<Set<Class<?>>>() {
         }).annotatedWith(Names.named("__jm")).toInstance(jacksonCodecs);
@@ -208,6 +212,44 @@ public final class ActeurMongoModule extends AbstractModule implements MongoAsyn
 
         @Override
         public FindIterable<?> get() {
+            return find.get();
+        }
+    }
+
+    private static class GenerifiedMongoIterable implements Provider<MongoIterable<?>> {
+
+        @SuppressWarnings("unchecked")
+        private final Provider<FindIterable> find;
+        private static final TypeLiteral<MongoIterable<?>> literal = new TypeLiteral<MongoIterable<?>>() {
+        };
+
+        @Inject
+        @SuppressWarnings("unchecked")
+        public GenerifiedMongoIterable(Provider<FindIterable> find) {
+            this.find = find;
+        }
+
+        @Override
+        public FindIterable<?> get() {
+            return find.get();
+        }
+    }
+
+    private static class GenerifiedAggregateIterable implements Provider<AggregateIterable<?>> {
+
+        @SuppressWarnings("unchecked")
+        private final Provider<AggregateIterable> find;
+        private static final TypeLiteral<AggregateIterable<?>> literal = new TypeLiteral<AggregateIterable<?>>() {
+        };
+
+        @Inject
+        @SuppressWarnings("unchecked")
+        public GenerifiedAggregateIterable(Provider<AggregateIterable> find) {
+            this.find = find;
+        }
+
+        @Override
+        public AggregateIterable<?> get() {
             return find.get();
         }
     }

@@ -25,7 +25,10 @@ package com.mastfrog.acteur.mongo.async;
 
 import com.mastfrog.util.Checks;
 import com.mongodb.CursorType;
+import com.mongodb.async.client.AggregateIterable;
 import com.mongodb.async.client.FindIterable;
+import com.mongodb.async.client.MongoIterable;
+import com.mongodb.client.model.Collation;
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 import org.bson.conversions.Bson;
@@ -53,6 +56,9 @@ public final class CursorControl {
     private Bson sort;
     private Bson modifiers;
     private boolean locked;
+    private Boolean allowDiskUse;
+    private Boolean bypassDocumentValidation;
+    private Collation collation;
 
     public CursorControl() {
 
@@ -69,6 +75,9 @@ public final class CursorControl {
         this.noTimeout = orig.noTimeout;
         this.sort = orig.sort;
         this.modifiers = orig.modifiers;
+        this.allowDiskUse = orig.allowDiskUse;
+        this.bypassDocumentValidation = orig.bypassDocumentValidation;
+        this.collation = orig.collation;
     }
 
     /**
@@ -166,6 +175,47 @@ public final class CursorControl {
         return this;
     }
 
+    public CursorControl allowDiskUse(boolean allowDiskUse) {
+        checkLocked();
+        this.allowDiskUse = allowDiskUse;
+        return this;
+    }
+
+    public CursorControl bypassDocumentValidation(boolean bypassDocumentValidation) {
+        checkLocked();
+        this.bypassDocumentValidation = bypassDocumentValidation;
+        return this;
+    }
+
+    public CursorControl collation(Collation collation) {
+        checkLocked();
+        this.collation = collation;
+        return this;
+    }
+
+    <T> MongoIterable<T> _apply(MongoIterable<T> it) {
+        if (it instanceof AggregateIterable<?>) {
+            apply((AggregateIterable<?>) it);
+        } else if (it instanceof FindIterable<?>) {
+            apply((FindIterable<?>) it);
+        }
+        return it;
+    }
+
+    public <T> AggregateIterable<T> apply(AggregateIterable<T> ai) {
+        ai = ai.batchSize(batchSize);
+        if (maxTime != null) {
+            ai = ai.maxTime(maxTime.toMillis(), TimeUnit.MILLISECONDS);
+        }
+        if (allowDiskUse != null) {
+            ai = ai.allowDiskUse(allowDiskUse);
+        }
+        if (bypassDocumentValidation != null) {
+            ai = ai.bypassDocumentValidation(bypassDocumentValidation);
+        }
+        return ai;
+    }
+
     public <T> FindIterable<T> apply(FindIterable<T> fi) {
         fi = fi.batchSize(batchSize).cursorType(type).limit(limit);
         if (maxTime != null) {
@@ -184,7 +234,10 @@ public final class CursorControl {
             fi = fi.sort(sort);
         }
         if (modifiers != null) {
-            fi.modifiers(modifiers);
+            fi = fi.modifiers(modifiers);
+        }
+        if (collation != null) {
+            fi = fi.collation(collation);
         }
         return fi;
     }

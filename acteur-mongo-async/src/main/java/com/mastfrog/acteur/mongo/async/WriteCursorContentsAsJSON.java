@@ -35,7 +35,7 @@ import com.mastfrog.acteurbase.Deferral;
 import com.mastfrog.acteurbase.Deferral.Resumer;
 import com.mongodb.async.AsyncBatchCursor;
 import com.mongodb.async.SingleResultCallback;
-import com.mongodb.async.client.FindIterable;
+import com.mongodb.async.client.MongoIterable;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import static io.netty.handler.codec.http.HttpResponseStatus.GONE;
@@ -49,19 +49,19 @@ import static io.netty.handler.codec.http.HttpResponseStatus.GONE;
 public class WriteCursorContentsAsJSON extends Acteur {
 
     @Inject
-    WriteCursorContentsAsJSON(Deferral def, CursorControl ctrl, Chain<Acteur, ? extends Chain<Acteur, ?>> chain, Closables clos, FindIterable<?> find) {
+    WriteCursorContentsAsJSON(Deferral def, CursorControl ctrl, Chain<Acteur, ? extends Chain<Acteur, ?>> chain, Closables clos, MongoIterable<?> find) {
         find(find, ctrl, def, chain, clos);
     }
 
     @SuppressWarnings("unchecked")
-    private <T> FindIterable<T> find(FindIterable<T> result, CursorControl ctrl, Deferral def, Chain<Acteur, ? extends Chain<Acteur, ?>> chain, final Closables clos) {
-        result = ctrl.apply(result);
-        final FindIterable<T> it = result;
+    private <T> MongoIterable<T> find(MongoIterable<T> result, CursorControl ctrl, Deferral def, Chain<Acteur, ? extends Chain<Acteur, ?>> chain, final Closables clos) {
+        result = ctrl._apply(result);
+        final MongoIterable<T> it = result;
         def.defer((Resumer resumer) -> {
             if (ctrl.isFindOne()) {
-                it.first(new SingleResultResume<T>(resumer));
+                it.first(new SingleResultResume<>(resumer));
             } else {
-                it.batchCursor(new CursorResultResume<T>(clos, resumer));
+                it.batchCursor(new CursorResultResume<>(clos, resumer));
             }
         });
         if (ctrl.isFindOne()) {
