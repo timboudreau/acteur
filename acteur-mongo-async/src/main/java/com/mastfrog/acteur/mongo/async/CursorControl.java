@@ -85,7 +85,7 @@ public final class CursorControl {
         return new CursorControl(this);
     }
 
-    boolean isFindOne() {
+    public boolean isFindOne() {
         return findOne;
     }
 
