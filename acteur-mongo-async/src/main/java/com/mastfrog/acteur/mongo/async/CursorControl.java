@@ -59,6 +59,7 @@ public final class CursorControl {
     private Boolean allowDiskUse;
     private Boolean bypassDocumentValidation;
     private Collation collation;
+    private int skip = -1;
 
     public CursorControl() {
 
@@ -78,6 +79,12 @@ public final class CursorControl {
         this.allowDiskUse = orig.allowDiskUse;
         this.bypassDocumentValidation = orig.bypassDocumentValidation;
         this.collation = orig.collation;
+        this.skip = orig.skip;
+    }
+
+    public CursorControl skip(int val) {
+        this.skip = val;
+        return this;
     }
 
     /**
@@ -238,6 +245,9 @@ public final class CursorControl {
         }
         if (collation != null) {
             fi = fi.collation(collation);
+        }
+        if (skip > 0) {
+            fi = fi.skip(skip);
         }
         return fi;
     }
