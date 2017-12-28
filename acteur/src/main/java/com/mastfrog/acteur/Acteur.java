@@ -28,16 +28,23 @@ import com.mastfrog.acteur.Acteur.BaseState;
 import com.mastfrog.acteur.errors.Err;
 import com.mastfrog.acteur.errors.ErrorRenderer;
 import com.mastfrog.acteur.errors.ErrorResponse;
+import com.mastfrog.acteur.errors.ResponseException;
 import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.acteurbase.AbstractActeur;
 import com.mastfrog.acteurbase.ActeurResponseFactory;
+import com.mastfrog.acteurbase.Chain;
+import com.mastfrog.acteurbase.Deferral;
+import com.mastfrog.acteurbase.Deferral.Resumer;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.giulius.scope.ReentrantScope;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.util.Checks;
+import static com.mastfrog.util.Checks.noNullElements;
+import static com.mastfrog.util.Checks.notNull;
 import com.mastfrog.util.Exceptions;
 import com.mastfrog.util.Invokable;
+import com.mastfrog.util.function.ThrowingConsumer;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.handler.codec.http.HttpResponseStatus;
@@ -50,9 +57,16 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import javax.inject.Inject;
 
 /**
  * A single piece of logic which can
@@ -92,6 +106,46 @@ import java.util.concurrent.atomic.AtomicReference;
  * Their asynchronous nature means that many requests can be handled
  * simultaneously and run small bits of logic, interleaved, on fewer threads,
  * for maximum throughput.
+ *
+ * <h4>Support for asynchronous computation</h4>
+ *
+ * Acteurs are asynchronous in nature, but by default the framework assumes they
+ * can be run one after the other. In the case an Acteur needs to call out to
+ * some library (perhaps an asynchronous database driver) which will
+ * asynchronously do some work and invoke a callback on another thread, there
+ * are a number of options to <i>defer</i> execution of further acteurs until
+ * the result is ready.
+ * <p/>
+ * With support for Java 8, a variety of flexible ways to do that are available
+ * (the original mechanism, requesting injection of a <code>Deferral</code>
+ * object is also still supported):
+ * <ul>
+ * <li>Use <code>then()</code> to pass in a <code>CompletableFuture</code> whose
+ * result object will be serialized as the response.</li>
+ * <li>Use <code>continueAfter()</code> to pass one <i>or more</i> <code>
+ * CompletableFuture</code>s and have all of their results available for
+ * injection into subsequent acteurs in the chain</li>
+ * <li>Use <code>defer()</code> to pause the chain and get back an instance of
+ * <code>CompletableFuture</code> which you can call <code>complete()</code> or
+ * <code>completeExceptionally()</code> on once the work is complete or an error
+ * has occurred</li>
+ * <li>Use <code>deferThenRespond()</code> to pause the chain and get back an
+ * instance of <code>CompletableFuture</code> whose contents will be marshalled
+ * into the response once you call <code>complete()</code> or
+ * <code>completeExceptionally()</code>.</li>
+ * </ul>
+ *
+ * With any of these newer methods, you should not call <code>next()</code> -
+ * the framework takes care of that (with an injected <code>Deferral</code>
+ * instance, you did). In all cases, if a <code>CompletableFuture</code>
+ * completes exceptionally, an error response is generated and no subsequent
+ * Acteurs are run.
+ * <p/>
+ * With either of the methods which return a <code>CompletableFuture</code>, you
+ * <b>must call <code>complete()</code> or <code>completeExceptionally()
+ * <i>no matter what happens</i></b> or your application will suffer from
+ * "request dropped on the floor" bugs where the connection is held open but
+ * no response is ever sent.
  *
  * @author Tim Boudreau
  */
@@ -141,6 +195,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
     }
 
     private static final Object[] EMPTY = new Object[0];
+
     public Object[] getContextContribution() {
         return EMPTY;
     }
@@ -302,6 +357,156 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
             setState(new ConsumedLockedState(context));
         }
         return this;
+    }
+
+    /**
+     * Continue the Acteur chain, running any subsequent acteurs, once the
+     * passed CompletionStages (e.g. CompletableFuture) have completed - this
+     * makes it possible to run ad-hoc asynchronous logic with the acteur chain
+     * paused, and automatically resume it when finished.
+     *
+     * @param stages One or more CompletionStage instances.
+     *
+     * @return This acteur
+     * @since 2.1.0
+     */
+    @SuppressWarnings("unchecked")
+    protected final Acteur continueAfter(CompletionStage<?>... stages) {
+        Checks.nonZero("stages", noNullElements("stages", notNull("stages", stages)).length);
+        Dependencies deps = Page.get().getApplication().getDependencies();
+        Chain chain = deps.getInstance(Chain.class);
+        chain.insert(CheckThrownActeur.class);
+        List<Object> l = new CopyOnWriteArrayList<>();
+        AtomicBoolean alreadyResumed = new AtomicBoolean();
+        AtomicInteger count = new AtomicInteger();
+        return then((Resumer resumer) -> {
+            for (CompletionStage<?> c : stages) {
+                c.whenComplete((Object o, Throwable t) -> {
+                    if (t != null) {
+                        if (alreadyResumed.compareAndSet(false, true)) {
+                            l.add(DeferredComputationResult.thrown(t));
+                            resumer.resume(l.toArray(new Object[l.size()]));
+                        }
+                    } else {
+                        if (o != null) {
+                            l.add(o);
+                        }
+                        if (count.incrementAndGet() == stages.length && alreadyResumed.compareAndSet(false, true)) {
+                            l.add(DeferredComputationResult.empty());
+                            resumer.resume(l.toArray(new Object[l.size()]));
+                        }
+                    }
+                });
+            }
+        });
+    }
+
+    /**
+     * Pause the Acteur chain until external code completes the returned
+     * CompletableFuture, then use the result of that computation as the
+     * response (JSON or whatever the application is configured to marshal
+     * responses to).
+     *
+     * @param <T> The type parameter for the returned CompletableFuture.
+     * @return A CompletableFuture
+     * @since 2.1.0
+     */
+    protected final <T> CompletableFuture<T> deferThenRespond() {
+        CompletableFuture<T> result = new CompletableFuture<T>();
+        then(result);
+        return result;
+    }
+
+    /**
+     * Pause the Acteur chain until external code completes the returned
+     * CompletableFuture, then restart the acteur chain with the result of the
+     * computation available for injection into subsequent acteurs.
+     *
+     * @param <T> The type parameter for the returned CompletableFuture.
+     * @return A CompletableFuture
+     * @since 2.1.0
+     */
+    protected final <T> CompletableFuture<T> defer() {
+        CompletableFuture<T> result = new CompletableFuture<>();
+        continueAfter(result);
+        return result;
+    }
+
+    /**
+     * Defer the acteur chain, allowing the passed ThrowingConsumer to run any
+     * amount of asynchonous logic, and call <code>Resumer.resume()</code> with
+     * objects to be available for injection into subsequent Acteurs.
+     *
+     * @param cons The consumer
+     * @return This acteur
+     * @since 2.1.0
+     */
+    protected final Acteur then(ThrowingConsumer<Resumer> cons) {
+        next();
+        Deferral def = Page.get().getApplication().getDependencies().getInstance(Deferral.class);
+        def.defer((Resumer res) -> {
+            cons.apply(res);
+        });
+        return this;
+    }
+
+    /**
+     * Pass a CompletionStage (for example, CompletableFuture) which will
+     * execute asynchronously. The acteur chain will be paused until the stage
+     * completes; if it completes exceptionally, the usual handling for thrown
+     * exceptions will generate the response; if it completes normally, it will
+     * be encoded as the response object (by default, to JSON).
+     *
+     * @param <T> The return type of the completion stage
+     * @param c A completion stage
+     * @return This acteur
+     * @since 2.1.0
+     */
+    protected final <T> Acteur then(CompletionStage<T> c) {
+        return then(c, null);
+    }
+
+    /**
+     * Pass a CompletionStage (for example, CompletableFuture) which will
+     * execute asynchronously. The acteur chain will be paused until the stage
+     * completes; if it completes exceptionally, the usual handling for thrown
+     * exceptions will generate the response; if it completes normally, it will
+     * be encoded as the response object (by default, to JSON).
+     *
+     * @param <T> The return type of the completion stage
+     * @param c The completion stage
+     * @param successStatus An HttpResponseStatus to use if the stage completes
+     * normally
+     * @since 2.1.0
+     * @return This acteur
+     */
+    @SuppressWarnings("unchecked")
+    protected final <T> Acteur then(CompletionStage<T> c, HttpResponseStatus successStatus) {
+        Dependencies deps = Page.get().getApplication().getDependencies();
+        Chain chain = deps.getInstance(Chain.class);
+        chain.add(DeferredComputationResultActeur.class);
+        return then((Resumer r) -> {
+            c.whenComplete((t, thrown) -> {
+                r.resume(new DeferredComputationResult(t, thrown, successStatus));
+            });
+        });
+    }
+
+    static final class CheckThrownActeur extends Acteur {
+
+        @Inject
+        CheckThrownActeur(DeferredComputationResult res) throws Throwable {
+            if (res.thrown != null) {
+                if (res.thrown instanceof ResponseException) {
+                    // Let the normal exception response generation code handle it
+                    throw res.thrown;
+                } else {
+                    reply(Err.of(res.thrown));
+                }
+            } else {
+                next();
+            }
+        }
     }
 
     /**
@@ -525,8 +730,8 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
      * Set a ChannelFutureListener which will be called after headers are
      * written and flushed to the socket; prefer
      * <code>setResponseWriter()</code> to this method unless you are not using
- chunked encoding and want to stream your response (in which case, be sure
- to chunked(false) or you will have encoding errors).
+     * chunked encoding and want to stream your response (in which case, be sure
+     * to chunked(false) or you will have encoding errors).
      *
      * @param listener
      */

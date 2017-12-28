@@ -36,6 +36,7 @@ import com.mastfrog.acteur.Acteur;
 import com.mastfrog.acteur.Application;
 import com.mastfrog.acteur.BuiltInPageAnnotationHandler;
 import com.mastfrog.acteur.Closables;
+import com.mastfrog.acteur.DeferredComputationResult;
 import com.mastfrog.acteur.Event;
 import com.mastfrog.acteur.HttpEvent;
 import com.mastfrog.acteur.Page;
@@ -462,7 +463,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
                 binder().getProvider(ByteBufAllocator.class)));
 
         scope.bindTypes(binder(), Event.class, HttpEvent.class, RequestID.class, WebSocketEvent.class,
-                Page.class, BasicCredentials.class, Closables.class);
+                Page.class, BasicCredentials.class, Closables.class, DeferredComputationResult.class);
         @SuppressWarnings("deprecation")
         com.mastfrog.acteur.ImplicitBindings implicit = appType.getAnnotation(com.mastfrog.acteur.ImplicitBindings.class);
         if (implicit != null) {
