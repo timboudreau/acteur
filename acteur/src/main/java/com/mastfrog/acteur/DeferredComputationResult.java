@@ -24,6 +24,7 @@
 package com.mastfrog.acteur;
 
 import io.netty.handler.codec.http.HttpResponseStatus;
+import java.util.function.Consumer;
 
 /**
  * Encapsulates either an object indicating success, or a throwable indicating
@@ -58,6 +59,14 @@ public final class DeferredComputationResult {
      */
     public <T> T as(Class<T> type) {
         return what == null ? null : type.cast(what);
+    }
+
+    public boolean ifThrown(Consumer<Throwable> cons) {
+        boolean result = thrown != null;
+        if (result) {
+            cons.accept(thrown);
+        }
+        return result;
     }
 
     public static DeferredComputationResult empty() {
