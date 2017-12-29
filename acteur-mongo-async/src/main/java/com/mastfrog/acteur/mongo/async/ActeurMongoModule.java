@@ -219,18 +219,18 @@ public final class ActeurMongoModule extends AbstractModule implements MongoAsyn
     private static class GenerifiedMongoIterable implements Provider<MongoIterable<?>> {
 
         @SuppressWarnings("unchecked")
-        private final Provider<FindIterable> find;
+        private final Provider<MongoIterable> find;
         private static final TypeLiteral<MongoIterable<?>> literal = new TypeLiteral<MongoIterable<?>>() {
         };
 
         @Inject
         @SuppressWarnings("unchecked")
-        public GenerifiedMongoIterable(Provider<FindIterable> find) {
+        public GenerifiedMongoIterable(Provider<MongoIterable> find) {
             this.find = find;
         }
 
         @Override
-        public FindIterable<?> get() {
+        public MongoIterable<?> get() {
             return find.get();
         }
     }
