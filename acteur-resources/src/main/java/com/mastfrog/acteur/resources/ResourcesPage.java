@@ -39,7 +39,7 @@ import com.mastfrog.acteur.preconditions.Methods;
 import com.mastfrog.acteur.resources.Resource;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.url.Path;
-import io.netty.handler.codec.http.HttpResponseStatus;
+import static io.netty.handler.codec.http.HttpResponseStatus.PARTIAL_CONTENT;
 import java.net.URLDecoder;
 import java.time.ZonedDateTime;
 import java.util.regex.Matcher;
@@ -134,7 +134,11 @@ public class ResourcesPage extends Page {
 
         @Inject
         BytesWriter(HttpEvent evt, Resource r) throws Exception {
-            setState(new RespondWith(HttpResponseStatus.OK));
+            if (evt.header(Headers.RANGE) != null) {
+                reply(PARTIAL_CONTENT);
+            } else {
+                ok();
+            }
             setChunked(false);
             if (evt.method() != Method.HEAD) {
                 Response rr = response();

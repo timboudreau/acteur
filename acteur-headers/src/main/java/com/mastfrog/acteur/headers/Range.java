@@ -57,6 +57,6 @@ public interface Range {
     BoundedRange toBoundedRange(long max);
     
     default long length(long max) {
-        return end(max) - start(max);
+        return (end(max) + 1) - start(max);
     }
 }

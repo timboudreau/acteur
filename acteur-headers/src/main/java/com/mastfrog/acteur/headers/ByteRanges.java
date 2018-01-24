@@ -212,7 +212,7 @@ public final class ByteRanges implements Iterable<Range> {
         }
 
         public Builder add(long start, long end) {
-            if (end <= start) {
+            if (end < start) {
                 throw new IllegalArgumentException("start=" + start + ", end=" + end);
             }
             ranges.add(new RangeImpl(start, end));
@@ -256,7 +256,7 @@ public final class ByteRanges implements Iterable<Range> {
 
         @Override
         public long end(long max) {
-            if (end > max) {
+            if (end >= max) {
                 return -1;
             }
             return end;
@@ -292,7 +292,7 @@ public final class ByteRanges implements Iterable<Range> {
 
         @Override
         public long end(long max) {
-            if (endOffset > max) {
+            if (endOffset >= max) {
                 return -1;
             }
             return max;
@@ -327,7 +327,7 @@ public final class ByteRanges implements Iterable<Range> {
 
         @Override
         public long end(long max) {
-            return max;
+            return max-1;
         }
 
         @Override

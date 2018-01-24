@@ -24,7 +24,10 @@
 package com.mastfrog.acteur.headers;
 
 import com.mastfrog.util.Strings;
+import io.netty.channel.DefaultFileRegion;
+import io.netty.channel.FileRegion;
 import io.netty.util.AsciiString;
+import java.io.File;
 import java.util.Arrays;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -63,7 +66,7 @@ public final class BoundedRange {
     }
     
     public long length() {
-        return end - start;
+        return (end + 1) - start;
     }
 
     private final Pattern RANGE_PATTERN = Pattern.compile("bytes (\\d+)-(\\d+)\\/([\\d\\*]+)");
@@ -127,6 +130,10 @@ public final class BoundedRange {
 
     public long of() {
         return of;
+    }
+
+    public FileRegion toRegion(File f) {
+        return new DefaultFileRegion(f, start, (end+1)-start);
     }
     
     public CharSequence toCharSequence() {

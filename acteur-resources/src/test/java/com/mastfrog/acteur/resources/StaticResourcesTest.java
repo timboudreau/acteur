@@ -1,4 +1,4 @@
-/* 
+/*
  * The MIT License
  *
  * Copyright 2013 Tim Boudreau.
@@ -25,6 +25,7 @@ package com.mastfrog.acteur.resources;
 
 import com.mastfrog.acteur.headers.ByteRanges;
 import static com.mastfrog.acteur.headers.Headers.ACCEPT_RANGES;
+import static com.mastfrog.acteur.headers.Headers.CONTENT_RANGE;
 import static com.mastfrog.acteur.headers.Headers.ETAG;
 import static com.mastfrog.acteur.headers.Headers.IF_MODIFIED_SINCE;
 import static com.mastfrog.acteur.headers.Headers.IF_NONE_MATCH;
@@ -45,6 +46,7 @@ import com.mastfrog.util.Streams;
 import static io.netty.handler.codec.http.HttpResponseStatus.NOT_IMPLEMENTED;
 import static io.netty.handler.codec.http.HttpResponseStatus.NOT_MODIFIED;
 import static io.netty.handler.codec.http.HttpResponseStatus.OK;
+import static io.netty.handler.codec.http.HttpResponseStatus.PARTIAL_CONTENT;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -182,26 +184,33 @@ public class StaticResourcesTest {
                 .go().await().assertStatus(OK);
 
         if (resources instanceof DynamicFileResources || cb.getHeader(ACCEPT_RANGES) != null) {
+
             har.get("static/another.txt")
-                    .addHeader(RANGE, ByteRanges.of(1, 4))
-                    .go().await().assertHasHeader(RANGE)
+                    .addHeader(RANGE, ByteRanges.of(1, 3))
+                    .go().await()
+                    .assertStatus(PARTIAL_CONTENT)
+                    .assertHasHeader(CONTENT_RANGE)
                     .assertContent("his");
 
             har.get("static/another.txt")
                     .addHeader(RANGE, new ByteRanges(4))
-                    .go().await().assertHasHeader(RANGE)
-                    .assertStatus(OK).assertContent(" is another file.  It has some data in it.\n");
+                    .go().await()
+                    .assertStatus(PARTIAL_CONTENT)
+                    .assertHasHeader(CONTENT_RANGE)
+                    .assertContent(" is another file.  It has some data in it.\n");
 
             har.get("static/another.txt")
-                    .addHeader(RANGE, ByteRanges.of(0, 4))
+                    .addHeader(RANGE, ByteRanges.of(0, 3))
                     .go().await()
-                    .assertHasHeader(RANGE)
-                    .assertStatus(OK)
+                    .assertStatus(PARTIAL_CONTENT)
+                    .assertHasHeader(CONTENT_RANGE)
                     .assertContent("This");
 
             har.get("static/another.txt")
-                    .addHeader(RANGE, ByteRanges.of(5, 15))
-                    .go().await().assertHasHeader(RANGE)
+                    .addHeader(RANGE, ByteRanges.of(5, 14))
+                    .go().await()
+                    .assertStatus(PARTIAL_CONTENT)
+                    .assertHasHeader(CONTENT_RANGE)
                     .assertContent("is another");
 
             ByteRanges compound = ByteRanges.builder().add(5, 15).add(25, 30).build();
@@ -209,7 +218,6 @@ public class StaticResourcesTest {
                     .addHeader(RANGE, compound)
                     .go().await().assertStatus(NOT_IMPLEMENTED);
         }
-
         if (resources instanceof ClasspathResources) {
             // should be server start time since that's all we know
             assertEquals(helloLastModified, aLastModified);
@@ -239,7 +247,7 @@ public class StaticResourcesTest {
                 .go()
                 .assertStatus(NOT_MODIFIED)
                 .getHeader(ETAG);
-        assertEquals(etag, etag2);
+        assertEquals(GuiceRunner.currentMethodName(), etag, etag2);
 
         har.get("static/hello.txt")
                 .addHeader(IF_NONE_MATCH, "garbage")

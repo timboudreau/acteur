@@ -130,7 +130,7 @@ public class MarkupFiles implements Provider<StaticResources> {
             file = unpackMarkupArchive(type, archiveName, onShutdown, ctrl);
         }
         if (dynResources) {
-            resources = new DynamicFileResources(file, types, policy, ctrl, allocator);
+            resources = new DynamicFileResources(file, types, policy, ctrl, allocator, settings);
         } else {
             resources = new FileResources(file, types, mode, allocator, settings, policy);
         }

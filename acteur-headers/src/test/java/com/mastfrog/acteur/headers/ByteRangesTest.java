@@ -31,6 +31,30 @@ import static org.junit.Assert.*;
 public class ByteRangesTest {
 
     @Test
+    public void testStartAndEndAreInclusive() {
+        ByteRanges ranges = ByteRanges.builder().add(0, 0).build();
+        assertEquals(1, ranges.size());
+        assertNotNull(ranges.first());
+        assertEquals(0, ranges.first().start(100));
+        assertEquals(0, ranges.first().end(100));
+        assertEquals(1, ranges.first().length(100));
+
+        BoundedRange br = ranges.first().toBoundedRange(100);
+        assertEquals(0, br.start());
+        assertEquals(0, br.end());
+        assertEquals(1, br.length());
+        assertFalse(br.isRangeNotSatisfiable());
+        assertTrue(br.isValid());
+
+        Range range =  ByteRanges.of(0, 10).first();
+        assertEquals(11, range.length(100));
+
+        assertEquals(10, range.end(11));
+        assertEquals(-1, range.end(9));
+        assertEquals(-1, range.end(10));
+    }
+
+    @Test
     public void testParsing() {
         ByteRanges ranges = ByteRanges.builder().add(1, 10).build();
         assertTrue(ranges.isValid());
@@ -38,8 +62,9 @@ public class ByteRangesTest {
         assertEquals(1, ranges.size());
         Range r = ranges.first();
         assertEquals(1, r.start(10));
-        assertEquals(10, r.end(10));
+        assertEquals(10, r.end(11));
         assertEquals(-1, r.end(9));
+        assertEquals(-1, r.end(10));
         ByteRanges test = new ByteRanges(ranges.toString());
         assertEquals(ranges, test);
 
@@ -49,8 +74,8 @@ public class ByteRangesTest {
         assertEquals(1, ranges.size());
         r = ranges.first();
         assertEquals(1, r.start(10));
-        assertEquals(10, r.end(10));
-        assertEquals(9, r.end(9));
+        assertEquals(9, r.end(10));
+        assertEquals(8, r.end(9));
         test = new ByteRanges(ranges.toString());
         assertEquals(ranges, test);
 
