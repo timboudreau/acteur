@@ -89,7 +89,7 @@ public final class ByteRanges implements Iterable<Range> {
                                 valid = false;
                                 break;
                             }
-                            if (end <= start) {
+                            if (end < start) {
                                 valid = false;
                                 break;
                             }
