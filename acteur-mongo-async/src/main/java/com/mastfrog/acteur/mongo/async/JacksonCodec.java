@@ -33,6 +33,8 @@ import com.mastfrog.util.Streams;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;
 import io.netty.buffer.Unpooled;
+import static io.netty.util.CharsetUtil.UTF_8;
+import io.netty.util.ReferenceCountUtil;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -135,20 +137,14 @@ final class JacksonCodec<T> implements Codec<T> {
         } catch (JsonMappingException ex) {
             debugWrite(buf);
             buf.resetReaderIndex();
-            try (ByteBufInputStream in = new ByteBufInputStream(buf)) {
-                JsonMappingException nue = new JsonMappingException(ex.getMessage() + " - JSON:\n" + Streams.readString(in));
-                nue.initCause(ex);
-                throw nue;
-            } catch (IOException ex1) {
-                if (ex1 instanceof JsonMappingException) {
-                    return chuck(ex1);
-                } else {
-                    ex1.addSuppressed(ex);
-                    return chuck(ex1);
-                }
-            }
+            JsonMappingException nue = new JsonMappingException(ex.getMessage() 
+                    + " - JSON:\n" + buf.readCharSequence(buf.writerIndex(), UTF_8));
+            nue.initCause(ex);
+            return chuck(nue);
         } catch (IOException ex) {
             return chuck(ex);
+        } finally {
+            ReferenceCountUtil.release(buf);
         }
     }
 }
