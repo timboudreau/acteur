@@ -96,6 +96,13 @@ public final class ActeurMongoModule extends AbstractModule implements MongoAsyn
         return this;
     }
 
+    public ActeurMongoModule registerJacksonTypes(Class<?>... types) {
+        for (Class<?> type : types) {
+            registerJacksonType(type);
+        }
+        return this;
+    }
+
     public ActeurMongoModule registerJacksonType(Class<?> type) {
         jacksonCodecs.add(type);
         return this;
