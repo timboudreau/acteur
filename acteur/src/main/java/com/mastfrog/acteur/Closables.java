@@ -2,11 +2,16 @@ package com.mastfrog.acteur;
 
 import com.mastfrog.acteur.spi.ApplicationControl;
 import com.mastfrog.util.Checks;
+import com.mastfrog.util.Exceptions;
+import com.mastfrog.util.thread.NonThrowingAutoCloseable;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
+import java.lang.ref.Reference;
+import java.lang.ref.WeakReference;
 import java.util.List;
 import java.util.Timer;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
@@ -25,10 +30,26 @@ public final class Closables {
     private final List<Timer> timers = new CopyOnWriteArrayList<>();
     private final CloseWhenChannelCloses closeListener;
     private final ApplicationControl application;
+    private volatile boolean closed;
 
     Closables(Channel channel, ApplicationControl application) {
         channel.closeFuture().addListener(closeListener = new CloseWhenChannelCloses(channel));
         this.application = application;
+    }
+
+    public final Closables add(CompletableFuture fut) {
+        add(new AutoClosableWrapper(fut));
+        return this;
+    }
+
+    private void checkClosed() {
+        if (closed) {
+            try {
+                close();
+            } catch (Exception ex) {
+                Exceptions.chuck(ex);
+            }
+        }
     }
 
     public final <T extends AutoCloseable> T add(T closable) {
@@ -36,6 +57,7 @@ public final class Closables {
         if (!closeables.contains(closable)) {
             closeables.add(closable);
         }
+        checkClosed();
         return closable;
     }
 
@@ -44,6 +66,7 @@ public final class Closables {
         if (!timers.contains(timer)) {
             timers.add(timer);
         }
+        checkClosed();
         return timer;
     }
 
@@ -58,6 +81,7 @@ public final class Closables {
             }
         }
         add(new RunnableWrapper(run));
+        checkClosed();
         return this;
     }
     
@@ -68,6 +92,10 @@ public final class Closables {
     void closeOn(ChannelFuture future) {
         future.addListener(closeListener);
         closeListener.detach();
+    }
+
+    public boolean isClosed() {
+        return closed;
     }
 
     final class CloseWhenChannelCloses implements ChannelFutureListener {
@@ -109,6 +137,7 @@ public final class Closables {
     }
 
     void close() throws Exception {
+        closed = true;
         for (AutoCloseable ac : closeables) {
             try {
                 ac.close();
@@ -121,6 +150,23 @@ public final class Closables {
                 t.cancel();
             } catch (Exception e2) {
                 application.internalOnError(e2);
+            }
+        }
+    }
+
+    static final class AutoClosableWrapper implements NonThrowingAutoCloseable {
+
+        private final Reference<CompletableFuture<?>> fut;
+
+        AutoClosableWrapper(CompletableFuture<?> fut) {
+            this.fut = new WeakReference<>(fut);
+        }
+
+        @Override
+        public void close() {
+            CompletableFuture<?> future = fut.get();
+            if (future != null) {
+                future.cancel(true);
             }
         }
     }
