@@ -165,7 +165,7 @@ public final class Closables {
         @Override
         public void close() {
             CompletableFuture<?> future = fut.get();
-            if (future != null) {
+            if (future != null && !future.isDone()) {
                 future.cancel(true);
             }
         }
