@@ -120,6 +120,8 @@ public class Application implements Iterable<Page> {
     private Charset charset;
     @Inject
     CORSResponseDecorator corsDecorator;
+    @Inject(optional = true)
+    private ResponseDecorator responseDecorator;
 
     @Inject(optional = true)
     @Named("application.name")
@@ -510,8 +512,9 @@ public class Application implements Iterable<Page> {
         return decorateResponse(event, page, action, response);
     }
 
-    @Inject(optional=true)
+    @Inject(optional = true)
     FailureResponseFactory failureResponses;
+
     /**
      * Create a 404 response
      *
@@ -668,6 +671,17 @@ public class Application implements Iterable<Page> {
         boolean keepAlive = event instanceof HttpEvent ? ((HttpEvent) event).requestsConnectionStayOpen() : false;
         if (keepAlive) {
             fut.addListener(ChannelFutureListener.CLOSE);
+        }
+    }
+
+    void _onBeforeSendResponse(HttpResponseStatus status, Event<?> event, Response response, Acteur acteur, Page page) {
+        try {
+            if (responseDecorator != null) {
+                responseDecorator.onBeforeSendResponse(this, status, event, response, acteur, page);
+            }
+            onBeforeSendResponse(status, event, response, acteur, page);
+        } catch (Exception e) {
+            this.internalOnError(e);
         }
     }
 

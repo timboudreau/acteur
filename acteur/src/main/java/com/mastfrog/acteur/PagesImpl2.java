@@ -52,10 +52,6 @@ import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
 import io.netty.handler.codec.http.FullHttpResponse;
-import static io.netty.handler.codec.http.HttpHeaderNames.CONTENT_ENCODING;
-import static io.netty.handler.codec.http.HttpHeaderNames.TRANSFER_ENCODING;
-import io.netty.handler.codec.http.HttpHeaders;
-import static io.netty.handler.codec.http.HttpHeaderNames.CONTENT_LENGTH;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpVersion;
@@ -264,21 +260,11 @@ class PagesImpl2 {
 
                     Charset charset = application.getDependencies().getInstance(Charset.class);
 
-                    application.onBeforeSendResponse(response.status, event, response, state.getActeur(), state.getLockedPage());
+                    application._onBeforeSendResponse(response.status, event, response, state.getActeur(), state.getLockedPage());
                     // Create a netty response
                     HttpResponse httpResponse = response.toResponse(event, charset);
                     // Allow the application to add headers
                     httpResponse = application._decorateResponse(event, state.getLockedPage(), acteur, httpResponse);
-
-                    // As long as Page.decorateResponse exists we need to sanity check this here:
-                    switch (httpResponse.status().code()) {
-                        case 204:
-                        case 304:
-                            HttpHeaders hdrs = httpResponse.headers();
-                            hdrs.remove(CONTENT_LENGTH);
-                            hdrs.remove(TRANSFER_ENCODING);
-                            hdrs.remove(CONTENT_ENCODING);
-                    }
 
                     // Abort if the client disconnected
                     if (!channel.isOpen()) {
