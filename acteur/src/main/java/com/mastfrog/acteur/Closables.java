@@ -3,6 +3,7 @@ package com.mastfrog.acteur;
 import com.mastfrog.acteur.spi.ApplicationControl;
 import com.mastfrog.util.Checks;
 import com.mastfrog.util.Exceptions;
+import com.mastfrog.util.Strings;
 import com.mastfrog.util.thread.NonThrowingAutoCloseable;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
@@ -35,6 +36,11 @@ public final class Closables {
     Closables(Channel channel, ApplicationControl application) {
         channel.closeFuture().addListener(closeListener = new CloseWhenChannelCloses(channel));
         this.application = application;
+    }
+
+    @Override
+    public String toString() {
+        return Strings.join(',', closeables) + "/" + Strings.join(',', timers);
     }
 
     public final Closables add(CompletableFuture fut) {
@@ -120,6 +126,10 @@ public final class Closables {
         public void operationComplete(ChannelFuture f) throws Exception {
             close();
         }
+
+        public String toString() {
+            return "channel:" + channel.id();
+        }
     }
 
     static class RunnableWrapper implements AutoCloseable {
@@ -133,6 +143,10 @@ public final class Closables {
         @Override
         public void close() throws Exception {
             run.run();
+        }
+
+        public String toString() {
+            return run.toString();
         }
     }
 
@@ -168,6 +182,12 @@ public final class Closables {
             if (future != null && !future.isDone()) {
                 future.cancel(true);
             }
+        }
+
+        @Override
+        public String toString() {
+            CompletableFuture<?> f = fut.get();
+            return f != null ? f.toString() : "<already-gcd>";
         }
     }
 }
