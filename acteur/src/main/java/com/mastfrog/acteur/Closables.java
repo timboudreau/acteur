@@ -13,6 +13,7 @@ import java.lang.ref.WeakReference;
 import java.util.List;
 import java.util.Timer;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
@@ -43,9 +44,11 @@ public final class Closables {
         return Strings.join(',', closeables) + "/" + Strings.join(',', timers);
     }
 
-    public final Closables add(CompletableFuture fut) {
-        add(new AutoClosableWrapper(fut));
-        return this;
+    public final <T, R extends CompletionStage<T>> R add(R fut) {
+        if (fut instanceof CompletableFuture<?>) {
+            add(new AutoClosableWrapper(fut));
+        }
+        return fut;
     }
 
     private void checkClosed() {
@@ -90,11 +93,11 @@ public final class Closables {
         checkClosed();
         return this;
     }
-    
+
     void forceClose() throws Exception {
         closeListener.earlyClose();
     }
-    
+
     void closeOn(ChannelFuture future) {
         future.addListener(closeListener);
         closeListener.detach();
@@ -105,22 +108,22 @@ public final class Closables {
     }
 
     final class CloseWhenChannelCloses implements ChannelFutureListener {
+
         private final Channel channel;
 
         public CloseWhenChannelCloses(Channel channel) {
             this.channel = channel;
             channel.closeFuture().addListener(this);
         }
-        
+
         void detach() {
             channel.closeFuture().removeListener(this);
         }
-        
+
         void earlyClose() throws Exception {
             detach();
             close();
         }
-        
 
         @Override
         public void operationComplete(ChannelFuture f) throws Exception {
@@ -170,15 +173,17 @@ public final class Closables {
 
     static final class AutoClosableWrapper implements NonThrowingAutoCloseable {
 
-        private final Reference<CompletableFuture<?>> fut;
+        private final Reference<CompletionStage<?>> fut;
 
-        AutoClosableWrapper(CompletableFuture<?> fut) {
+        AutoClosableWrapper(CompletionStage<?> fut) {
             this.fut = new WeakReference<>(fut);
         }
 
         @Override
         public void close() {
-            CompletableFuture<?> future = fut.get();
+            CompletionStage<?> c = fut.get();
+            CompletableFuture<?> future = c instanceof CompletableFuture<?>
+                    ? (CompletableFuture<?>) fut.get() : null;
             if (future != null && !future.isDone()) {
                 future.cancel(true);
             }
@@ -186,7 +191,9 @@ public final class Closables {
 
         @Override
         public String toString() {
-            CompletableFuture<?> f = fut.get();
+            CompletionStage<?> c = fut.get();
+            CompletableFuture<?> f = c instanceof CompletableFuture<?>
+                    ? (CompletableFuture<?>) fut.get() : null;
             return f != null ? f.toString() : "<already-gcd>";
         }
     }
