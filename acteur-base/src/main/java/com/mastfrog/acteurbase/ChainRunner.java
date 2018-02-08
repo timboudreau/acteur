@@ -29,6 +29,7 @@ import com.mastfrog.acteurbase.Deferral.Resumer;
 import com.mastfrog.giulius.scope.ReentrantScope;
 import com.mastfrog.util.Checks;
 import com.mastfrog.util.Exceptions;
+import com.mastfrog.util.thread.NonThrowingAutoCloseable;
 import com.mastfrog.util.thread.QuietAutoCloseable;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -259,7 +260,11 @@ public final class ChainRunner {
                         }
                     }
                 } else {
-                    onDone.onDone(newState, responses);
+                    // Ensure any ResponseDecorators are run with full
+                    // scope contents
+                    try (NonThrowingAutoCloseable cl = scope.enter(state)) {
+                        onDone.onDone(newState, responses);
+                    }
                 }
                 return null;
             } catch (Exception | Error e) {
