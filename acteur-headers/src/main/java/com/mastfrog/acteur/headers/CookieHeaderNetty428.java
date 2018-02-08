@@ -23,11 +23,12 @@
  */
 package com.mastfrog.acteur.headers;
 
-import com.mastfrog.util.Checks;
+import static com.mastfrog.util.Checks.notNull;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.cookie.ClientCookieEncoder;
 import io.netty.handler.codec.http.cookie.Cookie;
-import io.netty.handler.codec.http.cookie.ClientCookieDecoder;
+import io.netty.handler.codec.http.cookie.ServerCookieDecoder;
+import java.util.Set;
 
 /**
  *
@@ -44,16 +45,15 @@ final class CookieHeaderNetty428 extends AbstractHeader<Cookie[]> {
     }
 
     @Override
-    public String toString(Cookie[] value) {
-        Checks.notNull("value", value);
+    public CharSequence toCharSequence(Cookie[] value) {
+        notNull("value", value);
         return strict ? ClientCookieEncoder.STRICT.encode(value) : ClientCookieEncoder.LAX.encode(value);
     }
 
     @Override
     public Cookie[] toValue(CharSequence value) {
-        Checks.notNull("value", value);
-        Cookie result = strict ? ClientCookieDecoder.STRICT.decode(value.toString()) : ClientCookieDecoder.LAX.decode(value.toString());
-        return result == null ? EMPTY : new Cookie[]{result};
+        ServerCookieDecoder decoder = strict ? ServerCookieDecoder.STRICT : ServerCookieDecoder.LAX;
+        Set<Cookie> result = decoder.decode(notNull("value", value).toString());
+        return result == null ? EMPTY : result.toArray(new Cookie[result.size()]);
     }
-
 }

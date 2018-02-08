@@ -56,8 +56,9 @@ public class ResponseDecoratorTest {
 
     @Test
     public void testResponseDecorator(TestHarness harn, RD rd) throws Throwable {
-        TestHarness.CallResult res = harn.get("/test").setTimeout(Duration.ofMinutes(1))
-                .log().go().await()
+        TestHarness.CallResult res = harn.get("/test")
+                .setTimeout(Duration.ofMinutes(1))
+                .go().await()
                 .assertStatus(OK)
                 .assertHasHeader(SET_COOKIE_B_STRICT)
                 .assertHasHeader(Headers.stringHeader("X-foo"));

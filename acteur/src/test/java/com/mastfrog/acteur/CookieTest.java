@@ -23,8 +23,10 @@
  */
 package com.mastfrog.acteur;
 
+import com.google.inject.Inject;
 import com.mastfrog.acteur.CookieTest.CTM;
 import com.mastfrog.acteur.headers.Headers;
+import static com.mastfrog.acteur.headers.Headers.COOKIE_B;
 import static com.mastfrog.acteur.headers.Headers.SET_COOKIE_B;
 import com.mastfrog.acteur.preconditions.Path;
 import com.mastfrog.acteur.server.ServerModule;
@@ -33,9 +35,15 @@ import com.mastfrog.giulius.tests.TestWith;
 import com.mastfrog.netty.http.test.harness.TestHarness;
 import com.mastfrog.netty.http.test.harness.TestHarness.CallResult;
 import com.mastfrog.netty.http.test.harness.TestHarnessModule;
+import com.mastfrog.util.collections.StringObjectMap;
 import static io.netty.handler.codec.http.HttpResponseStatus.OK;
 import io.netty.handler.codec.http.cookie.Cookie;
 import io.netty.handler.codec.http.cookie.DefaultCookie;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
@@ -49,9 +57,11 @@ import org.junit.runner.RunWith;
 @RunWith(GuiceRunner.class)
 public class CookieTest {
 
+    private final Duration timeout = Duration.ofMinutes(1);
+
     @Test
     public void testOneCookie(TestHarness harn) throws Throwable {
-        CallResult res = harn.get("one").go().await().assertStatus(OK)
+        CallResult res = harn.get("one").setTimeout(timeout).go().await().assertStatus(OK)
                 .assertHasHeader(Headers.SET_COOKIE_B.name())
                 .assertContent("Set one cookie");
         Iterable<Cookie> cookies = res.getHeaders(SET_COOKIE_B);
@@ -61,7 +71,7 @@ public class CookieTest {
 
     @Test
     public void testCookieEncoding(TestHarness harn) throws Throwable {
-        CallResult res = harn.get("space").go().await().assertStatus(OK)
+        CallResult res = harn.get("space").setTimeout(timeout).go().await().assertStatus(OK)
                 .assertHasHeader(Headers.SET_COOKIE_B.name())
                 .assertContent("Set encodable cookie");
         Iterable<Cookie> cookies = res.getHeaders(SET_COOKIE_B);
@@ -78,7 +88,9 @@ public class CookieTest {
         assertTrue("No cookies found", cookies.iterator().hasNext());
         int ct = 0;
         StringBuilder sb = new StringBuilder();
+        List<Cookie> all = new ArrayList<>(3);
         for (Cookie ck : cookies) {
+            all.add(ck);
             sb.append(ck.name()).append('=').append(ck.value()).append(", ");
             ct++;
         }
@@ -86,11 +98,21 @@ public class CookieTest {
         res.assertCookieValue("a", "hey");
         res.assertCookieValue("b", "you");
         res.assertCookieValue("c", "thing");
+
+        Map<String, Object> m = harn.get("return")
+                .setTimeout(timeout)
+                .addHeader(COOKIE_B, all.toArray(new Cookie[0]))
+                .go().await().assertStatus(OK)
+                .content(StringObjectMap.class);
+        assertEquals("All cookies were not found: " + m.toString(), 3, m.size());
+        assertEquals("hey", m.get("a"));
+        assertEquals("you", m.get("b"));
+        assertEquals("thing", m.get("c"));
     }
     
     @Test
     public void testCORSHandling(TestHarness harn) throws Throwable {
-        harn.options("one").go().await().assertHasHeader(Headers.ACCESS_CONTROL_ALLOW)
+        harn.options("one").setTimeout(timeout).go().await().assertHasHeader(Headers.ACCESS_CONTROL_ALLOW)
                 .assertHasHeader(Headers.ACCESS_CONTROL_ALLOW_CREDENTIALS)
                 .assertHasHeader(Headers.ACCESS_CONTROL_MAX_AGE)
                 .assertHasHeader(Headers.CACHE_CONTROL)
@@ -110,6 +132,7 @@ public class CookieTest {
             add(OneCookiePage.class);
             add(MultiCookiePage.class);
             add(SpaceCookiePage.class);
+            add(ReturnCookiesPage.class);
             super.enableDefaultCorsHandling();
         }
 
@@ -131,6 +154,29 @@ public class CookieTest {
                         .add(SET_COOKIE_B, b)
                         .add(SET_COOKIE_B, c)
                         .ok("Set three cookies");
+            }
+        }
+
+        @Path("/return")
+        static class ReturnCookiesPage extends Page {
+
+            ReturnCookiesPage() {
+                add(ReturnCookiesActeur.class);
+            }
+        }
+
+        static class ReturnCookiesActeur extends Acteur {
+
+            @Inject
+            ReturnCookiesActeur(HttpEvent evt) {
+                Map<String, String> m = new HashMap<>();
+                List<Cookie[]> l = evt.headers(COOKIE_B);
+                for (Cookie[] c : l) {
+                    for (Cookie ck : c) {
+                        m.put(ck.name(), ck.value());
+                    }
+                }
+                ok(m);
             }
         }
 
