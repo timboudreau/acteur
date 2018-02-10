@@ -119,9 +119,10 @@ public class WriteCursorContentsAsJSON extends Acteur {
     static class SendSingleResult extends Acteur {
 
         @Inject
-        SendSingleResult(SingleResult result) {
+        SendSingleResult(SingleResult result, ApplicationControl ctrl) {
             if (result.thrown != null) {
                 reply(Err.of(result.thrown));
+                ctrl.internalOnError(result.thrown);
             } else {
                 if (result.result == null) {
                     reply(GONE, "No such object");

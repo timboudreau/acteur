@@ -30,6 +30,7 @@ import com.google.inject.Inject;
 import static com.mastfrog.acteur.mongo.async.ActeurMongoModule.JACKSON_BINDING_NAME;
 import static com.mastfrog.util.Exceptions.chuck;
 import com.mastfrog.util.Streams;
+import com.mastfrog.util.collections.CollectionUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;
 import io.netty.buffer.Unpooled;
@@ -40,6 +41,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.ZonedDateTime;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.inject.Named;
 import javax.inject.Provider;
@@ -62,12 +65,26 @@ final class JacksonCodec<T> implements Codec<T> {
     private final Provider<ObjectMapper> mapper;
     private final Provider<ByteBufCodec> json;
     private final Class<T> type;
+    private final boolean isArray;
 
     @Inject
     JacksonCodec(@Named(JACKSON_BINDING_NAME) Provider<ObjectMapper> mapper, Provider<ByteBufCodec> json, Class<T> type) {
         this.mapper = mapper;
         this.json = json;
         this.type = type;
+        this.isArray = type.isArray() || Collection.class.isAssignableFrom(type);
+    }
+
+    private Collection<?> toCollection(T obj) {
+        if (obj instanceof Collection<?>) {
+            return (Collection<?>) obj;
+        } else if (obj == null) {
+            return Collections.emptySet();
+        }
+        if (obj.getClass().isArray()) {
+            return CollectionUtils.toList(obj);
+        }
+        return Collections.singleton(obj);
     }
 
     @Override
@@ -84,9 +101,27 @@ final class JacksonCodec<T> implements Codec<T> {
             writer.writeObjectId((ObjectId) t);
             return;
         }
+        if (t == null) {
+            writer.writeNull();
+            return;
+        }
         try {
-            byte[] bytes = mapper.get().writeValueAsBytes(t);
-            json.get().encode(writer, Unpooled.wrappedBuffer(bytes), ec);
+            ByteBufCodec codec = json.get();
+            if (isArray) {
+                Collection<?> coll = toCollection(t);
+                writer.writeStartArray();
+                try {
+                    for (Object o : coll) {
+                        byte[] bytes = mapper.get().writeValueAsBytes(o);
+                        codec.encode(writer, Unpooled.wrappedBuffer(bytes), ec);
+                    }
+                } finally {
+                    writer.writeEndArray();
+                }
+            } else {
+                byte[] bytes = mapper.get().writeValueAsBytes(t);
+                codec.encode(writer, Unpooled.wrappedBuffer(bytes), ec);
+            }
         } catch (JsonProcessingException ex) {
             ex.printStackTrace();
             chuck(ex);
@@ -137,7 +172,7 @@ final class JacksonCodec<T> implements Codec<T> {
         } catch (JsonMappingException ex) {
             debugWrite(buf);
             buf.resetReaderIndex();
-            JsonMappingException nue = new JsonMappingException(ex.getMessage() 
+            JsonMappingException nue = new JsonMappingException(ex.getMessage()
                     + " - JSON:\n" + buf.readCharSequence(buf.writerIndex(), UTF_8));
             nue.initCause(ex);
             return chuck(nue);

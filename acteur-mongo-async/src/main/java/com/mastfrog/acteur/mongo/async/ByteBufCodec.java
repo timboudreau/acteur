@@ -23,15 +23,12 @@
  */
 package com.mastfrog.acteur.mongo.async;
 
-import com.mastfrog.util.Streams;
 import com.mastfrog.util.time.TimeUtil;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
-import io.netty.buffer.ByteBufInputStream;
-import java.io.IOException;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import java.time.ZonedDateTime;
 import javax.inject.Inject;
-import org.bson.BSONException;
 import org.bson.BsonReader;
 import org.bson.BsonWriter;
 import org.bson.codecs.Codec;
@@ -59,14 +56,9 @@ public class ByteBufCodec implements Codec<ByteBuf> {
 
     @Override
     public void encode(BsonWriter writer, ByteBuf t, EncoderContext ec) {
-        try {
-            JsonReader reader = new JsonReader(Streams.readString(new ByteBufInputStream(t)));
-            writer.pipe(reader);
-        } catch (IOException ex) {
-            BSONException ex1 = new BSONException(0, "Failed reading json from bytebuf");
-            ex.initCause(ex);
-            throw ex1;
-        }
+        CharSequence seq = t.readCharSequence(t.readableBytes(), UTF_8);
+        JsonReader reader = new JsonReader(seq.toString());
+        writer.pipe(reader);
     }
 
     @Override

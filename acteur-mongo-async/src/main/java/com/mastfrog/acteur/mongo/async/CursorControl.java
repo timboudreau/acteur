@@ -223,6 +223,7 @@ public final class CursorControl {
         return ai;
     }
 
+    @SuppressWarnings("deprecation")
     public <T> FindIterable<T> apply(FindIterable<T> fi) {
         fi = fi.batchSize(batchSize).cursorType(type).limit(limit);
         if (maxTime != null) {

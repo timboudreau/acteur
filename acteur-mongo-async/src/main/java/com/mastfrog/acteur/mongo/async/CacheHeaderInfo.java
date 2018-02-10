@@ -86,6 +86,7 @@ public final class CacheHeaderInfo {
         return result;
     }
 
+    @SuppressWarnings("deprecation")
     ZonedDateTime findLastModified(Document d) {
         if (lastModifiedField == null) {
             return null;
