@@ -397,7 +397,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
 
     static final AttributeKey<Boolean> SSL_ATTRIBUTE_KEY = AttributeKey.newInstance("ssl");
 
-    protected final Class<A> appType;
+    protected final Class<? extends A> appType;
     protected final ReentrantScope scope;
     private final int eventThreads;
     private final int workerThreads;
@@ -420,11 +420,11 @@ public class ServerModule<A extends Application> extends AbstractModule {
 
     ;
 
-    public ServerModule(Class<A> appType, int workerThreadCount, int eventThreadCount, int backgroundThreadCount) {
+    public ServerModule(Class<? extends A> appType, int workerThreadCount, int eventThreadCount, int backgroundThreadCount) {
         this(new ReentrantScope(new InjectionInfo()), appType, workerThreadCount, eventThreadCount, backgroundThreadCount);
     }
 
-    public ServerModule(ReentrantScope scope, Class<A> appType, int workerThreadCount, int eventThreadCount, int backgroundThreadCount) {
+    public ServerModule(ReentrantScope scope, Class<? extends A> appType, int workerThreadCount, int eventThreadCount, int backgroundThreadCount) {
         if (!Application.class.isAssignableFrom(appType)) {
             throw new ClassCastException(appType.getName() + " is not a subclass of " + Application.class.getName());
         }
@@ -435,7 +435,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
         this.scope = scope;
     }
 
-    public ServerModule(Class<A> appType) {
+    public ServerModule(Class<? extends A> appType) {
         this(appType, -1, -1, -1);
     }
 

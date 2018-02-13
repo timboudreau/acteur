@@ -27,8 +27,11 @@ import com.google.common.base.Optional;
 import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.acteur.util.HttpMethod;
 import com.mastfrog.url.Path;
+import com.mastfrog.util.Exceptions;
 import io.netty.handler.codec.http.HttpRequest;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
 import java.util.List;
 import java.util.Map;
 
@@ -189,6 +192,22 @@ public interface HttpEvent extends Event<HttpRequest> {
 
     default boolean isPreContent() {
         return false;
+    }
+
+    default String decodedUrlParameter(String name) {
+        return urlParameter(name, true);
+    }
+
+    default String urlParameter(String name, boolean decode) {
+        String result = urlParameter(name);
+        if (decode) {
+            try {
+                result = URLDecoder.decode(result, "UTF-8");
+            } catch (UnsupportedEncodingException ex) {
+                return Exceptions.chuck(ex);
+            }
+        }
+        return result;
     }
 
     /**

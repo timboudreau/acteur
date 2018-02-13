@@ -278,9 +278,6 @@ public final class ChainRunner {
             if (cancelled.get()) {
                 return;
             }
-            if (Boolean.getBoolean("acteur.debug")) {
-                System.err.println("Resume.");
-            }
             if (deferred.compareAndSet(true, false)) {
                 addToContext(addToContext);
                 Callable<?> next = this.next;

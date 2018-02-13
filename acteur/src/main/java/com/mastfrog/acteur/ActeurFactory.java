@@ -750,16 +750,16 @@ public class ActeurFactory {
         @Override
         public com.mastfrog.acteur.State getState() {
             HttpEvent event = deps.get();
+            String pth = event.path().toString();
+            if (decode) {
+                try {
+                    pth = URLDecoder.decode(pth, "UTF-8");
+                } catch (UnsupportedEncodingException ex) {
+                    return Exceptions.chuck(ex);
+                }
+            }
             for (String regex : regexen) {
                 Pattern p = cache.getPattern(regex);
-                String pth = event.path().toString();
-                if (decode) {
-                    try {
-                        pth = URLDecoder.decode(pth, "UTF-8");
-                    } catch (UnsupportedEncodingException ex) {
-                        return Exceptions.chuck(ex);
-                    }
-                }
                 boolean matches = p.matcher(pth).matches();
                 if (matches) {
                     return new ConsumedState();

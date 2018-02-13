@@ -51,7 +51,7 @@ public class GenericApplicationModule<T extends GenericApplication> extends Serv
      */
     @SuppressWarnings("unchecked")
     public GenericApplicationModule(Settings settings, Class<?>... exclude) {
-        this(settings, (Class<T>) GenericApplication.class, exclude);
+        this(settings, (Class<? extends T>) GenericApplication.class, exclude);
     }
 
     /**
@@ -63,7 +63,7 @@ public class GenericApplicationModule<T extends GenericApplication> extends Serv
      * @param exclude A list of Page, Module or implicit binding classes which
      * should be ignored
      */
-    public GenericApplicationModule(Settings settings, Class<T> appType, Class<?>... exclude) {
+    public GenericApplicationModule(Settings settings, Class<? extends T> appType, Class<?>... exclude) {
         super(appType);
         this.settings = settings;
         this.exclude = exclude;
@@ -79,7 +79,7 @@ public class GenericApplicationModule<T extends GenericApplication> extends Serv
      * @param exclude A list of Page, Module or implicit binding classes which
      * should be ignored
      */
-    public GenericApplicationModule(ReentrantScope scope, Settings settings, Class<T> appType, Class<?>... exclude) {
+    public GenericApplicationModule(ReentrantScope scope, Settings settings, Class<? extends T> appType, Class<?>... exclude) {
         super(scope, appType, -1, -1, -1);
         this.settings = settings;
         this.exclude = exclude;
