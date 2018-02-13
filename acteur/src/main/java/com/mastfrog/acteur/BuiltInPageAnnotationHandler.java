@@ -88,7 +88,7 @@ public final class BuiltInPageAnnotationHandler extends PageAnnotationHandler {
         PathRegex regex = c.getAnnotation(PathRegex.class);
         int oldSize = acteurs.size();
         if (regex != null) {
-            acteurs.add(af.matchPath(regex.value()));
+            acteurs.add(af.matchPath(regex.decode(), regex.value()));
         }
         Path path = c.getAnnotation(Path.class);
         if (path != null) {

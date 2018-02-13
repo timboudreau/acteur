@@ -40,7 +40,9 @@ import java.lang.annotation.Target;
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
-@Description("Glob-style URL Path")
+@Description("Glob-style URL Path, e.g. /api/*/foo")
 public @interface Path {
     String[] value();
+
+    boolean decode() default false;
 }

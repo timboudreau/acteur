@@ -43,4 +43,6 @@ import java.lang.annotation.Target;
 public @interface PathRegex {
 
     String[] value();
+
+    boolean decode() default false;
 }

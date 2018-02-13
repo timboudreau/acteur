@@ -45,8 +45,10 @@ import io.netty.util.CharsetUtil;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URLDecoder;
 import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.LinkedList;
@@ -674,29 +676,44 @@ public class ActeurFactory {
      */
     @Deprecated
     public Acteur matchPath(final String... regexen) {
+        return matchPath(false, regexen);
+    }
+
+    @Deprecated
+    public Acteur matchPath(boolean decode, final String... regexen) {
         if (regexen.length == 1) {
             String exactPath = cache.exactPathForRegex(regexen[0]);
             if (exactPath != null) {
-                return new ExactMatchPath(event, exactPath);
+                return new ExactMatchPath(event, exactPath, decode);
             }
         }
-        return new MatchPath(event, cache, regexen);
+        return new MatchPath(event, cache, decode, regexen);
     }
 
     static class ExactMatchPath extends Acteur {
 
         private final String path;
         private final Provider<HttpEvent> deps;
+        private final boolean decode;
 
-        ExactMatchPath(Provider<HttpEvent> deps, String path) {
+        ExactMatchPath(Provider<HttpEvent> deps, String path, boolean decode) {
             this.path = path.length() > 1 && path.charAt(0) == '/' ? path.substring(1) : path;
             this.deps = deps;
+            this.decode = decode;
         }
 
         @Override
         public com.mastfrog.acteur.State getState() {
             HttpEvent event = deps.get();
-            if (path.equals(event.path().toString())) {
+            String pth = event.path().toString();
+            if (decode) {
+                try {
+                    pth = URLDecoder.decode(pth, "UTF-8");
+                } catch (UnsupportedEncodingException ex) {
+                    return Exceptions.chuck(ex);
+                }
+            }
+            if (path.equals(pth)) {
                 return new ConsumedState();
             }
             return new RejectedState();
@@ -717,14 +734,16 @@ public class ActeurFactory {
 
         private final Provider<HttpEvent> deps;
         private final PathPatterns cache;
+        private final boolean decode;
         private final String[] regexen;
 
-        MatchPath(Provider<HttpEvent> deps, PathPatterns cache, String... regexen) {
+        MatchPath(Provider<HttpEvent> deps, PathPatterns cache, boolean decode, String... regexen) {
             if (regexen.length == 0) {
                 throw new IllegalArgumentException("No regular expressions provided");
             }
             this.deps = deps;
             this.cache = cache;
+            this.decode = decode;
             this.regexen = regexen;
         }
 
@@ -733,7 +752,15 @@ public class ActeurFactory {
             HttpEvent event = deps.get();
             for (String regex : regexen) {
                 Pattern p = cache.getPattern(regex);
-                boolean matches = p.matcher(event.path().toString()).matches();
+                String pth = event.path().toString();
+                if (decode) {
+                    try {
+                        pth = URLDecoder.decode(pth, "UTF-8");
+                    } catch (UnsupportedEncodingException ex) {
+                        return Exceptions.chuck(ex);
+                    }
+                }
+                boolean matches = p.matcher(pth).matches();
                 if (matches) {
                     return new ConsumedState();
                 }
@@ -769,18 +796,22 @@ public class ActeurFactory {
     }
 
     public Acteur globPathMatch(String... patterns) {
+        return globPathMatch(false, patterns);
+    }
+
+    public Acteur globPathMatch(boolean decode, String... patterns) {
         if (patterns.length == 1 && cache.isExactGlob(patterns[0])) {
             String pattern = patterns[0];
             if (pattern.length() > 0 && pattern.charAt(0) == '/') {
                 pattern = pattern.substring(1);
             }
-            return new ExactMatchPath(event, patterns[0]);
+            return new ExactMatchPath(event, patterns[0], decode);
         }
         String[] rexen = new String[patterns.length];
         for (int i = 0; i < rexen.length; i++) {
             rexen[i] = PathPatterns.patternFromGlob(patterns[i]);
         }
-        return matchPath(rexen);
+        return matchPath(decode, rexen);
     }
 
     /**
