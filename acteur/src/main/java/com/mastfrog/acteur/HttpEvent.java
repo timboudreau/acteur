@@ -200,7 +200,7 @@ public interface HttpEvent extends Event<HttpRequest> {
 
     default String urlParameter(String name, boolean decode) {
         String result = urlParameter(name);
-        if (decode) {
+        if (decode && result != null) {
             try {
                 result = URLDecoder.decode(result, "UTF-8");
             } catch (UnsupportedEncodingException ex) {
