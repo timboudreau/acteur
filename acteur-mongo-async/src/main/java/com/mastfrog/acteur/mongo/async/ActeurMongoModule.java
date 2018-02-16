@@ -39,11 +39,13 @@ import com.mastfrog.acteur.mongo.async.WriteCursorContentsAsJSON.SingleResult;
 import com.mastfrog.giulius.mongodb.async.DynamicCodecs;
 import com.mastfrog.giulius.mongodb.async.Java8DateTimeCodecProvider;
 import com.mastfrog.giulius.mongodb.async.MongoAsyncInitializer;
+import com.mastfrog.giulius.mongodb.async.MongoFutureCollection;
 import com.mastfrog.jackson.DurationSerializationMode;
 import com.mastfrog.jackson.JacksonConfigurer;
 import com.mastfrog.jackson.JacksonModule;
 import com.mastfrog.jackson.LocaleJacksonConfigurer;
 import com.mastfrog.jackson.TimeSerializationMode;
+import static com.mastfrog.util.Checks.notNull;
 import com.mongodb.async.client.AggregateIterable;
 import com.mongodb.async.client.FindIterable;
 import com.mongodb.async.client.MongoClientSettings;
@@ -70,6 +72,7 @@ public final class ActeurMongoModule extends AbstractModule implements MongoAsyn
     private final ReentrantScope scope;
     private final Set<Class<?>> jacksonCodecs = new HashSet<>();
     private final JacksonModule jacksonModule = new JacksonModule(JACKSON_BINDING_NAME, false);
+    private CursorControl defaultCursorControl = CursorControl.DEFAULT;
 
     public ActeurMongoModule(ReentrantScope scope) {
         this.scope = scope;
@@ -143,17 +146,24 @@ public final class ActeurMongoModule extends AbstractModule implements MongoAsyn
         return this;
     }
 
+    public ActeurMongoModule withDefaultCursorSettings(CursorControl ctrl) {
+        this.defaultCursorControl = notNull("ctrl", ctrl).lock();
+        return this;
+    }
+
     @Override
     protected void configure() {
         install(base);
         scope.bindTypes(binder(), Bson.class, Document.class, MongoResult.class, MongoCollection.class, SingleResult.class,
-                CursorResult.class, FindIterable.class, EtagResult.class, CacheHeaderInfo.class, AggregateIterable.class, MongoIterable.class);
-        Provider<CursorControl> ctrlProvider = scope.provider(CursorControl.class, Providers.<CursorControl>of(CursorControl.DEFAULT));
+                CursorResult.class, FindIterable.class, EtagResult.class, CacheHeaderInfo.class, AggregateIterable.class, MongoIterable.class,
+                MongoFutureCollection.class);
+        Provider<CursorControl> ctrlProvider = scope.provider(CursorControl.class, Providers.<CursorControl>of(defaultCursorControl));
         bind(CursorControl.class).toProvider(ctrlProvider);
         bind(GenerifiedFindIterable.literal).toProvider(GenerifiedFindIterable.class);
         bind(GenerifiedMongoIterable.literal).toProvider(GenerifiedMongoIterable.class);
         bind(GenerifiedAggregateIterable.literal).toProvider(GenerifiedAggregateIterable.class);
         bind(GenerifiedMongoCollection.literal).toProvider(GenerifiedMongoCollection.class);
+        bind(GenerifiedMongoFutureCollection.literal).toProvider(GenerifiedMongoFutureCollection.class);
         bind(new TypeLiteral<Set<Class<?>>>() {
         }).annotatedWith(Names.named("__jm")).toInstance(jacksonCodecs);
         install(jacksonModule);
@@ -277,4 +287,24 @@ public final class ActeurMongoModule extends AbstractModule implements MongoAsyn
             return find.get();
         }
     }
+
+    private static class GenerifiedMongoFutureCollection implements Provider<MongoFutureCollection<?>> {
+
+        @SuppressWarnings("unchecked")
+        private final Provider<MongoFutureCollection> find;
+        private static final TypeLiteral<MongoFutureCollection<?>> literal = new TypeLiteral<MongoFutureCollection<?>>() {
+        };
+
+        @Inject
+        @SuppressWarnings("unchecked")
+        public GenerifiedMongoFutureCollection(Provider<MongoFutureCollection> find) {
+            this.find = find;
+        }
+
+        @Override
+        public MongoFutureCollection<?> get() {
+            return find.get();
+        }
+    }
+
 }

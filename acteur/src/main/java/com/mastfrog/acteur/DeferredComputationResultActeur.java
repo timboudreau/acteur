@@ -21,11 +21,15 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-
 package com.mastfrog.acteur;
 
+import static com.google.common.net.MediaType.JSON_UTF_8;
 import com.mastfrog.acteur.errors.Err;
+import com.mastfrog.acteur.errors.ErrorResponse;
+import com.mastfrog.acteur.errors.ExceptionEvaluatorRegistry;
 import com.mastfrog.acteur.errors.ResponseException;
+import static com.mastfrog.acteur.headers.Headers.CONTENT_TYPE;
+import static io.netty.handler.codec.http.HttpResponseStatus.INTERNAL_SERVER_ERROR;
 import javax.inject.Inject;
 
 /**
@@ -35,11 +39,19 @@ import javax.inject.Inject;
 public class DeferredComputationResultActeur extends Acteur {
 
     @Inject
-    DeferredComputationResultActeur(DeferredComputationResult res) throws Throwable {
+    DeferredComputationResultActeur(HttpEvent evt, DeferredComputationResult res, ExceptionEvaluatorRegistry evals) throws Throwable {
         if (res.thrown != null) {
+            add(CONTENT_TYPE, JSON_UTF_8);
             if (res.thrown instanceof ResponseException) {
                 throw res.thrown;
             } else {
+                ErrorResponse resp = evals.evaluate(res.thrown, this, Page.get(), evt);
+                if (resp != null) {
+                    if (resp.status() != INTERNAL_SERVER_ERROR) {
+                        reply(resp.status(), resp.message());
+                        return;
+                    }
+                }
                 reply(Err.of(res.thrown));
             }
         } else {

@@ -419,6 +419,24 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
 
     /**
      * Pause the Acteur chain until external code completes the returned
+     * CompletableFuture, then use the result of that computation as the
+     * response (JSON or whatever the application is configured to marshal
+     * responses to).
+     *
+     * @param <T> The type parameter for the returned CompletableFuture.
+     * @param successStatus The HTTP status to respond with if the result is
+     * completed normally
+     * @return A CompletableFuture
+     * @since 2.2.2
+     */
+    protected final <T> CompletableFuture<T> deferThenRespond(HttpResponseStatus successStatus) {
+        CompletableFuture<T> result = new CompletableFuture<T>();
+        then(result, successStatus);
+        return result;
+    }
+
+    /**
+     * Pause the Acteur chain until external code completes the returned
      * CompletableFuture, then restart the acteur chain with the result of the
      * computation available for injection into subsequent acteurs.
      *

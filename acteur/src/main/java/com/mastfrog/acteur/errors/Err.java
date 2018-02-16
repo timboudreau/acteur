@@ -47,6 +47,11 @@ public final class Err implements ErrorResponse {
     public Err(Throwable t) {
         this(unwind(t, true));
     }
+
+    public Err putAll(Map<String, Object> m) {
+        message.putAll(m);
+        return this;
+    }
     
     public static Err of(Throwable t) {
         while (t.getCause() != null) {
