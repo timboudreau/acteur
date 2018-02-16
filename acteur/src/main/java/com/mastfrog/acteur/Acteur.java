@@ -44,6 +44,7 @@ import static com.mastfrog.util.Checks.noNullElements;
 import static com.mastfrog.util.Checks.notNull;
 import com.mastfrog.util.Exceptions;
 import com.mastfrog.util.Invokable;
+import com.mastfrog.util.function.EnhCompletableFuture;
 import com.mastfrog.util.function.ThrowingConsumer;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
@@ -60,7 +61,6 @@ import java.nio.charset.Charset;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -411,8 +411,8 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
      * @return A CompletableFuture
      * @since 2.1.0
      */
-    protected final <T> CompletableFuture<T> deferThenRespond() {
-        CompletableFuture<T> result = new CompletableFuture<T>();
+    protected final <T> EnhCompletableFuture<T> deferThenRespond() {
+        EnhCompletableFuture<T> result = new EnhCompletableFuture<>();
         then(result);
         return result;
     }
@@ -429,8 +429,8 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
      * @return A CompletableFuture
      * @since 2.2.2
      */
-    protected final <T> CompletableFuture<T> deferThenRespond(HttpResponseStatus successStatus) {
-        CompletableFuture<T> result = new CompletableFuture<T>();
+    protected final <T> EnhCompletableFuture<T> deferThenRespond(HttpResponseStatus successStatus) {
+        EnhCompletableFuture<T> result = new EnhCompletableFuture<T>();
         then(result, successStatus);
         return result;
     }
@@ -444,8 +444,8 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
      * @return A CompletableFuture
      * @since 2.1.0
      */
-    protected final <T> CompletableFuture<T> defer() {
-        CompletableFuture<T> result = new CompletableFuture<>();
+    protected final <T> EnhCompletableFuture<T> defer() {
+        EnhCompletableFuture<T> result = new EnhCompletableFuture<>();
         continueAfter(result);
         return result;
     }
