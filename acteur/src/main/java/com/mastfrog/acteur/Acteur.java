@@ -31,6 +31,7 @@ import com.mastfrog.acteur.errors.ErrorResponse;
 import com.mastfrog.acteur.errors.ResponseException;
 import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.acteur.headers.Headers;
+import com.mastfrog.acteur.spi.ApplicationControl;
 import com.mastfrog.acteurbase.AbstractActeur;
 import com.mastfrog.acteurbase.ActeurResponseFactory;
 import com.mastfrog.acteurbase.Chain;
@@ -379,6 +380,9 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
         List<Object> l = new CopyOnWriteArrayList<>();
         AtomicBoolean alreadyResumed = new AtomicBoolean();
         AtomicInteger count = new AtomicInteger();
+        for (CompletionStage<?> c : stages) {
+            logErrors(c);
+        }
         return then((Resumer resumer) -> {
             for (CompletionStage<?> c : stages) {
                 c.whenComplete((Object o, Throwable t) -> {
@@ -401,6 +405,11 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
         });
     }
 
+    private void logErrors(CompletionStage<?> stage) {
+        ApplicationControl ctrl = Page.get().application.control();
+        ctrl.logErrors(stage);
+    }
+
     /**
      * Pause the Acteur chain until external code completes the returned
      * CompletableFuture, then use the result of that computation as the
@@ -413,6 +422,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
      */
     protected final <T> EnhCompletableFuture<T> deferThenRespond() {
         EnhCompletableFuture<T> result = new EnhCompletableFuture<>();
+        logErrors(result);
         then(result);
         return result;
     }
@@ -431,6 +441,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
      */
     protected final <T> EnhCompletableFuture<T> deferThenRespond(HttpResponseStatus successStatus) {
         EnhCompletableFuture<T> result = new EnhCompletableFuture<T>();
+        logErrors(result);
         then(result, successStatus);
         return result;
     }
@@ -446,6 +457,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
      */
     protected final <T> EnhCompletableFuture<T> defer() {
         EnhCompletableFuture<T> result = new EnhCompletableFuture<>();
+        logErrors(result);
         continueAfter(result);
         return result;
     }
@@ -500,6 +512,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
      */
     @SuppressWarnings("unchecked")
     protected final <T> Acteur then(CompletionStage<T> c, HttpResponseStatus successStatus) {
+        logErrors(c);
         Dependencies deps = Page.get().getApplication().getDependencies();
         Chain chain = deps.getInstance(Chain.class);
         chain.add(DeferredComputationResultActeur.class);
