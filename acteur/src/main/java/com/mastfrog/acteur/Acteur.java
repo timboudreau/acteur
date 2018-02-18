@@ -45,6 +45,7 @@ import static com.mastfrog.util.Checks.noNullElements;
 import static com.mastfrog.util.Checks.notNull;
 import com.mastfrog.util.Exceptions;
 import com.mastfrog.util.Invokable;
+import com.mastfrog.util.collections.CollectionUtils;
 import com.mastfrog.util.function.EnhCompletableFuture;
 import com.mastfrog.util.function.ThrowingConsumer;
 import io.netty.channel.ChannelFuture;
@@ -145,8 +146,8 @@ import javax.inject.Inject;
  * With either of the methods which return a <code>CompletableFuture</code>, you
  * <b>must call <code>complete()</code> or <code>completeExceptionally()
  * <i>no matter what happens</i></b> or your application will suffer from
- * "request dropped on the floor" bugs where the connection is held open but
- * no response is ever sent.
+ * "request dropped on the floor" bugs where the connection is held open but no
+ * response is ever sent.
  *
  * @author Tim Boudreau
  */
@@ -373,7 +374,28 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
      */
     @SuppressWarnings("unchecked")
     protected final Acteur continueAfter(CompletionStage<?>... stages) {
+        return continueAfter(false, stages);
+    }
+
+    /**
+     * Continue the Acteur chain, running any subsequent acteurs, once the
+     * passed CompletionStages (e.g. CompletableFuture) have completed - this
+     * makes it possible to run ad-hoc asynchronous logic with the acteur chain
+     * paused, and automatically resume it when finished.
+     *
+     * @param unwrapArrays If the object placed in a completion stage is an
+     * array, put all of its elements into context for the subsequent Acteurs,
+     * rather than the array itself
+     * @param stages One or more CompletionStage instances.
+     *
+     * @return This acteur
+     * @since 2.2.2
+     */
+    protected final Acteur continueAfter(boolean unwrapArrays, CompletionStage<?>... stages) {
         Checks.nonZero("stages", noNullElements("stages", notNull("stages", stages)).length);
+        if (stages.length == 0) {
+            throw new IllegalArgumentException("Stages may not be an empty array");
+        }
         Dependencies deps = Page.get().getApplication().getDependencies();
         Chain chain = deps.getInstance(Chain.class);
         chain.insert(CheckThrownActeur.class);
@@ -393,6 +415,9 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
                         }
                     } else {
                         if (o != null) {
+                            if (o.getClass().isArray()) {
+                                l.addAll(CollectionUtils.toList(o));
+                            }
                             l.add(o);
                         }
                         if (count.incrementAndGet() == stages.length && alreadyResumed.compareAndSet(false, true)) {
