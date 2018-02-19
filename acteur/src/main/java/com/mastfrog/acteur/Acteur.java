@@ -415,10 +415,11 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
                         }
                     } else {
                         if (o != null) {
-                            if (o.getClass().isArray()) {
+                            if (unwrapArrays && o.getClass().isArray()) {
                                 l.addAll(CollectionUtils.toList(o));
+                            } else {
+                                l.add(o);
                             }
-                            l.add(o);
                         }
                         if (count.incrementAndGet() == stages.length && alreadyResumed.compareAndSet(false, true)) {
                             l.add(DeferredComputationResult.empty());

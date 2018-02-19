@@ -57,9 +57,10 @@ import java.util.regex.Pattern;
 @Singleton
 class DefaultPathFactory implements PathFactory {
 
-    private static final AsciiString X_URL_SCHEME = new AsciiString("X-Url-Scheme");
-    private static final AsciiString X_FORWARDED_SSL = new AsciiString("X-Forwarded-Ssl");
-    private static final AsciiString FRONT_END_HTTPS = new AsciiString("Front-End-Https");
+    static final AsciiString X_URL_SCHEME = new AsciiString("X-Url-Scheme");
+    static final AsciiString X_FORWARDED_SSL = new AsciiString("X-Forwarded-Ssl");
+    static final AsciiString FRONT_END_HTTPS = new AsciiString("Front-End-Https");
+    static final AsciiString FORWARDED = new AsciiString("Forwarded");
 
     private final int port;
     private final int securePort;
@@ -209,7 +210,8 @@ class DefaultPathFactory implements PathFactory {
         return b.create();
     }
 
-    private static CharSequence findProtocol(HttpEvent evt) {
+    private static final Pattern FORWARDED_SUB_PATTERN = Pattern.compile("proto=(\\S+)[;$]");
+    static CharSequence findProtocol(HttpEvent evt) {
         CharSequence proto = evt == null ? null : evt.header(Headers.X_FORWARDED_PROTO);
         if (proto == null && evt != null) {
             proto = evt.header(X_URL_SCHEME);
@@ -219,6 +221,15 @@ class DefaultPathFactory implements PathFactory {
                 proto = "https";
             } else if ("on".equals(evt.header(FRONT_END_HTTPS))) {
                 proto = "https";
+            }
+        }
+        if (proto == null && evt != null) {
+            String s = evt.header(FORWARDED);
+            if (s != null) {
+                Matcher m = FORWARDED_SUB_PATTERN.matcher(s);
+                if (m.find()) {
+                    proto = m.group(1);
+                }
             }
         }
         return proto;

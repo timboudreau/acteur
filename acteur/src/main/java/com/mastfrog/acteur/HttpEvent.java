@@ -84,7 +84,7 @@ public interface HttpEvent extends Event<HttpRequest> {
      * Get a header as an appropriate Java object, or null if it is not present.
      *
      * @see Headersfor a standard HTTP header types
-     * @param <>> The return type
+     * @param <T> The return type
      * @param value A header definition/parser/encoder
      * @return An object or null if the header is missing or invalid
      */
@@ -189,6 +189,27 @@ public interface HttpEvent extends Event<HttpRequest> {
      * @since 2.0.0
      */
     boolean isSsl();
+
+    /**
+     * Returns a best-effort at reconstructing the inbound URL, following the
+     * following algorithm:
+     * <ul>
+     * <li>If the application has external url generation configured via
+     * PathFactory, prefer the output of that</li>
+     * <li>If not, try to honor non-standard but common headers such as
+     * <code>X-Forwarded-Proto, X-URI-Scheme, Forwarded, X-Forwarded-Host</code></li>
+     * </ul>
+     *
+     * Applications which respond to multiple virtual host names may need a
+     * custom implementation of PathFactory bound to do this correctly.
+     *
+     * @param preferHeaders If true, and if adequate information has been found
+     * in this request's headers, do not use PathFactory's configuration to
+     * override the result
+     * @return A URL string
+     * @since 2.2.2
+     */
+    String getRequestURL(boolean preferHeaders);
 
     default boolean isPreContent() {
         return false;
