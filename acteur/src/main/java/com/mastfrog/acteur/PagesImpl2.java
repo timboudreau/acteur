@@ -126,7 +126,7 @@ class PagesImpl2 {
             ChainToPageConverter chainConverter = new ChainToPageConverter(id, event, clos);
 
             boolean early = event instanceof HttpEvent && ((HttpEvent) event).isPreContent();
-            Iterator<Page> pageIterator = early ? application.earlyPagesIterator() : application.iterator();
+            Iterator<Page> pageIterator = early ? application.earlyPagesIterator() : application.iterator((HttpEvent) event);
             if (defaultContext != null && defaultContext.length > 0) {
                 pageIterator = new ScopeWrapIterator<>(application.getRequestScope(), pageIterator, defaultContext);
             }

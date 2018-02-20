@@ -49,7 +49,7 @@ import org.junit.Test;
  */
 public class EarlyPagesTest {
 
-    private final EarlyPages pgs = new EarlyPages();
+    private final PagePathAndMethodFilter pgs = new PagePathAndMethodFilter();
     private static final Class<?>[] classes = new Class<?>[]{
         ExactPage.class, ExactNoLeadingSlash.class, ExactWithTrailingSlash.class,
         GlobPage.class, MonkeysPage.class, RegexPage.class, ExactRegexPage.class, ExactRegexPage2.class

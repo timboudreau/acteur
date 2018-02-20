@@ -138,8 +138,11 @@ public class Application implements Iterable<Page> {
     @Inject
     Probe probe;
 
-    private EarlyPages earlyPageMatcher;
-    private List<Object> earlyPages = new ArrayList<>();
+    private PagePathAndMethodFilter earlyPageMatcher;
+    private List<Object> earlyPages = new ArrayList<>(10);
+
+    private PagePathAndMethodFilter normalPageMatcher = new PagePathAndMethodFilter();
+    private List<Object> normalPages = new ArrayList<>(30);
 
     private final RequestID.Factory ids = new RequestID.Factory();
 
@@ -428,11 +431,13 @@ public class Application implements Iterable<Page> {
         assert checkConstructor(page);
         if (page.getAnnotation(Early.class) != null) {
             if (earlyPageMatcher == null) {
-                earlyPageMatcher = new EarlyPages();
+                earlyPageMatcher = new PagePathAndMethodFilter();
             }
             earlyPageMatcher.add(page);
             earlyPages.add(page);
         } else {
+            normalPageMatcher.add(page);
+            normalPages.add(page);
             pages.add(page);
         }
     }
@@ -441,11 +446,13 @@ public class Application implements Iterable<Page> {
     protected final void add(Page page) {
         if (page.getClass().getAnnotation(Early.class) != null) {
             if (earlyPageMatcher == null) {
-                earlyPageMatcher = new EarlyPages();
+                earlyPageMatcher = new PagePathAndMethodFilter();
             }
-            earlyPageMatcher.add((Class<? extends Page>) page.getClass());
+            earlyPageMatcher.add(page);
             earlyPages.add(page);
         } else {
+            normalPageMatcher.add(page);
+            normalPages.add(page);
             pages.add(page);
         }
     }
@@ -642,6 +649,38 @@ public class Application implements Iterable<Page> {
             }
         }
         return deps;
+    }
+
+    Iterator<Page> iterator(HttpEvent evt) {
+        HttpRequest req = evt.request();
+        List<Object> filtered = new ArrayList<>(normalPageMatcher.listFor(req));
+        filtered.sort((a, b) -> {
+            int ai, bi;
+            Class<?> ca, cb;
+            HttpCall ac, bc;
+            if (a instanceof Page) {
+                ca = a.getClass();
+            } else {
+                ca = (Class<?>) a;
+            }
+            if (b instanceof Page) {
+                cb = b.getClass();
+            } else {
+                cb = (Class<?>) b;
+            }
+            ac = ca.getAnnotation(HttpCall.class);
+            bc = cb.getAnnotation(HttpCall.class);
+            if (ac == null && bc == null) {
+                return 0;
+            }
+            ai = ac == null ? 0 : ac.order();
+            bi = bc == null ? 0 : bc.order();
+
+            return ai == bi ? 0 : ai > bi ? 1 : -1;
+        });
+//        System.out.println("REGULAR PAGES " + evt.path() + ": " + Strings.join(',', pages));
+//        System.out.println("FILTERED PAGES " + evt.path() + ": " + Strings.join(',', filtered));
+        return iterators.iterable(filtered, Page.class).iterator();
     }
 
     /**

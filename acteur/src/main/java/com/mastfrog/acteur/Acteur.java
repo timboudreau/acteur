@@ -391,6 +391,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
      * @return This acteur
      * @since 2.2.2
      */
+    @SuppressWarnings("unchecked")
     protected final Acteur continueAfter(boolean unwrapArrays, CompletionStage<?>... stages) {
         Checks.nonZero("stages", noNullElements("stages", notNull("stages", stages)).length);
         if (stages.length == 0) {
