@@ -23,6 +23,8 @@
  */
 package com.mastfrog.acteur;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import com.mastfrog.acteur.headers.Headers;
 import com.google.common.net.MediaType;
 import com.google.inject.Inject;
@@ -35,6 +37,7 @@ import com.mastfrog.acteur.annotations.Precursors;
 import com.mastfrog.acteur.debug.Probe;
 import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.acteur.preconditions.Description;
+import com.mastfrog.acteur.preconditions.Example;
 import com.mastfrog.settings.SettingsBuilder;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.giulius.scope.ReentrantScope;
@@ -67,6 +70,7 @@ import io.netty.util.AsciiString;
 import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Modifier;
 import java.nio.charset.Charset;
@@ -334,6 +338,21 @@ public class Application implements Iterable<Page> {
         }
     }
 
+    private String reflectAndJsonify(String field, Class<?> type) {
+        try {
+            Field f = type.getDeclaredField(field);
+            f.setAccessible(true);
+            Object o = f.get(null);
+            ObjectMapper mapper = deps.getInstance(ObjectMapper.class)
+                    .copy().enable(SerializationFeature.INDENT_OUTPUT);
+            return "<pre>" + mapper.writeValueAsString(o)
+                    .replace("\"", "&quot;") + "</pre>";
+        } catch (Exception e) {
+            return "Could not lookup and generate JSON from " + type.getName() + "." + field + ": "
+                    + e;
+        }
+    }
+
     Map<String, Object> describeYourself() {
         Map<String, Object> m = new HashMap<>();
         List<Object> allPagesAndPageTypes = new ArrayList<>(this.earlyPages);
@@ -355,6 +374,19 @@ public class Application implements Iterable<Page> {
                 Annotation[] l = type.getAnnotations();
                 for (Annotation a : l) {
                     if (a instanceof HttpCall) {
+                        continue;
+                    }
+                    if (a instanceof Example) {
+                        Example ex = (Example) a;
+                        if (!ex.value().isEmpty()) {
+                            pageDescription.put("Sample URL", ((Example) a).value());
+                        }
+                        if (ex.inputType() != Object.class) {
+                            pageDescription.put("Sample Input", reflectAndJsonify(ex.inputField(), ex.inputType()));
+                        }
+                        if (ex.outputType() != Object.class) {
+                            pageDescription.put("Sample Output", reflectAndJsonify(ex.outputField(), ex.outputType()));
+                        }
                         continue;
                     }
                     Map<String, Object> annoDescription = new HashMap<>();

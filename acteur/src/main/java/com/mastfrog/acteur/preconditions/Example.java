@@ -1,7 +1,7 @@
-/* 
+/*
  * The MIT License
  *
- * Copyright 2013 Tim Boudreau.
+ * Copyright 2018 tim.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,33 +21,30 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.mastfrog.acteur;
 
-import static com.mastfrog.acteur.headers.Method.OPTIONS;
-import com.mastfrog.acteur.preconditions.Description;
-import com.mastfrog.acteur.preconditions.Methods;
-import io.netty.handler.codec.http.HttpResponseStatus;
-import javax.inject.Inject;
+package com.mastfrog.acteur.preconditions;
+
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
 /**
+ * Allows a call to include example information for documentation purposes.
  *
  * @author Tim Boudreau
  */
-@Description(category = "Info", value = "Answers CORS preflight HTTP OPTIONS requests - see the ajax spec")
-@Methods(OPTIONS)
-final class CORSResource extends Page {
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.TYPE)
+public @interface Example {
 
-    @Inject
-    CORSResource() {
-        add(CorsHeaders.class);
-    }
+    String value() default "";
 
-    private static final class CorsHeaders extends Acteur {
+    Class<?> inputType() default Object.class;
 
-        @Inject
-        CorsHeaders(CORSResponseDecorator corsDecorator) {
-            corsDecorator.decorateCorsPreflight(response());
-            reply(HttpResponseStatus.NO_CONTENT);
-        }
-    }
+    String inputField() default "EXAMPLE";
+
+    Class<?> outputType() default Object.class;
+
+    String outputField() default "EXAMPLE";
 }

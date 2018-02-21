@@ -38,4 +38,6 @@ import java.lang.annotation.Target;
 @Target(ElementType.TYPE)
 public @interface Description {
     String value();
+
+    String category() default "Web-API";
 }
