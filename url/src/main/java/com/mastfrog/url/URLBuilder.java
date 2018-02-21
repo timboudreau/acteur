@@ -30,6 +30,8 @@ import java.nio.charset.CharsetEncoder;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
 
 /**
  * Factory class for constructing URL objects w/ validation.
@@ -37,6 +39,7 @@ import java.util.List;
  * @author Tim Boudreau
  */
 public final class URLBuilder extends AbstractBuilder<PathElement, URL> {
+
     static final char ANCHOR_DELIMITER = '#';
     static final char PASSWORD_DELIMITER = ':';
     static final String PATH_ELEMENT_DELIMITER = "/";
@@ -59,7 +62,7 @@ public final class URLBuilder extends AbstractBuilder<PathElement, URL> {
 
     static final Charset ISO_LATIN = Charset.forName("ISO-8859-1");
     private ParametersDelimiter delimiter;
-    
+
     static CharsetEncoder isoEncoder() {
         return ISO_LATIN.newEncoder();
     }
@@ -69,10 +72,10 @@ public final class URLBuilder extends AbstractBuilder<PathElement, URL> {
     }
 
     public URLBuilder() {
-        this (Protocols.HTTP);
+        this(Protocols.HTTP);
     }
 
-    public URLBuilder (URL prototype) {
+    public URLBuilder(URL prototype) {
         Checks.notNull("prototype", prototype);
         protocol = prototype.getProtocol();
         host = prototype.getHost();
@@ -81,14 +84,14 @@ public final class URLBuilder extends AbstractBuilder<PathElement, URL> {
         } else {
             port = prototype.getPort().intValue();
         }
-        userName = prototype.getUserName() == null ? null :
-            prototype.getUserName().toString();
-        password = prototype.getPassword() == null ? null :
-            prototype.getPassword().toString();
+        userName = prototype.getUserName() == null ? null
+                : prototype.getUserName().toString();
+        password = prototype.getPassword() == null ? null
+                : prototype.getPassword().toString();
         if (prototype.getParameters() != null) {
             Parameters p = prototype.getParameters();
             if (p instanceof ParsedParameters) {
-                for (ParametersElement qe : ((ParsedParameters)p).getElements()) {
+                for (ParametersElement qe : ((ParsedParameters) p).getElements()) {
                     addQueryPair(qe);
                 }
             } else {
@@ -99,89 +102,109 @@ public final class URLBuilder extends AbstractBuilder<PathElement, URL> {
         Path origPath = prototype.getPath();
         if (origPath != null) {
             int sz = origPath.size();
-            for (int i=0; i < sz; i++) {
+            for (int i = 0; i < sz; i++) {
                 addPathElement(origPath.getElement(i));
             }
         }
     }
 
-    public URLBuilder addPathElement (PathElement element) {
+    public URLBuilder addPathElement(PathElement element) {
         Checks.notNull("element", element);
         if (this.path != null) {
-            throw new IllegalStateException ("Path explicitly set");
+            throw new IllegalStateException("Path explicitly set");
         }
-        add (element);
+        add(element);
         return this;
     }
 
-    public URLBuilder addPathElement (String element) {
+    public URLBuilder addPathElement(String element) {
         Checks.notNull("element", element);
         if (this.path != null) {
-            throw new IllegalStateException ("Path explicitly set");
+            throw new IllegalStateException("Path explicitly set");
         }
-        add (element);
+        add(element);
         return this;
     }
 
     public URLBuilder addDomain(Label domain) {
         Checks.notNull("domain", domain);
         if (this.host != null) {
-            throw new IllegalStateException ("Host explicitly set");
+            throw new IllegalStateException("Host explicitly set");
         }
         if (this.labels == null) {
             this.labels = new LinkedList<>();
         }
-        labels.add (domain);
+        labels.add(domain);
         return this;
     }
 
-    public URLBuilder addDomain (String domain) {
+    public URLBuilder addDomain(String domain) {
         Checks.notNull("domain", domain);
-        return addDomain (new Label(domain));
+        return addDomain(new Label(domain));
     }
 
-    public URLBuilder addQueryPairIfNotNullOrEmpty (String key, String value) {
+    public URLBuilder addQueryPairIfNotNullOrEmpty(String key, String value) {
         if (value != null && !value.isEmpty()) {
             addQueryPair(key, value);
         }
         return this;
     }
 
-    public URLBuilder addQueryPair (String key, String value) {
+    public URLBuilder addQueryPair(String key, String value) {
         Checks.notNull("value", value);
         Checks.notNull("key", key);
         if (query != null) {
-            throw new IllegalStateException ("Query explictly set");
+            throw new IllegalStateException("Query explictly set");
         }
         if (queryElements == null) {
             queryElements = new LinkedList<>();
         }
-        queryElements.add (new ParametersElement(key, value));
+        queryElements.add(new ParametersElement(key, value));
         return this;
     }
 
-    public URLBuilder addQueryPair (ParametersElement element) {
+    public URLBuilder addQueryPairs(Map<String, Object> pairs, Function<Object, String> toString) {
+        pairs.entrySet().forEach((e) -> {
+            String s = toString.apply(e.getValue());
+            if (s != null) {
+                addQueryPair(e.getKey(), s);
+            }
+        });
+        return this;
+    }
+
+    public URLBuilder addQueryPairs(Map<String, String> pairs) {
+        pairs.entrySet().forEach((e) -> {
+            String s = e.getValue();
+            if (s != null) {
+                addQueryPair(e.getKey(), s);
+            }
+        });
+        return this;
+    }
+
+    public URLBuilder addQueryPair(ParametersElement element) {
         Checks.notNull("element", element);
         if (queryElements == null) {
             queryElements = new LinkedList<>();
-        }        
-        queryElements.add (element);
+        }
+        queryElements.add(element);
         return this;
     }
 
-    public URLBuilder setQueryDelimiter (ParametersDelimiter delimiter) {
+    public URLBuilder setQueryDelimiter(ParametersDelimiter delimiter) {
         Checks.notNull("delimiter", delimiter);
         this.delimiter = delimiter;
         return this;
     }
 
-    public URLBuilder setProtocol (String protocol) {
+    public URLBuilder setProtocol(String protocol) {
         Checks.notNull("protocol", protocol);
         Protocol p = Protocols.forName(protocol);
-        return setProtocol (p);
+        return setProtocol(p);
     }
 
-    public URLBuilder setProtocol (Protocol protocol) {
+    public URLBuilder setProtocol(Protocol protocol) {
         Checks.notNull("protocol", protocol);
         this.protocol = protocol;
         return this;
@@ -220,7 +243,7 @@ public final class URLBuilder extends AbstractBuilder<PathElement, URL> {
         Checks.notNull("path", path);
         String[] els = path.split(URLBuilder.PATH_ELEMENT_DELIMITER);
         List<PathElement> l = new LinkedList<>();
-        for (int i= 0; i < els.length; i++) {
+        for (int i = 0; i < els.length; i++) {
             String el = els[i];
             if (i == els.length - 1 && path.trim().endsWith("/")) {
                 l.add(new PathElement(el, true));
@@ -228,7 +251,7 @@ public final class URLBuilder extends AbstractBuilder<PathElement, URL> {
                 l.add(new PathElement(el, false));
             }
         }
-        return setPath (new Path(l.toArray(new PathElement[l.size()])));
+        return setPath(new Path(l.toArray(new PathElement[l.size()])));
     }
 
     public URLBuilder setPort(int port) {
@@ -240,7 +263,7 @@ public final class URLBuilder extends AbstractBuilder<PathElement, URL> {
     public URLBuilder setQuery(Parameters query) {
         Checks.notNull("query", query);
         if (queryElements != null && !queryElements.isEmpty()) {
-            throw new IllegalStateException ("Query elements set");
+            throw new IllegalStateException("Query elements set");
         }
         this.query = query;
         return this;
@@ -252,7 +275,7 @@ public final class URLBuilder extends AbstractBuilder<PathElement, URL> {
         return this;
     }
 
-    public URLBuilder setHost (String host) {
+    public URLBuilder setHost(String host) {
         Checks.notNull("host", host);
         setHost(Host.parse(host));
         return this;
@@ -277,58 +300,58 @@ public final class URLBuilder extends AbstractBuilder<PathElement, URL> {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        sb.append (protocol);
-        sb.append (PROTOCOL_DELIMITER);
+        sb.append(protocol);
+        sb.append(PROTOCOL_DELIMITER);
         if (userName != null) {
-            append (sb, userName);
+            append(sb, userName);
         }
         if (password != null) {
-            sb.append (PASSWORD_DELIMITER);
-            append (sb, password);
+            sb.append(PASSWORD_DELIMITER);
+            append(sb, password);
         }
-        sb.append (host);
+        sb.append(host);
         if (port != -1 && (protocol == null || port != protocol.getDefaultPort().intValue())) {
-            sb.append (PORT_DELIMITER);
-            sb.append (port);
+            sb.append(PORT_DELIMITER);
+            sb.append(port);
         }
-        sb.append (PATH_ELEMENT_DELIMITER);
+        sb.append(PATH_ELEMENT_DELIMITER);
         if (path != null) {
-            sb.append (path);
+            sb.append(path);
         }
         if (queryElements != null && !queryElements.isEmpty()) {
-            ParsedParameters q = new ParsedParameters (queryElements.toArray(new ParametersElement[queryElements.size()]));
-            sb.append (delimiter == null ? q.toString(delimiter) : q);
+            ParsedParameters q = new ParsedParameters(queryElements.toArray(new ParametersElement[queryElements.size()]));
+            sb.append(delimiter == null ? q.toString(delimiter) : q);
         }
         if (anchor != null) {
-            sb.append (ANCHOR_DELIMITER);
-            sb.append (anchor);
+            sb.append(ANCHOR_DELIMITER);
+            sb.append(anchor);
         }
 
         return sb.toString();
     }
 
-    static String escape (String toEscape, char... skip) {
+    static String escape(String toEscape, char... skip) {
         Checks.notNull("toEscape", toEscape);
         StringBuilder sb = new StringBuilder(toEscape.length() * 2);
-        append (sb, toEscape);
+        append(sb, toEscape);
         return sb.toString();
     }
 
-    static void append (StringBuilder sb, String toEscape, char... skip) {
+    static void append(StringBuilder sb, String toEscape, char... skip) {
         Checks.notNull("toEscape", toEscape);
         Checks.notNull("sb", sb);
         Arrays.sort(skip);
         for (char c : toEscape.toCharArray()) {
             if (skip.length > 0 && Arrays.binarySearch(skip, c) >= 0) {
-                sb.append (c);
+                sb.append(c);
                 continue;
             }
             if (!isoEncoder().canEncode(c)) {
-                sb.append (UNENCODABLE_CHARACTER);
+                sb.append(UNENCODABLE_CHARACTER);
                 continue;
             }
             if (isLetter(c) || isNumber(c) || c == '.') {
-                sb.append (c);
+                sb.append(c);
                 continue;
             }
             appendEscaped(c, sb);
@@ -342,13 +365,13 @@ public final class URLBuilder extends AbstractBuilder<PathElement, URL> {
     static boolean isEncodableInLatin1(CharSequence seq) {
         return isoEncoder().canEncode(seq);
     }
-    
+
     static boolean isLetter(char c) {
         return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
     }
 
     static boolean isNumber(char c) {
-        return c >='0' && c <= '9';
+        return c >= '0' && c <= '9';
     }
 
     static boolean isValidHostCharacter(char c) {
@@ -368,22 +391,22 @@ public final class URLBuilder extends AbstractBuilder<PathElement, URL> {
             case '?':
             case '@':
                 return true;
-            default :
+            default:
                 return false;
         }
     }
 
-    static void appendEscaped (char c, StringBuilder to) {
+    static void appendEscaped(char c, StringBuilder to) {
         Checks.notNull("to", to);
         String hex = Integer.toHexString(c);
-        to.append (URL_ESCAPE_PREFIX);
+        to.append(URL_ESCAPE_PREFIX);
         if (hex.length() == 1) {
-            to.append ('0');
+            to.append('0');
         }
-        to.append (hex);
+        to.append(hex);
     }
 
-    static String unescape (String seq) {
+    static String unescape(String seq) {
         Checks.notNull("seq", seq);
         if (seq.indexOf('%') < 0) {
             return seq;
@@ -393,19 +416,19 @@ public final class URLBuilder extends AbstractBuilder<PathElement, URL> {
         for (int i = 0; i < chars.length; i++) {
             char c = chars[i];
             if (c == URL_ESCAPE_PREFIX && i < chars.length - 2 && isHexCharacter(chars[i + 1]) && isHexCharacter(chars[i + 2])) {
-                String hex = new String(chars, i+1, 2);
+                String hex = new String(chars, i + 1, 2);
                 int codePoint = Integer.valueOf(hex, 16);
                 c = (char) codePoint;
-                sb.append (c);
-                i+=2;
+                sb.append(c);
+                i += 2;
                 continue;
             } else {
-                sb.append (c);
+                sb.append(c);
             }
         }
         return sb.toString();
     }
-    
+
     static boolean isHexCharacter(char c) {
         switch (c) {
             case 'a':
@@ -431,7 +454,7 @@ public final class URLBuilder extends AbstractBuilder<PathElement, URL> {
             case '8':
             case '9':
                 return true;
-            default :
+            default:
                 return false;
         }
     }
@@ -467,7 +490,7 @@ public final class URLBuilder extends AbstractBuilder<PathElement, URL> {
             return query;
         }
         if (queryElements != null && !queryElements.isEmpty()) {
-            return new ParsedParameters (queryElements.toArray(new ParametersElement[queryElements.size()]));
+            return new ParsedParameters(queryElements.toArray(new ParametersElement[queryElements.size()]));
         }
         return null;
     }

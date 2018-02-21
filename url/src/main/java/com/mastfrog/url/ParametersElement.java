@@ -24,6 +24,7 @@
 package com.mastfrog.url;
 
 import com.mastfrog.util.Checks;
+import com.mastfrog.util.Strings;
 import org.openide.util.NbBundle;
 
 /**
@@ -72,6 +73,14 @@ public final class ParametersElement implements URLComponent, Comparable<Paramet
 
     public String getValue() {
         return value;
+    }
+
+    public String decodedKey() {
+        return Strings.urlDecode(key);
+    }
+
+    public String decodedValue() {
+        return Strings.urlDecode(value);
     }
 
     @Override
