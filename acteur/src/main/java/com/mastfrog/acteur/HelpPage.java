@@ -35,15 +35,18 @@ import com.mastfrog.settings.Settings;
 import com.mastfrog.util.Strings;
 import com.mastfrog.util.collections.CollectionUtils;
 import static com.mastfrog.util.collections.CollectionUtils.supplierMap;
+import static com.mastfrog.util.collections.CollectionUtils.toList;
 import java.lang.reflect.Array;
 import java.nio.charset.Charset;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.regex.Pattern;
 import javax.inject.Inject;
 
 /**
@@ -113,14 +116,14 @@ final class HelpPage extends Page {
                 }
 
                 public String toString() {
-                    StringBuilder sb = new StringBuilder();
+                    StringBuilder sb = new StringBuilder("<a name='top'>&nbsp;</a>");
                     List<String> categories = new ArrayList<>(itemsForCategory.keySet());
                     Collections.sort(categories);
                     for (String category : categories) {
                         List<String> items = itemsForCategory.get(category);
                         Collections.sort(items);
-                        sb.append("<h3><a style='text-decoration: none' href='")
-                                .append(namify(category)).append("'>")
+                        sb.append("<h3><a style='text-decoration: none' href='#")
+                                .append("cat-" + namify(category)).append("'>")
                                 .append(category)
                                 .append("</a></h3>\n");
                         sb.append("<ol>\n");
@@ -159,6 +162,84 @@ final class HelpPage extends Page {
                 return "Web-API";
             }
 
+            private void findPaths(Object path, List<String> result) {
+                if (path instanceof Map<?, ?>) {
+                    Map<String, Object> m1 = (Map<String, Object>) path;
+                    if (m1.containsKey("value")) {
+                        Object val = m1.get("value");
+                        if (val.getClass().isArray()) {
+                            val = toList(val);
+                        }
+                        if (val instanceof List<?>) {
+                            List<?> l = (List<?>) val;
+                            for (Object o1 : l) {
+                                if (o1 instanceof String) {
+                                    result.add((String) o1);
+                                } else if (o1 instanceof Pattern) {
+                                    result.add(((Pattern) o1).pattern());
+                                }
+                            }
+                        } else if (val instanceof String) {
+                            result.add(val.toString());
+                        } else if (val instanceof Pattern) {
+                            result.add(((Pattern) val).pattern());
+                        }
+                    }
+                }
+            }
+
+            private int counter = 0;
+
+            private String humanizeRegex(String regex) {
+                regex = Strings.literalReplaceAll("[^\\/]*?", "*", regex);
+                regex = Strings.literalReplaceAll("[^\\/]+", "*", regex);
+                regex = Strings.literalReplaceAll("[^\\/]+?", "*", regex);
+                regex = Strings.literalReplaceAll("[^\\/]*", "*", regex);
+                if (regex.startsWith("^\\/")) {
+                    regex = regex.substring(3);
+                }
+                if (regex.startsWith("^") && regex.length() > 1) {
+                    regex = "/" + regex.substring(1);
+                }
+                regex = Strings.literalReplaceAll("[a-fA-F0-9]{24}", "308139abd9ec0c8a650e83"
+                        + Strings.toPaddedHex(new byte[]{(byte) counter++}), regex);
+                if (regex.endsWith("$")) {
+                    regex = regex.substring(0, regex.length() - 1);
+                }
+                regex = Strings.literalReplaceAll(".*?", "*", regex);
+                regex = Strings.literalReplaceAll(".*", "*", regex);
+                regex = Strings.literalReplaceAll(".+", "*", regex);
+                regex = Strings.literalReplaceAll(".+?", "*", regex);
+                regex = Strings.literalReplaceAll("\\/", "/", regex);
+                return regex;
+            }
+
+            private List<String> findPaths(Object o) {
+                List<String> result = new ArrayList<>(4);
+                if (o instanceof Map<?, ?>) {
+                    Map<String, Object> m = (Map<String, Object>) o;
+                    Object path = m.get("Path");
+                    if (path != null) {
+                        findPaths(path, result);
+                    }
+                    if (result.isEmpty()) {
+                        path = m.get("PathRegex");
+                        if (path != null) {
+                            findPaths(path, result);
+                        }
+                        if (!result.isEmpty()) {
+                            for (int i = 0; i < result.size(); i++) {
+                                result.set(i, humanizeRegex(result.get(i)) + "&nbsp;&nbsp;<i>(generated from regular expression)</i>");
+                            }
+                        }
+                    }
+                }
+                Collections.sort(result, (a, b) -> {
+                    return 0;
+                });
+                return result;
+            }
+
             @Override
             @SuppressWarnings("unchecked")
             public Status write(Event<?> evt, Output out, int iteration) throws Exception {
@@ -166,20 +247,47 @@ final class HelpPage extends Page {
                     Map<String, Object> help = app.describeYourself();
                     if (html) {
                         IndexBuilder index = new IndexBuilder();
-                        StringBuilder sb = new StringBuilder("<html><head><style>body { font-family: 'Helvetica';}</style><title>")
+                        StringBuilder sb = new StringBuilder("<!doctype html>\n<html>\n\t<head>\n"
+                                + "\t\t<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n"
+                                + "<link href=\"https://fonts.googleapis.com/css?family=Mukta+Malar\" rel=\"stylesheet\">\n"
+                                + "\t\t<style>\n\t\t\tbody {\n\t\t\t\tfont-family: 'Mukta Malar'; color:#4e4e5e; margin: 2em;\n\t\t\t}\n "
+                                + ".arrayElement { border-right: 2px solid #ccc; font-size: 0.9em;}"
+                                + ".arrayElement:last-of-type { border-right: none; }"
+                                + "\ntable { border-spacing: 0; padding: 0; margin: 1em; }"
+                                + "\ntable table { border-spacing: 0; padding: 0; margin: 0; }"
+                                + "\ntr { border-bottom: 1px #bbb solid; }"
+                                + "\ntd { border: none; padding-left: 1em; padding-right: 1em; }"
+                                + "\nth { border: none; padding-left: 1em; padding-right: 1em; }"
+                                + "\n.maptitle { background-color: #ccd; border-bottom: 1px #bbb; padding-left: 1em; }"
+                                + "\n.mapvalue { border-bottom: 1px #bbb; padding: 0; }"
+                                + "\n.title { background-color: #dde; padding-left: 1em; padding-right: 1em; text-transform: capitalize}"
+                                + "\n.title,.maptitle { border-bottom: 1px #bbb solid; color: black; }"
+                                + "\n.value { padding-bottom: 1em;\n"
+                                + "    display: inline-block;\n"
+                                + "    min-height: 100%;\n"
+                                + "    vertical-align: middle;\n"
+                                + "    height: 100%;\n"
+                                + "    line-height: 1em;\n"
+                                + "    padding-top: 1em; }"
+                                + "</style>"
+                                + "\n\t\t<title>")
                                 .append(app.getName())
-                                .append(" API Help</title></head>\n<body>\n<h1>").append(app.getName()).append(" API Help</h1>\n");
+                                .append(" API Help</title>\n"
+                                        + "\t\t</head>\n"
+                                        + "<body>\n"
+                                        + "\t\t<h1>")
+                                .append(app.getName()).append(" API Help</h1>\n");
                         Description des = app.getClass().getAnnotation(Description.class);
                         int offset = sb.length();
                         if (des != null) {
                             sb.append("<p>").append(des.value()).append("</p>\n");
                         }
-                        sb.append("<p><i style='font-size: 0.85em;'>Note that "
+                        sb.append("\t\t<p><i style='font-size: 0.85em;'>Note that "
                                 + "URL matching expressions are relative to the "
                                 + "application base path, which can be set by passing "
                                 + "<code>--basepath $PATH</code> on the command-line "
                                 + "or set in a properties file."
-                                + "</i></p>");
+                                + "</i></p>\n");
 
                         List<Map.Entry<String, Object>> sorted = new ArrayList<>(help.entrySet());
 
@@ -193,16 +301,20 @@ final class HelpPage extends Page {
                             return result;
                         });
 
+                        String topLink = "<a style='display: inline-block; min-width: 70%; line-height: 1rem; vertical-align: middle; text-align: right; font-size: 1rem;' href='#top'>Top</a>";
+
                         String lastCategory = "";
-                        for (Map.Entry<String, Object> e : sorted) {
+                        for (Iterator<Map.Entry<String, Object>> it = sorted.iterator(); it.hasNext();) {
+                            Map.Entry<String, Object> e = it.next();
                             String category = findCategory(e.getValue());
                             index.add(category, e.getKey());
                             if (!lastCategory.equals(category)) {
-                                sb.append("<h1><a name='cat-").append(namify(category)).append("'>").append(category).append("</a></h1>\n");
+                                sb.append("<h1><a name='cat-").append(namify(category)).append("'>")
+                                        .append(category).append(" Category</a>").append("</h1>\n");
                             }
                             lastCategory = category;
                             sb.append("<a name='").append(namify(e.getKey())).append("'>");
-                            sb.append("<h2>").append(deBicapitalize(e.getKey())).append("</h2></a>\n");
+                            sb.append("<h2>").append(deBicapitalize(e.getKey())).append(topLink).append("</h2>").append("</a>\n");
 
                             if (e.getValue() instanceof Map<?, ?>) {
 
@@ -213,16 +325,25 @@ final class HelpPage extends Page {
                                     Object val = ((Map<String, Object>) methods).get("value");
                                     if (val != null) {
                                         if (val.getClass().isArray()) {
-                                            methods = Strings.join(',', CollectionUtils.toList(val));
+                                            methods = Strings.join("/", CollectionUtils.toList(val));
                                         } else {
                                             methods = val.toString();
                                         }
                                     }
+                                    m.remove("Match Method");
+                                }
+                                List<String> paths = findPaths(e.getValue());
+                                if (!paths.isEmpty()) {
+                                    // The help will contain both the annotation *and* the Acteur
+                                    // generated from it, which will be duplicate information -
+                                    // remove the acteurs describeYourself() output
+                                    m.remove("Match Path (exact)");
+                                    m.remove("Match Path (regex)");
                                 }
 
                                 Object description = m.get("Description");
                                 Map<?, ?> desc = null;
-                                sb.append("<p><i style='font-size:0.85em'>").append(category).append("</i></p>\n");
+                                sb.append("<p><i style='font-size:0.85em'>").append(category).append(" category</i></p>\n");
                                 if (description != null && description instanceof Map<?, ?>) {
                                     desc = (Map<String, Object>) description;
                                     Object val = desc.get("value");
@@ -231,31 +352,89 @@ final class HelpPage extends Page {
                                     }
                                     m.remove("Description");
                                 }
+
+                                Object examples = m.get("Examples");
+                                if (examples != null && examples instanceof Map<?, ?>) {
+                                    Map<String, Object> exs = (Map<String, Object>) examples;
+                                    List<String> keys = new ArrayList<>(exs.keySet());
+                                    Collections.sort(keys);
+                                    int ix = 1;
+                                    for (String key : keys) {
+                                        Object o = exs.get(key);
+                                        if (o instanceof Map<?, ?>) {
+                                            Map<?, ?> ex = (Map<?, ?>) o;
+                                            String title = (String) ex.get("title");
+                                            if (title != null && !title.isEmpty()) {
+                                                sb.append("<h3>")
+                                                        .append("Use-Case ").append(ix++).append(": ")
+                                                        .append(title).append("</h3>\n");
+                                            }
+                                            String d = (String) ex.get("description");
+                                            if (d != null) {
+                                                sb.append("<p>").append(d).append("</p>\n");
+                                            }
+                                            String si = (String) ex.get("Sample Input");
+                                            if (si != null) {
+                                                sb.append("<b>Sample Input</b>:\n").append(si).append('\n');
+                                            }
+                                            String so = (String) ex.get("Sample Output");
+                                            if (so != null) {
+                                                sb.append("<b>Sample Output</b>:\n").append(so).append('\n');
+                                            }
+                                        }
+                                    }
+                                    m.remove("Examples");
+                                }
                                 Object sampleUrl = m.get("Sample URL");
                                 if (sampleUrl != null) {
-                                    sb.append("<p><b>Ex:</b> <code>");
+                                    sb.append("<p><b>Example:</b> <code>");
                                     if (methods != null) {
                                         sb.append(methods).append(' ');
                                     }
                                     sb.append(sampleUrl).append("</code></p>");
                                     m.remove("Sample URL");
                                 } else if (methods != null) {
-                                    sb.append("<p><b>Methods:</b><code> ").append(methods).append("</code></p>");
+                                    if (!paths.isEmpty()) {
+                                        String wd = paths.size() == 1 ? "<p><b>Example:</b> " : "<p><b>Examples:</b><br><ul>";
+                                        sb.append(wd);
+                                        for (String pth : paths) {
+                                            sb.append("<li><code>").append(methods).append(" ").append(pth).append("</code></li>\n");
+                                        }
+                                        if (paths.size() > 1) {
+                                            sb.append("</ul>");
+                                        }
+                                        sb.append("</p>");
+                                    } else {
+                                        sb.append("<p><b>Methods:</b><code> ").append(methods).append("</code></p>");
+                                    }
+                                } else if (!paths.isEmpty()) {
+                                    String wd = paths.size() == 1 ? "<p><b>Example:</b> " : "<p><b>Examples:</b><br>";
+                                    sb.append(wd);
+                                    for (String pth : paths) {
+                                        sb.append("&nbsp;").append("<code>").append(pth).append("</code>\n");
+                                    }
+                                    sb.append("</p>");
                                 }
                                 Object sampleInput = m.get("Sample Input");
                                 if (sampleInput != null) {
-                                    sb.append("<h4>Sample Input</h4>");
+                                    sb.append("<h4>Sample Input</h4>\n<blockquote>\n");
                                     sb.append(sampleInput);
+                                    sb.append("\n</blockquote>\n");
                                     m.remove("Sample Input");
                                 }
                                 Object sampleOutput = m.get("Sample Output");
                                 if (sampleOutput != null) {
-                                    sb.append("<h4>Sample Output</h4>");
+                                    sb.append("<h4>Sample Output</h4>\n<blockquote>\n");
                                     sb.append(sampleOutput);
+                                    sb.append("\n</blockquote>\n");
                                     m.remove("Sample Output");
                                 }
                             }
-                            writeOut(e.getKey(), e.getValue(), sb, null);
+                            sb.append("<h4>Code Elements:</h4>\n");
+                            writeOut(null, e.getValue(), sb, null, 1);
+                            if (it.hasNext()) {
+                                sb.append("\n<hr/>\n");
+                            }
                         }
                         sb.append("</body></html>\n");
                         sb.insert(offset, index.toString());
@@ -298,62 +477,91 @@ final class HelpPage extends Page {
             }
 
             @SuppressWarnings("unchecked")
-            private StringBuilder writeOut(String key, Object object, StringBuilder sb, String parentKey) {
+            private StringBuilder writeOut(String key, Object object, StringBuilder sb, String parentKey, int depth) {
                 boolean code = ("PathRegex".equals(parentKey) || "Path".equals(parentKey) || "Methods".equals(parentKey))
                         && "value".equals(key) || object instanceof Class<?>;
                 String codeOpen = code ? "<code>" : "";
                 String codeClose = code ? "</code>" : "";
                 String humanized = deBicapitalize(key);
+                if ("AuthenticationActeur".equals(key)) { // useless special case
+                    return sb;
+                }
                 if (key == null || object instanceof Map<?, ?>) {
                     Map<String, Object> m = Collections.checkedMap((Map<String, Object>) object, String.class, Object.class);
                     if (key != null) {
-                        sb.append("\n<tr><th valign=\"left\" bgcolor='#FFEECC'>").append(humanized).append("</th><td>");
+                        sb.append("\n<tr class='maprow r").append(depth).append("'>\n"
+                                + "<th valign=\"left\" class='maptitle title" + depth + "'>\n")
+                                .append(humanized).append("\n</th>\n<td class='mapvalue val")
+                                .append(depth)
+                                .append("'>\n");
                     }
-                    sb.append("<table>\n");
+                    sb.append("\n<table class='map t").append(depth).append("'>\n");
                     List<String> sortedKeys = new LinkedList<>(m.keySet());
                     Collections.sort(sortedKeys);
                     for (String k : sortedKeys) {
                         Object val = m.get(k);
                         sb.append(codeOpen);
-                        writeOut(k, val, sb, key);
+                        writeOut(k, val, sb, key, depth + 1);
                         sb.append(codeClose);
-                        if (key == null) {
-                            sb.append("\n<tr><td colspan=2><hr/></td></tr>\n");
-                        }
                     }
                     sb.append("\n</table>\n");
                     if (key != null) {
-                        sb.append("\n</td></tr>\n");
+                        sb.append("\n</td>\n</tr>\n");
                     }
                 } else if (object instanceof CharSequence || object instanceof Boolean || object instanceof Number || object instanceof Enum) {
-                    sb.append("\n<tr><th bgcolor='#DDDDDD'>").append(humanized).append("</th><td>")
+                    sb.append("\n<tr>\n<th class='title title").append(depth).append("'>\n").append(humanized).append("\n</th>\n<td class='value val" + depth + "'>\n")
                             .append(codeOpen)
                             .append(object)
                             .append(codeClose)
-                            .append("</td></tr>\n");
-                } else if (object != null && object.getClass().isArray()) {
-                    String s = toString(object);
-                    sb.append("\n<tr><th bgcolor='#DDDDDD'>").append(humanized).append("</th><td>")
-                            .append(codeOpen)
-                            .append(s)
-                            .append(codeClose)
-                            .append("</td></tr>\n");
+                            .append("\n</td>\n</tr>\n");
+                } else if (object != null && (object.getClass().isArray() || object instanceof List<?>)) {
+                    List<?> l = object instanceof List<?> ? (List<?>) object : toList(object);
+                    if (l.size() == 1) {
+                        sb.append("\n<tr>\n<th class='title title").append(depth)
+                                .append("'>\n").append(humanized)
+                                .append("\n</th>\n<td class='value val").append(depth)
+                                .append("'>\n")
+                                .append(codeOpen)
+                                .append(toString(l.get(0)))
+                                .append(codeClose)
+                                .append("\n</td>\n</tr>\n");
+                    } else {
+                        StringBuilder elems = new StringBuilder("\n<table class='ta tad" + depth + "'>\n<tr>\n");
+                        for (Object o : l) {
+                            elems.append("\n<td class='arrayElement value val")
+                                    .append(depth).append("'>\n")
+                                    .append(codeOpen)
+                                    .append(toString(o))
+                                    .append(codeClose)
+                                    .append("\n</td>\n");
+                        }
+                        elems.append("</table>");
+                        sb.append("\n<tr>\n<th class='title title")
+                                .append(depth).append("'>\n").append(humanized)
+                                .append("\n</th>\n<td class='value val").append(depth).append("'>\n")
+                                .append(elems)
+                                .append("\n</td>\n</tr>\n");
+                    }
                 } else if (object instanceof Class<?>) {
                     String nm = ((Class<?>) object).getSimpleName();
                     if (((Class<?>) object).isArray()) {
                         nm += "[]";
                     }
-                    sb.append("\n<tr><th bgcolor='#DDDDDD'>").append(humanized).append("</th><td>")
+                    sb.append("\n<tr>\n<th class='title title").append(depth)
+                            .append("'>\n").append(humanized)
+                            .append("\n</th>\n<td class='value val").append(depth).append("'>\n")
                             .append(codeOpen)
                             .append(nm)
                             .append(codeClose)
-                            .append("</td></tr>\n");
+                            .append("\n</td>\n</tr>\n");
                 } else {
-                    sb.append("\n<tr><th bgcolor='#DDDDDD'>").append(humanized).append("</th><td>")
+                    sb.append("\n<tr><th class='title title").append(depth)
+                            .append("'>\n").append(humanized)
+                            .append("\n</th>\n<td class='value val").append(depth).append("'>\n")
                             .append(codeOpen)
                             .append(object)
                             .append(codeClose)
-                            .append("</td></tr>\n");
+                            .append("\n</td>\n</tr>\n");
                 }
                 return sb;
             }

@@ -38,6 +38,8 @@ import com.mastfrog.acteur.debug.Probe;
 import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.acteur.preconditions.Description;
 import com.mastfrog.acteur.preconditions.Example;
+import com.mastfrog.acteur.preconditions.Examples;
+import com.mastfrog.acteur.preconditions.Examples.Case;
 import com.mastfrog.settings.SettingsBuilder;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.giulius.scope.ReentrantScope;
@@ -54,6 +56,8 @@ import com.mastfrog.parameters.Param;
 import com.mastfrog.parameters.Params;
 import com.mastfrog.util.ConfigurationError;
 import com.mastfrog.util.Checks;
+import com.mastfrog.util.Strings;
+import static com.mastfrog.util.collections.CollectionUtils.toList;
 import com.mastfrog.util.perf.Benchmark;
 import com.mastfrog.util.perf.Benchmark.Kind;
 import com.mastfrog.util.thread.QuietAutoCloseable;
@@ -86,6 +90,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import org.netbeans.validation.api.Validator;
@@ -317,8 +322,32 @@ public class Application implements Iterable<Page> {
                 }
                 into.put(name, desc);
             }
+        } else if (a instanceof Examples) {
+            Examples e = (Examples) a;
+            int ix = 1;
+            for (Case kase : e.value()) {
+                Map<String, Object> m = new TreeMap<>();
+                if (!kase.title().isEmpty()) {
+                    m.put("title", kase.title());
+                }
+                if (!kase.description().isEmpty()) {
+                    m.put("description", kase.description());
+                }
+                Example ex = kase.value();
+                m.put("Sample URL", ex.value());
+                if (ex.inputType() != Object.class) {
+                    Object inp = reflectAndJsonify(ex.inputField(), ex.inputType());
+                    m.put("Sample Input", inp);
+                }
+                if (ex.outputType() != Object.class) {
+                    Object out = reflectAndJsonify(ex.outputField(), ex.outputType());
+                    m.put("Sample Output", out);
+                }
+                into.put("example-" + ix++, m);
+            }
         } else {
             Class<? extends Annotation> type = a.annotationType();
+            String name = type.getSimpleName();
             for (java.lang.reflect.Method m : type.getMethods()) {
                 switch (m.getName()) {
                     case "annotationType":
@@ -327,7 +356,29 @@ public class Application implements Iterable<Page> {
                         break;
                     default:
                         if (m.getParameterTypes().length == 0 && m.getReturnType() != null) {
-                            into.put(m.getName(), m.invoke(a));
+                            Object mr = m.invoke(a);
+                            if (mr.getClass().isArray()) {
+                                mr = toList(mr);
+                            }
+//                            if (mr instanceof List<?>) {
+//                                List<Object> mrs = new ArrayList<>(5);
+//                                for (Object o : ((List<?>) mr)) {
+//                                    if (o instanceof Annotation) {
+//                                        Map<String, Object> ar = new LinkedHashMap<>();
+//                                        introspectAnnotation((Annotation) o, ar);
+//                                        mrs.add(ar);
+//                                    } else {
+//                                        mrs.add(o);
+//                                    }
+//                                }
+//                                into.put(name, mrs);
+//                            } else if (mr instanceof Annotation) {
+//                                Map<String, Object> ar = new LinkedHashMap<>();
+//                                introspectAnnotation((Annotation) mr, ar);
+//                                into.put(name, ar);
+//                            } else {
+                                into.put(m.getName(), mr);
+//                            }
                         }
                 }
             }
@@ -342,6 +393,16 @@ public class Application implements Iterable<Page> {
         try {
             Field f = type.getDeclaredField(field);
             f.setAccessible(true);
+            if (f.getType() == String.class) {
+                String res = (String) f.get(null);
+                if (res != null) {
+                    res = res.replaceAll("\\&", "&amp;");
+                    res = Strings.literalReplaceAll("\"", "&quot;", res);
+                    res = Strings.literalReplaceAll(">", "&gt;", res);
+                    res = Strings.literalReplaceAll("<", "&lt;", res);
+                }
+                return "\n<pre>" + res + "</pre>\n";
+            }
             Object o = f.get(null);
             ObjectMapper mapper = deps.getInstance(ObjectMapper.class)
                     .copy().enable(SerializationFeature.INDENT_OUTPUT);
