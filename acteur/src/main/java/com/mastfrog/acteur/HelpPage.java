@@ -253,15 +253,15 @@ final class HelpPage extends Page {
                                 + "\t\t<style>\n\t\t\tbody {\n\t\t\t\tfont-family: 'Mukta Malar'; color:#4e4e5e; margin: 2em;\n\t\t\t}\n "
                                 + ".arrayElement { border-right: 2px solid #ccc; font-size: 0.9em;}"
                                 + ".arrayElement:last-of-type { border-right: none; }"
-                                + "\ntable { border-spacing: 0; padding: 0; margin: 1em; }"
+                                + "\ntable { font-size: 0.875em; border-spacing: 0; padding: 0; margin: 0; }"
                                 + "\ntable table { border-spacing: 0; padding: 0; margin: 0; }"
                                 + "\ntr { border-bottom: 1px #bbb solid; }"
                                 + "\ntd { border: none; padding-left: 1em; padding-right: 1em; }"
                                 + "\nth { border: none; padding-left: 1em; padding-right: 1em; }"
                                 + "\n.maptitle { background-color: #ccd; border-bottom: 1px #bbb; padding-left: 1em; }"
                                 + "\n.mapvalue { border-bottom: 1px #bbb; padding: 0; }"
-                                + "\n.title { background-color: #dde; padding-left: 1em; padding-right: 1em; text-transform: capitalize}"
-                                + "\n.title,.maptitle { border-bottom: 1px #bbb solid; color: black; }"
+                                + "\n.title { min-width: 12rem; background-color: #dde; padding-left: 1em; padding-right: 1em; text-transform: capitalize}"
+                                + "\n.title,.maptitle { min-width: 12rem; border-bottom: 1px #bbb solid; color: black; }"
                                 + "\n.value { padding-bottom: 1em;\n"
                                 + "    display: inline-block;\n"
                                 + "    min-height: 100%;\n"
@@ -301,7 +301,10 @@ final class HelpPage extends Page {
                             return result;
                         });
 
-                        String topLink = "<a style='display: inline-block; min-width: 70%; line-height: 1rem; vertical-align: middle; text-align: right; font-size: 1rem;' href='#top'>Top</a>";
+                        String topLink = "<a style='display: inline-block; "
+                                + "margin-left: 2em; line-height: 0.9rem; "
+                                + "vertical-align: middle; text-align: right; "
+                                + "font-size: 0.9rem;' href='#top'>[Top]</a>";
 
                         String lastCategory = "";
                         for (Iterator<Map.Entry<String, Object>> it = sorted.iterator(); it.hasNext();) {
