@@ -54,6 +54,7 @@ import com.mastfrog.acteur.util.RequestID;
 import com.mastfrog.acteurbase.InstantiatingIterators;
 import com.mastfrog.parameters.Param;
 import com.mastfrog.parameters.Params;
+import com.mastfrog.settings.Settings;
 import com.mastfrog.util.ConfigurationError;
 import com.mastfrog.util.Checks;
 import com.mastfrog.util.Strings;
@@ -749,7 +750,16 @@ public class Application implements Iterable<Page> {
         return iterators.iterable(pages, Page.class).iterator();
     }
 
+    private boolean checkedEarlyHelp;
+
     Iterator<Page> earlyPagesIterator() {
+        // This is a hack
+        if (!checkedEarlyHelp && deps.getInstance(Settings.class).getBoolean("help.early", false)) {
+            System.out.println("CHECK EARLY HELP");
+            checkedEarlyHelp = true;
+            earlyPages.add(HelpPage.class);
+            earlyPageMatcher.addHelp(deps.getInstance(Settings.class).getString(Help.HELP_URL_PATTERN_SETTINGS_KEY, "^help$"));
+        }
         return iterators.iterable(earlyPages, Page.class).iterator();
     }
 

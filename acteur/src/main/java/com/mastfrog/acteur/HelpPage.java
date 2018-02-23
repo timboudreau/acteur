@@ -214,6 +214,7 @@ final class HelpPage extends Page {
                 return regex;
             }
 
+            @SuppressWarnings("Unchecked")
             private List<String> findPaths(Object o) {
                 List<String> result = new ArrayList<>(4);
                 if (o instanceof Map<?, ?>) {

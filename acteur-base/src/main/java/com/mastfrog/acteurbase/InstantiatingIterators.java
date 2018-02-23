@@ -24,6 +24,7 @@
 package com.mastfrog.acteurbase;
 
 import com.mastfrog.giulius.Dependencies;
+import com.mastfrog.util.Strings;
 import com.mastfrog.util.collections.CollectionUtils;
 import com.mastfrog.util.collections.Converter;
 import java.util.Iterator;
@@ -63,6 +64,11 @@ public final class InstantiatingIterators {
             }
 
             @Override
+            public String toString() {
+                return "Converter for " + Strings.join(',', obj);
+            }
+
+            @Override
             public T convert(Object t) {
                 if (t instanceof Class<?>) {
                     return type.cast(deps.getInstance((Class<?>) t));
@@ -87,6 +93,11 @@ public final class InstantiatingIterators {
         public PermissiveIterator(List<T> objs, AtomicInteger position) {
             this.objs = objs;
             this.position = position;
+        }
+
+        @Override
+        public String toString() {
+            return "PermissiveIterator " + ix + " over " + Strings.join(',', objs) + " at " + position;
         }
 
         @Override

@@ -25,6 +25,7 @@ package com.mastfrog.acteur;
 
 import com.google.common.collect.Sets;
 import com.mastfrog.acteur.headers.Method;
+import static com.mastfrog.acteur.headers.Method.GET;
 import com.mastfrog.acteur.preconditions.Methods;
 import com.mastfrog.acteur.preconditions.Path;
 import com.mastfrog.acteur.preconditions.PathRegex;
@@ -69,6 +70,16 @@ class EarlyPages {
             nonMatchesCache.add(mp);
             return false;
         }
+    }
+
+    void addHelp(String helpPattern) {
+        System.out.println("ADDING HELP PAGE: " + helpPattern);
+        ByMethod by = all.get(GET);
+        if (by == null) {
+            by = new ByMethod();
+            all.put(GET, by);
+        }
+        by.add(HelpPage.class, helpPattern);
     }
 
     void add(Class<? extends Page> type) {
@@ -121,6 +132,15 @@ class EarlyPages {
                 }
             }
             return false;
+        }
+
+        void add(Class<? extends Page> page, String regex) {
+            String exact = pp.exactPathForRegex(regex);
+            if (exact != null) {
+                exacts.add(exact);
+            } else {
+                patterns.add(pp.getPattern(regex));
+            }
         }
 
         void add(Class<? extends Page> page) {
