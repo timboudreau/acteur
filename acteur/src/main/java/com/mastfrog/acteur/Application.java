@@ -406,7 +406,9 @@ public class Application implements Iterable<Page> {
             }
             Object o = f.get(null);
             ObjectMapper mapper = deps.getInstance(ObjectMapper.class)
-                    .copy().enable(SerializationFeature.INDENT_OUTPUT);
+                    .copy()
+                    .enable(SerializationFeature.INDENT_OUTPUT)
+                    .enable(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS);
             return "<pre>" + mapper.writeValueAsString(o)
                     .replace("\"", "&quot;") + "</pre>";
         } catch (Exception e) {

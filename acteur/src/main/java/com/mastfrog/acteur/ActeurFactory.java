@@ -151,7 +151,7 @@ public class ActeurFactory {
 
         @Override
         public String toString() {
-            return "Match Methods " + Arrays.asList(methods);
+            return "Match Methods";
         }
 
         @Override
@@ -726,7 +726,7 @@ public class ActeurFactory {
 
         @Override
         public String toString() {
-            return "Match Path (exact): " + path;
+            return "Match Path (exact)";
         }
     }
 
