@@ -34,12 +34,12 @@ import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.acteur.headers.Method;
 import com.mastfrog.acteur.server.ServerModule;
+import com.mastfrog.acteur.spi.ApplicationControl;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.giulius.scope.ReentrantScope;
 import com.mastfrog.marshallers.netty.NettyContentMarshallers;
 import com.mastfrog.util.Checks;
 import com.mastfrog.util.Codec;
-import com.mastfrog.util.Exceptions;
 import com.mastfrog.util.Strings;
 import com.mastfrog.util.collections.CollectionUtils;
 import com.mastfrog.util.thread.ThreadLocalTransfer;
@@ -52,13 +52,16 @@ import static io.netty.channel.ChannelFutureListener.CLOSE;
 import io.netty.channel.FileRegion;
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
 import io.netty.handler.codec.http.DefaultHttpContent;
+import io.netty.handler.codec.http.DefaultHttpHeaders;
 import io.netty.handler.codec.http.DefaultHttpResponse;
+import io.netty.handler.codec.http.EmptyHttpHeaders;
 import io.netty.handler.codec.http.HttpContent;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import static io.netty.handler.codec.http.HttpHeaderNames.CONTENT_ENCODING;
 import static io.netty.handler.codec.http.HttpHeaderNames.CONTENT_LENGTH;
 import static io.netty.handler.codec.http.HttpHeaderNames.TRANSFER_ENCODING;
 import io.netty.handler.codec.http.HttpHeaderValues;
+import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpMessage;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
@@ -210,7 +213,7 @@ final class ResponseImpl extends Response {
         Key<ExecutorService> key = Key.get(ExecutorService.class,
                 Names.named(ServerModule.BACKGROUND_THREAD_POOL_NAME));
         ExecutorService svc = deps.getInstance(key);
-        setWriter(writer, charset, allocator, mapper, evt, svc);
+        setWriter(writer, charset, allocator, mapper, evt, svc, app.control());
         return this;
     }
 
@@ -306,23 +309,23 @@ final class ResponseImpl extends Response {
     }
 
     <T extends ResponseWriter> void setWriter(T w, Dependencies deps, HttpEvent evt) {
-//        chunked(true);
         Charset charset = deps.getInstance(Charset.class);
         ByteBufAllocator allocator = deps.getInstance(ByteBufAllocator.class);
         Codec mapper = deps.getInstance(Codec.class);
-        Key<ExecutorService> key = Key.get(ExecutorService.class, Names.named(ServerModule.BACKGROUND_THREAD_POOL_NAME));
+        Key<ExecutorService> key = Key.get(ExecutorService.class, Names.named(ServerModule.WORKER_THREAD_POOL_NAME));
         ExecutorService svc = deps.getInstance(key);
-        setWriter(w, charset, allocator, mapper, evt, svc);
+        ApplicationControl ctrl = deps.getInstance(ApplicationControl.class);
+        setWriter(w, charset, allocator, mapper, evt, svc, ctrl);
     }
 
     <T extends ResponseWriter> void setWriter(Class<T> w, Dependencies deps, HttpEvent evt) {
-//        chunked(true);
         Charset charset = deps.getInstance(Charset.class);
         ByteBufAllocator allocator = deps.getInstance(ByteBufAllocator.class);
-        Key<ExecutorService> key = Key.get(ExecutorService.class, Names.named(ServerModule.BACKGROUND_THREAD_POOL_NAME));
+        Key<ExecutorService> key = Key.get(ExecutorService.class, Names.named(ServerModule.WORKER_THREAD_POOL_NAME));
         ExecutorService svc = deps.getInstance(key);
         Codec mapper = deps.getInstance(Codec.class);
-        setWriter(new DynResponseWriter(w, deps), charset, allocator, mapper, evt, svc);
+        setWriter(new DynResponseWriter(w, deps), charset, allocator, mapper, evt, svc,
+                deps.getInstance(ApplicationControl.class));
     }
 
     static class DynResponseWriter extends ResponseWriter {
@@ -393,9 +396,10 @@ final class ResponseImpl extends Response {
         return result;
     }
 
-    void setWriter(ResponseWriter w, Charset charset, ByteBufAllocator allocator, Codec mapper, Event<?> evt, ExecutorService svc) {
+    void setWriter(ResponseWriter w, Charset charset, ByteBufAllocator allocator,
+            Codec mapper, Event<?> evt, ExecutorService svc, ApplicationControl ctrl) {
         contentWriter(new ResponseWriterListener(evt, w, charset, allocator,
-                mapper, chunked, !isKeepAlive(evt), svc));
+                mapper, chunked, !isKeepAlive(evt), svc, ctrl));
     }
 
     private static final class ResponseWriterListener extends AbstractOutput implements ChannelFutureListener {
@@ -407,16 +411,18 @@ final class ResponseImpl extends Response {
         private final boolean shouldClose;
         private final Event<?> evt;
         private final ExecutorService svc;
+        private final ApplicationControl ctrl;
 
         ResponseWriterListener(Event<?> evt, ResponseWriter writer, Charset charset,
                 ByteBufAllocator allocator, Codec mapper, boolean chunked,
-                boolean shouldClose, ExecutorService svc) {
+                boolean shouldClose, ExecutorService svc, ApplicationControl ctrl) {
             super(charset, allocator, mapper);
             this.chunked = chunked;
             this.writer = writer;
             this.shouldClose = shouldClose;
             this.evt = evt;
             this.svc = svc;
+            this.ctrl = ctrl;
         }
 
         @Override
@@ -443,6 +449,13 @@ final class ResponseImpl extends Response {
 
         @Override
         public void operationComplete(final ChannelFuture future) throws Exception {
+            if (future.cause() != null) {
+                ctrl.internalOnError(future.cause());
+                if (future.channel() != null && future.channel().isOpen()) {
+                    future.channel().close();
+                }
+                return;
+            }
             try {
                 // See https://github.com/netty/netty/issues/2415 for why this is needed
                 if (entryCount > 0) {
@@ -452,7 +465,10 @@ final class ResponseImpl extends Response {
                             try {
                                 operationComplete(future);
                             } catch (Exception ex) {
-                                Exceptions.chuck(ex);
+                                ctrl.internalOnError(ex);
+                                if (future != null && future.channel().isOpen()) {
+                                    future.channel().close();
+                                }
                             }
                         }
                     });
@@ -476,6 +492,8 @@ final class ResponseImpl extends Response {
                                     ResponseWriterListener.this.future = ResponseWriterListener.this.future.addListener(CLOSE);
                                 }
                             }
+                        } catch (Exception ex) {
+                            ctrl.internalOnError(ex);
                         } finally {
                             inOperationComplete = false;
                         }
@@ -587,20 +605,9 @@ final class ResponseImpl extends Response {
         }
         ByteBuf buf = writeMessage(evt, defaultCharset);
         HttpResponse resp;
-        if (buf != null) {
-            long size = buf.readableBytes();
-            add(Headers.CONTENT_LENGTH, size);
-            if (size == 0L) {
-                resp = new DefaultFullHttpResponse(HTTP_1_1, status);
-            } else {
-                resp = new DefaultFullHttpResponse(HTTP_1_1, status, buf);
-            }
-        } else {
-            HttpVersion version = isHttp10StyleResponse() ? HTTP_1_0 : HTTP_1_1;
-            resp = listener != null ? new DefaultHttpResponse(version, status, false, false)
-                    : new DefaultFullHttpResponse(version, status, false, false);
-        }
+        DefaultHttpHeaders hdrs = new DefaultHttpHeaders();
         boolean hasContentLength = false;
+        boolean hasChunked = false;
         for (Entry<?> e : headers) {
             // Remove things which cause problems for non-modified responses -
             // browsers will hold the connection open regardless
@@ -611,22 +618,36 @@ final class ResponseImpl extends Response {
                 } else if (e.decorator.is(CONTENT_ENCODING)) {
                     continue;
                 } else if (e.decorator.is(TRANSFER_ENCODING)) {
+                    hasChunked = HttpHeaderValues.CHUNKED.contentEquals(e.stringValue());
                     continue;
                 }
             }
             hasContentLength |= Headers.CONTENT_LENGTH.equals(e.decorator);
-            e.write(resp);
-        }
-        if (buf == null && listener == null && !hasContentLength && status != NOT_MODIFIED && status != NO_CONTENT && !resp.headers().contains(HttpHeaderNames.CONTENT_LENGTH)) {
-            resp.headers().add(HttpHeaderNames.CONTENT_LENGTH, 0);
+            e.write(hdrs);
         }
         // Ensure a 0 content length is present for items with no content
-
-//        if (message == null && listener == null && resp.headers() instanceof HackHttpHeaders) {
-//            ((HackHttpHeaders) resp.headers()).orig.set(Headers.CONTENT_LENGTH.name(), 0);
-//            ((HackHttpHeaders) resp.headers()).remove(Headers.TRANSFER_ENCODING.name());
-//            ((HackHttpHeaders) resp.headers()).remove(Headers.CONTENT_ENCODING.name());
-//        }
+        if (buf == null && listener == null && !hasContentLength && status != NOT_MODIFIED && status != NO_CONTENT && !hasContentLength) {
+            hdrs.add(HttpHeaderNames.CONTENT_LENGTH, 0);
+        } else if (chunked) {
+            hdrs.add(HttpHeaderNames.TRANSFER_ENCODING, HttpHeaderValues.CHUNKED);
+        } else if (listener != null && !hasContentLength) {
+            hdrs.remove(CONTENT_LENGTH);
+        }
+        if (buf != null) {
+            long size = buf.readableBytes();
+            hdrs.set(CONTENT_LENGTH, size);
+            if (size == 0L) {
+                resp = new DefaultFullHttpResponse(HTTP_1_1, status, null, hdrs, EmptyHttpHeaders.INSTANCE);
+            } else {
+                resp = new DefaultFullHttpResponse(HTTP_1_1, status, buf, hdrs, EmptyHttpHeaders.INSTANCE);
+            }
+        } else {
+            boolean http10 = listener != null && !chunked && hasContentLength && !hasChunked;
+            HttpVersion version = isHttp10StyleResponse() ? HTTP_1_0 : HTTP_1_1;
+            resp = listener != null ? new DefaultHttpResponse(version, status, hdrs)
+                    //                    : new DefaultFullHttpResponse(version, status, null, hdrs, null);
+                    : new DefaultHttpResponse(version, status, hdrs);
+        }
         return resp;
     }
 
@@ -663,6 +684,10 @@ final class ResponseImpl extends Response {
 
         public void write(HttpMessage msg) {
             Headers.write(decorator, value, msg);
+        }
+
+        void write(HttpHeaders headers) {
+            Headers.write(decorator, value, headers);
         }
 
         public CharSequence stringValue() {

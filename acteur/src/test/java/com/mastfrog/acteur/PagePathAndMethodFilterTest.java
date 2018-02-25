@@ -23,6 +23,7 @@
  */
 package com.mastfrog.acteur;
 
+import com.google.inject.util.Providers;
 import com.mastfrog.acteur.headers.Method;
 import static com.mastfrog.acteur.headers.Method.GET;
 import static com.mastfrog.acteur.headers.Method.POST;
@@ -30,15 +31,20 @@ import static com.mastfrog.acteur.headers.Method.PUT;
 import com.mastfrog.acteur.preconditions.Methods;
 import com.mastfrog.acteur.preconditions.Path;
 import com.mastfrog.acteur.preconditions.PathRegex;
+import com.mastfrog.util.Strings;
 import io.netty.handler.codec.http.DefaultHttpRequest;
 import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpVersion;
+import static io.netty.util.CharsetUtil.UTF_8;
 import static java.lang.annotation.ElementType.TYPE;
 import java.lang.annotation.Retention;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 import java.lang.annotation.Target;
+import java.util.List;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import org.junit.Before;
 import org.junit.Test;
@@ -47,13 +53,161 @@ import org.junit.Test;
  *
  * @author Tim Boudreau
  */
-public class EarlyPagesTest {
+public class PagePathAndMethodFilterTest {
 
     private final PagePathAndMethodFilter pgs = new PagePathAndMethodFilter();
     private static final Class<?>[] classes = new Class<?>[]{
         ExactPage.class, ExactNoLeadingSlash.class, ExactWithTrailingSlash.class,
         GlobPage.class, MonkeysPage.class, RegexPage.class, ExactRegexPage.class, ExactRegexPage2.class
     };
+
+    @Test
+    public void testInstanceMatching() {
+        PagePathAndMethodFilter filter = new PagePathAndMethodFilter();
+        filter.add(new PageWithInstanceActeurs());
+        filter.add(new PageWithRegex());
+        filter.add(new PageWithDecode());
+        List<Object> l = filter.listFor(get("/"));
+        assertNotNull(l);
+        assertTrue(Strings.join(',', l), l.isEmpty());
+
+        l = filter.listFor(get("api/v3/foo"));
+        assertOne(l, PageWithInstanceActeurs.class);
+
+        l = filter.listFor(get("foo/23/bar"));
+        assertOne(l, PageWithRegex.class);
+
+        l = filter.listFor(get("foo/23a/bar"));
+        assertNotNull(l);
+        assertTrue(l.isEmpty());
+
+        l = filter.listFor(post("api/v1/wiggles/bada-boom"));
+        assertOne(l, PageWithDecode.class);
+
+        l = filter.listFor(post("api/v1/wiggles/-bada-boom"));
+        assertNotNull(l);
+        assertTrue(l.isEmpty());
+
+        // домен-продаётся
+        String domainForSale = Strings.urlEncode("домен-продаётся");
+        l = filter.listFor(post("api/v1/wiggles/" + domainForSale));
+        assertOne(l, PageWithDecode.class);
+
+        String mondoPath = "/api/v1/training/%D0%B4%D0%BE%D0%BC%D0%B5%D0%BD-%D0%BF%D1%80%D0%BE%D0%B4%D0%B0%D1%91%D1%82%D1%81%D1%8F";
+
+        l = filter.listFor(post(mondoPath));
+        assertOne(l, PageWithDecode.class);
+    }
+
+    @Test
+    public void testDecodeWithAnnotation() {
+        PagePathAndMethodFilter filter = new PagePathAndMethodFilter();
+        filter.add(new PageWithInstanceActeurs());
+        filter.add(new PageWithRegex());
+        filter.add(new PageWithDecode());
+        filter.add(PageWithAnnoDecode.class);
+        List<Object> l = filter.listFor(post("hello/v1/wiggles/-bada-boom"));
+        assertNotNull(l);
+        assertTrue(l.isEmpty());
+
+        l = filter.listFor(post("hello/v1/wiggles/gurble-whatzit"));
+        assertNotNull(l);
+        assertOne(l, PageWithAnnoDecode.class);
+
+        l = filter.listFor(post("hello/v1/wiggles/" + Strings.urlEncode("домен-продаётся")));
+        assertNotNull(l);
+        assertOne(l, PageWithAnnoDecode.class);
+
+        l = filter.listFor(post("hello/v1/wiggles/" + Strings.urlEncode("-домен-продаётся")));
+        assertNotNull(l);
+        assertTrue(l.isEmpty());
+
+        l = filter.listFor(post("hello/v1/wiggles/bada-boom/wham"));
+        assertNotNull(l);
+        assertTrue(l.isEmpty());
+
+        l = filter.listFor(post("whatevs"));
+        assertNotNull(l);
+        assertOne(l, PageWithAnnoDecode.class);
+    }
+
+    @Test
+    public void testUnknownsAlwaysReturned() {
+        PagePathAndMethodFilter filter = new PagePathAndMethodFilter();
+        filter.add(new PageWithInstanceActeurs());
+        filter.add(new PageWithRegex());
+        filter.add(new PageWithDecode());
+        filter.add(new MysteryPage());
+        List<Object> l = filter.listFor(get("/"));
+        assertNotNull(l);
+        assertOne(l, MysteryPage.class);
+
+        l = filter.listFor(get("api/v3/foo"));
+        assertNotNull(l);
+        assertEquals(2, l.size());
+        assertTrue(l.stream().anyMatch(i -> i instanceof PageWithInstanceActeurs));
+    }
+
+    private Object assertOne(List<Object> l, Class<?> type) {
+        assertNotNull(l);
+        assertFalse(l.isEmpty());
+        assertEquals(Strings.join(',', l), 1, l.size());
+        assertTrue(l.iterator().next() + "", type.isInstance(l.iterator().next()) || type == l.iterator().next());
+        return l.iterator().next();
+    }
+
+    private HttpRequest get(String url) {
+        DefaultHttpRequest req = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, url);
+        return req;
+    }
+
+    private HttpRequest post(String url) {
+        DefaultHttpRequest req = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.POST, url);
+        return req;
+    }
+
+    static final class PageWithInstanceActeurs extends Page {
+
+        PageWithInstanceActeurs() {
+            add(new ActeurFactory.MatchMethods(Providers.of(null), true, UTF_8, Method.GET, Method.POST));
+            add(new ActeurFactory.ExactMatchPath(Providers.of(null), "api/v3/foo", false));
+        }
+    }
+
+    static final class PageWithRegex extends Page {
+
+        PageWithRegex() {
+            PathPatterns pp = new PathPatterns();
+            add(new ActeurFactory.MatchMethods(Providers.of(null), true, UTF_8, Method.GET, Method.POST));
+            add(new ActeurFactory.MatchPath(Providers.of(null), pp, false, "^foo\\/\\d+\\/bar"));
+        }
+    }
+    private static final String INTL_PATTERN = "^api\\/v1\\/[^\\/]+\\/" + "[[\\p{IsAlphabetic}&&[\\p{javaLowerCase}]]\\d]"
+            + "[[\\p{IsAlphabetic}&&[\\p{javaLowerCase}]]\\d\\-]{3,30}"
+            + "[[\\p{IsAlphabetic}&&[\\p{javaLowerCase}]]\\d]" + "$";
+
+    private static final String INTL_PATTERN_B = "^hello\\/v1\\/[^\\/]+\\/" + "[[\\p{IsAlphabetic}&&[\\p{javaLowerCase}]]\\d]"
+            + "[[\\p{IsAlphabetic}&&[\\p{javaLowerCase}]]\\d\\-]{3,30}"
+            + "[[\\p{IsAlphabetic}&&[\\p{javaLowerCase}]]\\d]" + "$";
+
+    static final class PageWithDecode extends Page {
+
+        PageWithDecode() {
+            PathPatterns pp = new PathPatterns();
+            add(new ActeurFactory.MatchMethods(Providers.of(null), true, UTF_8, Method.GET, Method.POST));
+            add(new ActeurFactory.MatchPath(Providers.of(null), pp, true, INTL_PATTERN));
+        }
+    }
+
+    @Methods(POST)
+    @PathRegex(value = {INTL_PATTERN_B, "^whatevs$"}, decode = true)
+    static final class PageWithAnnoDecode extends Page {
+
+    }
+
+    static final class MysteryPage extends Page {
+
+    }
 
     @Before
     @SuppressWarnings("unchecked")
@@ -66,7 +220,7 @@ public class EarlyPagesTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    public void testSomeMethod() {
+    public void testTypeMatching() {
         for (Class<?> c : classes) {
             Class<? extends Page> pg = (Class<? extends Page>) c;
             ShouldMatch shoulds = pg.getAnnotation(ShouldMatch.class);

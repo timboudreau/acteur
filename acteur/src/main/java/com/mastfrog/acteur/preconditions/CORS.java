@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright 2017 Tim Boudreau.
+ * Copyright 2018 tim.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,33 +21,35 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.mastfrog.acteur;
+package com.mastfrog.acteur.preconditions;
 
-import com.google.inject.ImplementedBy;
-import io.netty.handler.codec.http.HttpResponse;
+import com.mastfrog.acteur.headers.Method;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
 /**
- * Decorates cors responses.
+ * Marks endpoints that should have CORS headers associated with it. Inject a
+ * CORSResponseDecorator to customize the response.
  *
  * @author Tim Boudreau
  */
-@ImplementedBy(CORSResponseDecoratorImpl.class)
-public interface CORSResponseDecorator {
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.TYPE)
+@Description("Marks this endpoint as needing "
+        + "<i>cross-origin-resource-security</i> (CORS) headers set")
+public @interface CORS {
 
     /**
-     * Adds headers to an acteur response.
+     * By default, returns true. Set to false to turn OFF CORS handling in the
+     * case that you have it enabled globally.
      *
-     * @param evt The event
-     * @param resp The response headers should be added to.
+     * @return
      */
-    void decorateCorsPreflight(HttpEvent evt, Response resp, Page page);
+    boolean value() default true;
 
-    /**
-     * Adds headers to application-level responses such as Not Found and errors
-     *
-     * @param response
-     */
-    default void decorateApplicationResponse(HttpResponse response) {
-        // do nothing
-    }
+    Method[] methods() default {};
+
+    String[] headers() default {};
 }

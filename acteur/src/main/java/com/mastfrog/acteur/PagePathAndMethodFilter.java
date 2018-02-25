@@ -24,17 +24,21 @@
 package com.mastfrog.acteur;
 
 import com.google.common.collect.Sets;
+import com.mastfrog.acteur.Page.PathPatternInfo;
 import com.mastfrog.acteur.headers.Method;
+import static com.mastfrog.acteur.headers.Method.GET;
 import com.mastfrog.acteur.preconditions.Methods;
 import com.mastfrog.acteur.preconditions.Path;
 import com.mastfrog.acteur.preconditions.PathRegex;
 import com.mastfrog.util.Exceptions;
 import com.mastfrog.util.Strings;
 import com.mastfrog.util.collections.CollectionUtils;
+import com.mastfrog.util.strings.AlignedText;
 import io.netty.handler.codec.http.HttpRequest;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -54,6 +58,52 @@ class PagePathAndMethodFilter {
     Set<MethodPath> matchesCache = Sets.newConcurrentHashSet();
     Set<MethodPath> nonMatchesCache = Sets.newConcurrentHashSet();
     private final List<Object> unknowns = new ArrayList<>(5);
+
+    boolean isEmpty() {
+        return all.isEmpty() && unknowns.isEmpty();
+    }
+
+    @Override
+    public String toString() {
+        List<Method> mths = new ArrayList<>(all.keySet());
+        Collections.sort(mths, (Method o1, Method o2) -> o1.name().compareTo(o2.name()));
+        StringBuilder sb = new StringBuilder();
+        for (Method m : mths) {
+            ByMethod by = all.get(m);
+            for (Map.Entry<String, List<Object>> e : by.pageForExacts.entrySet()) {
+                sb.append('\n').append(m.name()).append('\t');
+                sb.append(e.getKey()).append('\t');
+                sb.append(by.decodeExacts.contains(e.getKey())).append('\t');
+                for (Object o : e.getValue()) {
+                    if (o instanceof Class<?>) {
+                        sb.append(((Class<?>) o).getSimpleName()).append('\n');
+                    } else {
+                        String s = o.getClass().getSimpleName();
+                        sb.append(s).append('\t');
+                    }
+                }
+            }
+            for (Map.Entry<Pattern, List<Object>> e : by.pagePatterns.entrySet()) {
+                sb.append('\n').append(m.name()).append('\t');
+                sb.append(e.getKey().pattern()).append('\t');
+                sb.append(by.decodePatterns.contains(e.getKey())).append('\t');
+                for (Object o : e.getValue()) {
+                    if (o instanceof Class<?>) {
+                        sb.append(((Class<?>) o).getSimpleName()).append('\n');
+                    } else {
+                        String s = o.getClass().getSimpleName();
+                        sb.append(s).append('\t');
+                    }
+                }
+            }
+        }
+        for (Object o : unknowns) {
+            sb.append('\n').append('*').append('\t').append('*').append('\t').append('?').append('\t');
+            sb.append(o instanceof Class<?> ? ((Class<?>) o).getSimpleName() : o.getClass().getSimpleName());
+        }
+        sb.append('\n');
+        return AlignedText.formatTabbed(sb);
+    }
 
     public boolean match(HttpRequest req) {
         MethodPath mp = new MethodPath(req);
@@ -77,6 +127,15 @@ class PagePathAndMethodFilter {
         }
     }
 
+    void addHelp(String helpPattern) {
+        ByMethod by = all.get(GET);
+        if (by == null) {
+            by = new ByMethod();
+            all.put(GET, by);
+        }
+        by.add(HelpPage.class, helpPattern);
+    }
+
     public List<Object> listFor(HttpRequest req) {
         MethodPath mp = new MethodPath(req);
         List<Object> checkFirst = unknowns;
@@ -95,9 +154,15 @@ class PagePathAndMethodFilter {
     void add(Page page) {
         Class<? extends Page> type = page.getClass();
         Methods methods = type.getAnnotation(Methods.class);
-        boolean added = false;
+        Iterable<Method> mths = null;
         if (methods != null) {
-            for (Method mth : methods.value()) {
+            mths = CollectionUtils.toIterable(methods.value());
+        } else {
+            mths = page.findMethods();
+        }
+        boolean added = false;
+        if (mths != null) {
+            for (Method mth : mths) {
                 ByMethod by = all.get(mth);
                 if (by == null) {
                     by = new ByMethod();
@@ -106,7 +171,7 @@ class PagePathAndMethodFilter {
                 added |= by.add(type, page);
             }
         }
-        if (!added) {
+        if (!added && !unknowns.contains(page)) {
             unknowns.add(page);
         }
     }
@@ -124,22 +189,13 @@ class PagePathAndMethodFilter {
                 added |= by.add(type);
             }
         }
-        if (!added) {
+        if (!added && !unknowns.contains(type)) {
             unknowns.add(type);
         }
     }
 
     void addUnknown(Page pg) {
         unknowns.add(pg);
-    }
-
-    public String toString() {
-        StringBuilder sb = new StringBuilder();
-        for (Map.Entry<Method, ByMethod> e : all.entrySet()) {
-            sb.append(e.getKey()).append(":\n");
-            sb.append(e.getValue());
-        }
-        return sb.toString();
     }
 
     private final class ByMethod {
@@ -241,15 +297,24 @@ class PagePathAndMethodFilter {
             return false;
         }
 
+        void add(Class<? extends Page> page, String regex) {
+            String exact = pp.exactPathForRegex(regex);
+            if (exact != null) {
+                exacts.add(exact);
+            } else {
+                patterns.add(pp.getPattern(regex));
+            }
+        }
+
         boolean add(Class<? extends Page> page) {
-            return add(page, null);
+            return add(page, (Page) null);
         }
 
         boolean add(Class<? extends Page> page, Page instance) {
-            boolean annoFound = false;
+            boolean pathFound = false;
             Path pth = page.getAnnotation(Path.class);
             if (pth != null) {
-                annoFound = true;
+                pathFound = true;
                 for (String pat : pth.value()) {
                     String pt = trimLeadingAndTrailingSlashes(pat);
                     if (exacts.contains(pt)) {
@@ -287,7 +352,7 @@ class PagePathAndMethodFilter {
             }
             PathRegex rx = page.getAnnotation(PathRegex.class);
             if (rx != null) {
-                annoFound = true;
+                pathFound = true;
                 for (String regex : rx.value()) {
                     String exact = pp.exactPathForRegex(regex);
                     if (exact != null) {
@@ -303,20 +368,61 @@ class PagePathAndMethodFilter {
                         l.add(instance == null ? page : instance);
                     } else {
                         Pattern pattern = pp.getPattern(regex);
-                        patterns.add(pattern);
-                        if (rx.decode()) {
-                            decodePatterns.add(pattern);
-                        }
-                        List<Object> l = pagePatterns.get(pattern);
-                        if (l == null) {
-                            l = new ArrayList<>();
-                            pagePatterns.put(pattern, l);
-                        }
-                        l.add(instance == null ? page : instance);
+                        addPattern(pattern, instance == null ? page : instance, rx.decode());
                     }
                 }
             }
-            return annoFound;
+            if (!pathFound && instance != null) {
+                Set<PathPatternInfo> pths = instance.findPathPatterns();
+                for (PathPatternInfo ppi : pths) {
+                    boolean decode = ppi.decode;
+                    if (ppi.knownExact) {
+                        for (String pat : ppi.patterns) {
+                            addExact(pat, instance, decode);
+                            pathFound = true;
+                        }
+                    } else {
+                        for (String pat : ppi.patterns) {
+                            String exact = pp.exactPathForRegex(pat);
+                            if (exact != null) {
+                                pathFound = true;
+                                addExact(exact, instance, decode);
+                            } else {
+                                Pattern pattern = pp.getPattern(pat);
+                                addPattern(pattern, instance, decode);
+                                pathFound = true;
+                            }
+                        }
+                    }
+                }
+            }
+            return pathFound;
+        }
+
+        void addPattern(Pattern pattern, Object instance, boolean decode) {
+            patterns.add(pattern);
+            if (decode) {
+                decodePatterns.add(pattern);
+            }
+            List<Object> l = pagePatterns.get(pattern);
+            if (l == null) {
+                l = new ArrayList<>();
+                pagePatterns.put(pattern, l);
+            }
+            l.add(instance);
+        }
+
+        void addExact(String pat, Object instance, boolean decode) {
+            exacts.add(pat);
+            if (decode) {
+                decodeExacts.add(pat);
+            }
+            List<Object> l = pageForExacts.get(pat);
+            if (l == null) {
+                l = new ArrayList<>(5);
+                pageForExacts.put(pat, l);
+            }
+            l.add(instance);
         }
     }
 

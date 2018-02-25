@@ -45,10 +45,8 @@ import io.netty.util.CharsetUtil;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.URLDecoder;
 import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.LinkedList;
@@ -111,7 +109,7 @@ public class ActeurFactory {
         return new MatchMethods(event, notSupp, charset, methods);
     }
 
-    private static class MatchMethods extends Acteur {
+    static class MatchMethods extends Acteur {
 
         private final Provider<HttpEvent> deps;
         private final boolean notSupp;
@@ -123,6 +121,10 @@ public class ActeurFactory {
             this.notSupp = notSupp;
             this.charset = charset;
             this.methods = methods;
+        }
+
+        Method[] methods() {
+            return methods;
         }
 
         private boolean hasMethod(HttpMethod m) {
@@ -692,9 +694,9 @@ public class ActeurFactory {
 
     static class ExactMatchPath extends Acteur {
 
-        private final String path;
+        final String path;
         private final Provider<HttpEvent> deps;
-        private final boolean decode;
+        final boolean decode;
 
         ExactMatchPath(Provider<HttpEvent> deps, String path, boolean decode) {
             this.path = path.length() > 1 && path.charAt(0) == '/' ? path.substring(1) : path;
@@ -707,11 +709,7 @@ public class ActeurFactory {
             HttpEvent event = deps.get();
             String pth = event.path().toString();
             if (decode) {
-                try {
-                    pth = URLDecoder.decode(pth, "UTF-8");
-                } catch (UnsupportedEncodingException ex) {
-                    return Exceptions.chuck(ex);
-                }
+                pth = Strings.urlDecode(pth);
             }
             if (path.equals(pth)) {
                 return new ConsumedState();
@@ -734,8 +732,8 @@ public class ActeurFactory {
 
         private final Provider<HttpEvent> deps;
         private final PathPatterns cache;
-        private final boolean decode;
-        private final String[] regexen;
+        final boolean decode;
+        final String[] regexen;
 
         MatchPath(Provider<HttpEvent> deps, PathPatterns cache, boolean decode, String... regexen) {
             if (regexen.length == 0) {
@@ -752,11 +750,7 @@ public class ActeurFactory {
             HttpEvent event = deps.get();
             String pth = event.path().toString();
             if (decode) {
-                try {
-                    pth = URLDecoder.decode(pth, "UTF-8");
-                } catch (UnsupportedEncodingException ex) {
-                    return Exceptions.chuck(ex);
-                }
+                pth = Strings.urlDecode(pth);
             }
             for (String regex : regexen) {
                 Pattern p = cache.getPattern(regex);

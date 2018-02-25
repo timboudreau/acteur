@@ -151,8 +151,7 @@ public class Application implements Iterable<Page> {
     private PagePathAndMethodFilter earlyPageMatcher;
     private List<Object> earlyPages = new ArrayList<>(10);
 
-    private PagePathAndMethodFilter normalPageMatcher = new PagePathAndMethodFilter();
-    private List<Object> normalPages = new ArrayList<>(30);
+    final PagePathAndMethodFilter normalPageMatcher = new PagePathAndMethodFilter();
 
     private final RequestID.Factory ids = new RequestID.Factory();
 
@@ -192,8 +191,8 @@ public class Application implements Iterable<Page> {
 
     /**
      * Get the type of the built in help page class, which uses
-     * Acteur.describeYourself() to generate a JSON description of all URLs the
-     * application responnds to
+     * Acteur.describeYourself() and annotations to generate a JSON description
+     * of all URLs the application responds to
      *
      * @return A page type
      */
@@ -210,7 +209,11 @@ public class Application implements Iterable<Page> {
     protected final void enableDefaultCorsHandling() {
         if (!corsEnabled) {
             corsEnabled = true;
+            if (!this.earlyPages.isEmpty()) {
+                earlyPages.add(CORSResource.class);
+            }
             pages.add(0, CORSResource.class);
+            normalPageMatcher.add(CORSResource.class);
         }
     }
 
@@ -470,7 +473,7 @@ public class Application implements Iterable<Page> {
                 try {
                     Page p = (Page) deps.getInstance(type);
                     p.application = this;
-                    for (Object acteur : p.contents()) {
+                    for (Object acteur : p.acteurs(isDefaultCorsHandlingEnabled())) {
                         Class<?> at = null;
                         if (acteur instanceof Acteur.WrapperActeur) {
                             at = ((WrapperActeur) acteur).type();
@@ -533,7 +536,6 @@ public class Application implements Iterable<Page> {
             earlyPages.add(page);
         } else {
             normalPageMatcher.add(page);
-            normalPages.add(page);
             pages.add(page);
         }
     }
@@ -548,7 +550,6 @@ public class Application implements Iterable<Page> {
             earlyPages.add(page);
         } else {
             normalPageMatcher.add(page);
-            normalPages.add(page);
             pages.add(page);
         }
     }
@@ -747,36 +748,28 @@ public class Application implements Iterable<Page> {
         return deps;
     }
 
-    Iterator<Page> iterator(HttpEvent evt) {
+    private List<Object> filter(PagePathAndMethodFilter filter, HttpEvent evt) {
         HttpRequest req = evt.request();
-        List<Object> filtered = new ArrayList<>(normalPageMatcher.listFor(req));
-        filtered.sort((a, b) -> {
-            int ai, bi;
-            Class<?> ca, cb;
-            HttpCall ac, bc;
-            if (a instanceof Page) {
-                ca = a.getClass();
-            } else {
-                ca = (Class<?>) a;
-            }
-            if (b instanceof Page) {
-                cb = b.getClass();
-            } else {
-                cb = (Class<?>) b;
-            }
-            ac = ca.getAnnotation(HttpCall.class);
-            bc = cb.getAnnotation(HttpCall.class);
-            if (ac == null && bc == null) {
-                return 0;
-            }
-            ai = ac == null ? 0 : ac.order();
-            bi = bc == null ? 0 : bc.order();
+        List<Object> filtered = new ArrayList<>(filter.listFor(req));
+        filtered.sort(HttpCallOrOrderedComparator.INSTANCE);
+        return filtered;
+    }
 
-            return ai == bi ? 0 : ai > bi ? 1 : -1;
-        });
-//        System.out.println("REGULAR PAGES " + evt.path() + ": " + Strings.join(',', pages));
-//        System.out.println("FILTERED PAGES " + evt.path() + ": " + Strings.join(',', filtered));
-        return iterators.iterable(filtered, Page.class).iterator();
+    Iterator<Page> iterator(HttpEvent evt) {
+        List<Object> all = filter(normalPageMatcher, evt);
+        return all.isEmpty() ? Collections.emptyIterator()
+                : iterators.iterable(all, Page.class).iterator();
+    }
+
+    Iterator<Page> earlyPagesIterator(HttpEvent evt) {
+        // This is a hack
+        if (!checkedEarlyHelp && deps.getInstance(Settings.class).getBoolean("help.early", false)) {
+            checkedEarlyHelp = true;
+            earlyPages.add(HelpPage.class);
+            earlyPageMatcher.addHelp(deps.getInstance(Settings.class).getString(Help.HELP_URL_PATTERN_SETTINGS_KEY, "^help$"));
+        }
+        List<Object> all = filter(earlyPageMatcher, evt);
+        return all.isEmpty() ? Collections.emptyIterator() : iterators.iterable(all, Page.class).iterator();
     }
 
     /**
@@ -796,7 +789,6 @@ public class Application implements Iterable<Page> {
     Iterator<Page> earlyPagesIterator() {
         // This is a hack
         if (!checkedEarlyHelp && deps.getInstance(Settings.class).getBoolean("help.early", false)) {
-            System.out.println("CHECK EARLY HELP");
             checkedEarlyHelp = true;
             earlyPages.add(HelpPage.class);
             earlyPageMatcher.addHelp(deps.getInstance(Settings.class).getString(Help.HELP_URL_PATTERN_SETTINGS_KEY, "^help$"));

@@ -45,6 +45,14 @@ public abstract class Response {
      */
     public abstract <T> Response add(HeaderValueType<T> headerType, T value);
 
+    public <T> Response addIfUnset(HeaderValueType<T> headerType, T value) {
+        T obj = get(headerType);
+        if (obj == null) {
+            return add(headerType, value);
+        }
+        return this;
+    }
+
     /**
      * Set a simple string message
      *

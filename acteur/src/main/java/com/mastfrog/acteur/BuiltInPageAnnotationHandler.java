@@ -27,6 +27,7 @@ import com.mastfrog.acteur.auth.AuthenticationActeur;
 import com.mastfrog.acteur.preconditions.Authenticated;
 import com.mastfrog.acteur.preconditions.AuthenticatedIf;
 import com.mastfrog.acteur.preconditions.BannedUrlParameters;
+import com.mastfrog.acteur.preconditions.CORS;
 import com.mastfrog.acteur.preconditions.InjectRequestBodyAs;
 import com.mastfrog.acteur.preconditions.InjectUrlParametersAs;
 import com.mastfrog.acteur.preconditions.MaximumPathLength;
@@ -69,7 +70,7 @@ public final class BuiltInPageAnnotationHandler extends PageAnnotationHandler {
         RequireAtLeastOneUrlParameterFrom.class, RequiredUrlParameters.class,
         RequireParametersIfMethodMatches.class, ParametersMustBeNumbersIfPresent.class,
         MinimumRequestBodyLength.class, MaximumRequestBodyLength.class,
-        UrlParametersMayNotBeCombined.class, UrlParametersMayNotBeCombinedSets.class,
+        UrlParametersMayNotBeCombined.class, UrlParametersMayNotBeCombinedSets.class, CORS.class,
         InjectUrlParametersAs.class, com.mastfrog.acteur.preconditions.BasicAuth.class, InjectRequestBodyAs.class
     };
 
@@ -153,6 +154,10 @@ public final class BuiltInPageAnnotationHandler extends PageAnnotationHandler {
         if (paramsIface != null) {
             Class<?> type = paramsIface.value();
             acteurs.add(af.injectRequestParametersAs(type));
+        }
+        CORS cors = c.getAnnotation(CORS.class);
+        if (cors != null) {
+            acteurs.add(Acteur.wrap(CORSResource.CorsHeaders.class, deps));
         }
         boolean hasAuth = false;
         @SuppressWarnings("deprecation")

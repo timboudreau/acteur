@@ -40,13 +40,22 @@ final class CORSResource extends Page {
     @Inject
     CORSResource() {
         add(CorsHeaders.class);
+        add(CorsResponse.class);
     }
 
-    private static final class CorsHeaders extends Acteur {
+    static final class CorsHeaders extends Acteur {
 
         @Inject
-        CorsHeaders(CORSResponseDecorator corsDecorator) {
-            corsDecorator.decorateCorsPreflight(response());
+        CorsHeaders(CORSResponseDecorator corsDecorator, HttpEvent evt, Page page) {
+            corsDecorator.decorateCorsPreflight(evt, response(), page);
+            next();
+        }
+    }
+
+    private static final class CorsResponse extends Acteur {
+
+        @Inject
+        CorsResponse() {
             reply(HttpResponseStatus.NO_CONTENT);
         }
     }

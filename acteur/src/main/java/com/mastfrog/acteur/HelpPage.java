@@ -170,6 +170,7 @@ final class HelpPage extends Page {
                 return "Web-API";
             }
 
+            @SuppressWarnings("unchecked")
             private void findPaths(Object path, List<String> result) {
                 if (path instanceof Map<?, ?>) {
                     Map<String, Object> m1 = (Map<String, Object>) path;
@@ -222,7 +223,7 @@ final class HelpPage extends Page {
                 return regex;
             }
 
-            @SuppressWarnings("Unchecked")
+            @SuppressWarnings("unchecked")
             private List<String> findPaths(Object o) {
                 List<String> result = new ArrayList<>(4);
                 if (o instanceof Map<?, ?>) {
@@ -509,6 +510,7 @@ final class HelpPage extends Page {
                 return false;
             }
 
+            @SuppressWarnings("unchecked")
             private Object filterObject(Object object) {
                 // A single depth map with just a description is useless - flatten it
                 if (object instanceof Map<?, ?>) {

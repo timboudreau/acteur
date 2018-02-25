@@ -223,9 +223,9 @@ public class ServerModule<A extends Application> extends AbstractModule {
      */
     public static final String DEFAULT_ALLOCATOR = POOLED_ALLOCATOR;
     /**
-     * Settings key for the nnumber of worker threads to use.
+     * Settings key for the number of worker threads to use.
      */
-    public static final String WORKER_THREADS = "workerThreads";
+    public static final String WORKER_THREADS = "workers";
     /**
      * Number of event threads
      */
@@ -317,6 +317,11 @@ public class ServerModule<A extends Application> extends AbstractModule {
     public static final String SETTINGS_KEY_CORS_ALLOW_HEADERS = "cors.allow.headers";
 
     /**
+     * If the default support for CORS requests is enabled, this is the value
+     * for the <code>Access-Control-Allow-Credentials</code> header.
+     */
+    public static final String SETTINGS_KEY_CORS_ALLOW_CREDENTIALS = "cors.allow.credentials";
+    /**
      * If the default support for CORS requests is enabled, this is the value of
      * what hosts the response is valid for (what sites can use scripts from
      * this server without the browser blocking them). The default is *.
@@ -332,6 +337,11 @@ public class ServerModule<A extends Application> extends AbstractModule {
      * Default value for @link(ServerModule.SETTINGS_KEY_CORS_MAX_AGE_MINUTES}.
      */
     public static final long DEFAULT_CORS_MAX_AGE_MINUTES = 5;
+    /**
+     * Default value for
+     * @link(ServerModule.SETTINGS_KEY_CORS_ALLOW_CREDENTIALS}.
+     */
+    public static final boolean DEFAULT_CORS_ALLOW_CREDENTIALS = true;
     /**
      * Default value for @link(ServerModule.SETTINGS_KEY_CORS_ALLOW_ORIGIN}.
      */
