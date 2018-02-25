@@ -151,7 +151,7 @@ public class ActeurFactory {
 
         @Override
         public String toString() {
-            return "Match Methods " + Arrays.asList(methods);
+            return "Match Methods";
         }
 
         @Override
@@ -192,7 +192,7 @@ public class ActeurFactory {
 
         @Override
         public String toString() {
-            return "Match Method " + Arrays.toString(method);
+            return "Match Method";
         }
 
         @Override
@@ -721,12 +721,12 @@ public class ActeurFactory {
 
         @Override
         public void describeYourself(Map<String, Object> into) {
-            into.put("Exactly match the URL path", path);
+            into.put("Match Path (exact)", path);
         }
 
         @Override
         public String toString() {
-            return "Exactly match the URL path " + path;
+            return "Match Path (exact)";
         }
     }
 
@@ -775,7 +775,7 @@ public class ActeurFactory {
 
         @Override
         public String toString() {
-            return "Match path " + Arrays.asList(regexen);
+            return "Match Path (regex)";
         }
     }
 

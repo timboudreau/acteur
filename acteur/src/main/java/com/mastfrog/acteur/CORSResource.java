@@ -33,7 +33,7 @@ import javax.inject.Inject;
  *
  * @author Tim Boudreau
  */
-@Description("Answers CORS preflight HTTP OPTIONS requests - see the ajax spec")
+@Description(category = "Info", value = "Answers CORS preflight HTTP OPTIONS requests - see the ajax spec")
 @Methods(OPTIONS)
 final class CORSResource extends Page {
 
@@ -43,6 +43,7 @@ final class CORSResource extends Page {
     }
 
     private static final class CorsHeaders extends Acteur {
+
         @Inject
         CorsHeaders(CORSResponseDecorator corsDecorator) {
             corsDecorator.decorateCorsPreflight(response());

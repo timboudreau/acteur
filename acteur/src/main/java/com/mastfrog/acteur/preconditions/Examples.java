@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright 2014 Tim Boudreau.
+ * Copyright 2018 tim.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,15 +29,50 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Provide a description for a page or acteur which will be used by 
- * Application.getHelpPageType() to provide an API-level help call.
+ * Handles the case where one HTTP call supports multiple uses or multiple types
+ * of input and output (ex. wildcarded calls which support both fetching
+ * <i>all</i> instances of something via <code>/api/foo</code> but also support
+ * fetching a <i>single specific instance</i> of something via
+ * <code>/api/foo/$ID</code>.
  *
  * @author Tim Boudreau
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
-public @interface Description {
-    String value();
+@Description("Documents example uses of this HTTP call")
+public @interface Examples {
 
-    String category() default "Web-API";
+    /**
+     * Example cases
+     *
+     * @return An array of cases
+     */
+    Case[] value();
+
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.TYPE)
+    @Description("A single named, documented use case")
+    public @interface Case {
+
+        /**
+         * The title of this use case, if any.
+         *
+         * @return A title
+         */
+        String title() default "";
+
+        /**
+         * The description of this use case, if any. May include HTML markup.
+         *
+         * @return A title
+         */
+        String description() default "";
+
+        /**
+         * The example for this use case.
+         *
+         * @return The example
+         */
+        Example value();
+    }
 }
