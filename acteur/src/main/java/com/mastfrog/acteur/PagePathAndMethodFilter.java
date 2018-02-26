@@ -39,6 +39,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -54,7 +55,7 @@ import java.util.regex.Pattern;
 class PagePathAndMethodFilter {
 
     private final PathPatterns pp = new PathPatterns();
-    private final Map<Method, ByMethod> all = new HashMap<>();
+    private final Map<Method, ByMethod> all = new EnumMap<>(Method.class);
     Set<MethodPath> matchesCache = Sets.newConcurrentHashSet();
     Set<MethodPath> nonMatchesCache = Sets.newConcurrentHashSet();
     private final List<Object> unknowns = new ArrayList<>(5);

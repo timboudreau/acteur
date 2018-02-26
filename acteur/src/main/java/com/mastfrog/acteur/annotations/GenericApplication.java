@@ -9,6 +9,7 @@ import com.mastfrog.acteur.preconditions.Methods;
 import com.mastfrog.acteur.preconditions.Path;
 import com.mastfrog.acteur.preconditions.PathRegex;
 import com.mastfrog.util.Strings;
+import static com.mastfrog.util.collections.CollectionUtils.setOf;
 import com.mastfrog.util.strings.AlignedText;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -49,7 +50,7 @@ public class GenericApplication extends Application {
     public GenericApplication(GenericApplicationSettings settings, @Named(EXCLUDED_CLASSES) Class<?>... excludePages) {
         boolean helpEnabled = settings.helpEnabled;
 
-        Set<Class<?>> excluded = new HashSet<>(Arrays.asList(excludePages));
+        Set<Class<?>> excluded = setOf(excludePages);
         com.mastfrog.acteur.ImplicitBindings implicit = getClass().getAnnotation(com.mastfrog.acteur.ImplicitBindings.class);
         Set<Class<?>> alreadyBound = implicit == null ? Collections.<Class<?>>emptySet()
                 : new HashSet<>(Arrays.asList(implicit.value()));

@@ -78,7 +78,7 @@ import java.nio.charset.Charset;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
+import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -264,7 +264,7 @@ final class ResponseImpl extends Response {
         // coalesce
         if (!old.isEmpty() && decorator.is(HttpHeaderNames.ALLOW)) {
             old.add(e);
-            Set<Method> all = new HashSet<>();
+            Set<Method> all = EnumSet.noneOf(Method.class);
             for (Entry<?> en : old) {
                 Method[] m = (Method[]) en.value;
                 all.addAll(Arrays.asList(m));
