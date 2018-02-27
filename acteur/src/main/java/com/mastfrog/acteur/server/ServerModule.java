@@ -512,6 +512,22 @@ public class ServerModule<A extends Application> extends AbstractModule {
      */
     public static final String SETTINGS_KEY_CUSTOM_ALLOC_PREFER_DIRECT = "custom.alloc.prefer.direct";
 
+    /**
+     * Length in bytes of the maximum request line length, after which the http
+     * codec will return a /bad-request response.
+     */
+    public static final String SETTINGS_KEY_MAX_REQUEST_LINE_LENGTH = "max.request.line.length";
+    /**
+     * Length in bytes of the maximum HTTP header buffer size after which the
+     * http codec will return a /bad-request response.
+     */
+    public static final String SETTINGS_KEY_MAX_HEADER_BUFFER_SIZE = "max.header.buffer.size";
+    /**
+     * Length in bytes of the maximum inbound HTTP chunk size, after which the
+     * http codec will return a /bad-request response.
+     */
+    public static final String SETTINGS_KEY_MAX_CHUNK_SIZE = "max.chunk.size";
+
     static final AttributeKey<Boolean> SSL_ATTRIBUTE_KEY = AttributeKey.newInstance("ssl");
 
     protected final Class<? extends A> appType;
