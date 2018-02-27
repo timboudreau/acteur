@@ -320,11 +320,17 @@ public class ServerModule<A extends Application> extends AbstractModule {
     public static final String SETTINGS_KEY_CORS_ALLOW_ORIGIN = "cors.allow.origin";
 
     /**
-     * If the default support for CORS requests is enabled, this is the value of
+     * If the default support for CORS requests is enabled, or for requests
+     * annotated with &064;CORS that do not specify this, this is the value of
      * what hosts the response is valid for (what sites can use scripts from
      * this server without the browser blocking them). The default is *.
      */
     public static final String SETTINGS_KEY_CORS_ALLOW_HEADERS = "cors.allow.headers";
+    /**
+     * If the default support for CORS requests is enabled, use this instead of
+     * the default cors allow headers string.
+     */
+    public static final String SETTINGS_KEY_CORS_REPLACE_ALLOW_HEADERS = "cors.replace.allow.headers";
 
     /**
      * If the default support for CORS requests is enabled, this is the value

@@ -33,7 +33,6 @@ import static com.mastfrog.acteur.headers.Headers.ACCESS_CONTROL_ALLOW_HEADERS;
 import static com.mastfrog.acteur.headers.Headers.ACCESS_CONTROL_ALLOW_ORIGIN;
 import static com.mastfrog.acteur.headers.Headers.ACCESS_CONTROL_MAX_AGE;
 import static com.mastfrog.acteur.headers.Headers.AUTHORIZATION;
-import static com.mastfrog.acteur.headers.Headers.CACHE_CONTROL;
 import static com.mastfrog.acteur.headers.Headers.X_REQUESTED_WITH;
 import static com.mastfrog.acteur.headers.Headers.write;
 import com.mastfrog.acteur.headers.Method;
@@ -44,10 +43,8 @@ import static com.mastfrog.acteur.server.ServerModule.DEFAULT_CORS_ALLOW_ORIGIN;
 import static com.mastfrog.acteur.server.ServerModule.DEFAULT_CORS_MAX_AGE_MINUTES;
 import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_CORS_ALLOW_CREDENTIALS;
 import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_CORS_ALLOW_HEADERS;
-import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_CORS_CACHE_CONTROL_MAX_AGE;
 import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_CORS_MAX_AGE_MINUTES;
-import com.mastfrog.acteur.util.CacheControl;
-import com.mastfrog.acteur.util.CacheControlTypes;
+import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_CORS_REPLACE_ALLOW_HEADERS;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.util.Strings;
 import com.mastfrog.util.collections.CollectionUtils;
@@ -59,6 +56,7 @@ import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import javax.inject.Inject;
@@ -77,16 +75,14 @@ final class CORSResponseDecoratorImpl implements CORSResponseDecorator {
 
     final CharSequence hdrs;
     final Duration corsMaxAge;
-    final Duration corsCacheControlMaxAge;
     private final String allowOrigin;
-    private final CacheControl cacheControl;
     private final boolean allowCredentials;
 
     @Inject
     CORSResponseDecoratorImpl(Settings settings) {
-        Set<HeaderValueType<?>> defaultHeaders = setOf(Headers.CONTENT_TYPE,
+        Set<HeaderValueType<?>> defaultHeaders = new HashSet<>(setOf(Headers.CONTENT_TYPE,
                 ACCEPT, X_REQUESTED_WITH,
-                AUTHORIZATION);
+                AUTHORIZATION));
         String addtl = settings.getString(SETTINGS_KEY_CORS_ALLOW_HEADERS);
         if (addtl != null) {
             Set<CharSequence> seqs = Strings.splitUniqueNoEmpty(',', addtl);
@@ -94,14 +90,17 @@ final class CORSResponseDecoratorImpl implements CORSResponseDecorator {
                 defaultHeaders.add(Headers.header(s));
             }
         }
+        String replace = settings.getString(SETTINGS_KEY_CORS_REPLACE_ALLOW_HEADERS);
+        if (replace != null) {
+            hdrs = replace;
+        } else {
+            List<CharSequence> headerNames = new ArrayList<>(CollectionUtils.transform(defaultHeaders, h -> h.name()));
+            Collections.sort(headerNames, Strings.charSequenceComparator(true));
+            hdrs = new AsciiString(Strings.join(',', headerNames));
+        }
         allowCredentials = settings.getBoolean(SETTINGS_KEY_CORS_ALLOW_CREDENTIALS, DEFAULT_CORS_ALLOW_CREDENTIALS);
-        List<CharSequence> headerNames = new ArrayList<>(CollectionUtils.transform(defaultHeaders, h -> h.name()));
-        Collections.sort(headerNames, Strings.charSequenceComparator(true));
-        hdrs = Strings.join(',', headerNames);
         corsMaxAge = Duration.of(settings.getLong(SETTINGS_KEY_CORS_MAX_AGE_MINUTES, DEFAULT_CORS_MAX_AGE_MINUTES), ChronoUnit.MINUTES);
         allowOrigin = settings.getString(ServerModule.SETTINGS_KEY_CORS_ALLOW_ORIGIN, DEFAULT_CORS_ALLOW_ORIGIN);
-        corsCacheControlMaxAge = Duration.ofDays(settings.getLong(SETTINGS_KEY_CORS_CACHE_CONTROL_MAX_AGE, 365));
-        cacheControl = CacheControl.$(CacheControlTypes.Public).add(CacheControlTypes.max_age, corsCacheControlMaxAge);
     }
 
     private static final AsciiString TRUE = new AsciiString("true");
@@ -128,7 +127,6 @@ final class CORSResponseDecoratorImpl implements CORSResponseDecorator {
         resp.addIfUnset(ALLOW_HEADERS_STRING, headers);
         resp.addIfUnset(ACCESS_CONTROL_ALLOW, methods);
         resp.addIfUnset(ACCESS_CONTROL_MAX_AGE, corsMaxAge);
-        resp.addIfUnset(CACHE_CONTROL, cacheControl);
     }
 
     @Override

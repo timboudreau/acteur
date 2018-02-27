@@ -23,10 +23,17 @@
  */
 package com.mastfrog.acteur;
 
+import com.google.inject.Singleton;
+import static com.mastfrog.acteur.headers.Headers.CACHE_CONTROL;
 import static com.mastfrog.acteur.headers.Method.OPTIONS;
 import com.mastfrog.acteur.preconditions.Description;
 import com.mastfrog.acteur.preconditions.Methods;
+import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_CORS_CACHE_CONTROL_MAX_AGE;
+import com.mastfrog.acteur.util.CacheControl;
+import com.mastfrog.acteur.util.CacheControlTypes;
+import com.mastfrog.settings.Settings;
 import io.netty.handler.codec.http.HttpResponseStatus;
+import java.time.Duration;
 import javax.inject.Inject;
 
 /**
@@ -55,8 +62,22 @@ final class CORSResource extends Page {
     private static final class CorsResponse extends Acteur {
 
         @Inject
-        CorsResponse() {
+        CorsResponse(CacheControlDuration dur) {
+            response().addIfUnset(CACHE_CONTROL, dur.cacheControl);
             reply(HttpResponseStatus.NO_CONTENT);
+        }
+    }
+
+    // Avoids recomputing the cache control setting for each CORS request
+    @Singleton
+    static final class CacheControlDuration {
+
+        final CacheControl cacheControl;
+
+        @Inject
+        CacheControlDuration(Settings settings) {
+            Duration corsCacheControlMaxAge = Duration.ofDays(settings.getLong(SETTINGS_KEY_CORS_CACHE_CONTROL_MAX_AGE, 365));
+            cacheControl = CacheControl.$(CacheControlTypes.Public).add(CacheControlTypes.max_age, corsCacheControlMaxAge);
         }
     }
 }
