@@ -91,10 +91,13 @@ class PagesImpl2 {
 
     private final boolean debug;
 
+    private final boolean disableFilterPathsAndMethods;
+
     @Inject
     PagesImpl2(Application application, Settings settings, @Named(DELAY_EXECUTOR) ScheduledExecutorService scheduler) {
         this.application = application;
         this.scheduler = scheduler;
+        disableFilterPathsAndMethods = settings.getBoolean("disable.filter", false);
         debug = settings.getBoolean("acteur.debug", false);
         ChainRunner chr = new ChainRunner(application.getWorkerThreadPool(), application.getRequestScope());
         ch = new ChainsRunner(application.getWorkerThreadPool(), application.getRequestScope(), chr);
@@ -124,9 +127,10 @@ class PagesImpl2 {
         } else {
             clos = new Closables(channel, application.control());
             ChainToPageConverter chainConverter = new ChainToPageConverter(id, event, clos);
-
             boolean early = event instanceof HttpEvent && ((HttpEvent) event).isPreContent();
-            Iterator<Page> pageIterator = early ? application.earlyPagesIterator() : application.iterator();
+            Iterator<Page> pageIterator = disableFilterPathsAndMethods
+                    ? (early ? application.earlyPagesIterator() : application.iterator())
+                    : early ? application.earlyPagesIterator((HttpEvent) event) : application.iterator((HttpEvent) event);
             if (defaultContext != null && defaultContext.length > 0) {
                 pageIterator = new ScopeWrapIterator<>(application.getRequestScope(), pageIterator, defaultContext);
             }
@@ -477,7 +481,7 @@ class PagesImpl2 {
         private Application app;
 
         PageChain(Application app, Dependencies deps, ReentrantScope scope, Class<? super Acteur> type, Page page, Object... ctx) {
-            super(deps, type, page.acteurs());
+            super(deps, type, page.acteurs(app.isDefaultCorsHandlingEnabled()));
             this.page = page;
             this.ctx = ctx;
             this.scope = scope;

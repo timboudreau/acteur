@@ -76,6 +76,7 @@ import static com.mastfrog.util.Checks.nonZero;
 import com.mastfrog.util.Codec;
 import com.mastfrog.util.ConfigurationError;
 import com.mastfrog.util.Strings;
+import static com.mastfrog.util.collections.CollectionUtils.setOf;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.PooledByteBufAllocator;
@@ -102,9 +103,7 @@ import java.nio.charset.Charset;
 import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
@@ -156,6 +155,12 @@ public class ServerModule<A extends Application> extends AbstractModule {
      * secure parameter should generate secure or insecure URLs.
      */
     public static final String SETTINGS_KEY_GENERATE_SECURE_URLS = "secure.urls";
+
+    /**
+     *
+     */
+    public static final String SETTINGS_KEY_DISABLE_LEAK_DETECTOR = "disable.leak.detector";
+    public static final boolean DEFAULT_DISABLE_LEAK_DETECTOR = true;
 
     /**
      * URLs are generated using the host from InetAddress.getLocalHostName().
@@ -214,6 +219,11 @@ public class ServerModule<A extends Application> extends AbstractModule {
      */
     public static final String POOLED_ALLOCATOR = "pooled";
     /**
+     * Property value for telling the server to use the pooled byte buffer
+     * allocator with custom settings.
+     */
+    public static final String CUSTOMIZED_POOLED_ALLOCATOR = "pooled-custom";
+    /**
      * Property value for telling the server to use the heap or direct byte
      * buffer allocator as decided by Netty's PlatformDependent class.
      */
@@ -223,9 +233,9 @@ public class ServerModule<A extends Application> extends AbstractModule {
      */
     public static final String DEFAULT_ALLOCATOR = POOLED_ALLOCATOR;
     /**
-     * Settings key for the nnumber of worker threads to use.
+     * Settings key for the number of worker threads to use.
      */
-    public static final String WORKER_THREADS = "workerThreads";
+    public static final String WORKER_THREADS = "workers";
     /**
      * Number of event threads
      */
@@ -310,19 +320,29 @@ public class ServerModule<A extends Application> extends AbstractModule {
     public static final String SETTINGS_KEY_CORS_ALLOW_ORIGIN = "cors.allow.origin";
 
     /**
-     * If the default support for CORS requests is enabled, this is the value of
+     * If the default support for CORS requests is enabled, or for requests
+     * annotated with &064;CORS that do not specify this, this is the value of
      * what hosts the response is valid for (what sites can use scripts from
      * this server without the browser blocking them). The default is *.
      */
     public static final String SETTINGS_KEY_CORS_ALLOW_HEADERS = "cors.allow.headers";
+    /**
+     * If the default support for CORS requests is enabled, use this instead of
+     * the default cors allow headers string.
+     */
+    public static final String SETTINGS_KEY_CORS_REPLACE_ALLOW_HEADERS = "cors.replace.allow.headers";
 
+    /**
+     * If the default support for CORS requests is enabled, this is the value
+     * for the <code>Access-Control-Allow-Credentials</code> header.
+     */
+    public static final String SETTINGS_KEY_CORS_ALLOW_CREDENTIALS = "cors.allow.credentials";
     /**
      * If the default support for CORS requests is enabled, this is the value of
      * what hosts the response is valid for (what sites can use scripts from
      * this server without the browser blocking them). The default is *.
      */
     public static final String SETTINGS_KEY_CORS_CACHE_CONTROL_MAX_AGE = "cors.cache.control.max.age.days";
-
 
     /**
      * Default value for @link(ServerModule.SETTINGS_KEY_CORS_ENABLED}.
@@ -332,6 +352,11 @@ public class ServerModule<A extends Application> extends AbstractModule {
      * Default value for @link(ServerModule.SETTINGS_KEY_CORS_MAX_AGE_MINUTES}.
      */
     public static final long DEFAULT_CORS_MAX_AGE_MINUTES = 5;
+    /**
+     * Default value for
+     * @link(ServerModule.SETTINGS_KEY_CORS_ALLOW_CREDENTIALS}.
+     */
+    public static final boolean DEFAULT_CORS_ALLOW_CREDENTIALS = true;
     /**
      * Default value for @link(ServerModule.SETTINGS_KEY_CORS_ALLOW_ORIGIN}.
      */
@@ -361,7 +386,8 @@ public class ServerModule<A extends Application> extends AbstractModule {
      */
     public static final String SETTINGS_KEY_WEBSOCKETS_ENABLED = "websocket.enabled";
     /**
-     * Low level socket option for outbound connections; default value is true, disabling Nagle's algorithm.
+     * Low level socket option for outbound connections; default value is true,
+     * disabling Nagle's algorithm.
      */
     public static final String SETTINGS_KEY_SOCKET_TCP_NODELAY = "acteur.outbound.socket.tcp.nodelay";
     /**
@@ -395,6 +421,113 @@ public class ServerModule<A extends Application> extends AbstractModule {
 
     public static final boolean DEFAULT_WEBSOCKET_ENABLED = false;
 
+    /**
+     * Fine tuning for using customized pooled byte buf allocator. Only relevant
+     * if you set BYTEBUF_ALLOCATOR_SETTINGS_KEY=CUSTOMIZED_POOLED_ALLOCATOR in
+     * settings (e.g. <code>acteur.bytebuf.allocator=pooled-custom</code>). See
+     * the
+     * <a href="https://netty.io/4.1/api/io/netty/buffer/PooledByteBufAllocator.html">javadoc
+     * for PooledByteBufAllocator</a>.
+     */
+    public static final String SETTINGS_KEY_CUSTOM_ALLOC_CACHE_ALIGNMENT = "custom.alloc.cache.alignment";
+    /**
+     * Fine tuning for using customized pooled byte buf allocator. Only relevant
+     * if you set BYTEBUF_ALLOCATOR_SETTINGS_KEY=CUSTOMIZED_POOLED_ALLOCATOR in
+     * settings (e.g. <code>acteur.bytebuf.allocator=pooled-custom</code>). See
+     * the
+     * <a href="https://netty.io/4.1/api/io/netty/buffer/PooledByteBufAllocator.html">javadoc
+     * for PooledByteBufAllocator</a>.
+     */
+    public static final String SETTINGS_KEY_CUSTOM_ALLOC_USE_CACHE_ALL_THREADS = "custom.alloc.use.cache.all.threads";
+    /**
+     * Fine tuning for using customized pooled byte buf allocator. Only relevant
+     * if you set BYTEBUF_ALLOCATOR_SETTINGS_KEY=CUSTOMIZED_POOLED_ALLOCATOR in
+     * settings (e.g. <code>acteur.bytebuf.allocator=pooled-custom</code>). See
+     * the
+     * <a href="https://netty.io/4.1/api/io/netty/buffer/PooledByteBufAllocator.html">javadoc
+     * for PooledByteBufAllocator</a>.
+     */
+    public static final String SETTINGS_KEY_CUSTOM_ALLOC_NORMAL_CACHE_SIZE = "custom.alloc.normal.cache.size";
+    /**
+     * Fine tuning for using customized pooled byte buf allocator. Only relevant
+     * if you set BYTEBUF_ALLOCATOR_SETTINGS_KEY=CUSTOMIZED_POOLED_ALLOCATOR in
+     * settings (e.g. <code>acteur.bytebuf.allocator=pooled-custom</code>). See
+     * the
+     * <a href="https://netty.io/4.1/api/io/netty/buffer/PooledByteBufAllocator.html">javadoc
+     * for PooledByteBufAllocator</a>.
+     */
+    public static final String SETTINGS_KEY_CUSTOM_ALLOC_SMALL_CACHE_SIZE = "custom.alloc.small.cache.size";
+    /**
+     * Fine tuning for using customized pooled byte buf allocator. Only relevant
+     * if you set BYTEBUF_ALLOCATOR_SETTINGS_KEY=CUSTOMIZED_POOLED_ALLOCATOR in
+     * settings (e.g. <code>acteur.bytebuf.allocator=pooled-custom</code>). See
+     * the
+     * <a href="https://netty.io/4.1/api/io/netty/buffer/PooledByteBufAllocator.html">javadoc
+     * for PooledByteBufAllocator</a>.
+     */
+    public static final String SETTINGS_KEY_CUSTOM_ALLOC_TINY_CACHE_SIZE = "custom.alloc.tiny.cache.size";
+    /**
+     * Fine tuning for using customized pooled byte buf allocator. Only relevant
+     * if you set BYTEBUF_ALLOCATOR_SETTINGS_KEY=CUSTOMIZED_POOLED_ALLOCATOR in
+     * settings (e.g. <code>acteur.bytebuf.allocator=pooled-custom</code>). See
+     * the
+     * <a href="https://netty.io/4.1/api/io/netty/buffer/PooledByteBufAllocator.html">javadoc
+     * for PooledByteBufAllocator</a>.
+     */
+    public static final String SETTINGS_KEY_CUSTOM_ALLOC_MAX_ORDER = "custom.alloc.max.order";
+    /**
+     * Fine tuning for using customized pooled byte buf allocator. Only relevant
+     * if you set BYTEBUF_ALLOCATOR_SETTINGS_KEY=CUSTOMIZED_POOLED_ALLOCATOR in
+     * settings (e.g. <code>acteur.bytebuf.allocator=pooled-custom</code>). See
+     * the
+     * <a href="https://netty.io/4.1/api/io/netty/buffer/PooledByteBufAllocator.html">javadoc
+     * for PooledByteBufAllocator</a>.
+     */
+    public static final String SETTINGS_KEY_CUSTOM_ALLOC_PAGE_SIZE = "custom.alloc.page.size";
+    /**
+     * Fine tuning for using customized pooled byte buf allocator. Only relevant
+     * if you set BYTEBUF_ALLOCATOR_SETTINGS_KEY=CUSTOMIZED_POOLED_ALLOCATOR in
+     * settings (e.g. <code>acteur.bytebuf.allocator=pooled-custom</code>). See
+     * the
+     * <a href="https://netty.io/4.1/api/io/netty/buffer/PooledByteBufAllocator.html">javadoc
+     * for PooledByteBufAllocator</a>.
+     */
+    public static final String SETTINGS_KEY_CUSTOM_ALLOC_NUM_DIRECT_ARENAS = "custom.alloc.num.direct.arenas";
+    /**
+     * Fine tuning for using customized pooled byte buf allocator. Only relevant
+     * if you set BYTEBUF_ALLOCATOR_SETTINGS_KEY=CUSTOMIZED_POOLED_ALLOCATOR in
+     * settings (e.g. <code>acteur.bytebuf.allocator=pooled-custom</code>). See
+     * the
+     * <a href="https://netty.io/4.1/api/io/netty/buffer/PooledByteBufAllocator.html">javadoc
+     * for PooledByteBufAllocator</a>.
+     */
+    public static final String SETTINGS_KEY_CUSTOM_ALLOC_NUM_HEAP_ARENAS = "custom.alloc.num.heap.arenas";
+    /**
+     * Fine tuning for using customized pooled byte buf allocator. Only relevant
+     * if you set BYTEBUF_ALLOCATOR_SETTINGS_KEY=CUSTOMIZED_POOLED_ALLOCATOR in
+     * settings (e.g. <code>acteur.bytebuf.allocator=pooled-custom</code>). See
+     * the
+     * <a href="https://netty.io/4.1/api/io/netty/buffer/PooledByteBufAllocator.html">javadoc
+     * for PooledByteBufAllocator</a>.
+     */
+    public static final String SETTINGS_KEY_CUSTOM_ALLOC_PREFER_DIRECT = "custom.alloc.prefer.direct";
+
+    /**
+     * Length in bytes of the maximum request line length, after which the http
+     * codec will return a /bad-request response.
+     */
+    public static final String SETTINGS_KEY_MAX_REQUEST_LINE_LENGTH = "max.request.line.length";
+    /**
+     * Length in bytes of the maximum HTTP header buffer size after which the
+     * http codec will return a /bad-request response.
+     */
+    public static final String SETTINGS_KEY_MAX_HEADER_BUFFER_SIZE = "max.header.buffer.size";
+    /**
+     * Length in bytes of the maximum inbound HTTP chunk size, after which the
+     * http codec will return a /bad-request response.
+     */
+    public static final String SETTINGS_KEY_MAX_CHUNK_SIZE = "max.chunk.size";
+
     static final AttributeKey<Boolean> SSL_ATTRIBUTE_KEY = AttributeKey.newInstance("ssl");
 
     protected final Class<? extends A> appType;
@@ -417,8 +550,6 @@ public class ServerModule<A extends Application> extends AbstractModule {
         }
     }
     private static final ConventionalThreadSupplier FTL_THREADS = new FastThreadLocalThreadSupplier();
-
-    ;
 
     public ServerModule(Class<? extends A> appType, int workerThreadCount, int eventThreadCount, int backgroundThreadCount) {
         this(new ReentrantScope(new InjectionInfo()), appType, workerThreadCount, eventThreadCount, backgroundThreadCount);
@@ -866,46 +997,67 @@ public class ServerModule<A extends Application> extends AbstractModule {
         return bootstrap;
     }
 
+    @SuppressWarnings("deprecation")
+    private static ByteBufAllocator createCustomPooledAllocator(Settings settings) {
+        boolean preferDirect = settings.getBoolean(SETTINGS_KEY_CUSTOM_ALLOC_PREFER_DIRECT, true);
+        int nHeapArena = settings.getInt(SETTINGS_KEY_CUSTOM_ALLOC_NUM_HEAP_ARENAS, PooledByteBufAllocator.DEFAULT.numHeapArenas());
+        int nDirectArena = settings.getInt(SETTINGS_KEY_CUSTOM_ALLOC_NUM_DIRECT_ARENAS, PooledByteBufAllocator.DEFAULT.numDirectArenas());
+        int pageSize = settings.getInt(SETTINGS_KEY_CUSTOM_ALLOC_PAGE_SIZE, PooledByteBufAllocator.defaultPageSize());
+        int maxOrder = settings.getInt(SETTINGS_KEY_CUSTOM_ALLOC_MAX_ORDER, PooledByteBufAllocator.defaultMaxOrder());
+        int tinyCacheSize = settings.getInt(SETTINGS_KEY_CUSTOM_ALLOC_TINY_CACHE_SIZE, PooledByteBufAllocator.defaultTinyCacheSize());
+        int smallCacheSize = settings.getInt(SETTINGS_KEY_CUSTOM_ALLOC_SMALL_CACHE_SIZE, PooledByteBufAllocator.defaultSmallCacheSize());
+        int normalCacheSize = settings.getInt(SETTINGS_KEY_CUSTOM_ALLOC_NORMAL_CACHE_SIZE, PooledByteBufAllocator.defaultNormalCacheSize());
+        boolean useCacheForAllThreads = settings.getBoolean(SETTINGS_KEY_CUSTOM_ALLOC_USE_CACHE_ALL_THREADS, PooledByteBufAllocator.defaultUseCacheForAllThreads());
+        int directMemoryCacheAlignment = settings.getInt(SETTINGS_KEY_CUSTOM_ALLOC_CACHE_ALIGNMENT, 0); // copied from PooledByteBufAllocator.DEFAULT
+        return new PooledByteBufAllocator(
+                preferDirect,
+                nHeapArena,
+                nDirectArena,
+                pageSize,
+                maxOrder,
+                tinyCacheSize,
+                smallCacheSize,
+                normalCacheSize,
+                useCacheForAllThreads,
+                directMemoryCacheAlignment);
+    }
+
     @Singleton
     private static final class ByteBufAllocatorProvider implements Provider<ByteBufAllocator> {
 
-        private final Settings settings;
-        private volatile ByteBufAllocator allocator;
+        private final ByteBufAllocator allocator;
 
         @Inject
         public ByteBufAllocatorProvider(Settings settings) {
-            this.settings = settings;
+            String s = settings.getString(BYTEBUF_ALLOCATOR_SETTINGS_KEY, DEFAULT_ALLOCATOR);
+            boolean disableLeakDetector = settings.getBoolean(SETTINGS_KEY_DISABLE_LEAK_DETECTOR, DEFAULT_DISABLE_LEAK_DETECTOR);
+            ByteBufAllocator result;
+            switch (s) {
+                case DIRECT_OR_HEAP_BY_PLATFORM:
+                    result = UnpooledByteBufAllocator.DEFAULT;
+                    break;
+                case DIRECT_ALLOCATOR:
+                    result = new UnpooledByteBufAllocator(true, disableLeakDetector);
+                    break;
+                case HEAP_ALLOCATOR:
+                    result = new UnpooledByteBufAllocator(false, disableLeakDetector);
+                    break;
+                case POOLED_ALLOCATOR:
+                    result = PooledByteBufAllocator.DEFAULT;
+                    break;
+                case CUSTOMIZED_POOLED_ALLOCATOR:
+                    result = createCustomPooledAllocator(settings);
+                    break;
+                default:
+                    throw new ConfigurationError("Unknown value for " + BYTEBUF_ALLOCATOR_SETTINGS_KEY
+                            + " '" + s + "'; valid values are " + DIRECT_ALLOCATOR + ", "
+                            + HEAP_ALLOCATOR + ", " + POOLED_ALLOCATOR);
+            }
+            this.allocator = result;
         }
 
+        @Override
         public ByteBufAllocator get() {
-            String s = settings.getString(BYTEBUF_ALLOCATOR_SETTINGS_KEY, DEFAULT_ALLOCATOR);
-            ByteBufAllocator result = this.allocator;
-            if (result == null) {
-                synchronized (this) {
-                    result = this.allocator;
-                    if (result == null) {
-                        switch (s) {
-                            case DIRECT_OR_HEAP_BY_PLATFORM:
-                                result = UnpooledByteBufAllocator.DEFAULT;
-                                break;
-                            case DIRECT_ALLOCATOR:
-                                result = new UnpooledByteBufAllocator(true);
-                                break;
-                            case HEAP_ALLOCATOR:
-                                result = new UnpooledByteBufAllocator(false);
-                                break;
-                            case POOLED_ALLOCATOR:
-                                result = PooledByteBufAllocator.DEFAULT;
-                                break;
-                            default:
-                                throw new ConfigurationError("Unknown value for " + BYTEBUF_ALLOCATOR_SETTINGS_KEY
-                                        + " '" + s + "'; valid values are " + DIRECT_ALLOCATOR + ", "
-                                        + HEAP_ALLOCATOR + ", " + POOLED_ALLOCATOR);
-                        }
-                        this.allocator = result;
-                    }
-                }
-            }
             return this.allocator;
         }
     }
@@ -996,7 +1148,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
             HttpEvent evt = ev.get();
             io.netty.handler.codec.http.cookie.Cookie[] cookies = evt.header(COOKIE_B);
             return cookies == null || cookies.length == 0 ? Collections.emptySet()
-                    : new HashSet<>(Arrays.asList(cookies));
+                    : setOf(cookies);
         }
     }
 

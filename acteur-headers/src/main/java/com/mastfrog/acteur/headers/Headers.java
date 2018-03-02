@@ -30,6 +30,7 @@ import com.mastfrog.acteur.util.Connection;
 import com.mastfrog.acteur.util.Realm;
 import com.mastfrog.util.Checks;
 import io.netty.handler.codec.http.HttpHeaderNames;
+import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpMessage;
 import io.netty.util.AsciiString;
 import java.net.URI;
@@ -150,6 +151,15 @@ public final class Headers {
         Checks.notNull("value " + type, value);
         CharSequence val = type.toCharSequence(value);
         msg.headers().add(type.name(), val);
+        return val;
+    }
+
+    public static <T> CharSequence write(HeaderValueType<T> type, T value, HttpHeaders headers) {
+        Checks.notNull("type", type);
+        Checks.notNull("headers", headers);
+        Checks.notNull("value " + type, value);
+        CharSequence val = type.toCharSequence(value);
+        headers.add(type.name(), val);
         return val;
     }
 

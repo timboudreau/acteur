@@ -26,18 +26,21 @@ package com.mastfrog.acteur;
 import com.google.common.collect.Sets;
 import com.google.inject.ImplementedBy;
 import com.mastfrog.acteur.errors.ResponseException;
+import com.mastfrog.acteur.headers.Method;
 import com.mastfrog.acteur.preconditions.Description;
 import com.mastfrog.acteur.preconditions.PageAnnotationHandler;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.util.Checks;
 import static com.mastfrog.util.Checks.notNull;
 import com.mastfrog.util.Exceptions;
-import com.mastfrog.util.collections.CollectionUtils;
+import static com.mastfrog.util.collections.CollectionUtils.setOf;
 import com.mastfrog.util.thread.AutoCloseThreadLocal;
 import com.mastfrog.util.thread.QuietAutoCloseable;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import static java.util.Collections.singleton;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -77,7 +80,7 @@ import java.util.Set;
  *
  * @author Tim Boudreau
  */
-public abstract class Page implements Iterable<Acteur> {
+public abstract class Page {
 
     private static final AutoCloseThreadLocal<Page> CURRENT_PAGE = new AutoCloseThreadLocal<>();
     private final List<Object> acteurs = new ArrayList<>(10);
@@ -100,21 +103,69 @@ public abstract class Page implements Iterable<Acteur> {
         return desc != null ? desc.value() : getClass().getSimpleName();
     }
 
-    Iterable<Object> contents() {
-        List<Object> result = new ArrayList<>(annotations());
-        result.addAll(this.acteurs);
+    /**
+     * For the case of adding live page objects, if we want to figure out what
+     * patterns they look for to optimize dispatch.
+     *
+     * @return null if nothing found, otherwise a set of patterns
+     */
+    Set<PathPatternInfo> findPathPatterns() {
+        Set<PathPatternInfo> result = null;
+        for (Object o : acteurs) {
+            if (o instanceof ActeurFactory.ExactMatchPath) {
+                String path = ((ActeurFactory.ExactMatchPath) o).path;
+                boolean decode = ((ActeurFactory.ExactMatchPath) o).decode;
+                if (result == null) {
+                    result = new HashSet<>();
+                }
+                result.add(new PathPatternInfo(decode, false, singleton(path), true));
+            } else if (o instanceof ActeurFactory.MatchPath) {
+                Set<String> patterns = setOf(((ActeurFactory.MatchPath) o).regexen);
+                boolean decode = ((ActeurFactory.MatchPath) o).decode;
+                if (result == null) {
+                    result = new HashSet<>();
+                }
+                result.add(new PathPatternInfo(decode, false, patterns, false));
+            }
+        }
         return result;
     }
 
+    static class PathPatternInfo {
+
+        final boolean decode;
+        final boolean regex;
+        final boolean knownExact;
+        final Set<String> patterns;
+
+        public PathPatternInfo(boolean decode, boolean regex, Set<String> patterns, boolean knownExact) {
+            this.decode = decode;
+            this.regex = regex;
+            this.patterns = patterns;
+            this.knownExact = knownExact;
+        }
+    }
+
+    Set<Method> findMethods() {
+        for (Object o : acteurs) {
+            if (o instanceof ActeurFactory.MatchMethods) {
+                return setOf(((ActeurFactory.MatchMethods) o).methods());
+            }
+        }
+        return null;
+    }
+
+    @SuppressWarnings("unchecked")
     void describeYourself(Map<String, Object> into) {
         Map<String, Object> m = new HashMap<>();
         if (getClass().getAnnotation(Description.class) != null) {
             m.put("description", getClass().getAnnotation(Description.class).value());
         }
-        int count = countActeurs();
-        for (int i = 0; i < count; i++) {
+        List<Object> acteurs = this.acteurs(application.isDefaultCorsHandlingEnabled());
+        for (Object o : acteurs) {
             try {
-                Acteur a = getActeur(i, false);
+                Acteur a = o instanceof Acteur ? (Acteur) o
+                        : application.getDependencies().getInstance(((Class<? extends Acteur>) o));
                 a.describeYourself(m);
             } catch (Exception e) {
                 //ok
@@ -182,16 +233,15 @@ public abstract class Page implements Iterable<Acteur> {
         return acteurs.size();
     }
 
-    List<Object> acteurs() {
+    List<Object> acteurs(boolean corsByDefault) {
         List<Acteur> annos = this.annotations();
-        List<Object> l = new ArrayList<>(annos.size() + acteurs.size());
+        List<Object> l = new ArrayList<>(annos.size() + acteurs.size() + (corsByDefault ? 1 : 0));
         l.addAll(this.annotations());
+        if (corsByDefault) {
+            l.add(CORSResource.CorsHeaders.class);
+        }
         l.addAll(acteurs);
         return l;
-    }
-
-    final Acteur getActeur(int ix) {
-        return getActeur(ix, true);
     }
 
     @SuppressWarnings("unchecked")
@@ -232,43 +282,5 @@ public abstract class Page implements Iterable<Acteur> {
         List<Acteur> results = new LinkedList<>();
         handler.processAnnotations(this, results);
         return results;
-    }
-
-    @Override
-    @Deprecated
-    public Iterator<Acteur> iterator() {
-        assert getApplication() != null : "Application is null - called outside request?";
-        PageAnnotationHandler.Registry registry
-                = getApplication().getDependencies().getInstance(
-                        PageAnnotationHandler.Registry.class);
-        if (registry.hasAnnotations(this)) {
-            return CollectionUtils.combine(annotationActeurs(), new I());
-        } else {
-            return new I();
-        }
-    }
-
-    /**
-     * An adaptor which instantiates the Acteurs of the page on demand and
-     * returns them one by one
-     */
-    private final class I implements Iterator<Acteur> {
-
-        int ix = 0;
-
-        @Override
-        public boolean hasNext() {
-            return ix < countActeurs();
-        }
-
-        @Override
-        public Acteur next() {
-            return getActeur(ix++);
-        }
-
-        @Override
-        public void remove() {
-            throw new UnsupportedOperationException("Not supported");
-        }
     }
 }

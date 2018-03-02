@@ -23,30 +23,61 @@
  */
 package com.mastfrog.acteur;
 
+import com.google.inject.Singleton;
+import static com.mastfrog.acteur.headers.Headers.CACHE_CONTROL;
 import static com.mastfrog.acteur.headers.Method.OPTIONS;
 import com.mastfrog.acteur.preconditions.Description;
 import com.mastfrog.acteur.preconditions.Methods;
+import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_CORS_CACHE_CONTROL_MAX_AGE;
+import com.mastfrog.acteur.util.CacheControl;
+import com.mastfrog.acteur.util.CacheControlTypes;
+import com.mastfrog.settings.Settings;
 import io.netty.handler.codec.http.HttpResponseStatus;
+import java.time.Duration;
 import javax.inject.Inject;
 
 /**
  *
  * @author Tim Boudreau
  */
-@Description("Answers CORS preflight HTTP OPTIONS requests - see the ajax spec")
+@Description(category = "Info", value = "Answers CORS preflight HTTP OPTIONS requests - see the ajax spec")
 @Methods(OPTIONS)
 final class CORSResource extends Page {
 
     @Inject
     CORSResource() {
         add(CorsHeaders.class);
+        add(CorsResponse.class);
     }
 
-    private static final class CorsHeaders extends Acteur {
+    static final class CorsHeaders extends Acteur {
+
         @Inject
-        CorsHeaders(CORSResponseDecorator corsDecorator) {
-            corsDecorator.decorateCorsPreflight(response());
+        CorsHeaders(CORSResponseDecorator corsDecorator, HttpEvent evt, Page page) {
+            corsDecorator.decorateCorsPreflight(evt, response(), page);
+            next();
+        }
+    }
+
+    private static final class CorsResponse extends Acteur {
+
+        @Inject
+        CorsResponse(CacheControlDuration dur) {
+            response().addIfUnset(CACHE_CONTROL, dur.cacheControl);
             reply(HttpResponseStatus.NO_CONTENT);
+        }
+    }
+
+    // Avoids recomputing the cache control setting for each CORS request
+    @Singleton
+    static final class CacheControlDuration {
+
+        final CacheControl cacheControl;
+
+        @Inject
+        CacheControlDuration(Settings settings) {
+            Duration corsCacheControlMaxAge = Duration.ofDays(settings.getLong(SETTINGS_KEY_CORS_CACHE_CONTROL_MAX_AGE, 365));
+            cacheControl = CacheControl.$(CacheControlTypes.Public).add(CacheControlTypes.max_age, corsCacheControlMaxAge);
         }
     }
 }

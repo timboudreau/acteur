@@ -31,6 +31,7 @@ import com.mastfrog.acteur.errors.ErrorResponse;
 import com.mastfrog.acteur.errors.ResponseException;
 import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.acteur.headers.Headers;
+import com.mastfrog.acteur.spi.ApplicationControl;
 import com.mastfrog.acteurbase.AbstractActeur;
 import com.mastfrog.acteurbase.ActeurResponseFactory;
 import com.mastfrog.acteurbase.Chain;
@@ -44,6 +45,8 @@ import static com.mastfrog.util.Checks.noNullElements;
 import static com.mastfrog.util.Checks.notNull;
 import com.mastfrog.util.Exceptions;
 import com.mastfrog.util.Invokable;
+import com.mastfrog.util.collections.CollectionUtils;
+import com.mastfrog.util.function.EnhCompletableFuture;
 import com.mastfrog.util.function.ThrowingConsumer;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
@@ -60,7 +63,6 @@ import java.nio.charset.Charset;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -144,8 +146,8 @@ import javax.inject.Inject;
  * With either of the methods which return a <code>CompletableFuture</code>, you
  * <b>must call <code>complete()</code> or <code>completeExceptionally()
  * <i>no matter what happens</i></b> or your application will suffer from
- * "request dropped on the floor" bugs where the connection is held open but
- * no response is ever sent.
+ * "request dropped on the floor" bugs where the connection is held open but no
+ * response is ever sent.
  *
  * @author Tim Boudreau
  */
@@ -372,13 +374,38 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
      */
     @SuppressWarnings("unchecked")
     protected final Acteur continueAfter(CompletionStage<?>... stages) {
+        return continueAfter(false, stages);
+    }
+
+    /**
+     * Continue the Acteur chain, running any subsequent acteurs, once the
+     * passed CompletionStages (e.g. CompletableFuture) have completed - this
+     * makes it possible to run ad-hoc asynchronous logic with the acteur chain
+     * paused, and automatically resume it when finished.
+     *
+     * @param unwrapArrays If the object placed in a completion stage is an
+     * array, put all of its elements into context for the subsequent Acteurs,
+     * rather than the array itself
+     * @param stages One or more CompletionStage instances.
+     *
+     * @return This acteur
+     * @since 2.2.2
+     */
+    @SuppressWarnings("unchecked")
+    protected final Acteur continueAfter(boolean unwrapArrays, CompletionStage<?>... stages) {
         Checks.nonZero("stages", noNullElements("stages", notNull("stages", stages)).length);
+        if (stages.length == 0) {
+            throw new IllegalArgumentException("Stages may not be an empty array");
+        }
         Dependencies deps = Page.get().getApplication().getDependencies();
         Chain chain = deps.getInstance(Chain.class);
         chain.insert(CheckThrownActeur.class);
         List<Object> l = new CopyOnWriteArrayList<>();
         AtomicBoolean alreadyResumed = new AtomicBoolean();
         AtomicInteger count = new AtomicInteger();
+        for (CompletionStage<?> c : stages) {
+            logErrors(c);
+        }
         return then((Resumer resumer) -> {
             for (CompletionStage<?> c : stages) {
                 c.whenComplete((Object o, Throwable t) -> {
@@ -389,7 +416,11 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
                         }
                     } else {
                         if (o != null) {
-                            l.add(o);
+                            if (unwrapArrays && o.getClass().isArray()) {
+                                l.addAll(CollectionUtils.toList(o));
+                            } else {
+                                l.add(o);
+                            }
                         }
                         if (count.incrementAndGet() == stages.length && alreadyResumed.compareAndSet(false, true)) {
                             l.add(DeferredComputationResult.empty());
@@ -399,6 +430,11 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
                 });
             }
         });
+    }
+
+    private void logErrors(CompletionStage<?> stage) {
+        ApplicationControl ctrl = Page.get().application.control();
+        ctrl.logErrors(stage);
     }
 
     /**
@@ -411,9 +447,29 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
      * @return A CompletableFuture
      * @since 2.1.0
      */
-    protected final <T> CompletableFuture<T> deferThenRespond() {
-        CompletableFuture<T> result = new CompletableFuture<T>();
+    protected final <T> EnhCompletableFuture<T> deferThenRespond() {
+        EnhCompletableFuture<T> result = new EnhCompletableFuture<>();
+        logErrors(result);
         then(result);
+        return result;
+    }
+
+    /**
+     * Pause the Acteur chain until external code completes the returned
+     * CompletableFuture, then use the result of that computation as the
+     * response (JSON or whatever the application is configured to marshal
+     * responses to).
+     *
+     * @param <T> The type parameter for the returned CompletableFuture.
+     * @param successStatus The HTTP status to respond with if the result is
+     * completed normally
+     * @return A CompletableFuture
+     * @since 2.2.2
+     */
+    protected final <T> EnhCompletableFuture<T> deferThenRespond(HttpResponseStatus successStatus) {
+        EnhCompletableFuture<T> result = new EnhCompletableFuture<T>();
+        logErrors(result);
+        then(result, successStatus);
         return result;
     }
 
@@ -426,8 +482,9 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
      * @return A CompletableFuture
      * @since 2.1.0
      */
-    protected final <T> CompletableFuture<T> defer() {
-        CompletableFuture<T> result = new CompletableFuture<>();
+    protected final <T> EnhCompletableFuture<T> defer() {
+        EnhCompletableFuture<T> result = new EnhCompletableFuture<>();
+        logErrors(result);
         continueAfter(result);
         return result;
     }
@@ -482,6 +539,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
      */
     @SuppressWarnings("unchecked")
     protected final <T> Acteur then(CompletionStage<T> c, HttpResponseStatus successStatus) {
+        logErrors(c);
         Dependencies deps = Page.get().getApplication().getDependencies();
         Chain chain = deps.getInstance(Chain.class);
         chain.add(DeferredComputationResultActeur.class);

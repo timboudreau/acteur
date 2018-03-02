@@ -115,7 +115,6 @@ public class CookieTest {
         harn.options("one").setTimeout(timeout).go().await().assertHasHeader(Headers.ACCESS_CONTROL_ALLOW)
                 .assertHasHeader(Headers.ACCESS_CONTROL_ALLOW_CREDENTIALS)
                 .assertHasHeader(Headers.ACCESS_CONTROL_MAX_AGE)
-                .assertHasHeader(Headers.CACHE_CONTROL)
                 .assertHasHeader(Headers.ACCESS_CONTROL_ALLOW_ORIGIN);
     }
 

@@ -24,7 +24,10 @@
 package com.mastfrog.acteur.spi;
 
 import com.mastfrog.acteur.Event;
+import com.mastfrog.acteur.errors.ResponseException;
 import io.netty.channel.Channel;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.CountDownLatch;
 
 /**
@@ -40,4 +43,18 @@ public interface ApplicationControl {
     CountDownLatch onEvent(final Event<?> event, final Channel channel);
 
     void internalOnError(Throwable err);
+
+    default void logErrors(CompletionStage<?> stage) {
+        stage.whenComplete((ignored, thrown) -> {
+            if (thrown != null) {
+                while (thrown instanceof CompletionException && thrown.getCause() != null) {
+                    thrown = thrown.getCause();
+                }
+                if (thrown instanceof ResponseException) {
+                    return;
+                }
+                internalOnError(thrown);
+            }
+        });
+    }
 }

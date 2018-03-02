@@ -36,7 +36,7 @@ import com.mastfrog.util.collections.Converter;
  * @see Headers
  * @author Tim Boudreau
  */
-public interface HeaderValueType<T> extends Converter<T, CharSequence> {
+public interface HeaderValueType<T> extends Converter<T, CharSequence>, Comparable<HeaderValueType<?>> {
     /**
      * The Java type
      * @return A type
@@ -105,4 +105,12 @@ public interface HeaderValueType<T> extends Converter<T, CharSequence> {
     public default HeaderValueType<CharSequence> toStringHeader() {
         return Headers.header(name());
     }
+
+    @Override
+    public default int compareTo(HeaderValueType<?> o) {
+        CharSequence a = name();
+        CharSequence b = o.name();
+        return Strings.compareCharSequences(a, b, true);
+    }
+
 }

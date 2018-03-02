@@ -26,6 +26,7 @@ package com.mastfrog.acteur.server;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableSortedMap;
+import com.google.common.net.HostAndPort;
 import com.google.common.net.MediaType;
 import com.google.inject.util.Providers;
 import com.mastfrog.acteur.ContentConverter;
@@ -34,6 +35,9 @@ import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.acteur.headers.Method;
 import com.mastfrog.url.Path;
+import com.mastfrog.url.Protocol;
+import com.mastfrog.url.Protocols;
+import com.mastfrog.url.URL;
 import com.mastfrog.util.Codec;
 import com.mastfrog.util.collections.CollectionUtils;
 import io.netty.buffer.ByteBuf;
@@ -43,6 +47,7 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaderValues;
+import static io.netty.handler.codec.http.HttpHeaderNames.HOST;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.QueryStringDecoder;
 import io.netty.util.AsciiString;
@@ -64,6 +69,7 @@ final class EventImpl implements HttpEvent {
     private final HttpRequest req;
     private final Path path;
     private final SocketAddress address;
+    private final PathFactory paths;
     private boolean neverKeepAlive = false;
     private final ChannelHandlerContext channel;
     private ContentConverter converter;
@@ -73,6 +79,7 @@ final class EventImpl implements HttpEvent {
     public EventImpl(HttpRequest req, PathFactory paths) {
         this.req = req;
         this.path = paths.toPath(req.uri());
+        this.paths = paths;
         address = new InetSocketAddress("timboudreau.com", 8985); //XXX for tests
         this.channel = null;
         Codec codec = new ServerModule.CodecImpl(Providers.of(new ObjectMapper()));
@@ -86,12 +93,73 @@ final class EventImpl implements HttpEvent {
         this.channel = channel;
         this.converter = converter;
         this.ssl = ssl;
+        this.paths = paths;
     }
 
     @Override
     public boolean isPreContent() {
         return early;
     }
+
+    /**
+     * Returns a best-effort at reconstructing the inbound URL, following the
+     * following algorithm:
+     * <ul>
+     * <li>If the application has external url generation configured via
+     * PathFactory, prefer the output of that</li>
+     * <li>If not, try to honor non-standard but common headers such as
+     * <code>X-Forwarded-Proto, X-URI-Scheme, Forwarded, X-Forwarded-Host</code></li>
+     * </ul>
+     *
+     * Applications which respond to multiple virtual host names may need a
+     * custom implementation of PathFactory bound to do this correctly.
+     *
+     * @return A URL string
+     */
+    public String getRequestURL(boolean preferHeaders) {
+        HttpEvent evt = this;
+        String uri = evt.request().uri();
+        if (uri.startsWith("http://") || uri.startsWith("https://")) {
+            return uri;
+        }
+        URL takeFrom = paths.constructURL("/");
+        CharSequence proto = DefaultPathFactory.findProtocol(evt);
+        if (proto == null) {
+            proto = takeFrom.getProtocol().toString();
+        }
+        String host = evt.header("X-Forwarded-Host");
+        if (host == null) {
+            host = evt.header(HOST);
+        }
+        int port = -1;
+        if (host != null && host.indexOf(':') > 0) {
+            HostAndPort hp = HostAndPort.fromString(host);
+            port = hp.getPort();
+            host = host.substring(0, host.indexOf(':'));
+            if (port != -1 && Protocols.forName(proto.toString()).getDefaultPort().intValue() == port) {
+                port = -1;
+            } else if (port != -1 && Protocols.forName(proto.toString()).getDefaultPort().intValue() != port) {
+                host = host + ":" + port;
+            }
+        }
+        if (!preferHeaders) {
+            String configuredHost = takeFrom.getHost().toString();
+            if (!configuredHost.equals("localhost")) {
+                host = configuredHost;
+                port = takeFrom.getPort().intValue();
+                proto = takeFrom.getProtocol().toString();
+                Protocol protocol = com.mastfrog.url.Protocols.forName(proto.toString());
+                if (port != -1 && port != protocol.getDefaultPort().intValue()) {
+                    host = host + ":" + takeFrom.getPort().intValue();
+                }
+            }
+        }
+        if (uri.length() == 0 || uri.charAt(0) != '/') {
+            host += '/';
+        }
+        return proto + "://" + host + uri;
+    }
+
 
     EventImpl early() {
         early = true;

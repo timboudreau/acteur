@@ -26,6 +26,7 @@ package com.mastfrog.url;
 import com.mastfrog.util.AbstractBuilder;
 import com.mastfrog.util.Checks;
 import static com.mastfrog.util.Checks.notNull;
+import com.mastfrog.util.Strings;
 import com.mastfrog.util.collections.CollectionUtils;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -70,6 +71,11 @@ public final class ParsedParameters extends Parameters implements URLComponent, 
             }
         }
         return null;
+    }
+
+    public String getFirstDecoded(String param) {
+        String result = getFirst(param);
+        return result == null ? null : Strings.urlDecode(result);
     }
 
     public List<String> getAll(String param) {

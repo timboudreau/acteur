@@ -38,6 +38,7 @@ import com.mastfrog.parameters.Param;
 import com.mastfrog.parameters.Params;
 import com.mastfrog.parameters.Types;
 import java.io.IOException;
+import static org.junit.Assert.assertEquals;
 import org.netbeans.validation.api.AbstractValidator;
 import org.netbeans.validation.api.Problems;
 import org.netbeans.validation.api.builtin.stringvalidation.StringValidators;
@@ -64,6 +65,7 @@ public class NumblePage extends Acteur {
     @Inject
     NumblePage(ReentrantScope scope, HttpEvent evt, Provider<NumblePageParams> params) throws JsonProcessingException, IOException {
         ok(params.get().toJSON());
+        assertEquals(PUT, evt.method());
     }
 
     static final class PortValidator extends AbstractValidator<String> {

@@ -27,6 +27,9 @@ import com.google.inject.Provider;
 import com.mastfrog.acteur.Application;
 import static com.mastfrog.acteur.server.ServerModule.HTTP_COMPRESSION;
 import static com.mastfrog.acteur.server.ServerModule.MAX_CONTENT_LENGTH;
+import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_MAX_CHUNK_SIZE;
+import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_MAX_HEADER_BUFFER_SIZE;
+import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_MAX_REQUEST_LINE_LENGTH;
 import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_SSL_ENABLED;
 import static com.mastfrog.acteur.server.ServerModule.SSL_ATTRIBUTE_KEY;
 import com.mastfrog.acteur.spi.ApplicationControl;
@@ -68,6 +71,9 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
     boolean useSsl;
     private final EarlyPagesPipelineDecorator earlyPages;
     private final Application application;
+    private final int maxInitialLineLength;
+    private final int maxHeadersSize;
+    private final int maxChunkSize;
 
     @Inject
     PipelineFactoryImpl(Provider<ChannelHandler> handler,
@@ -83,6 +89,10 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
         httpCompression = settings.getBoolean(HTTP_COMPRESSION, true);
         maxContentLength = settings.getInt(MAX_CONTENT_LENGTH, DEFAULT_MAX_CONTENT_LENGTH);
         useSsl = settings.getBoolean(SETTINGS_KEY_SSL_ENABLED, false);
+        // using the same defaults as the default http codec constructor
+        maxInitialLineLength = settings.getInt(SETTINGS_KEY_MAX_REQUEST_LINE_LENGTH, 4096);
+        maxHeadersSize = settings.getInt(SETTINGS_KEY_MAX_HEADER_BUFFER_SIZE, 8192);
+        maxChunkSize = settings.getInt(SETTINGS_KEY_MAX_CHUNK_SIZE, 8192);
         this.earlyPages = earlyPages;
         this.application = application;
     }
@@ -103,7 +113,7 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
         }
         decorator.onCreatePipeline(pipeline);
 
-        ChannelHandler decoder = new HttpRequestDecoder();
+        ChannelHandler decoder = new HttpRequestDecoder(maxInitialLineLength, maxHeadersSize, maxChunkSize);
         ChannelHandler encoder = application.hasEarlyPages() ? new HackHttpResponseEncoder() : new HttpResponseEncoder();
 
         pipeline.addLast(PipelineDecorator.DECODER, decoder);

@@ -308,7 +308,7 @@ public class CompApp extends Application {
                 if (max == null) {
                     max = 5;
                 }
-                msg = evt.getParameter("msg");
+                msg = evt.urlParameter("msg");
                 if (msg == null) {
                     msg = "Iteration ";
                 }

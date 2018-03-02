@@ -110,6 +110,7 @@ public class TestAnnotations {
             add(One.class);
             add(Two.class);
             add(Three.class);
+            enableDefaultCorsHandling();
         }
     }
 

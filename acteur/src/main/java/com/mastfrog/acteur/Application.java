@@ -23,6 +23,8 @@
  */
 package com.mastfrog.acteur;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import com.mastfrog.acteur.headers.Headers;
 import com.google.common.net.MediaType;
 import com.google.inject.Inject;
@@ -35,6 +37,9 @@ import com.mastfrog.acteur.annotations.Precursors;
 import com.mastfrog.acteur.debug.Probe;
 import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.acteur.preconditions.Description;
+import com.mastfrog.acteur.preconditions.Example;
+import com.mastfrog.acteur.preconditions.Examples;
+import com.mastfrog.acteur.preconditions.Examples.Case;
 import com.mastfrog.settings.SettingsBuilder;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.giulius.scope.ReentrantScope;
@@ -49,8 +54,11 @@ import com.mastfrog.acteur.util.RequestID;
 import com.mastfrog.acteurbase.InstantiatingIterators;
 import com.mastfrog.parameters.Param;
 import com.mastfrog.parameters.Params;
+import com.mastfrog.settings.Settings;
 import com.mastfrog.util.ConfigurationError;
 import com.mastfrog.util.Checks;
+import com.mastfrog.util.Strings;
+import static com.mastfrog.util.collections.CollectionUtils.toList;
 import com.mastfrog.util.perf.Benchmark;
 import com.mastfrog.util.perf.Benchmark.Kind;
 import com.mastfrog.util.thread.QuietAutoCloseable;
@@ -67,6 +75,7 @@ import io.netty.util.AsciiString;
 import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Modifier;
 import java.nio.charset.Charset;
@@ -82,6 +91,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import org.netbeans.validation.api.Validator;
@@ -138,8 +148,10 @@ public class Application implements Iterable<Page> {
     @Inject
     Probe probe;
 
-    private EarlyPages earlyPageMatcher;
-    private List<Object> earlyPages = new ArrayList<>();
+    private PagePathAndMethodFilter earlyPageMatcher;
+    private List<Object> earlyPages = new ArrayList<>(10);
+
+    final PagePathAndMethodFilter normalPageMatcher = new PagePathAndMethodFilter();
 
     private final RequestID.Factory ids = new RequestID.Factory();
 
@@ -179,8 +191,8 @@ public class Application implements Iterable<Page> {
 
     /**
      * Get the type of the built in help page class, which uses
-     * Acteur.describeYourself() to generate a JSON description of all URLs the
-     * application responnds to
+     * Acteur.describeYourself() and annotations to generate a JSON description
+     * of all URLs the application responds to
      *
      * @return A page type
      */
@@ -197,7 +209,11 @@ public class Application implements Iterable<Page> {
     protected final void enableDefaultCorsHandling() {
         if (!corsEnabled) {
             corsEnabled = true;
+            if (!this.earlyPages.isEmpty()) {
+                earlyPages.add(CORSResource.class);
+            }
             pages.add(0, CORSResource.class);
+            normalPageMatcher.add(CORSResource.class);
         }
     }
 
@@ -313,8 +329,32 @@ public class Application implements Iterable<Page> {
                 }
                 into.put(name, desc);
             }
+        } else if (a instanceof Examples) {
+            Examples e = (Examples) a;
+            int ix = 1;
+            for (Case kase : e.value()) {
+                Map<String, Object> m = new TreeMap<>();
+                if (!kase.title().isEmpty()) {
+                    m.put("title", kase.title());
+                }
+                if (!kase.description().isEmpty()) {
+                    m.put("description", kase.description());
+                }
+                Example ex = kase.value();
+                m.put("Sample URL", ex.value());
+                if (ex.inputType() != Object.class) {
+                    Object inp = reflectAndJsonify(ex.inputField(), ex.inputType());
+                    m.put("Sample Input", inp);
+                }
+                if (ex.outputType() != Object.class) {
+                    Object out = reflectAndJsonify(ex.outputField(), ex.outputType());
+                    m.put("Sample Output", out);
+                }
+                into.put("example-" + ix++, m);
+            }
         } else {
             Class<? extends Annotation> type = a.annotationType();
+            String name = type.getSimpleName();
             for (java.lang.reflect.Method m : type.getMethods()) {
                 switch (m.getName()) {
                     case "annotationType":
@@ -323,7 +363,29 @@ public class Application implements Iterable<Page> {
                         break;
                     default:
                         if (m.getParameterTypes().length == 0 && m.getReturnType() != null) {
-                            into.put(m.getName(), m.invoke(a));
+                            Object mr = m.invoke(a);
+                            if (mr.getClass().isArray()) {
+                                mr = toList(mr);
+                            }
+//                            if (mr instanceof List<?>) {
+//                                List<Object> mrs = new ArrayList<>(5);
+//                                for (Object o : ((List<?>) mr)) {
+//                                    if (o instanceof Annotation) {
+//                                        Map<String, Object> ar = new LinkedHashMap<>();
+//                                        introspectAnnotation((Annotation) o, ar);
+//                                        mrs.add(ar);
+//                                    } else {
+//                                        mrs.add(o);
+//                                    }
+//                                }
+//                                into.put(name, mrs);
+//                            } else if (mr instanceof Annotation) {
+//                                Map<String, Object> ar = new LinkedHashMap<>();
+//                                introspectAnnotation((Annotation) mr, ar);
+//                                into.put(name, ar);
+//                            } else {
+                                into.put(m.getName(), mr);
+//                            }
                         }
                 }
             }
@@ -331,6 +393,33 @@ public class Application implements Iterable<Page> {
                 Description d = type.getAnnotation(Description.class);
                 into.put("Description", d.value());
             }
+        }
+    }
+
+    private String reflectAndJsonify(String field, Class<?> type) {
+        try {
+            Field f = type.getDeclaredField(field);
+            f.setAccessible(true);
+            if (f.getType() == String.class) {
+                String res = (String) f.get(null);
+                if (res != null) {
+                    res = res.replaceAll("\\&", "&amp;");
+                    res = Strings.literalReplaceAll("\"", "&quot;", res);
+                    res = Strings.literalReplaceAll(">", "&gt;", res);
+                    res = Strings.literalReplaceAll("<", "&lt;", res);
+                }
+                return "\n<pre>" + res + "</pre>\n";
+            }
+            Object o = f.get(null);
+            ObjectMapper mapper = deps.getInstance(ObjectMapper.class)
+                    .copy()
+                    .enable(SerializationFeature.INDENT_OUTPUT)
+                    .enable(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS);
+            return "<pre>" + mapper.writeValueAsString(o)
+                    .replace("\"", "&quot;") + "</pre>";
+        } catch (Exception e) {
+            return "Could not lookup and generate JSON from " + type.getName() + "." + field + ": "
+                    + e;
         }
     }
 
@@ -357,6 +446,19 @@ public class Application implements Iterable<Page> {
                     if (a instanceof HttpCall) {
                         continue;
                     }
+                    if (a instanceof Example) {
+                        Example ex = (Example) a;
+                        if (!ex.value().isEmpty()) {
+                            pageDescription.put("Sample URL", ((Example) a).value());
+                        }
+                        if (ex.inputType() != Object.class) {
+                            pageDescription.put("Sample Input", reflectAndJsonify(ex.inputField(), ex.inputType()));
+                        }
+                        if (ex.outputType() != Object.class) {
+                            pageDescription.put("Sample Output", reflectAndJsonify(ex.outputField(), ex.outputType()));
+                        }
+                        continue;
+                    }
                     Map<String, Object> annoDescription = new HashMap<>();
                     pageDescription.put(a.annotationType().getSimpleName(), annoDescription);
                     try {
@@ -371,7 +473,7 @@ public class Application implements Iterable<Page> {
                 try {
                     Page p = (Page) deps.getInstance(type);
                     p.application = this;
-                    for (Object acteur : p.contents()) {
+                    for (Object acteur : p.acteurs(isDefaultCorsHandlingEnabled())) {
                         Class<?> at = null;
                         if (acteur instanceof Acteur.WrapperActeur) {
                             at = ((WrapperActeur) acteur).type();
@@ -428,11 +530,12 @@ public class Application implements Iterable<Page> {
         assert checkConstructor(page);
         if (page.getAnnotation(Early.class) != null) {
             if (earlyPageMatcher == null) {
-                earlyPageMatcher = new EarlyPages();
+                earlyPageMatcher = new PagePathAndMethodFilter();
             }
             earlyPageMatcher.add(page);
             earlyPages.add(page);
         } else {
+            normalPageMatcher.add(page);
             pages.add(page);
         }
     }
@@ -441,11 +544,12 @@ public class Application implements Iterable<Page> {
     protected final void add(Page page) {
         if (page.getClass().getAnnotation(Early.class) != null) {
             if (earlyPageMatcher == null) {
-                earlyPageMatcher = new EarlyPages();
+                earlyPageMatcher = new PagePathAndMethodFilter();
             }
-            earlyPageMatcher.add((Class<? extends Page>) page.getClass());
+            earlyPageMatcher.add(page);
             earlyPages.add(page);
         } else {
+            normalPageMatcher.add(page);
             pages.add(page);
         }
     }
@@ -644,6 +748,30 @@ public class Application implements Iterable<Page> {
         return deps;
     }
 
+    private List<Object> filter(PagePathAndMethodFilter filter, HttpEvent evt) {
+        HttpRequest req = evt.request();
+        List<Object> filtered = new ArrayList<>(filter.listFor(req));
+        filtered.sort(HttpCallOrOrderedComparator.INSTANCE);
+        return filtered;
+    }
+
+    Iterator<Page> iterator(HttpEvent evt) {
+        List<Object> all = filter(normalPageMatcher, evt);
+        return all.isEmpty() ? Collections.emptyIterator()
+                : iterators.iterable(all, Page.class).iterator();
+    }
+
+    Iterator<Page> earlyPagesIterator(HttpEvent evt) {
+        // This is a hack
+        if (!checkedEarlyHelp && deps.getInstance(Settings.class).getBoolean("help.early", false)) {
+            checkedEarlyHelp = true;
+            earlyPages.add(HelpPage.class);
+            earlyPageMatcher.addHelp(deps.getInstance(Settings.class).getString(Help.HELP_URL_PATTERN_SETTINGS_KEY, "^help$"));
+        }
+        List<Object> all = filter(earlyPageMatcher, evt);
+        return all.isEmpty() ? Collections.emptyIterator() : iterators.iterable(all, Page.class).iterator();
+    }
+
     /**
      * Get the set of page instances, constructing them dynamically. Note that
      * this should be called inside the application scope, with any objects
@@ -656,7 +784,15 @@ public class Application implements Iterable<Page> {
         return iterators.iterable(pages, Page.class).iterator();
     }
 
+    private boolean checkedEarlyHelp;
+
     Iterator<Page> earlyPagesIterator() {
+        // This is a hack
+        if (!checkedEarlyHelp && deps.getInstance(Settings.class).getBoolean("help.early", false)) {
+            checkedEarlyHelp = true;
+            earlyPages.add(HelpPage.class);
+            earlyPageMatcher.addHelp(deps.getInstance(Settings.class).getString(Help.HELP_URL_PATTERN_SETTINGS_KEY, "^help$"));
+        }
         return iterators.iterable(earlyPages, Page.class).iterator();
     }
 

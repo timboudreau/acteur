@@ -8,11 +8,10 @@ import com.mastfrog.acteur.server.ServerModule;
 import com.mastfrog.giulius.scope.ReentrantScope;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.util.Exceptions;
+import static com.mastfrog.util.collections.CollectionUtils.setOf;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
-import java.util.Arrays;
-import java.util.HashSet;
 import java.util.Set;
 
 /**
@@ -124,7 +123,7 @@ public class GenericApplicationModule<T extends GenericApplication> extends Serv
         try {
             super.configure();
             HttpCallRegistryLoader ldr = new HttpCallRegistryLoader(appType);
-            Set<Class<?>> toExclude = ImmutableSet.copyOf(new HashSet<>(Arrays.asList(exclude)));
+            Set<Class<?>> toExclude = ImmutableSet.copyOf(setOf(exclude));
             bind(Class[].class).annotatedWith(Names.named(EXCLUDED_CLASSES)).toInstance(exclude);
             bind(new GenericArrayOfClasses()).annotatedWith(Names.named(EXCLUDED_CLASSES)).toInstance(exclude);
             bind(new SetOfClasses()).annotatedWith(Names.named(EXCLUDED_CLASSES)).toInstance(toExclude);

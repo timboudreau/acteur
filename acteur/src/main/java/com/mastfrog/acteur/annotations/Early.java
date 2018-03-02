@@ -24,6 +24,7 @@
 package com.mastfrog.acteur.annotations;
 
 import com.mastfrog.acteur.ChunkHandler;
+import com.mastfrog.acteur.preconditions.Description;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -39,6 +40,12 @@ import java.lang.annotation.Target;
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
+@Description("Marks an HTTP call as needing to be processed <i>as soon as "
+        + "its headers arrive</i>, before the request body has been received "
+        + "(meaning the HTTP event's content will be null).  Used for cases such "
+        + "as redirecting a POST request with a large payload without having the "
+        + "payload buffered in memory, and cases where large uploads should be "
+        + "saved to a file rather than pulled into memory.")
 public @interface Early {
 
     /**
