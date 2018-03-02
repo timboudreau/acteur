@@ -29,8 +29,11 @@ import com.mastfrog.acteur.server.EventLoopFactory.DefaultEventLoopFactory;
 import static com.mastfrog.acteur.server.ServerModule.EVENT_THREADS;
 import static com.mastfrog.acteur.server.ServerModule.WORKER_THREADS;
 import com.mastfrog.giulius.thread.ThreadCount;
+import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.EventLoopGroup;
+import io.netty.channel.ServerChannel;
 import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.nio.NioServerSocketChannel;
 import java.util.concurrent.Executor;
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -48,6 +51,15 @@ public abstract class EventLoopFactory {
     public abstract EventLoopGroup getEventGroup();
 
     public abstract EventLoopGroup getWorkerGroup();
+
+    protected Class <? extends ServerChannel> channelType() {
+        return NioServerSocketChannel.class;
+    }
+
+    protected ServerBootstrap configureBootstrap(ServerBootstrap bootstrap) {
+        return bootstrap.group(getEventGroup(), getWorkerGroup())
+                .channel(channelType());
+    }
 
     @Singleton
     static final class DefaultEventLoopFactory extends EventLoopFactory {

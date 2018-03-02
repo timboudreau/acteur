@@ -71,7 +71,6 @@ public class PutTest {
     @Test(timeout = 180000L)
     public void testPuts(TestHarness harn, Application application) throws Throwable {
         System.setProperty("acteur.debug", "true");
-        System.out.println("STUFF:\n" + application.normalPageMatcher);
         harn.get("foo/bar/baz").go().assertStatus(OK).assertContent("Hello world");
         harn.get("/").go().assertStatus(OK).assertContent("Hello world");
         for (int i = 0; i < 20; i++) {

@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright 2011-2014 Tim Boudreau.
+ * Copyright 2011-2018 Tim Boudreau.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -40,7 +40,6 @@ import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
-import io.netty.channel.socket.nio.NioServerSocketChannel;
 import java.io.IOException;
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
@@ -109,18 +108,17 @@ final class ServerImpl implements Server {
         final CountDownLatch afterStart = new CountDownLatch(1);
         try {
             result = new ServerControlImpl(port, afterStart, loopFactory, registry, isExitOnBindFailure(settings));
-            ServerBootstrap bootstrap = bootstrapProvider.get();
 
-            String bindAddress = settings.getString(SETTINGS_KEY_BIND_ADDRESS, 
+            String bindAddress = settings.getString(SETTINGS_KEY_BIND_ADDRESS,
                     settings.getString("bindAddress")); // legacy value
             InetAddress addr = null;
             if (bindAddress != null) {
                 addr = InetAddress.getByName(bindAddress);
             }
 
-            bootstrap.group(result.events, result.workers)
-                    .channel(NioServerSocketChannel.class)
+            ServerBootstrap bootstrap = loopFactory.get().configureBootstrap(bootstrapProvider.get())
                     .childHandler(pipelineFactory);
+
             if (addr == null) {
                 bootstrap = bootstrap.localAddress(new InetSocketAddress(port));
             } else {
