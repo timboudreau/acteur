@@ -23,13 +23,10 @@
  */
 package com.mastfrog.acteur.server;
 
-import com.mastfrog.giulius.thread.ThreadCount;
 import com.google.inject.Provider;
 import com.google.inject.name.Named;
-import static com.mastfrog.acteur.server.ServerModule.EVENT_THREADS;
 import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_BIND_ADDRESS;
 import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_SYSTEM_EXIT_ON_BIND_FAILURE;
-import static com.mastfrog.acteur.server.ServerModule.WORKER_THREADS;
 import com.mastfrog.acteur.spi.ApplicationControl;
 import com.mastfrog.acteur.util.Server;
 import com.mastfrog.acteur.util.ServerControl;
@@ -42,7 +39,6 @@ import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.EventLoopGroup;
-import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import java.io.IOException;
@@ -53,7 +49,6 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.Date;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -68,10 +63,7 @@ final class ServerImpl implements Server {
     private static final int DEFAULT_PORT = 8123;
     private final ChannelInitializer<SocketChannel> pipelineFactory;
     private int port = DEFAULT_PORT;
-    private final Executor eventThreadFactory;
-    private final ThreadCount eventThreadCount;
-    private final Executor workerThreadFactory;
-    private final ThreadCount workerThreadCount;
+    private final Provider<EventLoopFactory> loopFactory;
     private final String applicationName;
     private final ShutdownHookRegistry registry;
     private final Provider<ServerBootstrap> bootstrapProvider;
@@ -82,10 +74,7 @@ final class ServerImpl implements Server {
     @Inject
     ServerImpl(
             ChannelInitializer<SocketChannel> pipelineFactory,
-            @Named(EVENT_THREADS) Executor eventThreadFactory,
-            @Named(EVENT_THREADS) ThreadCount eventThreadCount,
-            @Named(WORKER_THREADS) Executor workerThreadFactory,
-            @Named(WORKER_THREADS) ThreadCount workerThreadCount,
+            Provider<EventLoopFactory> loopFactory,
             @Named("application") String applicationName,
             Provider<ServerBootstrap> bootstrapProvider,
             ShutdownHookRegistry registry,
@@ -94,10 +83,7 @@ final class ServerImpl implements Server {
             ServerLifecycleHook.Registry hooks) {
         this.port = settings.getInt(ServerModule.PORT, DEFAULT_PORT);
         this.pipelineFactory = pipelineFactory;
-        this.eventThreadFactory = eventThreadFactory;
-        this.eventThreadCount = eventThreadCount;
-        this.workerThreadFactory = workerThreadFactory;
-        this.workerThreadCount = workerThreadCount;
+        this.loopFactory = loopFactory;
         this.applicationName = applicationName;
         this.bootstrapProvider = bootstrapProvider;
         this.registry = registry;
@@ -113,9 +99,7 @@ final class ServerImpl implements Server {
 
     @Override
     public String toString() {
-        return applicationName + " on port " + port + " with "
-                + eventThreadCount.get() + " event threads and "
-                + workerThreadCount.get() + " worker threads.";
+        return applicationName + " on port " + port;
     }
 
     @Override
@@ -124,7 +108,7 @@ final class ServerImpl implements Server {
         ServerControlImpl result = null;
         final CountDownLatch afterStart = new CountDownLatch(1);
         try {
-            result = new ServerControlImpl(port, afterStart);
+            result = new ServerControlImpl(port, afterStart, loopFactory, registry, isExitOnBindFailure(settings));
             ServerBootstrap bootstrap = bootstrapProvider.get();
 
             String bindAddress = settings.getString(SETTINGS_KEY_BIND_ADDRESS, 
@@ -198,20 +182,27 @@ final class ServerImpl implements Server {
         }
     }
 
-    private class ServerControlImpl implements ServerControl, Runnable, ChannelFutureListener {
+    private static class ServerControlImpl implements ServerControl, Runnable, ChannelFutureListener {
 
         private Channel localChannel;
 
-        private final EventLoopGroup events = new NioEventLoopGroup(eventThreadCount.get(), eventThreadFactory);
-        private final EventLoopGroup workers = new NioEventLoopGroup(workerThreadCount.get(), workerThreadFactory);
+        private final EventLoopGroup events;
+        private final EventLoopGroup workers;
         private final int port;
         private final CountDownLatch afterStart;
         private final CountDownLatch waitClose = new CountDownLatch(1);
         private volatile boolean shuttingDown;
+        private final ShutdownHookRegistry registry;
+        private final boolean exitOnBindFailure;
 
-        ServerControlImpl(int port, CountDownLatch afterStart) {
+        ServerControlImpl(int port, CountDownLatch afterStart, Provider<EventLoopFactory> loopFactory,
+                ShutdownHookRegistry registry, boolean exitOnBindFailure) {
             this.port = port;
             this.afterStart = afterStart;
+            events = loopFactory.get().getEventGroup();
+            workers = loopFactory.get().getWorkerGroup();
+            this.registry = registry;
+            this.exitOnBindFailure = exitOnBindFailure;
         }
 
         public void shutdown(boolean immediately, long timeout, TimeUnit unit) throws InterruptedException {
@@ -369,7 +360,7 @@ final class ServerImpl implements Server {
         public synchronized ServerControl throwIfFailure(Throwable t) {
             if (failure != null) {
                 if (failure instanceof BindException
-                        && isExitOnBindFailure(settings)) {
+                        && exitOnBindFailure) {
                     failure.printStackTrace(System.err);
                     System.err.flush();
                     if (!Boolean.getBoolean("unit.test") && System.getProperty("forkNumber") == null) {
