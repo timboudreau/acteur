@@ -157,10 +157,17 @@ public class ServerModule<A extends Application> extends AbstractModule {
     public static final String SETTINGS_KEY_GENERATE_SECURE_URLS = "secure.urls";
 
     /**
-     *
+     * If set to true (the default), turn off Netty's leak detector.
      */
     public static final String SETTINGS_KEY_DISABLE_LEAK_DETECTOR = "disable.leak.detector";
     public static final boolean DEFAULT_DISABLE_LEAK_DETECTOR = true;
+
+    /**
+     * Render stack traces into the response if an exception is thrown. Defaults
+     * to true. Defaults to true unless Guice's stage is production, but can be
+     * overridden with this property.
+     */
+    public static final String SETTINGS_KEY_RENDER_STACK_TRACES = "render.stack.traces";
 
     /**
      * URLs are generated using the host from InetAddress.getLocalHostName().

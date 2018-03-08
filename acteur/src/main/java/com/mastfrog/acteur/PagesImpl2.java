@@ -28,6 +28,7 @@ import com.google.common.net.MediaType;
 import com.google.inject.name.Named;
 import com.mastfrog.acteur.errors.ResponseException;
 import com.mastfrog.acteur.headers.Headers;
+import com.mastfrog.acteur.server.ServerModule;
 import static com.mastfrog.acteur.server.ServerModule.DELAY_EXECUTOR;
 import com.mastfrog.acteur.util.CacheControl;
 import com.mastfrog.acteur.util.RequestID;
@@ -38,12 +39,14 @@ import com.mastfrog.acteurbase.ChainCallback;
 import com.mastfrog.acteurbase.ChainRunner;
 import com.mastfrog.acteurbase.ChainsRunner;
 import com.mastfrog.giulius.Dependencies;
+import com.mastfrog.giulius.DeploymentMode;
 import com.mastfrog.giulius.scope.ReentrantScope;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.url.Path;
 import com.mastfrog.util.Exceptions;
 import com.mastfrog.util.collections.CollectionUtils;
 import com.mastfrog.util.collections.Converter;
+import com.mastfrog.util.thread.NonThrowingAutoCloseable;
 import com.mastfrog.util.thread.QuietAutoCloseable;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
@@ -93,11 +96,15 @@ class PagesImpl2 {
 
     private final boolean disableFilterPathsAndMethods;
 
+    private final boolean renderStackTraces;
+
     @Inject
-    PagesImpl2(Application application, Settings settings, @Named(DELAY_EXECUTOR) ScheduledExecutorService scheduler) {
+    PagesImpl2(Application application, Settings settings, @Named(DELAY_EXECUTOR) ScheduledExecutorService scheduler,
+            DeploymentMode mode) {
         this.application = application;
         this.scheduler = scheduler;
         disableFilterPathsAndMethods = settings.getBoolean("disable.filter", false);
+        renderStackTraces = settings.getBoolean(ServerModule.SETTINGS_KEY_RENDER_STACK_TRACES, !mode.isProduction());
         debug = settings.getBoolean("acteur.debug", false);
         ChainRunner chr = new ChainRunner(application.getWorkerThreadPool(), application.getRequestScope());
         ch = new ChainsRunner(application.getWorkerThreadPool(), application.getRequestScope(), chr);
@@ -330,7 +337,7 @@ class PagesImpl2 {
                 ErrorPage pg = application.getDependencies().getInstance(ErrorPage.class);
                 pg.setApplication(application);
                 // Build up a fake context for ErrorActeur to operate in
-                try (AutoCloseable ac = Page.set(pg)) {
+                try (NonThrowingAutoCloseable ac = Page.set(pg)) {
                     inUncaughtException = true;
                     try (AutoCloseable ac2 = application.getRequestScope().enter(id, event, channel)) {
                         Acteur err = Acteur.error(null, pg, thrwbl,
