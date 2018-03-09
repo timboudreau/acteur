@@ -68,15 +68,12 @@ public class ComprehensiveTest {
     @Test(timeout = TIMEOUT_MILLIS)
     public void testBranch1(TestHarness harness) throws Throwable {
         harness.get("branch").setTimeout(TIMEOUT).addQueryPair("a", "true").go()
-                .throwIfError()
-                .assertStatus(OK)
-                .assertContent("A");
+                .assertStatus(OK)                    .assertContent("A");
     }
 
     @Test(timeout = TIMEOUT_MILLIS)
     public void testBranch2(TestHarness harness) throws Throwable {
         harness.get("branch").setTimeout(TIMEOUT).go()
-                .throwIfError()
                 .assertStatus(OK)
                 .assertContent("B");
     }

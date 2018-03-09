@@ -25,14 +25,11 @@ package com.mastfrog.acteur;
 
 import com.google.common.collect.Sets;
 import com.google.inject.ImplementedBy;
-import com.mastfrog.acteur.errors.ResponseException;
 import com.mastfrog.acteur.headers.Method;
 import com.mastfrog.acteur.preconditions.Description;
 import com.mastfrog.acteur.preconditions.PageAnnotationHandler;
-import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.util.Checks;
 import static com.mastfrog.util.Checks.notNull;
-import com.mastfrog.util.Exceptions;
 import static com.mastfrog.util.collections.CollectionUtils.setOf;
 import com.mastfrog.util.thread.AutoCloseThreadLocal;
 import com.mastfrog.util.thread.QuietAutoCloseable;
@@ -41,7 +38,6 @@ import java.util.ArrayList;
 import static java.util.Collections.singleton;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -242,39 +238,6 @@ public abstract class Page {
         }
         l.addAll(acteurs);
         return l;
-    }
-
-    @SuppressWarnings("unchecked")
-    final Acteur getActeur(int ix, boolean logErrors) {
-        try (QuietAutoCloseable ac = Page.set(this)) {
-            Application app = getApplication();
-            if (app == null) {
-                throw new NullPointerException("Application is null - being called out of scope?");
-            }
-            Object o = acteurs.get(ix);
-            if (o instanceof Class<?>) {
-                Dependencies deps = app.getDependencies();
-                try {
-                    Class<? extends Acteur> c = (Class<? extends Acteur>) o;
-                    return deps.getInstance(c);
-                } catch (ThreadDeath | OutOfMemoryError e) {
-                    return Exceptions.chuck(e);
-                } catch (final Exception t) {
-                    return Acteur.error(null, this, t, deps.getInstance(HttpEvent.class), logErrors && !(t instanceof ResponseException));
-                } catch (final Error t) {
-                    return Acteur.error(null, this, t, deps.getInstance(HttpEvent.class), logErrors);
-                }
-            } else if (o instanceof Acteur) {
-                return (Acteur) o;
-            } else {
-                throw new AssertionError("?: " + o + " in " + this);
-            }
-        }
-    }
-
-    @SuppressWarnings("deprecation")
-    private Iterator<Acteur> annotationActeurs() {
-        return annotations().iterator();
     }
 
     private List<Acteur> annotations() {
