@@ -96,7 +96,6 @@ public class EarlyInterceptionTest {
         String expect = "Received: hello";
         harn.post("/intercept")
                 .setTimeout(TIMEOUT)
-                .log()
                 .setBody(msg, MediaType.PLAIN_TEXT_UTF_8)
                 .go()
                 .await()
