@@ -24,6 +24,7 @@
 package com.mastfrog.acteur.mongo.async;
 
 import com.mastfrog.util.Checks;
+import com.mastfrog.util.Exceptions;
 import io.netty.buffer.ByteBuf;
 import io.netty.util.CharsetUtil;
 import java.nio.ByteBuffer;
@@ -41,7 +42,6 @@ import org.bson.BsonTimestamp;
 import org.bson.json.JsonWriterSettings;
 import org.bson.types.Decimal128;
 import org.bson.types.ObjectId;
-import org.openide.util.Exceptions;
 
 /**
  *

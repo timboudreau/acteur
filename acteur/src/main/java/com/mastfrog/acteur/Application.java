@@ -57,6 +57,7 @@ import com.mastfrog.parameters.Params;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.util.ConfigurationError;
 import com.mastfrog.util.Checks;
+import com.mastfrog.util.Exceptions;
 import com.mastfrog.util.Strings;
 import static com.mastfrog.util.collections.CollectionUtils.toList;
 import com.mastfrog.util.perf.Benchmark;
@@ -96,7 +97,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import org.netbeans.validation.api.Validator;
 import org.netbeans.validation.api.builtin.stringvalidation.StringValidators;
-import org.openide.util.Exceptions;
 
 /**
  * A web application. Principally, the application is a collection of Page

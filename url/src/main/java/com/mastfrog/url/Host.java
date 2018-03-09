@@ -35,7 +35,7 @@ import java.util.regex.Pattern;
 import org.netbeans.validation.api.Problems;
 import org.netbeans.validation.api.Validator;
 import org.netbeans.validation.api.builtin.stringvalidation.StringValidators;
-import org.openide.util.NbBundle;
+import org.netbeans.validation.localization.LocalizationSupport;
 
 /**
  * An internet host such as a host name or IP address. Validation is more
@@ -259,16 +259,16 @@ public final class Host implements URLComponent, Validating, Iterable<Label> {
         boolean isIp = isIpAddress();
         if (problems.allProblems().isEmpty()) {
             if (!isIp && getTopLevelDomain() == null) {
-                problems.append(NbBundle.getMessage(Host.class, "TopLevelDomainMissing"));
+                problems.append(LocalizationSupport.getMessage(Host.class, "TopLevelDomainMissing"));
             }
             if (!isIp && getDomain() == null) {
-                problems.append(NbBundle.getMessage(Host.class, "DomainMissing"));
+                problems.append(LocalizationSupport.getMessage(Host.class, "DomainMissing"));
             }
             if (length() > 255) {
-                problems.append(NbBundle.getMessage(Host.class, "HostTooLong"));
+                problems.append(LocalizationSupport.getMessage(Host.class, "HostTooLong"));
             }
             if (isIpV4Address() && size() != 4) {
-                problems.append(NbBundle.getMessage(Host.class, "WrongNumberOfElementsForIpAddress"));
+                problems.append(LocalizationSupport.getMessage(Host.class, "WrongNumberOfElementsForIpAddress"));
             }
             boolean someNumeric = false;
             boolean allNumeric = true;
@@ -278,7 +278,7 @@ public final class Host implements URLComponent, Validating, Iterable<Label> {
                 someNumeric |= num;
             }
             if (someNumeric && !allNumeric) {
-                problems.append(NbBundle.getMessage(Host.class, "HostMixesNumericAndNonNumeric"));
+                problems.append(LocalizationSupport.getMessage(Host.class, "HostMixesNumericAndNonNumeric"));
             }
         }
         return problems.hasFatal() ? problems : null;
@@ -290,7 +290,7 @@ public final class Host implements URLComponent, Validating, Iterable<Label> {
 
     @Override
     public String getComponentName() {
-        return NbBundle.getMessage(Host.class, "host");
+        return LocalizationSupport.getMessage(Host.class, "host");
     }
 
     @Override

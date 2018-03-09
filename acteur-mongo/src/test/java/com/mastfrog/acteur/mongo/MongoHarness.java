@@ -90,7 +90,7 @@ public class MongoHarness {
                             try {
                                 Thread.sleep(10);
                             } catch (InterruptedException ex1) {
-                                org.openide.util.Exceptions.printStackTrace(ex1);
+                                Exceptions.printStackTrace(ex1);
                             }
                         }
                     }

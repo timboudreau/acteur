@@ -1,5 +1,6 @@
 package com.mastfrog.acteur.annotations;
 
+import com.mastfrog.util.service.ServiceProvider;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
@@ -26,13 +27,12 @@ import javax.lang.model.util.Types;
 import javax.tools.Diagnostic;
 import javax.tools.FileObject;
 import javax.tools.StandardLocation;
-import org.openide.util.lookup.ServiceProvider;
 
 /**
  *
  * @author Tim Boudreau
  */
-@ServiceProvider(service = Processor.class)
+@ServiceProvider(Processor.class)
 @SupportedAnnotationTypes("com.mastfrog.acteur.annotations.GuiceModule")
 @SupportedSourceVersion(SourceVersion.RELEASE_8)
 public class GuiceModuleAnnotationProcessor extends AbstractProcessor {

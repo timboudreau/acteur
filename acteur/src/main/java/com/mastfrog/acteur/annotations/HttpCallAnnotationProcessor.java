@@ -26,7 +26,8 @@ package com.mastfrog.acteur.annotations;
 import static com.mastfrog.acteur.annotations.HttpCall.GENERATED_SOURCE_SUFFIX;
 import com.mastfrog.acteur.preconditions.InjectUrlParametersAs;
 import com.mastfrog.acteur.preconditions.InjectRequestBodyAs;
-import com.mastfrog.giulius.annotations.processors.IndexGeneratingProcessor;
+import com.mastfrog.util.service.IndexGeneratingProcessor;
+import com.mastfrog.util.service.ServiceProvider;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -62,7 +63,6 @@ import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import javax.tools.Diagnostic;
 import javax.tools.JavaFileObject;
-import org.openide.util.lookup.ServiceProvider;
 
 /**
  * Processes the &#064;Defaults annotation, generating properties files in the
@@ -73,7 +73,7 @@ import org.openide.util.lookup.ServiceProvider;
  *
  * @author Tim Boudreau
  */
-@ServiceProvider(service = Processor.class)
+@ServiceProvider(Processor.class)
 @SupportedAnnotationTypes({"com.mastfrog.acteur.annotations.HttpCall",
     "com.mastfrog.acteur.annotations.Early",
     "com.mastfrog.acteur.preconditions.InjectRequestBodyAs",

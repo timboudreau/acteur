@@ -24,7 +24,7 @@
 package com.mastfrog.url;
 
 import com.mastfrog.util.Checks;
-import org.openide.util.NbBundle;
+import org.netbeans.validation.localization.LocalizationSupport;
 
 /**
  * Enum of standard URL protocols.
@@ -97,7 +97,7 @@ public enum Protocols implements Protocol {
 
     @Override
     public String getComponentName() {
-        return NbBundle.getMessage(Protocols.class, "protocol");
+        return LocalizationSupport.getMessage(Protocols.class, "protocol");
     }
 
     @Override

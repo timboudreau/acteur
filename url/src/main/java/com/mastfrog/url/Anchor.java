@@ -24,7 +24,6 @@
 package com.mastfrog.url;
 
 import com.mastfrog.util.Checks;
-import org.openide.util.NbBundle;
 
 
 /**
@@ -52,7 +51,7 @@ public class Anchor implements URLComponent {
     }
 
     public String getComponentName() {
-        return NbBundle.getMessage(Anchor.class, "anchor");
+        return "anchor";
     }
 
     public void appendTo(StringBuilder sb) {

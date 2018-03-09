@@ -24,7 +24,7 @@
 package com.mastfrog.url;
 
 import com.mastfrog.util.Checks;
-import org.openide.util.NbBundle;
+import org.netbeans.validation.localization.LocalizationSupport;
 
 /**
  * One Label in a <a href="Host.html"><code>Host</code></a> - i.e. one component
@@ -194,7 +194,7 @@ public final class Label implements URLComponent {
 
     @Override
     public String getComponentName() {
-        return NbBundle.getMessage(Label.class, "label");
+        return LocalizationSupport.getMessage(Label.class, "label");
     }
 
     @Override

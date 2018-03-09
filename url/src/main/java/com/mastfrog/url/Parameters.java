@@ -24,7 +24,7 @@
 package com.mastfrog.url;
 
 import com.mastfrog.util.AbstractBuilder;
-import org.openide.util.NbBundle;
+import org.netbeans.validation.localization.LocalizationSupport;
 /**
  *
  * @author Tim Boudreau
@@ -58,7 +58,7 @@ public class Parameters implements URLComponent {
 
     @Override
     public String getComponentName() {
-        return NbBundle.getMessage(Parameters.class, "parameters");
+        return LocalizationSupport.getMessage(Parameters.class, "parameters");
     }
 
     @Override

@@ -26,6 +26,7 @@ import com.mastfrog.netty.http.client.HttpClient;
 import com.mastfrog.netty.http.test.harness.TestHarness;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.settings.SettingsBuilder;
+import com.mastfrog.util.Exceptions;
 import com.mastfrog.util.net.PortFinder;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
@@ -41,7 +42,6 @@ import java.util.Random;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import static org.junit.Assert.assertNotNull;
-import org.openide.util.Exceptions;
 
 @SuppressWarnings("deprecation")
 public class CompApp extends Application {

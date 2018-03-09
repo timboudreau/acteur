@@ -33,7 +33,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
-import org.openide.util.NbBundle;
+import org.netbeans.validation.localization.LocalizationSupport;
 
 /**
  * The Parameters portion of a URL, e.g.<br/>
@@ -167,7 +167,7 @@ public final class ParsedParameters extends Parameters implements URLComponent, 
     }
 
     public String getComponentName() {
-        return NbBundle.getMessage(Parameters.class, "parameters");
+        return LocalizationSupport.getMessage(Parameters.class, "parameters");
     }
 
     public void appendTo(StringBuilder sb) {
