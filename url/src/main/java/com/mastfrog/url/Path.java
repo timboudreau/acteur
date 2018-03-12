@@ -37,7 +37,7 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.regex.Pattern;
-import org.openide.util.NbBundle;
+import org.netbeans.validation.localization.LocalizationSupport;
 
 /**
  * The path portion of a URL.  In particular, this class deals with normalizing
@@ -396,7 +396,7 @@ public final class Path implements URLComponent, Iterable<PathElement> {
 
     @Override
     public String getComponentName() {
-        return NbBundle.getMessage(Path.class, "path");
+        return LocalizationSupport.getMessage(Path.class, "path");
     }
 
     /**

@@ -25,7 +25,7 @@ package com.mastfrog.url;
 
 import com.mastfrog.util.Checks;
 import com.mastfrog.util.Strings;
-import org.openide.util.NbBundle;
+import org.netbeans.validation.localization.LocalizationSupport;
 
 /**
  * One key/value pair in the query portion of a URL.
@@ -102,7 +102,7 @@ public final class ParametersElement implements URLComponent, Comparable<Paramet
     }
 
     public String getComponentName() {
-        return NbBundle.getMessage(ParametersElement.class, "parameters_element");
+        return LocalizationSupport.getMessage(ParametersElement.class, "parameters_element");
     }
 
     public void appendTo(StringBuilder sb) {

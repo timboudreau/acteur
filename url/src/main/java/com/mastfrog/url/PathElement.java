@@ -24,7 +24,7 @@
 package com.mastfrog.url;
 
 import com.mastfrog.util.Checks;
-import org.openide.util.NbBundle;
+import org.netbeans.validation.localization.LocalizationSupport;
 
 /**
  * One element of a URL's path.
@@ -76,7 +76,7 @@ public final class PathElement implements URLComponent {
 
     @Override
     public String getComponentName() {
-        return NbBundle.getMessage(PathElement.class, "path_element");
+        return LocalizationSupport.getMessage(PathElement.class, "path_element");
     }
 
     @Override

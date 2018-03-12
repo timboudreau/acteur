@@ -23,7 +23,7 @@
  */
 package com.mastfrog.url;
 
-import org.openide.util.NbBundle;
+import org.netbeans.validation.localization.LocalizationSupport;
 
 /**
  * A TCP port. Represents the optional port portion of a URL, such as
@@ -89,7 +89,7 @@ public final class Port implements URLComponent {
 
     @Override
     public String getComponentName() {
-        return NbBundle.getMessage(Port.class, "port");
+        return LocalizationSupport.getMessage(Port.class, "port");
     }
 
     @Override

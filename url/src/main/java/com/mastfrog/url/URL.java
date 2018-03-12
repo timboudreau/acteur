@@ -38,7 +38,7 @@ import java.util.List;
 import java.util.Objects;
 import org.netbeans.validation.api.Problems;
 import org.netbeans.validation.api.Severity;
-import org.openide.util.NbBundle;
+import org.netbeans.validation.localization.LocalizationSupport;
 
 /**
  * Represents an internet URL.  Unlike <code>java.net.URL</code>, invalid
@@ -190,7 +190,7 @@ public final class URL implements URLComponent, Validating, Comparable<URL> {
      */
     public URLComponent getUserName() {
         return userName == null ? null : new GenericUrlComponent(
-                NbBundle.getMessage(URL.class, "user_name"), userName, true);
+                LocalizationSupport.getMessage(URL.class, "user_name"), userName, true);
     }
 
     /**
@@ -200,7 +200,7 @@ public final class URL implements URLComponent, Validating, Comparable<URL> {
      */
     public URLComponent getPassword() {
         return password == null ? null : new GenericUrlComponent(
-                NbBundle.getMessage(URL.class, "password"), password, true);
+                LocalizationSupport.getMessage(URL.class, "password"), password, true);
     }
 
     /**
@@ -419,7 +419,7 @@ public final class URL implements URLComponent, Validating, Comparable<URL> {
     }
 
     public String getComponentName() {
-        return NbBundle.getMessage(URL.class, "url");
+        return LocalizationSupport.getMessage(URL.class, "url");
     }
 
     private boolean isHostOnlyURL() {
@@ -673,25 +673,25 @@ public final class URL implements URLComponent, Validating, Comparable<URL> {
             Path p = getPath();
             if (p != null && !p.isValid()) {
                 if (p.isIllegal()) {
-                    problems.append (NbBundle.getMessage(URL.class, "RELATIVE_PATH_HAS_TO_MANY_BACKWARD_STEPS", p.toString()));
+                    problems.append (LocalizationSupport.getMessage(URL.class, "RELATIVE_PATH_HAS_TO_MANY_BACKWARD_STEPS", p.toString()));
                 } else {
-                    problems.append (NbBundle.getMessage(URL.class, "PATH_CONTAINS_ILLEGAL_CHARACTERS", p.toString()));
+                    problems.append (LocalizationSupport.getMessage(URL.class, "PATH_CONTAINS_ILLEGAL_CHARACTERS", p.toString()));
                 }
             }
             Port prt = getPort();
             if (prt != null) {
                 if (!prt.isValid()) {
                     if (prt.isIllegalChars()) {
-                        problems.append (NbBundle.getMessage(URL.class, "PORT_IS_NOT_A_NUMBER", prt.toString()));
+                        problems.append (LocalizationSupport.getMessage(URL.class, "PORT_IS_NOT_A_NUMBER", prt.toString()));
                     } else {
-                        problems.append (NbBundle.getMessage(URL.class, "PORT_OUT_OF_RANGE", prt.toString()));
+                        problems.append (LocalizationSupport.getMessage(URL.class, "PORT_OUT_OF_RANGE", prt.toString()));
                     }
                 }
             }
             if (!problems.hasFatal()) {
                 URLComponent comp = getInvalidComponent();
                 if (comp != null) {
-                    problems.append(NbBundle.getMessage (URL.class,
+                    problems.append(LocalizationSupport.getMessage (URL.class,
                         "BAD_URL_COMPONENT", comp.getComponentName()),
                         Severity.FATAL);
                 }
