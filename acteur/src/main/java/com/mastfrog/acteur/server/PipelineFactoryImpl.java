@@ -43,13 +43,13 @@ import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.codec.http.HttpContentCompressor;
-import io.netty.handler.codec.http.HttpHeaderNames;
 import static io.netty.handler.codec.http.HttpHeaderNames.CONTENT_LENGTH;
 import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpRequestDecoder;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseEncoder;
+import io.netty.util.AsciiString;
 import io.netty.util.AttributeKey;
 import java.util.List;
 import javax.inject.Inject;
@@ -60,6 +60,7 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
 
     static final boolean DEFAULT_AGGREGATE_CHUNKS = true;
     static final int DEFAULT_MAX_CONTENT_LENGTH = 1048576;
+    private static final AsciiString X_INTERNAL_COMPRESS = new AsciiString("X-Internal-Compress");
 
     private final Provider<ChannelHandler> handler;
     private final boolean aggregateChunks;
@@ -114,12 +115,14 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
         decorator.onCreatePipeline(pipeline);
 
         ChannelHandler decoder = new HttpRequestDecoder(maxInitialLineLength, maxHeadersSize, maxChunkSize);
-        ChannelHandler encoder = application.hasEarlyPages() ? new HackHttpResponseEncoder() : new HttpResponseEncoder();
+        boolean hasEarly = application.hasEarlyPages();
+        ChannelHandler encoder = hasEarly ? new HackHttpResponseEncoder() : new HttpResponseEncoder();
 
         pipeline.addLast(PipelineDecorator.DECODER, decoder);
         pipeline.addLast(PipelineDecorator.ENCODER, encoder);
         if (aggregateChunks) {
-            ChannelHandler aggregator = new SelectiveAggregator(maxContentLength, application);
+            ChannelHandler aggregator = hasEarly ? new SelectiveAggregator(maxContentLength, application)
+                    : new HttpObjectAggregator(maxContentLength);
             pipeline.addLast(PipelineDecorator.AGGREGATOR, aggregator);
         }
         if (httpCompression) {
@@ -149,11 +152,11 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
 
         @Override
         protected Result beginEncode(HttpResponse headers, String acceptEncoding) throws Exception {
-            if (headers.headers().contains("X-Internal-Compress")) {
-                headers.headers().remove("X-Internal-Compress");
+            if (headers.headers().contains(X_INTERNAL_COMPRESS)) {
+                headers.headers().remove(X_INTERNAL_COMPRESS);
                 return null;
             }
-            if (headers.headers().contains(HttpHeaderNames.CONTENT_LENGTH) && headers.headers().getInt(CONTENT_LENGTH, 0) == 0) {
+            if (headers.headers().getInt(CONTENT_LENGTH, 0) == 0) {
                 return null;
             }
             return super.beginEncode(headers, acceptEncoding);
@@ -161,6 +164,7 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
     }
 
     static final AttributeKey<Boolean> EARLY_KEY = AttributeKey.newInstance(SelectiveAggregator.class.getSimpleName());
+
     static final class SelectiveAggregator extends HttpObjectAggregator {
 
         static final AutoCloseThreadLocal<ChannelHandlerContext> localCtx = new AutoCloseThreadLocal<>();

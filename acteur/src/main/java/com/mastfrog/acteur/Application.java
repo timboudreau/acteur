@@ -127,7 +127,7 @@ public class Application implements Iterable<Page> {
     @Inject
     private ErrorHandlers errorHandlers;
     @Inject
-    private Charset charset;
+    Charset charset;
     @Inject
     CORSResponseDecorator corsDecorator;
     @Inject(optional = true)
@@ -229,6 +229,7 @@ public class Application implements Iterable<Page> {
         }
 
         @Override
+        @SuppressWarnings("ThrowableResultIgnored")
         public void internalOnError(Throwable err) {
             Checks.notNull("err", err);
             Application.this.internalOnError(err);

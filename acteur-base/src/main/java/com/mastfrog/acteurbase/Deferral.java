@@ -34,11 +34,25 @@ public interface Deferral {
     /**
      * Defer execution
      *
+     * @deprecated Use the overload which takes a DeferredCode; otherwise it is
+     * possible to resume before the calling method has exited, which can have
+     * unpredictable effects (the chain does not know it is deferred until the
+     * Acteur constructor has exited, but may be resumed sooner than that).
      * @return A resumer which can restart exeution later
      * @throws IllegalStateException if defer has already been called without
      * a corresponding call to resume().
      */
+    @Deprecated
     public Resumer defer();
+    /**
+     * Defer execution until the resumer's resume() method is called. The
+     * DeferredCode is guaranteed to be executed <i>after</i> the method that
+     * calls <code>defer()</code> has exited.
+     *
+     * @return A resumer which can restart exeution later
+     * @throws IllegalStateException if defer has already been called without a
+     * corresponding call to resume().
+     */
     public Resumer defer(DeferredCode code);
     
     /**

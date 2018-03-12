@@ -211,7 +211,7 @@ final class ResponseImpl extends Response {
         ByteBufAllocator allocator = deps.getInstance(ByteBufAllocator.class);
         Codec mapper = deps.getInstance(Codec.class);
         Key<ExecutorService> key = Key.get(ExecutorService.class,
-                Names.named(ServerModule.BACKGROUND_THREAD_POOL_NAME));
+                Names.named(ServerModule.WORKER_THREAD_POOL_NAME));
         ExecutorService svc = deps.getInstance(key);
         setWriter(writer, charset, allocator, mapper, evt, svc, app.control());
         return this;

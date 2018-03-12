@@ -27,7 +27,6 @@ public class ComprehensiveTest {
     public void testEcho(TestHarness harness) throws Throwable {
         harness.post("echo").setBody("Echo this back to me", PLAIN_TEXT_UTF_8)
                 .setTimeout(TIMEOUT).go()
-                .throwIfError()
                 .assertStatus(OK)
                 .assertContent("Echo this back to me");
     }
@@ -36,8 +35,7 @@ public class ComprehensiveTest {
     public void testIter(TestHarness harness) throws Throwable {
         harness.get("iter").addQueryPair("iters", "5").setTimeout(TIMEOUT).go()
                 .assertContent(iter("Iteration", 5))
-                .assertCode(200)
-                .throwIfError();
+                .assertCode(200);
     }
 
     @Test(timeout = TIMEOUT_MILLIS)
@@ -45,14 +43,12 @@ public class ComprehensiveTest {
         harness.get("iter").addQueryPair("iters", "7")
                 .addQueryPair("msg", "Hello ").setTimeout(TIMEOUT).go()
                 .assertCode(200)
-                .assertContent(iter("Hello", 7))
-                .throwIfError();
+                .assertContent(iter("Hello", 7));
     }
 
     @Test(timeout = TIMEOUT_MILLIS)
     public void testDeferred(TestHarness harness) throws Throwable {
         harness.get("deferred").setTimeout(TIMEOUT).go()
-                .throwIfError()
                 .assertContent("I guess it's okay now")
                 .assertStatus(OK);
     }
@@ -60,7 +56,6 @@ public class ComprehensiveTest {
     @Test(timeout = TIMEOUT_MILLIS)
     public void testNothing(TestHarness harness) throws Throwable {
         harness.get("nothing").setTimeout(TIMEOUT).go()
-                .throwIfError()
                 .assertStatus(HttpResponseStatus.PAYMENT_REQUIRED)
                 .assertStateSeen(Closed);
     }
@@ -102,7 +97,6 @@ public class ComprehensiveTest {
                 .go()
                 .assertCode(200)
                 .assertContent(iter("Iteration", 7))
-                .throwIfError()
                 .await();
     }
 

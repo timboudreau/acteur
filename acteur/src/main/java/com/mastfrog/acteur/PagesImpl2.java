@@ -44,12 +44,14 @@ import com.mastfrog.giulius.scope.ReentrantScope;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.url.Path;
 import com.mastfrog.util.Exceptions;
+import com.mastfrog.util.collections.ArrayUtils;
 import com.mastfrog.util.collections.CollectionUtils;
 import com.mastfrog.util.collections.Converter;
 import com.mastfrog.util.thread.NonThrowingAutoCloseable;
 import com.mastfrog.util.thread.QuietAutoCloseable;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
+import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
@@ -61,8 +63,8 @@ import io.netty.handler.codec.http.HttpVersion;
 import io.netty.handler.codec.http.websocketx.BinaryWebSocketFrame;
 import io.netty.handler.codec.http.websocketx.WebSocketFrame;
 import io.netty.util.Attribute;
+import static io.netty.util.CharsetUtil.UTF_8;
 import java.io.PrintStream;
-import java.nio.charset.Charset;
 import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
@@ -144,7 +146,7 @@ class PagesImpl2 {
             pagesIterable = CollectionUtils.toIterable(CollectionUtils.convertedIterator(chainConverter, pageIterator));
         }
 
-        CB callback = new CB(id, event, latch, channel);
+        CB callback = new CB(id, event, latch, channel, clos);
         CancelOnChannelClose closer = new CancelOnChannelClose();
         channel.closeFuture().addListener(closer);
         ch.submit(pagesIterable, callback, closer.cancelled, id, event, clos);
@@ -169,12 +171,14 @@ class PagesImpl2 {
         private final CountDownLatch latch;
         private final Channel channel;
         private final RequestID id;
+        private final Closables closables;
 
-        CB(RequestID id, Event<?> event, CountDownLatch latch, Channel channel) {
+        CB(RequestID id, Event<?> event, CountDownLatch latch, Channel channel, Closables closeables) {
             this.event = event;
             this.latch = latch;
             this.channel = channel;
             this.id = id;
+            this.closables = closeables;
         }
 
         @Override
@@ -198,6 +202,7 @@ class PagesImpl2 {
             application.probe.onActeurWasRun(id, event, p, acteur, null);
         }
 
+        @Override
         public void onAfterRunOne(PageChain chain, Acteur acteur, ActeurState state) {
             application.probe.onActeurWasRun(id, event, Page.get(), acteur, state);
             onAfterRunOne(chain, acteur);
@@ -238,77 +243,84 @@ class PagesImpl2 {
             boolean isWebSocketResponse = event.request() instanceof WebSocketFrame && !(acteur instanceof WebSocketUpgradeActeur)
                     && response.isModified();
             if (isWebSocketResponse) {
-                if (response.getMessage() instanceof WebSocketFrame) {
-                    channel.writeAndFlush(response.getMessage());
+                if (handleWebsocketResponse(response, state)) {
                     return;
-                } else if (response.getMessage() == null) {
-                    // If no message, that just means we don't have a reply to this
-                    // frame immediately - silently do not try to publish something
-                    // - this is not http request/response.
-                    return;
-                }
-                // XXX consider response.getDelay()?
-                // This is ugly - we create an HttpResponse just to extract a wad of binary
-                // data and send that as a WebSocketFrame.
-                Charset charset = application.getDependencies().getInstance(Charset.class);
-                try (QuietAutoCloseable cl = Page.set(state.getLockedPage())) {
-                    HttpResponse resp = response.toResponse(event, charset);
-                    if (resp instanceof FullHttpResponse) {
-                        BinaryWebSocketFrame frame = new BinaryWebSocketFrame(((FullHttpResponse) resp).content());
-                        channel.writeAndFlush(frame);
-                    }
-                } catch (Exception ex) {
-                    uncaughtException(Thread.currentThread(), ex);
                 }
             } else if (response.isModified() && response.status != null) {
-                // Actually send the response
-                try (QuietAutoCloseable clos = Page.set(application.getDependencies().getInstance(Page.class))) {
-                    // Abort if the client disconnected
-                    if (!channel.isOpen()) {
-                        latch.countDown();
-                        return;
-                    }
-
-                    Charset charset = application.getDependencies().getInstance(Charset.class);
-
-                    application._onBeforeSendResponse(response.status, event, response, state.getActeur(), state.getLockedPage());
-                    // Create a netty response
-                    HttpResponse httpResponse = response.toResponse(event, charset);
-                    // Allow the application to add headers
-                    httpResponse = application._decorateResponse(event, state.getLockedPage(), acteur, httpResponse);
-
-                    // Abort if the client disconnected
-                    if (!channel.isOpen()) {
-                        latch.countDown();
-                        return;
-                    }
-                    final HttpResponse resp = httpResponse;
-                    try {
-                        Closables closables = application.getDependencies().getInstance(Closables.class);
-                        Callable<ChannelFuture> c = new ResponseTrigger(response, resp, state, acteur, closables, event);
-                        Duration delay = response.getDelay();
-                        if (delay == null) {
-                            c.call();
-                        } else {
-                            if (debug) {
-                                System.err.println("Response will be delayed for " + delay);
-                            }
-                            application.probe.onInfo("Response delayed {0}", delay);
-                            final ScheduledFuture<?> s = scheduler.schedule(c, delay.toMillis(), TimeUnit.MILLISECONDS);
-                            // Ensure the task is discarded if the connection is broken
-                            channel.closeFuture().addListener(new CancelOnClose(s));
-                        }
-                    } finally {
-                        latch.countDown();
-                    }
-                } catch (ThreadDeath | OutOfMemoryError ee) {
-                    Exceptions.chuck(ee);
-                } catch (Exception | Error e) {
-                    uncaughtException(Thread.currentThread(), e);
-                }
+                handleHttpResponse(response, state, acteur);
             } else {
                 onNoResponse();
             }
+        }
+
+        private void handleHttpResponse(final ResponseImpl response, final State state, final Acteur acteur) {
+            // Actually send the response
+            try (NonThrowingAutoCloseable clos = Page.set(application.getDependencies().getInstance(Page.class))) {
+                // Abort if the client disconnected
+                if (!channel.isOpen()) {
+                    latch.countDown();
+                    return;
+                }
+
+                application._onBeforeSendResponse(response.status, event, response, state.getActeur(), state.getLockedPage());
+                // Create a netty response
+                HttpResponse httpResponse = response.toResponse(event, application.charset);
+                // Allow the application to add headers
+                httpResponse = application._decorateResponse(event, state.getLockedPage(), acteur, httpResponse);
+
+                // Abort if the client disconnected
+                if (!channel.isOpen()) {
+                    latch.countDown();
+                    return;
+                }
+                final HttpResponse resp = httpResponse;
+                try {
+                    Callable<ChannelFuture> c = new ResponseTrigger(response, resp, state, acteur, closables, event);
+                    Duration delay = response.getDelay();
+                    if (delay == null) {
+                        c.call();
+                    } else {
+                        if (debug) {
+                            System.err.println("Response will be delayed for " + delay);
+                        }
+                        application.probe.onInfo("Response delayed {0}", delay);
+                        final ScheduledFuture<?> s = scheduler.schedule(c, delay.toMillis(), TimeUnit.MILLISECONDS);
+                        // Ensure the task is discarded if the connection is broken
+                        channel.closeFuture().addListener(new CancelOnClose(s));
+                    }
+                } finally {
+                    latch.countDown();
+                }
+            } catch (ThreadDeath | OutOfMemoryError ee) {
+                Exceptions.chuck(ee);
+            } catch (Exception | Error e) {
+                uncaughtException(Thread.currentThread(), e);
+            }
+        }
+
+        private boolean handleWebsocketResponse(final ResponseImpl response, final State state) {
+            if (response.getMessage() instanceof WebSocketFrame) {
+                channel.writeAndFlush(response.getMessage());
+                return true;
+            } else if (response.getMessage() == null) {
+                // If no message, that just means we don't have a reply to this
+                // frame immediately - silently do not try to publish something
+                // - this is not http request/response.
+                return true;
+            }
+            // XXX consider response.getDelay()?
+            // This is ugly - we create an HttpResponse just to extract a wad of binary
+            // data and send that as a WebSocketFrame.
+            try (NonThrowingAutoCloseable cl = Page.set(state.getLockedPage())) {
+                HttpResponse resp = response.toResponse(event, application.charset);
+                if (resp instanceof FullHttpResponse) {
+                    BinaryWebSocketFrame frame = new BinaryWebSocketFrame(((FullHttpResponse) resp).content());
+                    channel.writeAndFlush(frame);
+                }
+            } catch (Exception ex) {
+                uncaughtException(Thread.currentThread(), ex);
+            }
+            return false;
         }
 
         boolean inUncaughtException = false;
@@ -334,14 +346,14 @@ class PagesImpl2 {
                 }
                 // V1.6 - we no longer have access to the page where the exception was
                 // thrown
-                ErrorPage pg = application.getDependencies().getInstance(ErrorPage.class);
+                ErrorPage pg = new ErrorPage();
                 pg.setApplication(application);
                 // Build up a fake context for ErrorActeur to operate in
                 try (NonThrowingAutoCloseable ac = Page.set(pg)) {
                     inUncaughtException = true;
                     try (AutoCloseable ac2 = application.getRequestScope().enter(id, event, channel)) {
                         Acteur err = Acteur.error(null, pg, thrwbl,
-                                application.getDependencies().getInstance(Event.class), true);
+                                application.getDependencies().getInstance(Event.class), renderStackTraces);
 
                         receive(err, err.getState(), err.getResponse());
                     }
@@ -359,9 +371,19 @@ class PagesImpl2 {
                         if (application.failureResponses != null) {
                             resp = application.failureResponses.createFallbackResponse(ex);
                         } else {
-                            ByteBuf buf = channel.alloc().ioBuffer();
-                            try (PrintStream ps = new PrintStream(new ByteBufOutputStream(buf))) {
-                                thrwbl.printStackTrace(ps);
+                            ByteBuf buf;
+                            if (renderStackTraces) {
+                                buf = channel.alloc().ioBuffer();
+                                try (PrintStream ps = new PrintStream(new ByteBufOutputStream(buf))) {
+                                    thrwbl.printStackTrace(ps);
+                                }
+                            } else {
+                                String msg = ex.getMessage();
+                                if (msg == null) {
+                                    msg = ex.getClass().getSimpleName();
+                                }
+                                byte[] bytes = msg.getBytes(UTF_8);
+                                buf = Unpooled.wrappedBuffer(bytes);
                             }
                             resp = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.INTERNAL_SERVER_ERROR, buf);
                             Headers.write(Headers.CONTENT_TYPE, MediaType.PLAIN_TEXT_UTF_8, resp);
@@ -557,42 +579,25 @@ class PagesImpl2 {
             return "Chain for " + page;
         }
 
-        private Object[] combine(Object[] a, Object[] b) {
-            if (a.length == 0) {
-                return b;
-            } else if (b.length == 0) {
-                return a;
-            } else {
-                Object[] nue = new Object[a.length + b.length];
-                System.arraycopy(a, 0, nue, 0, a.length);
-                System.arraycopy(b, 0, nue, a.length, b.length);
-                return nue;
-            }
-        }
-
         @Override
         public Supplier<PageChain> remnantSupplier(Object... scopeContents) {
-            Object[] context = combine(ctx, scopeContents);
+            Object[] context = ArrayUtils.concatenate(ctx, scopeContents);
             assert chainPosition != null : "Called out of sequence";
             int pos = chainPosition.get();
             final List<Object> rem = new ArrayList<>(types.size() - pos);
             for (int i = pos; i < types.size(); i++) {
                 rem.add(types.get(i));
             }
-            final Dependencies d = deps;
             return () -> {
                 List<Object> l = new ArrayList<>(rem);
-                PageChain chain = new PageChain(app, d, scope, type, l, context);
+                PageChain chain = new PageChain(app, deps, scope, type, l, context);
                 chain.page = page;
                 return chain;
             };
         }
 
         private void addToContext(Event<?> event) {
-            Object[] nue = new Object[ctx.length + 1];
-            System.arraycopy(ctx, 0, nue, 0, ctx.length);
-            nue[nue.length - 1] = event;
-            ctx = nue;
+            ctx = ArrayUtils.concatenate(ctx, new Object[]{event});
         }
     }
 
@@ -616,7 +621,7 @@ class PagesImpl2 {
 
         @Override
         public T next() {
-            try (QuietAutoCloseable clos = scope.enter(ctx)) {
+            try (NonThrowingAutoCloseable clos = scope.enter(ctx)) {
                 return delegate.next();
             }
         }

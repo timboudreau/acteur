@@ -154,7 +154,7 @@ public class AsyncAuthenticationModuleTest {
         @Override
         protected void configure() {
             install(new AsyncAuthenticationModule(FakeUser.class, Auth.class, scope));
-            install(new ServerModule(scope, AApp.class, 1, 3, 1));
+            install(new ServerModule<>(scope, AApp.class, 1, 3, 1));
         }
     }
 
@@ -181,7 +181,7 @@ public class AsyncAuthenticationModuleTest {
         }
 
         @Override
-        public Class type() {
+        public Class<FakeUser> type() {
             return FakeUser.class;
         }
 
