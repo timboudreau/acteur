@@ -38,10 +38,9 @@ import com.mastfrog.jackson.TimeSerializationMode;
 import static com.mastfrog.util.Checks.notNull;
 import com.mastfrog.util.Strings;
 import com.mastfrog.util.time.TimeUtil;
-import static com.mastfrog.util.time.TimeUtil.nowGMT;
 import com.mongodb.async.client.MongoCollection;
 import io.netty.buffer.ByteBufAllocator;
-import java.time.ZonedDateTime;
+import static java.lang.System.currentTimeMillis;
 import java.util.Arrays;
 import java.util.Objects;
 import org.bson.Document;
@@ -61,12 +60,12 @@ import org.junit.runner.RunWith;
 public class TestBsonArrays {
 
     static final ArrayPayloadThing AP1 = new ArrayPayloadThing("one",
-            new Inner("oneA"), new Inner("oneB"));
+            new Inner("oneA", currentTimeMillis()), new Inner("oneB", currentTimeMillis()));
     static final ArrayPayloadThing AP2 = new ArrayPayloadThing("two",
-            new Inner("twoA"), new Inner("twoB"), new Inner("twoC"));
+            new Inner("twoA", currentTimeMillis()), new Inner("twoB", currentTimeMillis()), new Inner("twoC", currentTimeMillis()));
 
     static final ArrayPayloadThing AP3 = new ArrayPayloadThing("three",
-            new Inner("threeA"), new Inner("threeB"), new Inner("threeC"));
+            new Inner("threeA", currentTimeMillis()), new Inner("threeB", currentTimeMillis()), new Inner("threeC", currentTimeMillis()));
 
     @Test
     public void test(@Named("aps") MongoCollection<ArrayPayloadThing> coll) {
@@ -89,7 +88,7 @@ public class TestBsonArrays {
             }));
         });
         TestSupport.await(ts -> {
-            Inner nue = new Inner("threeD");
+            Inner nue = new Inner("threeD", currentTimeMillis());
             coll.updateOne(new Document("name", "three"), new Document("$addToSet", new Document("inners", nue)), ts.callback(ur -> {
                 ts.done();
             }));
@@ -106,7 +105,7 @@ public class TestBsonArrays {
         });
 
         TestSupport.await(ts -> {
-            Inner[] nue = new Inner[]{new Inner("replacement")};
+            Inner[] nue = new Inner[]{new Inner("replacement", currentTimeMillis())};
             coll.updateOne(new Document("name", "one"), new Document("$set", new Document("inners", nue)), ts.callback(ur -> {
                 ts.done();
             }));
@@ -179,31 +178,29 @@ public class TestBsonArrays {
     public static final class Inner {
 
         public final String value;
-        public final ZonedDateTime dateCreated;
+        public final long dateCreated;
 
         @JsonCreator
         public Inner(@JsonProperty("value") String value,
-                @JsonProperty("dateCreated") ZonedDateTime dateCreated) {
+                @JsonProperty("dateCreated") long dateCreated) {
             this.value = notNull("value", value);
-            this.dateCreated = notNull("dateCreated", dateCreated);
+            this.dateCreated = dateCreated;
         }
 
-        public Inner(String value) {
-            this(value, nowGMT());
-        }
-
+//        public Inner(String value) {
+//            this(value, now());
+//        }
         public boolean equals(Object o) {
             if (o instanceof Inner) {
                 Inner i = (Inner) o;
                 return value.equals(i.value)
-                        && TimeUtil.toUnixTimestamp(dateCreated)
-                        == TimeUtil.toUnixTimestamp(i.dateCreated);
+                        && i.dateCreated == dateCreated;
             }
             return false;
         }
 
         public int hashCode() {
-            return value.hashCode() + (73 * dateCreated.toInstant().hashCode());
+            return value.hashCode() + (73 * Long.valueOf(dateCreated).hashCode());
         }
 
         public String toString() {

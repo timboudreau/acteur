@@ -74,6 +74,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -102,14 +103,14 @@ class PagesImpl2 {
 
     @Inject
     PagesImpl2(Application application, Settings settings, @Named(DELAY_EXECUTOR) ScheduledExecutorService scheduler,
-            DeploymentMode mode) {
+            DeploymentMode mode, ReentrantScope scope, @Named(ServerModule.BACKGROUND_THREAD_POOL_NAME) ExecutorService exe) {
         this.application = application;
         this.scheduler = scheduler;
         disableFilterPathsAndMethods = settings.getBoolean("disable.filter", false);
         renderStackTraces = settings.getBoolean(ServerModule.SETTINGS_KEY_RENDER_STACK_TRACES, !mode.isProduction());
         debug = settings.getBoolean("acteur.debug", false);
-        ChainRunner chr = new ChainRunner(application.getWorkerThreadPool(), application.getRequestScope());
-        ch = new ChainsRunner(application.getWorkerThreadPool(), application.getRequestScope(), chr);
+        ChainRunner chr = new ChainRunner(exe, scope);
+        ch = new ChainsRunner(exe, scope, chr);
     }
 
     public CountDownLatch onEvent(RequestID id, Event<?> event, Channel channel, Object[] defaultContext) {

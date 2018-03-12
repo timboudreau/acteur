@@ -688,6 +688,24 @@ public class ServerModule<A extends Application> extends AbstractModule {
         }).toProvider(CookiesProvider2.class);
         bind(Protocol.class).toProvider(ProtocolProvider.class);
         bind(WebSocketFrame.class).toProvider(WebSocketFrameProvider.class);
+//        bind(Guice42InjectionRequester.class).asEagerSingleton();
+    }
+
+    static final class Guice42InjectionRequester extends ServerLifecycleHook {
+
+        private final Provider<Dependencies> deps;
+
+        @Inject
+        Guice42InjectionRequester(Registry reg, Provider<Dependencies> deps) {
+            super(reg);
+            this.deps = deps;
+        }
+
+        @Override
+        protected void onStartup(Application application, Channel channel) throws Exception {
+            System.out.println("INJECTING APPLICATION " + application);
+            deps.get().injectMembers(application);
+        }
     }
 
     private static final class WebSocketFrameProvider implements Provider<WebSocketFrame> {

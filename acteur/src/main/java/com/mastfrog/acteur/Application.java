@@ -94,7 +94,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
 import org.netbeans.validation.api.Validator;
 import org.netbeans.validation.api.builtin.stringvalidation.StringValidators;
 
@@ -112,9 +111,6 @@ public class Application implements Iterable<Page> {
     private final List<Object> pages = new ArrayList<>();
     @Inject
     private Dependencies deps;
-    @Inject
-    @Named(ServerModule.BACKGROUND_THREAD_POOL_NAME)
-    private ExecutorService exe;
     @Inject
     private RequestLogger logger;
     @Inject
@@ -257,10 +253,6 @@ public class Application implements Iterable<Page> {
      */
     public ReentrantScope getRequestScope() {
         return scope;
-    }
-
-    ExecutorService getWorkerThreadPool() {
-        return exe;
     }
 
     private static String deConstantNameify(String name) {
@@ -720,6 +712,7 @@ public class Application implements Iterable<Page> {
      */
     @Benchmark(value = "httpEvents", publish = Kind.CALL_COUNT)
     private CountDownLatch onEvent(final Event<?> event, final Channel channel) {
+        assert scope != null : "Scope is null - Application members not injected?";
         // Create a new incremented id for this request
         final RequestID id = ids.next();
         probe.onBeforeProcessRequest(id, event);
