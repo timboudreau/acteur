@@ -267,7 +267,7 @@ class PagesImpl2 {
                 // Create a netty response
                 HttpResponse httpResponse = response.toResponse(event, application.charset);
                 // Allow the application to add headers
-                httpResponse = application._decorateResponse(event, state.getLockedPage(), acteur, httpResponse);
+                httpResponse = application._decorateResponse(id, event, state.getLockedPage(), acteur, httpResponse);
 
                 // Abort if the client disconnected
                 if (!channel.isOpen()) {

@@ -593,8 +593,9 @@ public class Application implements Iterable<Page> {
     private static final HeaderValueType<CharSequence> X_REQ_PATH = Headers.header(new AsciiString("X-Req-Path"));
     private static final HeaderValueType<CharSequence> X_ACTEUR = Headers.header(new AsciiString("X-Acteur"));
     private static final HeaderValueType<CharSequence> X_PAGE = Headers.header(new AsciiString("X-Page"));
+    private static final HeaderValueType<CharSequence> X_REQ_ID = Headers.header(new AsciiString("X-Req-ID"));
 
-    HttpResponse _decorateResponse(Event<?> event, Page page, Acteur action, HttpResponse response) {
+    HttpResponse _decorateResponse(RequestID id, Event<?> event, Page page, Acteur action, HttpResponse response) {
         Headers.write(Headers.SERVER, getName(), response);
         Headers.write(Headers.DATE, ZonedDateTime.now(), response);
         if (debug) {
@@ -603,6 +604,7 @@ public class Application implements Iterable<Page> {
             Headers.write(X_ACTEUR, action.getClass().getName(), response);
             Headers.write(X_PAGE, page.getClass().getName(), response);
         }
+        Headers.write(X_REQ_ID, id.stringValue(), response);
         if (corsEnabled) {
             corsDecorator.decorateApplicationResponse(response);
         }
