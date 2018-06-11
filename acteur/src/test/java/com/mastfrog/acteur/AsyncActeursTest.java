@@ -26,11 +26,15 @@ package com.mastfrog.acteur;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.inject.Inject;
+import com.mastfrog.acteur.errors.ErrorResponse;
+import com.mastfrog.acteur.errors.ExceptionEvaluator;
+import com.mastfrog.acteur.errors.ExceptionEvaluatorRegistry;
 import com.mastfrog.acteur.errors.ResponseException;
 import static com.mastfrog.acteur.headers.Method.GET;
 import com.mastfrog.acteur.preconditions.Methods;
 import com.mastfrog.acteur.preconditions.Path;
 import com.mastfrog.acteur.server.ServerModule;
+import com.mastfrog.giulius.ShutdownHookRegistry;
 import com.mastfrog.giulius.scope.ReentrantScope;
 import com.mastfrog.giulius.tests.GuiceRunner;
 import com.mastfrog.giulius.tests.TestWith;
@@ -40,19 +44,27 @@ import com.mastfrog.netty.http.test.harness.TestHarnessModule;
 import static com.mastfrog.util.Checks.notNull;
 import static com.mastfrog.util.collections.CollectionUtils.map;
 import com.mastfrog.util.collections.StringObjectMap;
+import io.netty.handler.codec.http.HttpResponseStatus;
 import static io.netty.handler.codec.http.HttpResponseStatus.CREATED;
 import static io.netty.handler.codec.http.HttpResponseStatus.EXPECTATION_FAILED;
 import static io.netty.handler.codec.http.HttpResponseStatus.INTERNAL_SERVER_ERROR;
 import static io.netty.handler.codec.http.HttpResponseStatus.OK;
+import static io.netty.handler.codec.http.HttpResponseStatus.PAYMENT_REQUIRED;
+import java.lang.ref.Reference;
+import java.lang.ref.WeakReference;
 import java.net.InetAddress;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.regex.Pattern;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -97,6 +109,29 @@ public class AsyncActeursTest {
         get("/p5").assertStatus(INTERNAL_SERVER_ERROR).content(ErrorMessage.class).assertMessage("uh oh");
 
         get("/p6").assertStatus(INTERNAL_SERVER_ERROR).content(ErrorMessage.class).assertMessage("uh oh");
+
+        // Test that we run deferred after the timer expires
+        String msg = get("/p7").assertStatus(OK).content();
+        assertNotNull("Response body was empty", msg);
+        assertTrue(msg, Pattern.compile("^\\d+$").matcher(msg).find());
+        assertNotNull(TIMER_REF);
+        long val = Long.parseLong(msg);
+        // Test that the timer ran at least 200 ms after the acteur was called
+        assertTrue(val > 110);
+        // Force the VM to clear references and make sure the timer was disposed of
+        for (int i = 0; i < 5; i++) {
+            System.gc();
+            System.runFinalization();
+        }
+        // Ensure ShutdownHookRegistry is not strongly referencing the timer
+        assertNull("Timer not garbage collected", TIMER_REF.get());
+
+        TIMER_REF = null;
+
+        // Now make sure exception evaluation works properly
+        CallResult res = harn.get("/p7").addQueryPair("fail", "true").setTimeout(TIMEOUT).go().await();
+        res.assertStatus(PAYMENT_REQUIRED);
+        res.assertContent("Hey");
     }
 
     static class ErrorMessage {
@@ -132,7 +167,7 @@ public class AsyncActeursTest {
     static class AATApp extends Application {
 
         AATApp() {
-            super(P1.class, P2.class, P3.class, P4.class, P5.class, P6.class);
+            super(P1.class, P2.class, P3.class, P4.class, P5.class, P6.class, P7.class);
         }
     }
 
@@ -259,6 +294,92 @@ public class AsyncActeursTest {
         }
     }
 
+    static Reference<Timer> TIMER_REF = null;
+
+    @Methods(GET)
+    @Path("/p7")
+    static class P7 extends Page {
+
+        P7() {
+            add(P7A1.class);
+            add(P7A2.class);
+        }
+
+        static class P7A1 extends Acteur {
+
+            @Inject
+            P7A1(HttpEvent evt, ShutdownHookRegistry reg) {
+                long now = System.currentTimeMillis();
+                boolean fail = evt.urlParameter("fail") != null;
+                continueAfter((c -> {
+                    Timer t = new Timer();
+                    TIMER_REF = new WeakReference<>(t);
+                    reg.add(t);
+                    t.schedule(new TimerTask() {
+                        @Override
+                        public void run() {
+                            long then = System.currentTimeMillis() - now;
+                            if (fail) {
+                                c.completeExceptionally(new FooException("Hey"));
+                            } else {
+                                c.complete(new LongWrapper(then));
+                            }
+                        }
+                    }, 110);
+                }));
+            }
+        }
+
+        static class P7A2 extends Acteur {
+
+            @Inject
+            P7A2(LongWrapper lw) {
+                reply(OK, lw.toString());
+            }
+        }
+    }
+
+    static class FooException extends RuntimeException {
+
+        FooException(String msg) {
+            super(msg);
+        }
+    }
+
+    static class FooExceptionEval extends ExceptionEvaluator {
+
+        @Inject
+        public FooExceptionEval(ExceptionEvaluatorRegistry registry) {
+            super(registry);
+        }
+
+        @Override
+        protected int ordinal() {
+            return -1;
+        }
+
+        @Override
+        public ErrorResponse evaluate(Throwable t, Acteur acteur, Page page, Event<?> evt) {
+            if (t instanceof FooException) {
+                return new ErrorResponse.Simple(HttpResponseStatus.PAYMENT_REQUIRED, t.getMessage());
+            }
+            return null;
+        }
+    }
+
+    static class LongWrapper {
+
+        private final long val;
+
+        public LongWrapper(long val) {
+            this.val = val;
+        }
+
+        public String toString() {
+            return Long.toString(val);
+        }
+    }
+
     static class Module extends ServerModule<AATApp> {
 
         public Module() {
@@ -273,7 +394,8 @@ public class AsyncActeursTest {
         protected void configure() {
             super.configure();
             bind(ExecutorService.class).toInstance(Executors.newCachedThreadPool());
-            scope.bindTypes(binder(), Thing.class, StringBuilder.class, InetAddress.class);
+            bind(FooExceptionEval.class).asEagerSingleton();
+            scope.bindTypes(binder(), Thing.class, StringBuilder.class, InetAddress.class, LongWrapper.class);
         }
     }
 

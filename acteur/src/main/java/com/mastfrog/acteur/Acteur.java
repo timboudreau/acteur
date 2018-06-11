@@ -28,6 +28,7 @@ import com.mastfrog.acteur.Acteur.BaseState;
 import com.mastfrog.acteur.errors.Err;
 import com.mastfrog.acteur.errors.ErrorRenderer;
 import com.mastfrog.acteur.errors.ErrorResponse;
+import com.mastfrog.acteur.errors.ExceptionEvaluatorRegistry;
 import com.mastfrog.acteur.errors.ResponseException;
 import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.acteur.headers.Headers;
@@ -45,6 +46,7 @@ import static com.mastfrog.util.Checks.noNullElements;
 import static com.mastfrog.util.Checks.notNull;
 import com.mastfrog.util.Exceptions;
 import com.mastfrog.util.Invokable;
+import com.mastfrog.util.collections.ArrayUtils;
 import com.mastfrog.util.collections.CollectionUtils;
 import com.mastfrog.util.function.EnhCompletableFuture;
 import com.mastfrog.util.function.ThrowingConsumer;
@@ -52,6 +54,7 @@ import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import static io.netty.handler.codec.http.HttpResponseStatus.BAD_REQUEST;
+import static io.netty.handler.codec.http.HttpResponseStatus.INTERNAL_SERVER_ERROR;
 import static io.netty.handler.codec.http.HttpResponseStatus.NOT_FOUND;
 import static io.netty.handler.codec.http.HttpResponseStatus.NO_CONTENT;
 import static io.netty.handler.codec.http.HttpResponseStatus.OK;
@@ -378,6 +381,48 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
     }
 
     /**
+     * Continue the acteur chain once the completable future passed to the passed
+     * consumer is consumed.  The consumer is guaranteed not to be called
+     * until after the acteur constructor has exited.
+     *
+     * @param <T> The type of result that will be provided asynchronously to
+     * subsequent acteurs
+     * @param c A consumer which will receive the future
+     * @return this
+     * @since 2.4.1
+     */
+    @SuppressWarnings("unchecked")
+    protected final <T> Acteur continueAfter(ThrowingConsumer<EnhCompletableFuture<T>> c) {
+        Dependencies deps = Page.get().getApplication().getDependencies();
+        Chain chain = deps.getInstance(Chain.class);
+        chain.insert(CheckThrownActeur.class);
+
+        EnhCompletableFuture<T> fut = new EnhCompletableFuture<>();
+        logErrors(fut);
+        this.then((res) -> {
+            fut.whenComplete((t, thrown) -> {
+                if (thrown != null) {
+                    res.resume(DeferredComputationResult.thrown(thrown));
+                } else {
+                    if (t == null) {
+                        res.resume();
+                    } else {
+                        Object[] objs;
+                        if (t.getClass().isArray()) {
+                            objs = ArrayUtils.concatenate(CollectionUtils.toList(t).toArray(), new Object[]{DeferredComputationResult.empty()});
+                        } else {
+                            objs = new Object[]{t, DeferredComputationResult.empty()};
+                        }
+                        res.resume(objs);
+                    }
+                }
+            });
+            c.apply(fut);
+        });
+        return this;
+    }
+
+    /**
      * Continue the Acteur chain, running any subsequent acteurs, once the
      * passed CompletionStages (e.g. CompletableFuture) have completed - this
      * makes it possible to run ad-hoc asynchronous logic with the acteur chain
@@ -467,7 +512,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
      * @since 2.2.2
      */
     protected final <T> EnhCompletableFuture<T> deferThenRespond(HttpResponseStatus successStatus) {
-        EnhCompletableFuture<T> result = new EnhCompletableFuture<T>();
+        EnhCompletableFuture<T> result = new EnhCompletableFuture<>();
         logErrors(result);
         then(result, successStatus);
         return result;
@@ -553,12 +598,19 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
     static final class CheckThrownActeur extends Acteur {
 
         @Inject
-        CheckThrownActeur(DeferredComputationResult res) throws Throwable {
+        CheckThrownActeur(DeferredComputationResult res, ExceptionEvaluatorRegistry evals, HttpEvent evt) throws Throwable {
             if (res.thrown != null) {
                 if (res.thrown instanceof ResponseException) {
                     // Let the normal exception response generation code handle it
                     throw res.thrown;
                 } else {
+                    ErrorResponse resp = evals.evaluate(res.thrown, this, Page.get(), evt);
+                    if (resp != null) {
+                        if (resp.status() != INTERNAL_SERVER_ERROR) {
+                            reply(resp.status(), resp.message());
+                            return;
+                        }
+                    }
                     reply(Err.of(res.thrown));
                 }
             } else {

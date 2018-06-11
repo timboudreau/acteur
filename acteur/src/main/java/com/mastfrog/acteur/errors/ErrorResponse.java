@@ -38,13 +38,27 @@ public interface ErrorResponse {
 
     public Object message();
 
-    public static class Simple<T> {
+    public static class Simple<T> implements ErrorResponse {
         public final HttpResponseStatus status;
         public final T message;
 
         public Simple(HttpResponseStatus status, T message) {
             this.status = status;
             this.message = message;
+        }
+
+        @Override
+        public HttpResponseStatus status() {
+            return status;
+        }
+
+        @Override
+        public Object message() {
+            return message;
+        }
+
+        public String toString() {
+            return status + " " + message;
         }
     }
 }

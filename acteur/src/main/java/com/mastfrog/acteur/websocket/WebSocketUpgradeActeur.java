@@ -89,7 +89,7 @@ public class WebSocketUpgradeActeur extends Acteur {
             = AttributeKey.valueOf(WebSocketUpgradeActeur.class, "page");
 
     @Inject
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "deprecation"})
     protected WebSocketUpgradeActeur(HttpEvent evt, PathFactory paths, Settings settings, Page page, Deferral defer, Chain chain, ApplicationControl ctrl, OnWebsocketConnect onConnect) {
         Path pth = paths.toExternalPath(evt.path());
         int max = settings.getInt(SETTINGS_KEY_WEBSOCKET_FRAME_MAX_LENGTH, DEFAULT_WEBSOCKET_FRAME_MAX_LENGTH);
