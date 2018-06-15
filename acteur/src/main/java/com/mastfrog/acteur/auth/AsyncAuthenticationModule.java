@@ -39,13 +39,13 @@ import javax.inject.Inject;
  */
 public class AsyncAuthenticationModule<AuthInfoType> extends AbstractModule {
 
-    private final Class<AuthInfoType> infoType;
-    private final Class<AsyncAuthenticator<AuthInfoType>> authenticatorType;
+    private final Class<? extends AuthInfoType> infoType;
+    private final Class<? extends AsyncAuthenticator<AuthInfoType>> authenticatorType;
 
     private final ReentrantScope scope;
 
-    public AsyncAuthenticationModule(Class<AuthInfoType> infoType,
-            Class<AsyncAuthenticator<AuthInfoType>> authenticatorType,
+    public AsyncAuthenticationModule(Class<? extends AuthInfoType> infoType,
+            Class<? extends AsyncAuthenticator<AuthInfoType>> authenticatorType,
             ReentrantScope scope) {
         this.infoType = infoType;
         this.authenticatorType = authenticatorType;

@@ -23,7 +23,6 @@
  */
 package com.mastfrog.acteur.headers;
 
-import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
@@ -75,7 +74,7 @@ final class MediaTypeHeader extends AbstractHeader<MediaType> {
     public MediaType toValue(CharSequence value) {
         Checks.notNull("value", value);
         try {
-            return stringCache.get(value);
+            return stringCache.get(AsciiString.of(value));
         } catch (ExecutionException ex) {
             Logger.getLogger(MediaTypeHeader.class.getName()).log(Level.WARNING, "Bad media type {0}", value);
             return null;

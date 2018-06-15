@@ -361,7 +361,7 @@ public class AsyncActeursTest {
         @Override
         public ErrorResponse evaluate(Throwable t, Acteur acteur, Page page, Event<?> evt) {
             if (t instanceof FooException) {
-                return new ErrorResponse.Simple(HttpResponseStatus.PAYMENT_REQUIRED, t.getMessage());
+                return ErrorResponse.create(HttpResponseStatus.PAYMENT_REQUIRED, t.getMessage());
             }
             return null;
         }

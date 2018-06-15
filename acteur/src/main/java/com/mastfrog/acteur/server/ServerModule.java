@@ -90,6 +90,7 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.websocketx.WebSocketFrame;
 import io.netty.handler.ssl.SslProvider;
+import io.netty.util.AsciiString;
 import io.netty.util.Attribute;
 import io.netty.util.AttributeKey;
 import io.netty.util.CharsetUtil;
@@ -120,6 +121,64 @@ import org.netbeans.validation.api.InvalidInputException;
 @SuppressWarnings("deprecation")
 public class ServerModule<A extends Application> extends AbstractModule {
 
+    /**
+     * Header which, when attached to a response, bypasses the compresser.
+     */
+    public static final AsciiString X_INTERNAL_COMPRESS = new AsciiString("X-Internal-Compress");
+    /**
+     * Sets the HTTP compression level from 0 to 9, 0 meaning no compression,
+     * 9 meaning maximum compression; the default is 6.
+     */
+    public static final String HTTP_COMPRESSION_LEVEL = "compression.level";
+    /**
+     * Sets the size of the history buffer for compression - should be in the range
+     * 9 to 15, higher numbers meaning better commpression at the cost of memory.
+     */
+    public static final String HTTP_COMPRESSION_WINDOW_BITS = "compression.window.bits";
+    /**
+     * Sets the amount of memory to use for compression state, from 1 to 9, higher numbers
+     * using more memory but getting better and faster compression.
+     */
+    public static final String HTTP_COMPRESSION_MEMORY_LEVEL = "compression.memory.level";
+
+    /**
+     * Sets the compression threshold <i>for responses which have their Content-Length set</i> -
+     * Netty's HttpContentCompressor decides to act before HTTP chunks are seen, so chunked
+     * responses will use the default behavior.  If you are sending raw ByteBufs or attaching
+     * the bytes in <code>Acteur.ok(bytes)</code> or <code>Acteur.reply(responseCode, bytes)</code>
+     * then this will disable compression for messages smaller than this threshold (for small
+     * messages, compression can make them bigger).
+     */
+    public static final String HTTP_COMPRESSION_THRESHOLD = "compression.threshold";
+
+    /**
+     * If true, the response compressor will check the response's Content-Type header and avoid
+     * compressing responses with media types that are pre-compressed or liable to be made larger
+     * by gzip or deflate compression, such as mpeg or jpeg.  This is off by default, since it adds
+     * a small amount of overhead to each response.
+     */
+    public static final String HTTP_COMPRESSION_CHECK_RESPONSE_CONTENT_TYPE = "compression.check.content.type";
+
+    /**
+     * Default value for settings key <code>compression.level</code>
+     * @see com.mastfrog.acteur.server.ServerModule.HTTP_COMPRESSION_LEVEL
+     */
+    public static final int DEFAULT_COMPRESSION_LEVEL = 6;
+    /**
+     * Default value for settings key <code>compression.window.bits</code>
+     * @see com.mastfrog.acteur.server.ServerModule.HTTP_COMPRESSION_WINDOW_BITS
+     */
+    public static final int DEFAULT_COMPRESSION_WINDOW_BITS = 15;
+    /**
+     * Default value for settings key <code>compression.memory.level</code>
+     * @see com.mastfrog.acteur.server.ServerModule.HTTP_COMPRESSION_MEMORY_LEVEL
+     */
+    public static final int DEFAULT_COMPRESSION_MEMORY_LEVEL = 8;
+    /**
+     * Default value for settings key <code>compression.threshold</code>
+     * @see com.mastfrog.acteur.server.ServerModule.HTTP_THRESHOLD
+     */
+    public static final int DEFAULT_COMPRESSION_THRESHOLD = 256;
     /**
      * If set in settings, only this IP address will be bound when starting the
      * server.

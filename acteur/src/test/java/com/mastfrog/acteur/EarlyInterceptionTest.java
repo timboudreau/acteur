@@ -127,6 +127,7 @@ public class EarlyInterceptionTest {
         static class InterceptActeur extends Acteur {
 
             @Inject
+            @SuppressWarnings("deprecation")
             InterceptActeur(HttpEvent evt, PathFactory pths, Deferral defer) throws URISyntaxException, IOException {
 //                add(Headers.LOCATION, pths.constructURL(com.mastfrog.url.Path.parse("/receive?tok=12345"), false).toURI());
                 add(Headers.LOCATION, new URI("/receive?tok=12345"));

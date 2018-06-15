@@ -38,6 +38,18 @@ public interface ErrorResponse {
 
     public Object message();
 
+    @SuppressWarnings("deprecation")
+    public static <T> ErrorResponse create(HttpResponseStatus status, T message) {
+        return new Simple<T>(status, message);
+    }
+
+    /**
+     * Simple error response.
+     * 
+     * @param <T>
+     * @deprecated Use ErrorResponse.create() instead.
+     */
+    @Deprecated
     public static class Simple<T> implements ErrorResponse {
         public final HttpResponseStatus status;
         public final T message;

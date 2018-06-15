@@ -25,7 +25,6 @@ import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import static io.netty.handler.codec.http.HttpResponseStatus.OK;
 import java.io.IOException;
-import static java.nio.charset.StandardCharsets.UTF_8;
 import java.time.Duration;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -79,11 +78,8 @@ public class PutTest {
                     .onEvent(new Receiver<com.mastfrog.netty.http.client.State<?>>() {
                         @Override
                         public void receive(com.mastfrog.netty.http.client.State<?> state) {
-                            System.out.println("STATE " + state.name());
                             if (state.get() instanceof ByteBuf) {
                                 ByteBuf buf = (ByteBuf) state.get();
-                                System.out.println("STATE BYTES " + buf.readableBytes());
-                                System.out.println("STATE: " + buf.toString(UTF_8));
                                 buf.resetReaderIndex();
                     }
                 }
@@ -140,7 +136,7 @@ public class PutTest {
                 boolean chunked = ix++ % 2 != 0;
                 setChunked(chunked);
                 if (!chunked) {
-//                    add(Headers.CONTENT_LENGTH, evt.content().readableBytes());
+                    add(Headers.CONTENT_LENGTH, evt.content().readableBytes());
                 }
                 setResponseWriter(RWriter.class);
             }
@@ -158,11 +154,9 @@ public class PutTest {
             }
             FullHttpRequest req = evt.request() instanceof FullHttpRequest
                     ? (FullHttpRequest) evt.request() : null;
-            System.out.println("GOT REQ " + req);
             if (req != null) {
                 ran = true;
                 ByteBuf buf = req.content();
-                System.out.println("READABLE: " + buf.readableBytes());
                 out.write(buf);
                 ran = true;
 

@@ -34,6 +34,7 @@ import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.acteur.headers.Method;
 import com.mastfrog.acteur.server.ServerModule;
+import static com.mastfrog.acteur.server.ServerModule.X_INTERNAL_COMPRESS;
 import com.mastfrog.acteur.spi.ApplicationControl;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.giulius.scope.ReentrantScope;
@@ -73,6 +74,7 @@ import static io.netty.handler.codec.http.HttpVersion.HTTP_1_0;
 import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
 import io.netty.handler.codec.http.LastHttpContent;
 import io.netty.handler.codec.http.cookie.Cookie;
+import io.netty.util.AsciiString;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.time.Duration;
@@ -642,14 +644,21 @@ final class ResponseImpl extends Response {
                 resp = new DefaultFullHttpResponse(HTTP_1_1, status, buf, hdrs, EmptyHttpHeaders.INSTANCE);
             }
         } else {
-            boolean http10 = listener != null && !chunked && hasContentLength && !hasChunked;
             HttpVersion version = isHttp10StyleResponse() ? HTTP_1_0 : HTTP_1_1;
-            resp = listener != null ? new DefaultHttpResponse(version, status, hdrs)
-                    //                    : new DefaultFullHttpResponse(version, status, null, hdrs, null);
+            if (listener != null && !chunked) {
+                // The compressor will not see raw ByteBufs - the data needs to be pre-compressed
+                hdrs.add(X_INTERNAL_COMPRESS, TRUE);
+            }
+            resp = listener != null ?
+                  chunked ?  new DefaultHttpResponse(version, status, hdrs)
+                    : new ListenerHackHttpResponse(version, evt.channel(), hdrs, status)
                     : new DefaultHttpResponse(version, status, hdrs);
         }
         return resp;
     }
+
+    private static final AsciiString TRUE = AsciiString.of("1");
+
 
     ChannelFuture sendMessage(Event<?> evt, ChannelFuture future, HttpMessage resp) {
         if (listener != null) {
