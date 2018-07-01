@@ -5,7 +5,7 @@
     <parent>
         <groupId>com.mastfrog</groupId>
         <artifactId>mastfrog-parent</artifactId>
-        <version>2.4.1</version>
+        <version>2.5.0-dev</version>
         <relativePath/>
     </parent>
     <name>Acteur Parent</name>
@@ -26,6 +26,7 @@
         <module>marshaller-registry</module>
         <module>acteur-headers-jodatime</module>
         <module>netty-websocket-pubsub</module>
+        <module>acteur-annotations</module>
     </modules>
     <url>https://github.com/timboudreau/acteur</url>
     <scm>

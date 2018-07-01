@@ -3,8 +3,8 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>com.mastfrog</groupId>
-        <artifactId>mastfrog-parent</artifactId>
-        <version>2.4.1</version>
+        <artifactId>mastfrog-parent-indexed</artifactId>
+        <version>2.5.0-dev</version>
         <relativePath/>
     </parent>
     <artifactId>acteur-jdbc</artifactId>
@@ -12,6 +12,11 @@
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>acteur</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>injection-reflection-indexer</artifactId>
+            <scope>compile</scope>
         </dependency>
     </dependencies>
     <url>https://github.com/timboudreau/acteur</url>

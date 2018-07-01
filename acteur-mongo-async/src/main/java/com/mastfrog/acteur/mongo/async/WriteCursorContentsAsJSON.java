@@ -69,6 +69,7 @@ public class WriteCursorContentsAsJSON extends Acteur {
         } else {
             chain.add(SendCursorResult.class);
         }
+        setChunked(true);
         next(result);
         return result;
     }

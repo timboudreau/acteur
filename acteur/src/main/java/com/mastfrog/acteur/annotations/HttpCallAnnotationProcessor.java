@@ -26,7 +26,9 @@ package com.mastfrog.acteur.annotations;
 import static com.mastfrog.acteur.annotations.HttpCall.GENERATED_SOURCE_SUFFIX;
 import com.mastfrog.acteur.preconditions.InjectUrlParametersAs;
 import com.mastfrog.acteur.preconditions.InjectRequestBodyAs;
+import com.mastfrog.util.service.AnnotationIndexFactory;
 import com.mastfrog.util.service.IndexGeneratingProcessor;
+import com.mastfrog.util.service.Line;
 import com.mastfrog.util.service.ServiceProvider;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -80,10 +82,10 @@ import javax.tools.JavaFileObject;
     "com.mastfrog.acteur.preconditions.InjectUrlParametersAs"
 })
 @SupportedSourceVersion(SourceVersion.RELEASE_8)
-public class HttpCallAnnotationProcessor extends IndexGeneratingProcessor {
+public class HttpCallAnnotationProcessor extends IndexGeneratingProcessor<Line> {
     
     public HttpCallAnnotationProcessor() {
-        super(true);
+        super(true, AnnotationIndexFactory.lines());
     }
 
     private boolean isPageSubtype(Element e) {
@@ -276,6 +278,12 @@ public class HttpCallAnnotationProcessor extends IndexGeneratingProcessor {
         }
         deferred.addAll(failed);
         return failed.isEmpty();
+    }
+
+    private int lineCount;
+    protected int addLine(String path, String line, Element... el) {
+        Line l = new Line(lineCount++, el, line);
+        return addIndexElement(path, l, el);
     }
 
     @Override

@@ -139,7 +139,7 @@ public class ResourcesPage extends Page {
             } else {
                 ok();
             }
-            setChunked(false);
+            setChunked(chunked);
             if (evt.method() != Method.HEAD) {
                 Response rr = response();
                 r.attachBytes(evt, rr, chunked);

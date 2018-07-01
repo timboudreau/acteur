@@ -28,16 +28,14 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.net.MediaType;
 import com.google.inject.Inject;
-import com.mastfrog.acteur.Event;
+import com.mastfrog.acteur.Closables;
 import com.mastfrog.acteur.HttpEvent;
 import com.mastfrog.acteur.Response;
-import com.mastfrog.acteur.ResponseWriter;
 import com.mastfrog.acteur.headers.ByteRanges;
 import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.acteur.headers.Headers;
 import static com.mastfrog.acteur.headers.Headers.ACCEPT_ENCODING;
 import static com.mastfrog.acteur.headers.Headers.ACCEPT_RANGES;
-import static com.mastfrog.acteur.headers.Headers.AGE;
 import static com.mastfrog.acteur.headers.Headers.CACHE_CONTROL;
 import static com.mastfrog.acteur.headers.Headers.CONTENT_ENCODING;
 import static com.mastfrog.acteur.headers.Headers.CONTENT_LENGTH;
@@ -62,12 +60,17 @@ import com.mastfrog.util.streams.HashingOutputStream;
 import com.mastfrog.util.time.TimeUtil;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
-import io.netty.buffer.ByteBufOutputStream;
-import io.netty.channel.DefaultFileRegion;
-import io.netty.channel.FileRegion;
+import io.netty.buffer.Unpooled;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.handler.codec.compression.JZlibEncoder;
+import io.netty.handler.codec.compression.ZlibWrapper;
+import io.netty.handler.codec.http.DefaultHttpContent;
 import io.netty.handler.codec.http.DefaultLastHttpContent;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaderValues;
+import static io.netty.handler.codec.http.HttpHeaderValues.IDENTITY;
 import static io.netty.handler.codec.http.HttpResponseStatus.BAD_REQUEST;
 import static io.netty.handler.codec.http.HttpResponseStatus.NOT_IMPLEMENTED;
 import static io.netty.handler.codec.http.HttpResponseStatus.REQUESTED_RANGE_NOT_SATISFIABLE;
@@ -75,18 +78,20 @@ import io.netty.util.AsciiString;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
+import java.nio.channels.ClosedByInterruptException;
+import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Files;
+import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.Date;
+import java.util.Iterator;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.zip.GZIPOutputStream;
+import javax.inject.Provider;
 
 /**
  * Version of FileResources that does not cache bytes in-memory, just uses
@@ -120,10 +125,13 @@ public class DynamicFileResources implements StaticResources {
     public static final String SETTINGS_KEY_HASH_ETAG_CACHE_EXPIRY_MINUTES = "dyn.resources.hash.etag.cache.expiry.minutes";
     private final boolean hashEtags;
     private final LoadingCache<File, EtagCacheEntry> etagCache;
+    private final boolean neverKeepAlive;
 
     @Inject
-    public DynamicFileResources(File dir, MimeTypes types, ExpiresPolicy policy, ApplicationControl ctrl, ByteBufAllocator alloc, Settings settings) {
+    public DynamicFileResources(File dir, MimeTypes types, ExpiresPolicy policy, ApplicationControl ctrl, ByteBufAllocator alloc, Settings settings,
+            Provider<Closables> onChannelClose) {
         this.hashEtags = settings.getBoolean(SETTINGS_KEY_USE_HASH_ETAG, false);
+        neverKeepAlive = settings.getBoolean("neverKeepAlive", false);
         this.dir = dir;
         this.policy = policy;
         this.types = types;
@@ -181,7 +189,6 @@ public class DynamicFileResources implements StaticResources {
             response.add(CACHE_CONTROL, cc)
                     .add(LAST_MODIFIED, TimeUtil.fromUnixTimestamp(file.lastModified()))
                     .add(ETAG, etag())
-                    .add(AGE, Duration.ZERO)
                     .add(ACCEPT_RANGES, HttpHeaderValues.BYTES);
 
             MediaType contentType = getContentType();
@@ -198,8 +205,11 @@ public class DynamicFileResources implements StaticResources {
             }
             long length = file.length();
             ByteRanges ranges = evt.header(RANGE);
-            boolean willCompress = acceptEncoding != null && Strings.charSequenceContains(acceptEncoding, HttpHeaderValues.GZIP, true)
-                    && types.shouldCompress(contentType);
+            boolean hasGzip = acceptEncoding != null && Strings.charSequenceContains(acceptEncoding, HttpHeaderValues.GZIP, true);
+            boolean hasDeflate = acceptEncoding != null && Strings.charSequenceContains(acceptEncoding, HttpHeaderValues.DEFLATE, true);
+            boolean gzipOrDeflate = hasGzip
+                    || hasDeflate;
+            boolean willCompress = gzipOrDeflate && types.shouldCompress(contentType);
             if (ranges != null) {
                 if (!ranges.isValid()) {
                     response.status(BAD_REQUEST);
@@ -225,15 +235,15 @@ public class DynamicFileResources implements StaticResources {
                 response.add(CONTENT_RANGE, first.toBoundedRange(length));
             }
             if (!willCompress) {
-                if (evt.method() != Method.HEAD) {
+                if (evt.method() != Method.HEAD && !chunked) {
                     response.add(CONTENT_LENGTH, length);
                 }
             } else {
                 if (evt.method() != Method.HEAD) {
-                    response.add(INTERNAL_COMPRESS_HEADER, TRUE).add(CONTENT_ENCODING, HttpHeaderValues.GZIP.toString());
+                    response.add(INTERNAL_COMPRESS_HEADER, TRUE).add(CONTENT_ENCODING, hasGzip ? HttpHeaderValues.GZIP : HttpHeaderValues.DEFLATE);
                 }
             }
-            response.chunked(false);
+            response.chunked(chunked);
         }
 
         private String etag() {
@@ -283,84 +293,188 @@ public class DynamicFileResources implements StaticResources {
                 return;
             }
             CharSequence acceptEncoding = evt.header(Headers.ACCEPT_ENCODING);
-            boolean willCompress = acceptEncoding != null && Strings.charSequenceContains(acceptEncoding, HttpHeaderValues.GZIP, true)
-                    && types.shouldCompress(contentType);
+            boolean hasGzip = acceptEncoding != null && Strings.charSequenceContains(acceptEncoding, HttpHeaderValues.GZIP, true);
+            boolean hasDeflate = acceptEncoding != null && Strings.charSequenceContains(acceptEncoding, HttpHeaderValues.DEFLATE, true);
+            boolean gzipOrDeflate = hasGzip
+                    || hasDeflate;
+            boolean willCompress = gzipOrDeflate && types.shouldCompress(contentType);
 
+//            System.out.println("ACCEPT ENCODING IS " + acceptEncoding + " CHUNKED " + chunked + " hasGzip "
+//                    + hasGzip + " hasDeflate " + hasDeflate + " willCompress " + willCompress + " response " + response);
+//
             final ByteRanges ranges = evt.header(Headers.RANGE);
             final long length = file.length();
             if (ranges != null && ranges.size() > 0) {
                 response.add(CONTENT_RANGE, ranges.first().toBoundedRange(length));
+            } else if (!willCompress) {
+                if (!chunked) {
+                    response.add(CONTENT_LENGTH, length);
+                }
             }
             if (!willCompress) {
-                response.contentWriter(new ResponseWriter() {
-                    @Override
-                    public ResponseWriter.Status write(Event<?> evt, ResponseWriter.Output out, int iteration) throws Exception {
-                        if (ranges == null) {
-                            FileRegion reg = new DefaultFileRegion(file, 0, length);
-                            out.write(reg);
-                            return Status.DONE;
-                        } else {
-                            for (Range range : ranges) {
-                                long count = range.length(length);
-                                FileRegion reg = new DefaultFileRegion(file, range.start(length), count);
-                                out.write(reg);
-                            }
-                            return Status.DONE;
+                response.add(CONTENT_ENCODING, IDENTITY);
+
+                response.contentWriter(new ChannelFutureListener() {
+
+                    Iterator<Range> it = ranges == null ? null : ranges.iterator();
+                    boolean done = false;
+
+                    SeekableByteChannel channel;
+
+                    private ByteBuf readBytes(Range range) throws IOException {
+                        int len = (int) (range == null ? length : range.length(length));
+                        ByteBuffer buffer = ByteBuffer.allocateDirect(len);
+                        if (range != null) {
+                            channel.position(range.start(length));
                         }
+                        int read = 0;
+                        while (read < len) {
+                            read += channel.read(buffer);
+                        }
+                        buffer.flip();
+                        return Unpooled.wrappedBuffer(buffer);
                     }
-                });
-            } else {
-                ByteBuf buf = alloc.directBuffer();
-                try {
-                    if (ranges == null) {
-                        try (FileInputStream in = new FileInputStream(file)) {
-                            try (ByteBufOutputStream bufOut = new ByteBufOutputStream(buf)) {
-                                try (GZIPOutputStream gz = new GZIPOutputStream(bufOut, (int) (file.length() / 2))) {
-                                    Streams.copy(in, gz);
+
+                    @Override
+                    public void operationComplete(ChannelFuture f) throws Exception {
+                        if (f.cause() != null) {
+                            ctrl.internalOnError(f.cause());
+                            f.channel().close();
+                            return;
+                        }
+                        if (done) {
+//                            System.out.println("SEND LAST CHUNK FOR COMPRESSED " + ((HttpEvent) evt).path());
+                            if (chunked) {
+                                f = f.channel().writeAndFlush(new DefaultLastHttpContent());
+                            }
+                            String conn = evt.header(HttpHeaderNames.CONNECTION);
+                            if (neverKeepAlive || (conn != null && HttpHeaderValues.CLOSE.contentEquals(conn))) {
+                                f.addListener(CLOSE);
+                            }
+                            return;
+                        }
+                        if (channel == null) {
+                            channel = Files.newByteChannel(file.toPath(), StandardOpenOption.READ);
+                            f.channel().closeFuture().addListener((ChannelFutureListener) (ChannelFuture f1) -> {
+                                channel.close();
+                            });
+                        }
+                        ByteBuf buf = null;
+                        try {
+                            if (it == null) {
+                                buf = readBytes(null);
+//                            FileRegion reg = new DefaultFileRegion(file, 0, length);
+                                done = true;
+                                channel.close();
+                            } else {
+                                if (it.hasNext()) {
+                                    Range range = it.next();
+//                                long count = range.length(length);
+//                                FileRegion reg = new DefaultFileRegion(file, range.start(length), count);
+//                                f = f.channel().writeAndFlush(reg);
+                                    buf = readBytes(range);
+                                    done = !it.hasNext();
+                                } else {
+                                    // initially empty iterator
+                                    channel.close();
+                                    done = true;
                                 }
                             }
+                        } catch (ClosedByInterruptException ex) {
+                            ctrl.internalOnError(ex);
+                            f.channel().close();
+                            return;
                         }
+                        if (buf != null) {
+                            if (chunked) {
+                                f = f.channel().writeAndFlush(new DefaultHttpContent(buf));
+                            } else {
+                                f = f.channel().writeAndFlush(buf);
+                            }
+                        }
+                        f.addListener(this);
+                    }
+                });
+
+//                response.contentWriter(new ResponseWriter() {
+//                    @Override
+//                    public ResponseWriter.Status write(Event<?> evt, ResponseWriter.Output out, int iteration) throws Exception {
+//                        if (ranges == null) {
+//                            FileRegion reg = new DefaultFileRegion(file, 0, length);
+//                            out.write(reg);
+//                            return Status.DONE;
+//                        } else {
+//                            for (Range range : ranges) {
+//                                long count = range.length(length);
+//                                FileRegion reg = new DefaultFileRegion(file, range.start(length), count);
+//                                out.write(reg);
+//                            }
+//                            return Status.DONE;
+//                        }
+//                    }
+//                });
+                return;
+            } else {
+                ByteBuf buf = Unpooled.buffer();
+                response.add(Headers.CONTENT_ENCODING, hasGzip ? "gzip" : "deflate");
+                // XXX should not do the entire file in one hunk - could be very large
+                try {
+                    if (ranges == null) {
+                        Enc enc = new Enc(hasGzip);
+                        enc.encode(evt.ctx(), Unpooled.wrappedBuffer(Files.readAllBytes(file.toPath())), buf);
                     } else {
-                        try (ByteBufOutputStream bufOut = new ByteBufOutputStream(buf)) {
+                        Enc enc = new Enc(hasGzip);
+                        try (SeekableByteChannel channel = Files.newByteChannel(file.toPath(), StandardOpenOption.READ)) {
                             for (Range r : ranges) {
-                                try (FileInputStream in = new FileInputStream(file)) {
-                                    try (FileChannel channel = in.getChannel()) {
-                                        int rangeLength = (int) r.length(length);
-                                        if (rangeLength > 0) {
-                                            ByteBuffer buffer = ByteBuffer.allocateDirect(rangeLength);
-                                            channel.position(r.start(length));
-                                            channel.read(buffer);
-                                            buffer.flip();
-                                            try (InputStream rangeIn = Streams.asInputStream(buffer)) {
-                                                try (GZIPOutputStream gz = new GZIPOutputStream(bufOut, (int) (file.length() / 2))) {
-                                                    Streams.copy(rangeIn, gz);
-                                                }
-                                            }
-                                        }
-                                    }
+                                int rangeLength = (int) r.length(length);
+                                if (rangeLength > 0) {
+                                    ByteBuffer buffer = ByteBuffer.allocate(rangeLength);
+                                    channel.position(r.start(length));
+                                    channel.read(buffer);
+                                    buffer.flip();
+                                    enc.encode(evt.ctx(), Unpooled.wrappedBuffer(buffer), buf);
                                 }
                             }
                         }
                     }
                 } catch (Exception ex) {
+                    ex.printStackTrace();
                     buf.release();
+                    evt.channel().close();
                     throw ex;
                 }
+                if (!chunked) {
+                    response.add(Headers.CONTENT_LENGTH, (long) buf.readableBytes());
+                }
 
-                response.add(Headers.CONTENT_LENGTH, (long) buf.readableBytes());
-                response.contentWriter(new ResponseWriter() {
+                response.contentWriter(new ChannelFutureListener() {
                     boolean first = true;
 
                     @Override
-                    public ResponseWriter.Status write(Event<?> evt, ResponseWriter.Output out, int iteration) throws Exception {
-                        if (!first) {
-                            out.write(new DefaultLastHttpContent());
-                            return Status.DONE;
+                    public void operationComplete(ChannelFuture f) throws Exception {
+                        if (f.cause() != null) {
+                            ctrl.internalOnError(f.cause());
+                            f.channel().close();
                         }
-                        out.write(buf);
-                        boolean wasFirst = first;
+                        if (!first) {
+//                            System.out.println("SEND LAST CHUNK FOR COMPRESSED " + ((HttpEvent) evt).path());
+                            if (chunked) {
+                                f = f.channel().writeAndFlush(new DefaultLastHttpContent());
+                            }
+                            String conn = evt.header(HttpHeaderNames.CONNECTION);
+                            if (neverKeepAlive || (conn != null && HttpHeaderValues.CLOSE.contentEquals(conn))) {
+                                f.addListener(CLOSE);
+                            }
+                            return;
+                        }
+//                        System.out.println("SEND COMPRESSED CHUNK OF " + buf.readableBytes() + " " + ((HttpEvent) evt).path());
+                        if (chunked) {
+                            f = f.channel().writeAndFlush(new DefaultHttpContent(buf));
+                        } else {
+                            f = f.channel().writeAndFlush(buf);
+                        }
                         first = false;
-                        return wasFirst ? Status.NOT_DONE : Status.DONE;
+                        f.addListener(this);
                     }
                 });
             }
@@ -371,6 +485,101 @@ public class DynamicFileResources implements StaticResources {
             return contentType;
         }
     }
+
+    static final class Enc extends JZlibEncoder {
+
+        Enc(boolean gzip) {
+            super(gzip ? ZlibWrapper.GZIP : ZlibWrapper.ZLIB, 8);
+        }
+
+        @Override
+        protected void encode(ChannelHandlerContext ctx, ByteBuf in, ByteBuf out) throws Exception {
+            super.encode(ctx, in, out);
+        }
+    }
+
+    /*
+    static final class ChunkedGzipContentWriter extends ResponseWriter {
+
+        private final File file;
+        private final int length;
+        private SeekableByteChannel fileChannel;
+        private final Iterator<Range> rangeIterator;
+        private final Closables onChannelClose;
+        private final Enc enc = new Enc();
+        private final int chunkSize;
+        private final ByteBuffer readBuffer;
+        ChunkedGzipContentWriter(File file, int length, ByteRanges ranges, Closables onChannelClose, int chunkSize) {
+            readBuffer = ByteBuffer.allocateDirect((int) Math.min(file.length(), length));
+            this.file = file;
+            this.length = length;
+            this.onChannelClose = onChannelClose;
+            this.rangeIterator = ranges == null ? CollectionUtils.singletonIterator(new FullRange(length)) : ranges.iterator();
+            // Make a set of new ranges that reflect the chnunk size and use those
+            this.chunkSize = chunkSize;
+        }
+
+        @Override
+        public Status write(Event<?> evt, Output out, int iteration) throws Exception {
+            switch(iteration) {
+                case 0 :
+                    fileChannel = Files.newByteChannel(file.toPath(), StandardOpenOption.READ);
+                    onChannelClose.add(fileChannel);
+                    break;
+            }
+            Range range = rangeIterator.hasNext() ? rangeIterator.next() : null;
+            if (range == null) {
+                out.write(LastHttpContent.EMPTY_LAST_CONTENT);
+                return Status.DONE;
+            } else {
+                ByteBuffer readInto = readBuffer;
+                readBuffer.reset();
+                fileChannel.position(range.start(length));
+
+                boolean isDone = fileChannel.position() == fileChannel.size();
+                int byteCount = fileChannel.read(readBuffer);
+                ByteBuf outbuffer = evt.channel().alloc().ioBuffer(chunkSize);
+                this.enc.encode(evt.ctx(), Unpooled.wrappedBuffer(readBuffer), outbuffer);
+
+                return Status.NOT_DONE;
+            }
+        }
+
+        static final class Enc extends JZlibEncoder {
+
+            @Override
+            protected void encode(ChannelHandlerContext ctx, ByteBuf in, ByteBuf out) throws Exception {
+                super.encode(ctx, in, out);
+            }
+
+
+        }
+
+    }
+    static final class FullRange implements Range {
+
+        final long length;
+
+        public FullRange(long length) {
+            this.length = length;
+        }
+
+        @Override
+        public long start(long max) {
+            return 0;
+        }
+
+        @Override
+        public long end(long max) {
+            return length - 1;
+        }
+
+        @Override
+        public BoundedRange toBoundedRange(long max) {
+            throw new UnsupportedOperationException("Not supported");
+        }
+    }
+    */
 
     static final class EtagCacheLoader extends CacheLoader<File, EtagCacheEntry> {
 

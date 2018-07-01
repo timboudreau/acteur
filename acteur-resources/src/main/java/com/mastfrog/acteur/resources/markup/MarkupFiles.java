@@ -1,6 +1,7 @@
 package com.mastfrog.acteur.resources.markup;
 
 import com.google.inject.name.Named;
+import com.mastfrog.acteur.Closables;
 import com.mastfrog.acteur.resources.DynamicFileResources;
 import com.mastfrog.acteur.resources.ExpiresPolicy;
 import com.mastfrog.acteur.resources.FileResources;
@@ -107,10 +108,14 @@ public class MarkupFiles implements Provider<StaticResources> {
 
     @Inject
     @SuppressWarnings("unchecked")
-    public MarkupFiles(@Named(GUICE_BINDING_CLASS_RELATIVE_MARKUP) Class type, Settings settings, MimeTypes types, DeploymentMode mode, ByteBufAllocator allocator, ExpiresPolicy policy, ShutdownHookRegistry onShutdown, ApplicationControl ctrl) throws Exception {
+    public MarkupFiles(@Named(GUICE_BINDING_CLASS_RELATIVE_MARKUP) Class type, Settings settings, MimeTypes types, DeploymentMode mode, ByteBufAllocator allocator, ExpiresPolicy policy, ShutdownHookRegistry onShutdown, ApplicationControl ctrl, Provider<Closables> clos) throws Exception {
         String jarRelativeFolderName = settings.getString(SETTINGS_KEY_JAR_RELATIVE_FOLDER_NAME, DEFAULT_JAR_RELATIVE_FOLDER_NAME);
         // Find where we're running from and try to look up ../html
         File file = findFolderRelativeToJAR(type, jarRelativeFolderName);
+        if (file != null && Boolean.getBoolean("no.relative.files")) {
+            // for testing
+            file = null;
+        }
         // If that isn't there, see if there is a setting html.path that
         // points to it
         if (file == null) {
@@ -122,6 +127,7 @@ public class MarkupFiles implements Provider<StaticResources> {
                 }
             }
         }
+        System.out.println("USING FILE " + file);
         boolean dynResources = file != null || settings.getBoolean(SETTINGS_KEY_USE_DYN_FILE_RESOURCES, DEFAULT_USE_DYN_FILE_RESOURCES);
         // If that fails, unpack the embedded archive of html into a unique
         // subdir of /tmp and serve from there
@@ -130,7 +136,7 @@ public class MarkupFiles implements Provider<StaticResources> {
             file = unpackMarkupArchive(type, archiveName, onShutdown, ctrl);
         }
         if (dynResources) {
-            resources = new DynamicFileResources(file, types, policy, ctrl, allocator, settings);
+            resources = new DynamicFileResources(file, types, policy, ctrl, allocator, settings, clos);
         } else {
             resources = new FileResources(file, types, mode, allocator, settings, policy);
         }

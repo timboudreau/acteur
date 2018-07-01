@@ -43,10 +43,12 @@ import com.mastfrog.netty.http.test.harness.TestHarness;
 import com.mastfrog.netty.http.test.harness.TestHarness.CallResult;
 import com.mastfrog.netty.http.test.harness.TestHarnessModule;
 import com.mastfrog.util.Streams;
+import static io.netty.handler.codec.http.HttpResponseStatus.BAD_REQUEST;
 import static io.netty.handler.codec.http.HttpResponseStatus.NOT_IMPLEMENTED;
 import static io.netty.handler.codec.http.HttpResponseStatus.NOT_MODIFIED;
 import static io.netty.handler.codec.http.HttpResponseStatus.OK;
 import static io.netty.handler.codec.http.HttpResponseStatus.PARTIAL_CONTENT;
+import static io.netty.handler.codec.http.HttpResponseStatus.REQUESTED_RANGE_NOT_SATISFIABLE;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -136,7 +138,18 @@ public class StaticResourcesTest {
     public void test(TestHarness har, StaticResources resources) throws Throwable {
         ZonedDateTime helloLastModified;
         ZonedDateTime aLastModified;
-        helloLastModified = har.get("static/hello.txt").go()
+        helloLastModified = har.get("static/hello.txt")
+                .setTimeout(Duration.ofMinutes(1))
+                .go()
+                .assertStatus(OK)
+                .assertHasHeader(LAST_MODIFIED.name())
+                .assertHasHeader(ETAG.name())
+                .assertContent(HELLO_CONTENT)
+                .getHeader(LAST_MODIFIED);
+
+        har.get("static/hello.txt")
+                .setTimeout(Duration.ofMinutes(1))
+                .go()
                 .assertHasContent()
                 .assertStatus(OK)
                 .assertHasHeader(LAST_MODIFIED.name())
@@ -144,15 +157,9 @@ public class StaticResourcesTest {
                 .assertContent(HELLO_CONTENT)
                 .getHeader(LAST_MODIFIED);
 
-        har.get("static/hello.txt").go()
-                .assertHasContent()
-                .assertStatus(OK)
-                .assertHasHeader(LAST_MODIFIED.name())
-                .assertHasHeader(ETAG.name())
-                .assertContent(HELLO_CONTENT)
-                .getHeader(LAST_MODIFIED);
-
-        aLastModified = har.get("static/another.txt").go()
+        aLastModified = har.get("static/another.txt")
+                .setTimeout(Duration.ofMinutes(1))
+                .go()
                 .await()
                 .assertStatus(OK)
                 .assertHasContent()
@@ -187,14 +194,17 @@ public class StaticResourcesTest {
 
             har.get("static/another.txt")
                     .addHeader(RANGE, ByteRanges.of(1, 3))
-                    .go().await()
+                    .go()
+                    .await()
                     .assertStatus(PARTIAL_CONTENT)
                     .assertHasHeader(CONTENT_RANGE)
                     .assertContent("his");
 
             har.get("static/another.txt")
                     .addHeader(RANGE, new ByteRanges(4))
-                    .go().await()
+                    .setTimeout(Duration.ofMinutes(1))
+                    .go()
+                    .await()
                     .assertStatus(PARTIAL_CONTENT)
                     .assertHasHeader(CONTENT_RANGE)
                     .assertContent(" is another file.  It has some data in it.\n");
@@ -213,6 +223,24 @@ public class StaticResourcesTest {
                     .assertHasHeader(CONTENT_RANGE)
                     .assertContent("is another");
 
+            har.get("static/another.txt")
+                    .addHeader(RANGE, ByteRanges.of(0, 0))
+                    .go().await()
+                    .assertStatus(PARTIAL_CONTENT)
+                    .assertHasHeader(CONTENT_RANGE)
+                    .assertContent("T");
+
+            har.get("static/another.txt")
+                    .addHeader(RANGE.toStringHeader(), "bytes=12-1")
+                    .go().await()
+                    .assertStatus(BAD_REQUEST);
+
+            har.get("static/another.txt")
+                    .addHeader(RANGE.toStringHeader(), "bytes=3000-3003")
+                    .go().await()
+                    .assertStatus(REQUESTED_RANGE_NOT_SATISFIABLE);
+
+
             ByteRanges compound = ByteRanges.builder().add(5, 15).add(25, 30).build();
             har.get("static/another.txt")
                     .addHeader(RANGE, compound)
@@ -222,7 +250,10 @@ public class StaticResourcesTest {
             // should be server start time since that's all we know
             assertEquals(helloLastModified, aLastModified);
         } else {
-            ZonedDateTime subLastModified = har.get("static/sub/subfile.txt").go()
+            ZonedDateTime subLastModified = har.get("static/sub/subfile.txt")
+                    .setTimeout(Duration.ofMinutes(1))
+                    .go()
+                    .await()
                     .assertStateSeen(FullContentReceived)
                     .assertHasContent()
                     .assertStatus(OK)

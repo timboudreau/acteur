@@ -73,16 +73,31 @@ public class MimeTypes {
         add("md", MediaType.parse("text/x-markdown").withCharset(charset), COMPRESS);
         add("bz2", MediaType.parse("application/x-bzip2"), IDENTITY);
         add("gz", MediaType.parse("application/x-gzip"), IDENTITY);
+        add("zip", MediaType.parse("application/zip"), IDENTITY);
+
+        // application/x-x509-ca-cert                       der pem crt;
+        add("der", MediaType.parse("application/x-x509-ca-cert"), IDENTITY);
+        add("pem", MediaType.parse("application/x-x509-ca-cert"), IDENTITY);
+        add("crt", MediaType.parse("application/x-x509-ca-cert"), IDENTITY);
+        add("ts", MediaType.parse("video/mp2t"), IDENTITY);
+
         add("tar", MediaType.parse("application/x-tar"), COMPRESS);
         add("doc", MediaType.parse("application/msword"), false, COMPRESS);
         add("pdf", MediaType.parse("application/pdf"), IDENTITY);
         add("ppt", MediaType.parse("application/powerpoint"), false, COMPRESS);
+        add("nbm", MediaType.parse("application/nbm"), false, IDENTITY);
+        add("xlsx", MediaType.parse("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"), false, COMPRESS);
+        add("pptx", MediaType.parse("application/vnd.openxmlformats-officedocument.presentationml.presentation"), false, COMPRESS);
+        add("docx", MediaType.parse("application/vnd.openxmlformats-officedocument.wordprocessingml.document"), false, COMPRESS);
         add("rtf", MediaType.parse("text/richtext"), COMPRESS);
         add("mp4", MediaType.MP4_VIDEO, IDENTITY);
         add("mp3", MediaType.parse("audio/mp3"), IDENTITY);
-        add("m4a", MediaType.MP4_AUDIO, IDENTITY);
+        add("m4a", MediaType.parse("audio/x-m4a"), IDENTITY);
+        add("m4v", MediaType.MP4_VIDEO, IDENTITY);
         add("flv", MediaType.FLV_VIDEO, IDENTITY);
         add("webm", MediaType.WEBM_VIDEO, IDENTITY);
+        add("mov", MediaType.QUICKTIME, IDENTITY);
+        add("mid", MediaType.parse("audio/midi"), false, COMPRESS);
         add("aac", MediaType.AAC_AUDIO, IDENTITY);
         add("json", MediaType.JSON_UTF_8, COMPRESS);
         add("mpeg", MediaType.MPEG_VIDEO, IDENTITY);
@@ -104,6 +119,11 @@ public class MimeTypes {
         add("mpeg", MediaType.MPEG_VIDEO, IDENTITY);
         add("mp2", MediaType.MPEG_AUDIO, IDENTITY);
         add("mts", MediaType.create("video", "avchd"), IDENTITY);
+        add("atom", MediaType.parse("application/atom+xml").withCharset(charset), true, COMPRESS);
+        add("rss", MediaType.parse("application/rss+xml").withCharset(charset), true, COMPRESS);
+        add("jar", MediaType.parse("application/java-archive"), false, IDENTITY);
+        add("jng", MediaType.parse("image/x-jng"), false, IDENTITY);
+        add("m3u8", MediaType.parse("application/vnd.apple.mpegurl").withCharset(charset), true, IDENTITY);
     }
 
     public MimeTypes() {

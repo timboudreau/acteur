@@ -102,19 +102,21 @@ import static org.junit.Assert.assertTrue;
 @TestWith({M.class, TestHarnessModule.class, MongoHarness.Module.class})
 public class ActeurAsyncTest {
 
-//    static {
-    // for debugging
-//        System.setProperty("acteur.debug", "true");
-//        System.setProperty("mongo.tmplog", "true");
-//    }
+    static {
+        /* for debugging */
+        System.setProperty("acteur.debug", "true");
+        System.setProperty("mongo.tmplog", "true");
+    }
 
     @Test(timeout = 20000L)
     public void test(TestHarness harn, ObjectMapper mapper, @Named("stuff") MongoCollection<Document> stuff) throws Throwable {
         harn.get("/hello").go().assertStatus(OK).assertContent("Hello world");
+
         String s = harn.get("/stuff")
                 .setTimeout(Duration.ofSeconds(18))
                 .go().await().assertStatus(OK).throwIfError().content();
 
+        assertNotNull(s);
         Thing[] objs = mapper.readValue(s, Thing[].class);
 
         assertEquals(objs.length, 200);
@@ -236,7 +238,6 @@ public class ActeurAsyncTest {
                 .await()
                 .assertStatus(NOT_MODIFIED)
                 .throwIfError();
-
 
     }
 
@@ -398,7 +399,6 @@ public class ActeurAsyncTest {
         }
     }
 
-
     @HttpCall
     @Path("/oneThing/*")
     @Methods(DELETE)
@@ -412,8 +412,8 @@ public class ActeurAsyncTest {
         }
     }
 
-
     static boolean manythingsCalled;
+
     @HttpCall
     @Path("/manythings")
     @Methods(PUT)
@@ -512,7 +512,6 @@ public class ActeurAsyncTest {
             }
             return true;
         }
-
 
     }
 }

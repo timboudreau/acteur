@@ -3,11 +3,21 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>com.mastfrog</groupId>
-        <artifactId>acteur-parent</artifactId>
-        <version>2.4.1</version>
+        <artifactId>mastfrog-parent-indexed</artifactId>
+        <version>2.5.0-dev</version>
+        <relativePath/>
     </parent>
     <artifactId>acteur-mongo-async</artifactId>
     <dependencies>
+        <dependency>
+            <groupId>com.mastfrog</groupId>
+            <artifactId>annotation-processors</artifactId>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.mastfrog</groupId>
+            <artifactId>util</artifactId>
+        </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>giulius-mongodb-async</artifactId>

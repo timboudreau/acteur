@@ -128,7 +128,6 @@ final class ResponseImpl extends Response {
         return message;
     }
 
-
     boolean isModified() {
         return modified;
     }
@@ -305,8 +304,10 @@ final class ResponseImpl extends Response {
 
     @Override
     public Response chunked(boolean chunked) {
-        this.chunked = chunked;
-        modify();
+        if (chunked != this.chunked) {
+            this.chunked = chunked;
+            modify();
+        }
         return this;
     }
 
@@ -649,16 +650,15 @@ final class ResponseImpl extends Response {
                 // The compressor will not see raw ByteBufs - the data needs to be pre-compressed
                 hdrs.add(X_INTERNAL_COMPRESS, TRUE);
             }
-            resp = listener != null ?
-                  chunked ?  new DefaultHttpResponse(version, status, hdrs)
-                    : new ListenerHackHttpResponse(version, evt.channel(), hdrs, status)
+            resp = listener != null
+                    ? chunked ? new DefaultHttpResponse(version, status, hdrs)
+                            : new ListenerHackHttpResponse(version, evt.channel(), hdrs, status)
                     : new DefaultHttpResponse(version, status, hdrs);
         }
         return resp;
     }
 
     private static final AsciiString TRUE = AsciiString.of("1");
-
 
     ChannelFuture sendMessage(Event<?> evt, ChannelFuture future, HttpMessage resp) {
         if (listener != null) {
