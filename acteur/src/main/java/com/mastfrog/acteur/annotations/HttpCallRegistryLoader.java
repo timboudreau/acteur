@@ -1,3 +1,26 @@
+/*
+ * The MIT License
+ *
+ * Copyright 2014 Tim Boudreau.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
 package com.mastfrog.acteur.annotations;
 
 import com.google.inject.Module;
@@ -41,31 +64,38 @@ public final class HttpCallRegistryLoader implements Iterable<Class<? extends Pa
         // Load META-INF/http/numble.list - technically we should have
         // pluggable loaders in ServiceLoader for this, but this will do for now
         ClassLoader cl = type.getClassLoader();
-        try {
-            Set<String> seenLines = new HashSet<>();
-            for (URL url : CollectionUtils.toIterable(cl.getResources("META-INF/http/numble.list"))) {
-                try (final InputStream in = url.openStream()) {
-                    String[] lines = Streams.readString(in, "UTF-8").split("\n");
-                    for (String line : lines) {
-                        // CRLF issues if build was done on Windows
-                        // gives us class names ending in a \r
-                        line = line.trim();
-                        if (line.isEmpty() || line.startsWith("#") || seenLines.contains(line)) {
-                            continue;
+        if (cl != null) { // graal
+            try {
+                Set<String> seenLines = new HashSet<>();
+                for (URL url : CollectionUtils.toIterable(cl.getResources("META-INF/http/numble.list"))) {
+                    try (final InputStream in = url.openStream()) {
+                        String[] lines = Streams.readString(in, "UTF-8").split("\n");
+                        for (String line : lines) {
+                            // CRLF issues if build was done on Windows
+                            // gives us class names ending in a \r
+                            line = line.trim();
+                            if (line.isEmpty() || line.startsWith("#") || seenLines.contains(line)) {
+                                continue;
+                            }
+                            // If A and B depend on C, and D depends on both, D can
+                            // wind up with duplicates - harmless but has overhead, so
+                            // nip that in the bud here
+                            seenLines.add(line);
+                            try {
+                                types.add(cl.loadClass(line));
+                            } catch (Throwable t) {
+                                // Graal
+                                t.printStackTrace();
+                                types.add(Class.forName(line));
+                            }
                         }
-                        // If A and B depend on C, and D depends on both, D can
-                        // wind up with duplicates - harmless but has overhead, so
-                        // nip that in the bud here
-                        seenLines.add(line);
-//                        types.add(Class.forName(line));
-                        types.add(cl.loadClass(line));
+                    } catch (ClassNotFoundException ex) {
+                        return Exceptions.chuck(ex);
                     }
-                } catch (ClassNotFoundException ex) {
-                    return Exceptions.chuck(ex);
                 }
+            } catch (IOException ex) {
+                return Exceptions.chuck(ex);
             }
-        } catch (IOException ex) {
-            return Exceptions.chuck(ex);
         }
         return types;
     }

@@ -61,7 +61,6 @@ import com.mastfrog.acteurbase.ActeurBaseModule;
 import com.mastfrog.acteurbase.Chain;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.giulius.InjectionInfo;
-import com.mastfrog.giulius.annotations.Defaults;
 import com.mastfrog.giulius.scope.ReentrantScope;
 import com.mastfrog.marshallers.netty.NettyContentMarshallers;
 import com.mastfrog.parameters.KeysValues;
@@ -117,7 +116,7 @@ import org.netbeans.validation.api.InvalidInputException;
  *
  * @author Tim Boudreau
  */
-@Defaults("realm=Users")
+//@Defaults("realm=Users")
 @SuppressWarnings("deprecation")
 public class ServerModule<A extends Application> extends AbstractModule {
 

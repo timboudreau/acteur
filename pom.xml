@@ -27,6 +27,7 @@
         <module>acteur-headers-jodatime</module>
         <module>netty-websocket-pubsub</module>
         <module>acteur-annotations</module>
+        <module>acteur-annotation-processors</module>
     </modules>
     <url>https://github.com/timboudreau/acteur</url>
     <scm>

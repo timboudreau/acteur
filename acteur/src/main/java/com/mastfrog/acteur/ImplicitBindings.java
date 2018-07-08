@@ -23,7 +23,6 @@
  */
 package com.mastfrog.acteur;
 
-import com.mastfrog.acteur.annotations.HttpCall;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;

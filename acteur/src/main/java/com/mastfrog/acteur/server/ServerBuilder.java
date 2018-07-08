@@ -33,10 +33,10 @@ import com.mastfrog.acteur.util.Server;
 import com.mastfrog.giulius.DependenciesBuilder;
 import com.mastfrog.giulius.InjectionInfo;
 import com.mastfrog.giulius.SettingsBindings;
-import com.mastfrog.giulius.annotations.Namespace;
 import com.mastfrog.giulius.scope.ReentrantScope;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.settings.SettingsBuilder;
+import static com.mastfrog.settings.SettingsBuilder.DEFAULT_NAMESPACE;
 import com.mastfrog.util.Checks;
 import com.mastfrog.util.Exceptions;
 import io.netty.handler.ssl.SslContext;
@@ -70,7 +70,7 @@ public final class ServerBuilder {
     private boolean enableHelp = false;
 
     public ServerBuilder(ReentrantScope scope) {
-        this(Namespace.DEFAULT, scope);
+        this(DEFAULT_NAMESPACE, scope);
     }
 
     public ServerBuilder(String namespace, ReentrantScope scope) {
@@ -86,7 +86,7 @@ public final class ServerBuilder {
      * ~/defaults.properties and ./defaults.properties
      */
     public ServerBuilder() {
-        this(Namespace.DEFAULT);
+        this(DEFAULT_NAMESPACE);
     }
 
     /**
@@ -267,7 +267,7 @@ public final class ServerBuilder {
         DependenciesBuilder db = new DependenciesBuilder().add(appModule);
         db.enableOnlyBindingsFor(settingsBindings.toArray(new SettingsBindings[settingsBindings.size()]));
         db.add(settings, namespace);
-        db.add(settings, Namespace.DEFAULT);
+        db.add(settings, DEFAULT_NAMESPACE);
         for (Module m : modules) {
             db.add(m);
         }

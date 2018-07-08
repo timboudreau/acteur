@@ -96,6 +96,7 @@ import java.util.TreeMap;
 import java.util.concurrent.CountDownLatch;
 import org.netbeans.validation.api.Validator;
 import org.netbeans.validation.api.builtin.stringvalidation.StringValidators;
+import com.mastfrog.graal.annotation.Expose;
 
 /**
  * A web application. Principally, the application is a collection of Page
@@ -105,6 +106,7 @@ import org.netbeans.validation.api.builtin.stringvalidation.StringValidators;
  *
  * @author Tim Boudreau
  */
+@Expose(methods=@Expose.MethodInfo(name = "control", parameterTypes = {}))
 public class Application implements Iterable<Page> {
 
     private static final Set<String> checkedTypes = Collections.synchronizedSet(new HashSet<String>());
@@ -133,9 +135,7 @@ public class Application implements Iterable<Page> {
     @Named("application.name")
     String name;
 
-    @Inject(optional = true)
-    @Named("acteur.debug")
-    private boolean debug = false;
+    private boolean debug = Boolean.getBoolean("acteur.debug");
 
     @Inject(optional = true)
     @Named(GUICE_BINDING_DEFAULT_CONTEXT_OBJECTS)

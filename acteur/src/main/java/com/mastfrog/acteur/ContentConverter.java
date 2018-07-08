@@ -146,7 +146,7 @@ public class ContentConverter {
     @SuppressWarnings("unchecked")
     private Problems validate(Origin origin, Map map) {
         Problems problems = new Problems();
-        checker.check(origin.value(), new KeysValues.MapAdapter(map), problems);
+        checker.check(origin.value(), KeysValues.ofMap(map), problems);
         return problems;
     }
 
