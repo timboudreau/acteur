@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright 2017 Tim Boudreau.
+ * Copyright 2018 Tim Boudreau.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -22,22 +22,30 @@
  * THE SOFTWARE.
  */
 
-package com.mastfrog.acteur.annotations;
+package com.mastfrog.acteur.headers;
 
-import com.mastfrog.acteur.Acteur;
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import com.mastfrog.acteur.util.StrictTransportSecurity;
+import io.netty.util.AsciiString;
 
 /**
- * DO NOT USE in code.  Generated into __GenPage Page subclasses by the annotation
- * processor for HttpCall, so the framework can identify stateless page classes.
  *
  * @author Tim Boudreau
  */
-@Retention(RetentionPolicy.RUNTIME)
-@Target(ElementType.TYPE)
-public @interface GeneratedFrom {
-    Class<? extends Acteur> value();
+final class StrictTransportSecurityHeader extends AbstractHeader<StrictTransportSecurity> {
+
+    private static final AsciiString STRICT_TRANSPORT_SECURITY = AsciiString.of("strict-transport-securty");
+
+    StrictTransportSecurityHeader() {
+        super(StrictTransportSecurity.class, STRICT_TRANSPORT_SECURITY);
+    }
+
+    @Override
+    public StrictTransportSecurity toValue(CharSequence value) {
+        return StrictTransportSecurity.parse(value);
+    }
+
+    @Override
+    public CharSequence toCharSequence(StrictTransportSecurity value) {
+        return AsciiString.of(value.toString());
+    }
 }

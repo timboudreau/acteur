@@ -51,7 +51,7 @@ import org.junit.runner.RunWith;
  * @author Tim Boudreau
  */
 @RunWith(GuiceRunner.class)
-@TestWith({M.class, TestHarnessModule.class})
+@TestWith({M.class, TestHarnessModule.class, SilentRequestLogger.class})
 public class ResponseDecoratorTest {
 
     @Test

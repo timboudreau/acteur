@@ -25,10 +25,8 @@ package com.mastfrog.acteur;
 
 import com.google.common.net.MediaType;
 import com.google.inject.Provider;
+import com.google.inject.Singleton;
 import com.mastfrog.giulius.Dependencies;
-import com.mastfrog.parameters.KeysValues;
-import com.mastfrog.parameters.gen.Origin;
-import com.mastfrog.parameters.validation.ParamChecker;
 import com.mastfrog.util.Codec;
 import com.mastfrog.util.time.TimeUtil;
 import io.netty.buffer.ByteBuf;
@@ -41,28 +39,28 @@ import java.nio.charset.Charset;
 import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import javax.inject.Inject;
 import org.netbeans.validation.api.InvalidInputException;
-import org.netbeans.validation.api.Problems;
 
 /**
  * Converts byte buffers and maps to objects
  *
  * @author Tim Boudreau
  */
+@Singleton
 public class ContentConverter {
 
     protected final Codec codec;
     private final Provider<Charset> charset;
-    private final ParamChecker checker;
     private final Dependencies deps;
 
     @Inject
-    public ContentConverter(Codec codec, Provider<Charset> charset, ParamChecker checker, Dependencies deps) {
+    public ContentConverter(Codec codec, Provider<Charset> charset, Dependencies deps) {
         this.codec = codec;
         this.charset = charset;
-        this.checker = checker;
         this.deps = deps;
     }
 
@@ -95,7 +93,7 @@ public class ContentConverter {
     }
 
     @SuppressWarnings("unchecked")
-    public <T> T toObject(ByteBuf content, MediaType mimeType, Class<T> type) throws IOException {
+    public <T> T toObject(ByteBuf content, MediaType mimeType, Class<T> type) throws Exception {
         if (mimeType == null) {
             mimeType = MediaType.ANY_TYPE;
         }
@@ -114,22 +112,83 @@ public class ContentConverter {
         return readObject(content, mimeType, type);
     }
 
-    protected <T> T readObject(ByteBuf buf, MediaType mimeType, Class<T> type) throws IOException, InvalidInputException {
+    private final Map<Class<?>, ContentValidationPlugin> plugins = new HashMap<>();
+
+    private <T> void register(ContentValidationPlugin plugin, Class<T> type) {
+        plugins.put(type, plugin);
+    }
+
+    public static abstract class ContentValidationPlugin {
+
+        private final ContentConverter converter;
+
+        protected ContentValidationPlugin(ContentConverter converter, Class<?>... types) {
+            this.converter = converter;
+            for (Class<?> t : types) {
+                register(t);
+            }
+        }
+
+        protected ContentValidationPlugin(ContentConverter converter, Iterable<Class<?>> types) {
+            this.converter = converter;
+            for (Class<?> t : types) {
+                register(t);
+            }
+        }
+
+        protected ContentValidationPlugin(ContentConverter converter, String... types) throws ClassNotFoundException {
+            this.converter = converter;
+            for (String t : types) {
+                register(Class.forName(t));
+            }
+        }
+
+        protected ContentValidationPlugin(ContentConverter converter, Set<String> types) throws ClassNotFoundException {
+            this.converter = converter;
+            for (String t : types) {
+                register(Class.forName(t));
+            }
+        }
+
+        protected final <T> ContentValidationPlugin register(Class<T> type) {
+            converter.register(this, type);
+            return this;
+        }
+
+        /**
+         * Validate the contents of a bytebuf without necessarily instantiating an object.
+         * Throw an exception of some known type (may want to install an ExceptionEvaluator to turn
+         * that into a meaningful response code).
+         *
+         * @param <T> The type
+         * @param buf The buffer
+         * @param mimeType
+         * @param type
+         * @param codec
+         * @throws Exception
+         */
+        protected abstract <T> void validate(ByteBuf buf, MediaType mimeType, Class<T> type, Codec codec) throws Exception;
+
+        /**
+         * Validate a map which will be further deserialized into an object of type T.
+         * Throw an exception of some known type (may want to install an ExceptionEvaluator to turn
+         * that into a meaningful response code).
+         *
+         * @param <T> The type
+         * @param type The type
+         * @param map The map
+         */
+        protected abstract <T> void validate(Class<T> type, Map<String,?> map);
+    }
+
+
+    protected <T> T readObject(ByteBuf buf, MediaType mimeType, Class<T> type) throws Exception {
         if (type == String.class || type == CharSequence.class) {
             return type.cast(toString(buf, findCharset(mimeType)));
         }
-        Origin origin = type.getAnnotation(Origin.class);
-        if (origin != null) {
-            Map map;
-            try (InputStream in = new ByteBufInputStream(buf)) {
-                map = codec.readValue(in, Map.class);
-                validate(origin, map).throwIfFatalPresent();
-            } catch (IOException ioe) {
-                ioe.printStackTrace();
-                throw ioe;
-            } finally {
-                buf.resetReaderIndex();
-            }
+        ContentValidationPlugin plugin = plugins.get(type);
+        if (plugin != null) {
+            plugin.validate(buf, mimeType, type, codec);
         }
         buf.resetReaderIndex();
         try (InputStream in = new ByteBufInputStream(buf)) {
@@ -143,13 +202,6 @@ public class ContentConverter {
         }
     }
 
-    @SuppressWarnings("unchecked")
-    private Problems validate(Origin origin, Map map) {
-        Problems problems = new Problems();
-        checker.check(origin.value(), KeysValues.ofMap(map), problems);
-        return problems;
-    }
-
     public <T> T toObject(Map<String, ?> m, Class<T> type) throws InvalidInputException {
         if (type.isInterface()) {
             return createProxyFor(m, type);
@@ -159,9 +211,9 @@ public class ContentConverter {
     }
 
     protected <T> T createObjectFor(Map<String, ?> m, Class<T> type) {
-        Origin origin = type.getAnnotation(Origin.class);
-        if (origin != null) {
-            validate(origin, m).throwIfFatalPresent();
+        ContentValidationPlugin plugin = plugins.get(type);
+        if (plugin != null) {
+            plugin.validate(type, m);
         }
         return deps.getInstance(type);
     }

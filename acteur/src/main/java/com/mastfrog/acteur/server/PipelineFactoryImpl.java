@@ -53,10 +53,12 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.socket.SocketChannel;
+import io.netty.handler.codec.compression.ZlibWrapper;
 import io.netty.handler.codec.http.HttpContentCompressor;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import static io.netty.handler.codec.http.HttpHeaderNames.CONTENT_LENGTH;
 import io.netty.handler.codec.http.HttpHeaders;
+import io.netty.handler.codec.http.HttpObject;
 import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpRequestDecoder;
@@ -92,6 +94,7 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
     private final int compressionMemLevel;
     private final int compressionThreshold;
     private final boolean compressionCheckContentType;
+    private final boolean compressionDebug;
     
     @Inject
     PipelineFactoryImpl(Provider<ChannelHandler> handler,
@@ -104,6 +107,7 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
         this.app = app;
         this.sslConfigProvider = sslConfigProvider;
         aggregateChunks = settings.getBoolean("aggregateChunks", DEFAULT_AGGREGATE_CHUNKS);
+        compressionDebug = settings.getBoolean("http.compression.debug", false);
         httpCompression = settings.getBoolean(HTTP_COMPRESSION, true);
         maxContentLength = settings.getInt(MAX_CONTENT_LENGTH, DEFAULT_MAX_CONTENT_LENGTH);
         useSsl = settings.getBoolean(SETTINGS_KEY_SSL_ENABLED, false);
@@ -161,7 +165,9 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
             pipeline.addLast(PipelineDecorator.AGGREGATOR, aggregator);
         }
         if (httpCompression) {
-            ChannelHandler compressor = new SelectiveCompressor(compressionLevel, compressionWindowBits, compressionMemLevel, compressionThreshold, compressionCheckContentType);
+            ChannelHandler compressor = new SelectiveCompressor(compressionLevel, compressionWindowBits,
+                    compressionMemLevel, compressionThreshold, compressionCheckContentType,
+                    compressionDebug);
             pipeline.addLast(PipelineDecorator.COMPRESSOR, compressor);
         }
         pipeline.addLast(PipelineDecorator.HANDLER, handler.get());
@@ -184,16 +190,45 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
         }
     }
 
-    static final boolean DEBUG = Boolean.getBoolean("acteur.debug");
+    static final boolean ACTEUR_DEBUG = Boolean.getBoolean("acteur.debug");
     static final class SelectiveCompressor extends HttpContentCompressor {
 
         private final int compressionThreshold;
         private final boolean compressionCheckContentType;
+        private final boolean debug;
 
-        SelectiveCompressor(int compressionLevel, int windowBits, int memLevel, int compressionThreshold, boolean compressionCheckContentType) {
+        SelectiveCompressor(int compressionLevel, int windowBits, int memLevel, int compressionThreshold,
+                boolean compressionCheckContentType, boolean compressionDebug) {
             super(compressionLevel, windowBits, memLevel);
             this.compressionThreshold = compressionThreshold;
             this.compressionCheckContentType = compressionCheckContentType;
+            this.debug = compressionDebug;
+        }
+
+        @Override
+        protected ZlibWrapper determineWrapper(String acceptEncoding) {
+            ZlibWrapper result = super.determineWrapper(acceptEncoding);
+            if (debug) {
+                if (result != null) {
+                    System.out.println("Using ZlibWrapper " + result.name() + " for " + acceptEncoding);
+                } else {
+                    System.out.println("Did not find ZlibWrapper for " + acceptEncoding + " - will not compress");
+                }
+            }
+            return result;
+        }
+
+        @Override
+        protected void encode(ChannelHandlerContext ctx, HttpObject msg, List<Object> out) throws Exception {
+            if (debug) {
+                System.out.println("Encode " + msg);
+            }
+            super.encode(ctx, msg, out); //To change body of generated methods, choose Tools | Templates.
+        }
+
+        @Override
+        public boolean acceptInboundMessage(Object msg) throws Exception {
+            return super.acceptInboundMessage(msg); //To change body of generated methods, choose Tools | Templates.
         }
 
         @Override
@@ -201,14 +236,24 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
             final HttpHeaders hdrs = headers.headers();
             Integer contentLength = hdrs.getInt(CONTENT_LENGTH);
 
+            if (debug) {
+                System.out.println("beginEncode " + acceptEncoding + " of " + headers);
+            }
+
             // Note we cannot test for content length in chunked responses - they get the default
             // behavior of HttpContentCompressor
             if (contentLength != null) {
                 if (contentLength < compressionThreshold) {
+                    if (debug) {
+                        System.out.println("Content length below threshold, not compressing.");
+                    }
                     return null;
                 }
             }
             if (hdrs.contains(X_INTERNAL_COMPRESS)) {
+                if (debug) {
+                    System.out.println("Found X-Internal-Compress header, not compressing.");
+                }
                 hdrs.remove(X_INTERNAL_COMPRESS);
                 return null;
             }
@@ -216,6 +261,9 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
                 String contentType = hdrs.get(HttpHeaderNames.CONTENT_TYPE);
                 if (contentType != null) {
                     if (contentType.startsWith("image/") || contentType.startsWith("video/") || contentType.startsWith("audio/")){
+                        if (debug) {
+                            System.out.println("Media content, not compressing.");
+                        }
                         return null;
                     }
                 }
@@ -223,11 +271,13 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
 
             Result result = super.beginEncode(headers, acceptEncoding);
             if (result != null) {
-                if (DEBUG) {
+                if (ACTEUR_DEBUG) {
                     // Ensures responses indicate if they were compressed by this compressor, even if
                     // they are received by a decoder that transparently decompresses them
                     hdrs.add(COMPRESS_DEBUG_HEADER, TRUE);
                 }
+            } else if (debug) {
+                System.out.println("Compressor returned null, not compressing.");
             }
             return result;
         }

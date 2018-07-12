@@ -46,7 +46,8 @@ final class BooleanHeader extends AbstractHeader<Boolean> {
     @Override
     public Boolean toValue(CharSequence value) {
         Checks.notNull("value", value);
-        return Strings.charSequencesEqual("true", value, true);
+        return Strings.charSequencesEqual("true", value, true)
+                || Strings.charSequencesEqual("1", value, false);
     }
 
 }

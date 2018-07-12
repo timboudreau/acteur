@@ -24,6 +24,7 @@
 package com.mastfrog.acteur;
 
 import com.google.common.net.MediaType;
+import com.google.inject.Injector;
 import com.mastfrog.acteur.Acteur.BaseState;
 import com.mastfrog.acteur.errors.Err;
 import com.mastfrog.acteur.errors.ErrorRenderer;
@@ -39,17 +40,16 @@ import com.mastfrog.acteurbase.Chain;
 import com.mastfrog.acteurbase.Deferral;
 import com.mastfrog.acteurbase.Deferral.Resumer;
 import com.mastfrog.giulius.Dependencies;
-import com.mastfrog.giulius.scope.ReentrantScope;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.util.Checks;
 import static com.mastfrog.util.Checks.noNullElements;
 import static com.mastfrog.util.Checks.notNull;
 import com.mastfrog.util.Exceptions;
-import com.mastfrog.util.Invokable;
 import com.mastfrog.util.collections.ArrayUtils;
 import com.mastfrog.util.collections.CollectionUtils;
 import com.mastfrog.util.function.EnhCompletableFuture;
 import com.mastfrog.util.function.ThrowingConsumer;
+import com.mastfrog.util.thread.NonThrowingAutoCloseable;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.handler.codec.http.HttpResponseStatus;
@@ -70,7 +70,6 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 import javax.inject.Inject;
 
 /**
@@ -381,8 +380,8 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
     }
 
     /**
-     * Continue the acteur chain once the completable future passed to the passed
-     * consumer is consumed.  The consumer is guaranteed not to be called
+     * Continue the acteur chain once the completable future passed to the
+     * passed consumer is consumed. The consumer is guaranteed not to be called
      * until after the acteur constructor has exited.
      *
      * @param <T> The type of result that will be provided asynchronously to
@@ -776,64 +775,87 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
      * @param type The type of listener
      */
     protected final <T extends ChannelFutureListener> Acteur setResponseBodyWriter(final Class<T> type) {
-        final Page page = Page.get();
-        final Dependencies deps = page.getApplication().getDependencies();
-        ReentrantScope scope = page.getApplication().getRequestScope();
-        final AtomicReference<ChannelFuture> fut = new AtomicReference<>();
-
-        // An object which can instantiate and run the listener
-        class I extends Invokable<ChannelFuture, Void, Exception> {
-
-            private ChannelFutureListener delegate;
-
-            @Override
-            public Void run(ChannelFuture argument) throws Exception {
-                if (delegate == null) {
-                    delegate = deps.getInstance(type);
-                }
-                delegate.operationComplete(argument);
-                return null;
-            }
-
-            @Override
-            public String toString() {
-                return "Delegate for " + type;
-            }
-        }
-
-        // A runnable-like object which takes an argument, and which can
-        // be wrapped by the scope in order to reconstitute the scope contents
-        // as they are now before constructing the actual listener
-        final Invokable<ChannelFuture, Void, Exception> listenerInvoker
-                = scope.wrap(new I(), fut);
-
-        // Wrap this in a dummy listener which will create the real one on
-        // demand
-        class C implements ChannelFutureListener {
-
-            @Override
-            public void operationComplete(ChannelFuture future) throws Exception {
-                try (AutoCloseable cl = Page.set(page)) {
-                    fut.set(future);
-                    listenerInvoker.run(future);
-                }
-            }
-
-            @Override
-            public String toString() {
-                return "Delegate for " + listenerInvoker;
-            }
-        }
-
-        ChannelFutureListener l = new C();
-        setResponseBodyWriter(l);
+        setResponseBodyWriter(new IWrapper<>(type, Page.get()));
         return this;
+    }
+
+    static final class IWrapper<T extends ChannelFutureListener> implements ChannelFutureListener, Callable<Void> {
+
+        private final Callable<Void> delegate;
+        private final Class<T> listenerType;
+        private final Injector injector;
+        private final Page page;
+        private ChannelFuture future;
+
+        IWrapper(Class<T> listenerType, Page page) {
+            assert page != null : "Called outside request scope";
+            this.page = page;
+            this.listenerType = notNull("listenerType", listenerType);
+            Application app = page.getApplication();
+            delegate = app.getRequestScope().wrap(this);
+            injector = app.getDependencies().getInjector();
+        }
+
+        @Override
+        public void operationComplete(ChannelFuture future) throws Exception {
+            // Do our prerequesites - set the page, and reenter request
+            // scope with the same contents as when we were instantiated
+            try (NonThrowingAutoCloseable cl = Page.set(page)) {
+                this.future = future;
+                delegate.call();
+            }
+        }
+
+        public Void call() throws Exception {
+            // Instantiate the listener
+            T listener = injector.getInstance(listenerType);
+            listener.operationComplete(this.future);
+            return null;
+        }
+
+        public String toString() {
+            return "InstantiatingWrapper-" + listenerType.getName();
+        }
+
     }
 
     protected final Dependencies dependencies() {
         final Page p = Page.get();
         final Application app = p.getApplication();
         return app.getDependencies();
+    }
+
+    static class ScopeWrapper implements ChannelFutureListener, Callable<Void> {
+
+        private ChannelFuture future;
+        private final Callable<Void> wrapper;
+        private final ChannelFutureListener listener;
+        private final Page page;
+
+        ScopeWrapper(Application app, ChannelFutureListener listener, Page page) {
+            this.listener = listener;
+            this.page = page;
+            this.wrapper = app.getRequestScope().wrap(this);
+        }
+
+        @Override
+        public void operationComplete(ChannelFuture future) throws Exception {
+            this.future = future;
+            try (NonThrowingAutoCloseable cl = Page.set(page)) {
+                wrapper.call();
+            }
+        }
+
+        @Override
+        public Void call() throws Exception {
+            listener.operationComplete(future);
+            return null;
+        }
+
+        @Override
+        public String toString() {
+            return "ScopeWrapper-" + listener;
+        }
     }
 
     /**
@@ -846,36 +868,15 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
      * @param listener
      */
     public final Acteur setResponseBodyWriter(final ChannelFutureListener listener) {
-        if (listener == ChannelFutureListener.CLOSE || listener == ChannelFutureListener.CLOSE_ON_FAILURE) {
+        if (listener == ChannelFutureListener.CLOSE || listener == ChannelFutureListener.CLOSE_ON_FAILURE
+                || listener instanceof IWrapper) {
             response();
             getResponse().contentWriter(listener);
             return this;
         }
         Page p = Page.get();
         final Application app = p.getApplication();
-        class WL implements ChannelFutureListener, Callable<Void> {
-
-            private ChannelFuture future;
-            private final Callable<Void> wrapper = app.getRequestScope().wrap(this);
-
-            @Override
-            public void operationComplete(ChannelFuture future) throws Exception {
-                this.future = future;
-                wrapper.call();
-            }
-
-            @Override
-            public Void call() throws Exception {
-                listener.operationComplete(future);
-                return null;
-            }
-
-            @Override
-            public String toString() {
-                return "Scope wrapper for " + listener;
-            }
-        }
-        response().contentWriter(new WL());
+        response().contentWriter(new ScopeWrapper(app, listener, p));
         return this;
     }
 

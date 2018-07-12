@@ -57,7 +57,7 @@ public interface HeaderValueType<T> extends Converter<T, CharSequence>, Comparab
      * @return True if it matches
      */
     public default boolean is(CharSequence name) {
-        return Strings.charSequencesEqual(name(), name, true);
+        return  Strings.charSequencesEqual(name(), name, true);
     }
 
     /**

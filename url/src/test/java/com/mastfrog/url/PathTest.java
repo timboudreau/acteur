@@ -24,10 +24,10 @@
 
 package com.mastfrog.url;
 
-import org.junit.Assert;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
 /**
@@ -35,6 +35,50 @@ import org.junit.Test;
  * @author Tim Boudreau
  */
 public class PathTest {
+
+    @Test
+    public void testEmptyElements() {
+        Path p = Path.parse("com/mastfrog/acteur/1.5.3//acteur-1.5.3.pom.lastUpdated", true).elideEmptyElements();
+        assertTrue(p.isValid());
+        assertStringNoZeros(p);
+        String expect = "com/mastfrog/acteur/1.5.3/acteur-1.5.3.pom.lastUpdated";
+        assertEquals(5, p.size());
+        assertEquals(expect, p.toString());
+        p = p.elideEmptyElements();
+        assertTrue(p.isValid());
+
+        p = Path.parse("com/foo/bar/..//../../../../../hey.txt");
+        assertStringNoZeros(p);
+        assertFalse(p.isValid());
+        assertEquals("com/foo/bar/..//../../../../../hey.txt", p.toString());
+        p = p.normalize();
+        assertFalse(p.isValid());
+
+        p = Path.parse("com/foo/bar/../../../../../../hey.txt");
+        assertStringNoZeros(p);
+        assertFalse(p.isValid());
+        p = p.normalize();
+        assertFalse(p.isValid());
+        assertStringNoZeros(p);
+
+        p = Path.parse("com/foo/bar/baz/woo/hoo/wheey/goo../../../../../../hey.txt");
+        assertStringNoZeros(p);
+        assertTrue(p.isValid());
+        p = p.normalize();
+        assertTrue(p.isValid());
+        assertEquals("com/foo/bar/hey.txt", p.toString());
+        System.out.println("NOW " + p);
+        assertStringNoZeros(p);
+
+    }
+
+    private void assertStringNoZeros(Path p) {
+        String s = p.toString();
+        for (char c : s.toCharArray()) {
+            assertFalse(c == 0);
+        }
+    }
+
     @Test
     public void testParseEmpty() {
         Path pth = Path.parse("");

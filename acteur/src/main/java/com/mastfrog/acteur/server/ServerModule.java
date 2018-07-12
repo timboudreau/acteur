@@ -44,11 +44,12 @@ import com.mastfrog.acteur.errors.Err;
 import com.mastfrog.acteur.errors.ErrorResponse;
 import com.mastfrog.acteur.errors.ExceptionEvaluator;
 import com.mastfrog.acteur.errors.ExceptionEvaluatorRegistry;
+import com.mastfrog.acteur.headers.HeaderValueType;
+import com.mastfrog.acteur.headers.Headers;
 import static com.mastfrog.acteur.headers.Headers.COOKIE_B;
 import static com.mastfrog.acteur.headers.Headers.X_FORWARDED_PROTO;
 import com.mastfrog.acteur.headers.Method;
 import com.mastfrog.acteur.spi.ApplicationControl;
-import com.mastfrog.acteur.sse.EventChannelName;
 import com.mastfrog.giulius.thread.ConventionalThreadSupplier;
 import com.mastfrog.giulius.thread.ThreadModule;
 import com.mastfrog.giulius.thread.ThreadPoolType;
@@ -62,8 +63,10 @@ import com.mastfrog.acteurbase.Chain;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.giulius.InjectionInfo;
 import com.mastfrog.giulius.scope.ReentrantScope;
+import com.mastfrog.graal.annotation.Expose;
+import com.mastfrog.graal.annotation.Expose.MethodInfo;
+import com.mastfrog.graal.annotation.ExposeMany;
 import com.mastfrog.marshallers.netty.NettyContentMarshallers;
-import com.mastfrog.parameters.KeysValues;
 import com.mastfrog.settings.MutableSettings;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.settings.SettingsBuilder;
@@ -116,14 +119,24 @@ import org.netbeans.validation.api.InvalidInputException;
  *
  * @author Tim Boudreau
  */
-//@Defaults("realm=Users")
 @SuppressWarnings("deprecation")
+@ExposeMany({
+    @Expose(type="com.fasterxml.jackson.databind.ObjectMapper", methods=@MethodInfo(parameterTypes = {}))}
+)
 public class ServerModule<A extends Application> extends AbstractModule {
 
     /**
-     * Header which, when attached to a response, bypasses the compresser.
+     * Header which, when attached to a response, bypasses the compresser - used in
+     * an application which supports HTTP compression but which, for some resources,
+     * will serve pre-compressed data.
      */
     public static final AsciiString X_INTERNAL_COMPRESS = new AsciiString("X-Internal-Compress");
+    /**
+     * Header which, when attached to a response, bypasses the compresser - used in
+     * an application which supports HTTP compression but which, for some resources,
+     * will serve pre-compressed data.
+     */
+    public static final HeaderValueType<CharSequence> X_INTERNAL_COMPRESS_HEADER = Headers.header(X_INTERNAL_COMPRESS);
     /**
      * Sets the HTTP compression level from 0 to 9, 0 meaning no compression,
      * 9 meaning maximum compression; the default is 6.
@@ -635,6 +648,11 @@ public class ServerModule<A extends Application> extends AbstractModule {
         this(appType, -1, -1, -1);
     }
 
+    public ServerModule(ReentrantScope scope, Class<? extends A> appType) {
+        this(scope, appType, -1, -1, -1);
+    }
+
+
     /**
      * Get the Guice scope used for injecting dynamic request-related objects
      * into Acteur constructors.
@@ -656,7 +674,9 @@ public class ServerModule<A extends Application> extends AbstractModule {
         bind(new CISC()).to(PipelineFactoryImpl.class);
         bind(ServerBootstrap.class).toProvider(new ServerBootstrapProvider(
                 binder().getProvider(Settings.class),
-                binder().getProvider(ByteBufAllocator.class)));
+                binder().getProvider(ByteBufAllocator.class),
+                binder().getProvider(ServerBootstrapConfigurer.class)
+        ));
 
         scope.bindTypes(binder(), Event.class, HttpEvent.class, RequestID.class, WebSocketEvent.class,
                 Page.class, BasicCredentials.class, Closables.class, DeferredComputationResult.class);
@@ -665,7 +685,6 @@ public class ServerModule<A extends Application> extends AbstractModule {
         if (implicit != null) {
             scope.bindTypes(binder(), implicit.value());
         }
-        scope.bindTypesAllowingNulls(binder(), EventChannelName.class);
         // Acteurs can ask for a Deferral to pause execution while some
         // other operation completes, such as making an external HTTP request
         // to another server
@@ -731,7 +750,6 @@ public class ServerModule<A extends Application> extends AbstractModule {
         bind(Codec.class).to(CodecImpl.class);
         bind(ApplicationControl.class).toProvider(ApplicationControlProvider.class).in(Scopes.SINGLETON);
         bind(ExceptionEvaluatorRegistry.class).asEagerSingleton();
-        bind(KeysValues.class).toProvider(KeysValuesProvider.class);
         bind(InvalidInputExceptionEvaluator.class).asEagerSingleton();
         bind(Channel.class).toProvider(ChannelProvider.class);
         bind(HttpMethod.class).toProvider(MethodProvider.class);
@@ -933,21 +951,6 @@ public class ServerModule<A extends Application> extends AbstractModule {
         }
     }
 
-    private static final class KeysValuesProvider implements Provider<KeysValues> {
-
-        private final Provider<HttpEvent> evt;
-
-        @Inject
-        public KeysValuesProvider(Provider<HttpEvent> evt) {
-            this.evt = evt;
-        }
-
-        @Override
-        public KeysValues get() {
-            return new KeysValues.MapAdapter(evt.get().urlParametersAsMap());
-        }
-    }
-
     private static final class InvalidInputExceptionEvaluator extends ExceptionEvaluator {
 
         @Inject
@@ -1075,9 +1078,24 @@ public class ServerModule<A extends Application> extends AbstractModule {
      * @param bootstrap The server bootstrap
      * @param settings The application settings
      * @return The same bootstrap or optionally another one
+     * @deprecated Bind an instance of ServerBootstrapConfigurer instead
      */
+    @Deprecated
     protected ServerBootstrap configureServerBootstrap(ServerBootstrap bootstrap, Settings settings) {
         return bootstrap;
+    }
+
+
+    static final class NoOpServerBootstrapConfigurer implements ServerBootstrapConfigurer {
+
+        @Inject
+        NoOpServerBootstrapConfigurer() {
+        }
+
+        @Override
+        public ServerBootstrap configureServerBootstrap(ServerBootstrap bootstrap, Settings settings) {
+            return bootstrap;
+        }
     }
 
     @SuppressWarnings("deprecation")
@@ -1149,10 +1167,12 @@ public class ServerModule<A extends Application> extends AbstractModule {
 
         private final Provider<Settings> settings;
         private final Provider<ByteBufAllocator> allocator;
+        private final Provider<ServerBootstrapConfigurer> bootstrapConfigurer;
 
-        public ServerBootstrapProvider(Provider<Settings> settings, Provider<ByteBufAllocator> allocator) {
+        public ServerBootstrapProvider(Provider<Settings> settings, Provider<ByteBufAllocator> allocator, Provider<ServerBootstrapConfigurer> bootstrapConfigurer) {
             this.settings = settings;
             this.allocator = allocator;
+            this.bootstrapConfigurer = bootstrapConfigurer;
         }
 
         @Override
@@ -1187,7 +1207,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
                         nonNegative(SETTINGS_KEY_SOCKET_WRITE_SPIN_COUNT,
                                 nonZero(SETTINGS_KEY_SOCKET_WRITE_SPIN_COUNT, settings.getInt(SETTINGS_KEY_SOCKET_WRITE_SPIN_COUNT))));
             }
-            return configureServerBootstrap(result, settings);
+            return bootstrapConfigurer.get().configureServerBootstrap(configureServerBootstrap(result, settings), settings);
         }
     }
 

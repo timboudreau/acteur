@@ -15,5 +15,6 @@ import java.lang.annotation.Target;
 @Target(ElementType.TYPE)
 public @interface Help {
     public static final String HELP_URL_PATTERN_SETTINGS_KEY = "helpUrlPattern";
+    public static final String HELP_HTML_URL_PATTERN_SETTINGS_KEY = "helpHtmlUrlPattern";
     String value() default "";
 }

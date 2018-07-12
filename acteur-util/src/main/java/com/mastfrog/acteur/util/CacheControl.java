@@ -26,8 +26,6 @@ package com.mastfrog.acteur.util;
 import static com.mastfrog.acteur.util.CacheControlTypes.*;
 import com.mastfrog.util.Strings;
 import java.time.Duration;
-import java.time.ZonedDateTime;
-import java.time.temporal.ChronoField;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.logging.Level;
@@ -48,6 +46,12 @@ public final class CacheControl {
             = new CacheControl(Private, no_cache, no_store);
     public static CacheControl PUBLIC
             = new CacheControl(Public);
+    public static CacheControl PUBLIC_IMMUTABLE
+            = new CacheControl(Public, immutable);
+    public static CacheControl PUBLIC_MAX_AGE_TEN_YEARS =
+            new CacheControl(Public).add(max_age, Duration.ofDays(10 * 365));
+    public static CacheControl PUBLIC_MUST_REVALIDATE_MAX_AGE_TEN_YEARS =
+            new CacheControl(Public).add(max_age, Duration.ofDays(10 * 365));
 
     public CacheControl(CacheControlTypes... types) {
         for (CacheControlTypes c : types) {
@@ -58,7 +62,6 @@ public final class CacheControl {
     public static CacheControl $(CacheControlTypes types) {
         return new CacheControl(types);
     }
-    private final ZonedDateTime creationTime = ZonedDateTime.now();
 
     @Override
     public int hashCode() {
@@ -151,14 +154,14 @@ public final class CacheControl {
             CacheControlTypes t = CacheControlTypes.find(part);
             if (t != null) {
                 if (t.takesValue) {
-                    String[] sides = part.toString().split("=", 2);
+                    CharSequence[] sides = Strings.split('=', part);
                     if (sides.length == 2) {
                         try {
-                            long val = Long.parseLong(sides[1]);
+                            long val = Strings.parseLong(sides[1]);
                             result.entries.add(new E(t, val));
                         } catch (NumberFormatException nfe) {
-                            nfe.printStackTrace();
-                            Logger.getLogger(CacheControl.class.getName()).log(Level.INFO, "Bad number in cache control header", nfe);
+                            Logger.getLogger(CacheControl.class.getName())
+                                    .log(Level.INFO, "Bad number in cache control header", nfe);
                         }
                     }
                 } else {

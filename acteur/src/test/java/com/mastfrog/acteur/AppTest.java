@@ -173,7 +173,7 @@ public class AppTest {
     static class ConvertBodyAction extends Acteur {
 
         @Inject
-        ConvertBodyAction(HttpEvent event, ContentConverter cvt) throws IOException {
+        ConvertBodyAction(HttpEvent event, ContentConverter cvt) throws Exception {
             Thing thing = cvt.readObject(event.content(), event.header(Headers.CONTENT_TYPE), Thing.class);
             if (thing == null) {
                 setState(new RejectedState());

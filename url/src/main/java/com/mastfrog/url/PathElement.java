@@ -45,6 +45,7 @@ public final class PathElement implements URLComponent {
     public PathElement(String element, boolean trailingSlash) {
         this(element, trailingSlash, false);
     }
+
     public PathElement(String element, boolean trailingSlash, boolean noEncode) {
         Checks.notNull("element", element);
         this.element = element;
@@ -120,5 +121,37 @@ public final class PathElement implements URLComponent {
     public boolean isProbableFileReference() {
         return !trailingSlash && !"..".equals(element)
                 && !".".equals(element) && element.indexOf('.') > 0;
+    }
+
+    public String extension() {
+        int ix = element.lastIndexOf('.');
+        if (ix < 0 || ix == element.length() - 1) {
+            return null;
+        }
+        return element.substring(ix + 1);
+    }
+
+    public boolean extensionEquals(String ext) {
+        int last = element.length() - 1;
+        if (element.isEmpty() || element.charAt(last) == '/') {
+            return false;
+        }
+        if (ext.length() > last + 2) {
+            return false;
+        }
+        int pos = last;
+        for (int i = 0; i < ext.length(); i++) {
+            int extLoc = (ext.length() - 1) - i;
+            char test = ext.charAt(extLoc);
+            char got = element.charAt(last - i);
+            if (test != got) {
+                return false;
+            }
+            pos--;
+        }
+        if (pos == -1 || element.charAt(pos) != '.') {
+            return false;
+        }
+        return true;
     }
 }

@@ -212,7 +212,7 @@ public class CompApp extends Application {
         private static final class EchoActeur extends Acteur {
 
             @Inject
-            EchoActeur(HttpEvent evt, ContentConverter cvt) throws IOException {
+            EchoActeur(HttpEvent evt, ContentConverter cvt) throws Exception {
 //                if (!evt.getContent().isReadable()) {
 //                    setState(new RespondWith(400, "Content not readable"));
 //                    return;

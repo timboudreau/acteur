@@ -25,6 +25,7 @@ package com.mastfrog.acteur.annotations;
 
 import com.google.inject.Module;
 import com.mastfrog.acteur.Page;
+import com.mastfrog.parameters.gen.Origin;
 import com.mastfrog.util.Exceptions;
 import com.mastfrog.util.Streams;
 import com.mastfrog.util.collections.CollectionUtils;
@@ -33,6 +34,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.util.Collections;
+import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
@@ -67,30 +69,33 @@ public final class HttpCallRegistryLoader implements Iterable<Class<? extends Pa
         if (cl != null) { // graal
             try {
                 Set<String> seenLines = new HashSet<>();
-                for (URL url : CollectionUtils.toIterable(cl.getResources("META-INF/http/numble.list"))) {
-                    try (final InputStream in = url.openStream()) {
-                        String[] lines = Streams.readString(in, "UTF-8").split("\n");
-                        for (String line : lines) {
-                            // CRLF issues if build was done on Windows
-                            // gives us class names ending in a \r
-                            line = line.trim();
-                            if (line.isEmpty() || line.startsWith("#") || seenLines.contains(line)) {
-                                continue;
+                Enumeration<URL> numbleLists = cl.getResources(Origin.META_INF_PATH);
+                if (numbleLists != null) {
+                    for (URL url : CollectionUtils.toIterable(numbleLists)) {
+                        try (final InputStream in = url.openStream()) {
+                            String[] lines = Streams.readString(in, "UTF-8").split("\n");
+                            for (String line : lines) {
+                                // CRLF issues if build was done on Windows
+                                // gives us class names ending in a \r
+                                line = line.trim();
+                                if (line.isEmpty() || line.startsWith("#") || seenLines.contains(line)) {
+                                    continue;
+                                }
+                                // If A and B depend on C, and D depends on both, D can
+                                // wind up with duplicates - harmless but has overhead, so
+                                // nip that in the bud here
+                                seenLines.add(line);
+                                try {
+                                    types.add(cl.loadClass(line));
+                                } catch (Throwable t) {
+                                    // Graal
+                                    t.printStackTrace();
+                                    types.add(Class.forName(line));
+                                }
                             }
-                            // If A and B depend on C, and D depends on both, D can
-                            // wind up with duplicates - harmless but has overhead, so
-                            // nip that in the bud here
-                            seenLines.add(line);
-                            try {
-                                types.add(cl.loadClass(line));
-                            } catch (Throwable t) {
-                                // Graal
-                                t.printStackTrace();
-                                types.add(Class.forName(line));
-                            }
+                        } catch (ClassNotFoundException ex) {
+                            return Exceptions.chuck(ex);
                         }
-                    } catch (ClassNotFoundException ex) {
-                        return Exceptions.chuck(ex);
                     }
                 }
             } catch (IOException ex) {

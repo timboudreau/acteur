@@ -80,6 +80,10 @@ public class ActeurFactory {
     @Inject
     private Provider<HttpEvent> event;
 
+    @Inject
+    public ActeurFactory() {
+    }
+
     /**
      * Reject the request if it is not one of the passed HTTP methods
      *
@@ -343,27 +347,28 @@ public class ActeurFactory {
                         seq = frame.content().readCharSequence(frame.content().readableBytes(), CharsetUtil.UTF_8);
                     }
                     return new Acteur.RespondWith(Err.badRequest("Bad or no JSON in '" + seq + "'"));
+                } catch (Exception e) {
+                    return Exceptions.chuck(e);
                 }
             } else {
                 HttpEvent evt = deps.getInstance(HttpEvent.class);
+                MediaType mt = evt.header(Headers.CONTENT_TYPE);
+                if (mt == null) {
+                    mt = MediaType.ANY_TYPE;
+                }
                 try {
-                    MediaType mt = evt.header(Headers.CONTENT_TYPE);
-                    if (mt == null) {
-                        mt = MediaType.ANY_TYPE;
+                    T obj = converter.readObject(evt.content(), mt, type);
+                    return new Acteur.ConsumedLockedState(obj);
+                } catch (InvalidInputException e) {
+                    List<String> pblms = new LinkedList<>();
+                    for (Problem p : e.getProblems()) {
+                        pblms.add(p.getMessage());
                     }
-                    try {
-                        T obj = converter.readObject(evt.content(), mt, type);
-                        return new Acteur.ConsumedLockedState(obj);
-                    } catch (InvalidInputException e) {
-                        List<String> pblms = new LinkedList<>();
-                        for (Problem p : e.getProblems()) {
-                            pblms.add(p.getMessage());
-                        }
-                        return new Acteur.RespondWith(Err.badRequest("Invalid data").put("problems", pblms));
-                    }
+                    return new Acteur.RespondWith(Err.badRequest("Invalid data").put("problems", pblms));
                 } catch (IOException ex) {
-//                Logger.getLogger(ActeurFactory.class.getName()).log(Level.SEVERE, null, ex);
                     return new Acteur.RespondWith(Err.badRequest("Bad or no JSON\n" + stackTrace(ex)));
+                } catch (Exception ex) {
+                    return Exceptions.chuck(ex);
                 }
             }
         }
@@ -772,7 +777,6 @@ public class ActeurFactory {
             return "Match Path (regex)";
         }
     }
-
 
     /**
      * Checks the IF_NONE_MATCH header and compares it with the value from the

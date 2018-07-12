@@ -39,7 +39,7 @@ public enum Method implements com.mastfrog.acteur.util.HttpMethod {
     GET, PUT, POST, OPTIONS, HEAD, DELETE, TRACE, CONNECT,
     // WEBDAV
     PROPFIND, PROPPATCH, MKCOL, COPY, MOVE, LOCK, UNLOCK,
-    UNKNOWN;
+    UNKNOWN, PATCH;
 
     private final AsciiString stringValue;
 
@@ -49,7 +49,49 @@ public enum Method implements com.mastfrog.acteur.util.HttpMethod {
 
     public static Method get(HttpRequest req) {
         HttpMethod m = req.method();
+        if (m == HttpMethod.GET) {
+            return GET;
+        } else if (m == HttpMethod.PUT) {
+            return PUT;
+        } else if (m == HttpMethod.POST) {
+            return POST;
+        } else if (m == HttpMethod.PUT) {
+            return PUT;
+        } else if (m == HttpMethod.OPTIONS) {
+            return OPTIONS;
+        } else if (m == HttpMethod.HEAD) {
+            return HEAD;
+        } else if (m == HttpMethod.PATCH) {
+            return PATCH;
+        } else if (m == HttpMethod.TRACE) {
+            return TRACE;
+        } else if (m == HttpMethod.CONNECT) {
+            return CONNECT;
+        }
         return Method.valueOf(m.name().toUpperCase());
+    }
+
+    public HttpMethod toHttpMethod() {
+        switch(this) {
+            case GET :
+                return HttpMethod.GET;
+            case PUT :
+                return HttpMethod.PUT;
+            case POST :
+                return HttpMethod.POST;
+            case OPTIONS :
+                return HttpMethod.OPTIONS;
+            case HEAD :
+                return HttpMethod.HEAD;
+            case PATCH :
+                return HttpMethod.PATCH;
+            case TRACE :
+                return HttpMethod.TRACE;
+            case CONNECT :
+                return HttpMethod.CONNECT;
+            default :
+                return HttpMethod.valueOf(name());
+        }
     }
 
     @Override
@@ -59,6 +101,15 @@ public enum Method implements com.mastfrog.acteur.util.HttpMethod {
 
     public CharSequence toCharSequence() {
         return stringValue;
+    }
+
+    public Method find(Object o) {
+        for (Method m : values()) {
+            if (m.is(o)) {
+                return m;
+            }
+        }
+        return null;
     }
 
     public static Method valueOf(CharSequence seq) {

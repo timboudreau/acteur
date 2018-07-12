@@ -61,6 +61,7 @@ import org.junit.runner.RunWith;
 public class InternalsTest {
 
     private static final ZonedDateTime WHEN = ZonedDateTime.now().with(ChronoField.MILLI_OF_SECOND, 0);
+    private static final Duration DUR = Duration.ofSeconds(30);
 
     @Test
     public void testHeadersSharedBetweenActeurs(TestHarness harn) throws Throwable {
@@ -73,29 +74,32 @@ public class InternalsTest {
 
     @Test
     public void testDateHeaderHandling(TestHarness harn) throws Throwable {
-        ZonedDateTime when = harn.get("lm").go().assertHasHeader(Headers.LAST_MODIFIED)
+        ZonedDateTime when = harn.get("lm")
+                .setTimeout(DUR)
+                .go().assertHasHeader(Headers.LAST_MODIFIED)
                 .assertContent("Got here.")
                 .getHeader(Headers.LAST_MODIFIED);
         assertEquals(when.toInstant(), WHEN.toInstant());
 
-        harn.get("lm").addHeader(Headers.IF_MODIFIED_SINCE, when).go().assertStatus(NOT_MODIFIED);
-        harn.get("lm").addHeader(Headers.IF_MODIFIED_SINCE, WHEN).go().assertStatus(NOT_MODIFIED);
-        harn.get("lm").addHeader(Headers.IF_MODIFIED_SINCE, WHEN.plus(Duration.ofHours(1))).go().assertStatus(NOT_MODIFIED);
-        harn.get("lm").addHeader(Headers.IF_MODIFIED_SINCE, WHEN.minus(Duration.ofHours(1))).go().assertStatus(OK);
+        harn.get("lm").addHeader(Headers.IF_MODIFIED_SINCE, when).setTimeout(DUR).go().assertStatus(NOT_MODIFIED);
+        harn.get("lm").addHeader(Headers.IF_MODIFIED_SINCE, WHEN).setTimeout(DUR).go().assertStatus(NOT_MODIFIED);
+        harn.get("lm").addHeader(Headers.IF_MODIFIED_SINCE, WHEN.plus(Duration.ofHours(1))).setTimeout(DUR).go().assertStatus(NOT_MODIFIED);
+        harn.get("lm").addHeader(Headers.IF_MODIFIED_SINCE, WHEN.minus(Duration.ofHours(1))).setTimeout(DUR).go().assertStatus(OK);
         assertTrue("Startup hook was not run", HOOK_RAN.get() > 0);
     }
 
     @Test
     public void testEmptyResponsesHaveZeroLengthContentLengthHeader(TestHarness harn) throws Throwable {
-        harn.get("/nothing").go().await().assertHeader(Headers.CONTENT_LENGTH, 0L).assertStatus(OK);
+        assertNull(harn.get("/nothing").setTimeout(DUR).go().assertStatus(OK).getHeader(Headers.CONTENT_LENGTH));
+        assertNull(harn.get("/nothingchunked").setTimeout(DUR).go().assertStatus(OK).getHeader(Headers.CONTENT_LENGTH));
     }
 
     @Test
     public void testEmptyResponsesForContentlessCodesHaveNoContentLengthHeader(TestHarness harn) throws Throwable {
-        assertNull("Should not have had a content length header", harn.get("/less").go().await()
+        assertNull("Should not have had a content length header", harn.get("/less").go()
                 .assertStatus(NOT_MODIFIED)
                 .getHeader(Headers.CONTENT_LENGTH));
-        assertNull("Should not have had a content length header", harn.get("/evenless").go().await()
+        assertNull("Should not have had a content length header", harn.get("/evenless").go()
                 .assertStatus(NO_CONTENT)
                 .getHeader(Headers.CONTENT_LENGTH));
     }
@@ -115,6 +119,7 @@ public class InternalsTest {
     }
 
     private static final AtomicInteger HOOK_RAN = new AtomicInteger();
+
     static final class HookImpl extends ServerLifecycleHook {
 
         @Inject
@@ -139,6 +144,7 @@ public class InternalsTest {
             add(DoLittlePage.class);
             add(DoLessPage.class);
             add(DoEvenLessPage.class);
+            add(NothingChunked.class);
         }
 
         @Methods(GET)
@@ -170,11 +176,31 @@ public class InternalsTest {
         @Methods(GET)
         @Path("/nothing")
         static class DoLittlePage extends Page {
+
             DoLittlePage() {
                 add(DoLittleActeur.class);
             }
+
             static class DoLittleActeur extends Acteur {
+
                 DoLittleActeur() {
+                    ok();
+                }
+            }
+        }
+
+        @Methods(GET)
+        @Path("/nothingchunked")
+        static class NothingChunked extends Page {
+
+            NothingChunked() {
+                add(NothingChunkedActeur.class);
+            }
+
+            static class NothingChunkedActeur extends Acteur {
+
+                NothingChunkedActeur() {
+                    setChunked(true);
                     ok();
                 }
             }
@@ -183,10 +209,13 @@ public class InternalsTest {
         @Methods(GET)
         @Path("/less")
         static class DoLessPage extends Page {
+
             DoLessPage() {
                 add(DoLessActeur.class);
             }
+
             static class DoLessActeur extends Acteur {
+
                 DoLessActeur() {
                     reply(NOT_MODIFIED);
                 }
@@ -196,16 +225,18 @@ public class InternalsTest {
         @Methods(GET)
         @Path("/evenless")
         static class DoEvenLessPage extends Page {
+
             DoEvenLessPage() {
                 add(DoEvenLessActeur.class);
             }
+
             static class DoEvenLessActeur extends Acteur {
+
                 DoEvenLessActeur() {
                     reply(NO_CONTENT);
                 }
             }
         }
-
 
         @Methods(GET)
         @Path("/shared")

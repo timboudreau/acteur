@@ -71,7 +71,7 @@ public interface Event<T> {
      * @throws IOException if the body is malformed or for some other reason,
      * cannot be parsed
      */
-    <T> T jsonContent(Class<T> type) throws IOException;
+    <T> T jsonContent(Class<T> type) throws Exception;
 
     ChannelHandlerContext ctx();
 
@@ -125,7 +125,7 @@ public interface Event<T> {
      * @deprecated use jsonContent()
      */
     @Deprecated
-    default <T> T getContentAsJSON(Class<T> type) throws IOException {
+    default <T> T getContentAsJSON(Class<T> type) throws Exception {
         return jsonContent(type);
     }
 

@@ -24,6 +24,7 @@
 package com.mastfrog.acteur;
 
 import com.google.common.net.MediaType;
+import static com.mastfrog.acteur.Help.HELP_HTML_URL_PATTERN_SETTINGS_KEY;
 import static com.mastfrog.acteur.Help.HELP_URL_PATTERN_SETTINGS_KEY;
 import com.mastfrog.acteur.headers.Headers;
 import static com.mastfrog.acteur.headers.Method.GET;
@@ -64,7 +65,8 @@ final class HelpPage extends Page {
     @SuppressWarnings("deprecation")
     HelpPage(ActeurFactory af, Settings settings) {
         String pattern = settings.getString(HELP_URL_PATTERN_SETTINGS_KEY, "^help$");
-        add(af.matchPath(pattern));
+        String pattern2 = settings.getString(HELP_HTML_URL_PATTERN_SETTINGS_KEY, "^help\\.html$");
+        add(af.matchPath(false, pattern, pattern2));
         add(af.sendNotModifiedIfIfModifiedSinceHeaderMatches());
         add(HelpActeur.class);
     }
@@ -75,7 +77,7 @@ final class HelpPage extends Page {
 
         @Inject
         HelpActeur(Application app, HttpEvent evt, Charset charset, ZonedDateTime serverStartTime) {
-            this.html = "true".equals(evt.urlParameter("html"));
+            this.html = "true".equals(evt.urlParameter("html")) || evt.path().lastElement().extensionEquals("html");
             if (html) {
                 add(Headers.CONTENT_TYPE, MediaType.HTML_UTF_8.withCharset(charset));
             } else {

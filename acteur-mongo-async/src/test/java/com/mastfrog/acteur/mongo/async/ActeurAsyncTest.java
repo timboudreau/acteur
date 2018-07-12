@@ -420,7 +420,7 @@ public class ActeurAsyncTest {
     static class InsertManyStuff extends Acteur {
 
         @Inject
-        InsertManyStuff(HttpEvent evt, MongoUpdater up, @Named("stuff") MongoCollection<Document> stuff) throws IOException {
+        InsertManyStuff(HttpEvent evt, MongoUpdater up, @Named("stuff") MongoCollection<Document> stuff) throws Exception {
             Thing[] things = evt.jsonContent(Thing[].class);
             if (things.length == 0) {
                 badRequest("Not enough things");

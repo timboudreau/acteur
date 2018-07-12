@@ -33,7 +33,7 @@ import com.mastfrog.util.Strings;
 public enum CacheControlTypes {
     Public, Private, must_revalidate, proxy_revalidate, no_cache, no_store, 
     max_age(true), max_stale(true), min_fresh(true), 
-    no_transform, only_if_cached;
+    no_transform, only_if_cached, s_maxage(true), immutable;
     final boolean takesValue;
 
     private CacheControlTypes(boolean takesValue) {

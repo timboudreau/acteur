@@ -27,7 +27,9 @@ import com.google.common.net.MediaType;
 import com.mastfrog.acteur.util.BasicCredentials;
 import com.mastfrog.acteur.util.CacheControl;
 import com.mastfrog.acteur.util.Connection;
+import com.mastfrog.acteur.util.FrameOptions;
 import com.mastfrog.acteur.util.Realm;
+import com.mastfrog.acteur.util.StrictTransportSecurity;
 import com.mastfrog.util.Checks;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaders;
@@ -124,6 +126,9 @@ public final class Headers {
     public static final HeaderValueType<Duration> KEEP_ALIVE = new KeepAliveHeader();
     public static final HeaderValueType<CharSequence> CONTENT_DISPOSITION
             = header(HttpHeaderNames.CONTENT_DISPOSITION);
+    public static final HeaderValueType<Boolean> UPGRADE_INSECURE_REQUESTS = new BooleanHeader(AsciiString.of("upgrade-insecure-requests"));
+    public static final HeaderValueType<FrameOptions> X_FRAME_OPTIONS = new FrameOptionsHeader();
+    public static final HeaderValueType<StrictTransportSecurity> STRICT_TRANSPORT_SECURITY = new StrictTransportSecurityHeader();
 
     public static HeaderValueType<String> stringHeader(CharSequence key) {
         return new StringHeader(key);

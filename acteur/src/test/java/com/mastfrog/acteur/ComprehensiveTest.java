@@ -1,9 +1,11 @@
 package com.mastfrog.acteur;
 
 import static com.google.common.net.MediaType.PLAIN_TEXT_UTF_8;
+import static com.mastfrog.acteur.headers.Headers.CONNECTION;
+import static com.mastfrog.acteur.util.Connection.close;
 import com.mastfrog.giulius.tests.GuiceRunner;
 import com.mastfrog.giulius.tests.TestWith;
-import static com.mastfrog.netty.http.client.StateType.Closed;
+import com.mastfrog.netty.http.client.StateType;
 import com.mastfrog.netty.http.test.harness.TestHarness;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import static io.netty.handler.codec.http.HttpResponseStatus.OK;
@@ -55,9 +57,12 @@ public class ComprehensiveTest {
 
     @Test(timeout = TIMEOUT_MILLIS)
     public void testNothing(TestHarness harness) throws Throwable {
-        harness.get("nothing").setTimeout(TIMEOUT).go()
+        harness.get("nothing")
+                .addHeader(CONNECTION, close)
+                .setTimeout(TIMEOUT)
+                .go()
                 .assertStatus(HttpResponseStatus.PAYMENT_REQUIRED)
-                .assertStateSeen(Closed);
+                .assertStateSeen(StateType.ContentReceived);
     }
 
     @Test(timeout = TIMEOUT_MILLIS)

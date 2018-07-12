@@ -249,7 +249,7 @@ public class URLTest {
     @Test
     public void testUnescape2() {
         StringBuilder sb = new StringBuilder();
-        for (char c = 0; c < 5; c++) {
+        for (char c = 1; c < 6; c++) {
             sb.append(c);
         }
         String unescaped = sb.toString();
@@ -480,7 +480,7 @@ public class URLTest {
         assertEquals(" ", URLBuilder.unescape("%20"));
 
         StringBuilder sb = new StringBuilder();
-        for (char c = 0; c < 255; c++) {
+        for (char c = 1; c < 255; c++) {
             if (c == 25) {
                 continue;
             }

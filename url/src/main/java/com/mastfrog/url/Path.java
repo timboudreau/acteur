@@ -40,7 +40,7 @@ import java.util.regex.Pattern;
 import org.netbeans.validation.localization.LocalizationSupport;
 
 /**
- * The path portion of a URL.  In particular, this class deals with normalizing
+ * The path portion of a URL. In particular, this class deals with normalizing
  * relative (..) references, and leading and trailing slashes.
  *
  * @author Tim Boudreau
@@ -85,6 +85,7 @@ public final class Path implements URLComponent, Iterable<PathElement> {
 
         // http://foo.com/relative/path/../../stuff = http://foo.com/stuff
         // http://foo.com/./,/stuff = http://foo.com/stuff
+//        boolean prevSlash = false;
         try {
             for (int i = 0; i < ch.length; i++) {
                 char c = ch[i];
@@ -93,6 +94,10 @@ public final class Path implements URLComponent, Iterable<PathElement> {
                         if (i == 0) {
                             continue;
                         }
+//                        if (prevSlash) {
+//                            continue;
+//                        }
+//                        prevSlash = true;
                         if (i == ch.length - 1) {
                             if (decode) {
                                 l.add(new PathElement(URLDecoder.decode(sb.toString(), "UTF-8"), true, decode));
@@ -110,6 +115,7 @@ public final class Path implements URLComponent, Iterable<PathElement> {
                         sb.setLength(0);
                         break;
                     default:
+//                        prevSlash = false;
                         sb.append(c);
                 }
             }
@@ -149,7 +155,7 @@ public final class Path implements URLComponent, Iterable<PathElement> {
     }
 
     public PathElement lastElement() {
-        return elements.length == 0 ? new PathElement("") : elements[elements.length-1];
+        return elements.length == 0 ? new PathElement("") : elements[elements.length - 1];
     }
 
     /**
@@ -162,9 +168,8 @@ public final class Path implements URLComponent, Iterable<PathElement> {
     }
 
     /**
-     * Create a new path, replacing any path <i>elements</i> that exactly
-     * match the passed string with new elements that match the
-     * replacement.
+     * Create a new path, replacing any path <i>elements</i> that exactly match
+     * the passed string with new elements that match the replacement.
      *
      * @param old The string to look for
      * @param nue The string to replace it with
@@ -182,10 +187,57 @@ public final class Path implements URLComponent, Iterable<PathElement> {
         return new Path(els);
     }
 
-    NormalizeResult normalizePath() {
-        List<PathElement> result = new ArrayList<>();
+    public final Path elideEmptyElements() {
+        boolean returnSelf = true;
+        outer:
+        for (int i = 0; i < this.elements.length; i++) {
+            String raw = elements[i].rawText();
+            if (raw.isEmpty()) {
+                returnSelf = false;
+                break;
+            }
+            switch (raw) {
+                case ".":
+                case "..":
+                    returnSelf = false;
+                    break outer;
+            }
+        }
+        if (returnSelf) {
+            return this;
+        }
+        List<PathElement> result = new ArrayList<>(size());
         boolean illegal = false;
         for (PathElement e : elements) {
+            if (e.rawText().isEmpty()) {
+                continue;
+            }
+            if (".".equals(e.rawText())) {
+                continue;
+            }
+            if ("..".equals(e.rawText())) {
+                if (result.size() > 0) {
+                    result.remove(result.size() - 1);
+                    if (result.size() > 0) {
+                        result.set(result.size() - 1, result.get(result.size() - 1).toTrailingSlashElement());
+                    }
+                    continue;
+                } else {
+                    illegal = true;
+                }
+            }
+            result.add(e);
+        }
+        return new Path(result.toArray(new PathElement[result.size()]));
+    }
+
+    NormalizeResult normalizePath() {
+        List<PathElement> result = new ArrayList<>(size());
+        boolean illegal = false;
+        for (PathElement e : elements) {
+//            if (e.rawText().isEmpty()) {
+//                continue;
+//            }
             if (".".equals(e.rawText())) {
                 continue;
             }
@@ -309,8 +361,8 @@ public final class Path implements URLComponent, Iterable<PathElement> {
     }
 
     /**
-     * Create a string version of this path, prepending a leading slash
-     * if necessary.
+     * Create a string version of this path, prepending a leading slash if
+     * necessary.
      *
      * @return A string
      */

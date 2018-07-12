@@ -81,9 +81,8 @@ public class PutTest {
                             if (state.get() instanceof ByteBuf) {
                                 ByteBuf buf = (ByteBuf) state.get();
                                 buf.resetReaderIndex();
-                    }
-                }
-
+                            }
+                        }
                     })
                     .setBody("Test " + i + " iter", MediaType.PLAIN_TEXT_UTF_8).go()
                     .await()
@@ -159,7 +158,6 @@ public class PutTest {
                 ByteBuf buf = req.content();
                 out.write(buf);
                 ran = true;
-
             } else {
                 throw new AssertionError("Not a FullHttpRequest: " + evt.request() + " " + Types.list(evt.request().getClass()));
             }

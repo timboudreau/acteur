@@ -28,6 +28,7 @@
         <module>netty-websocket-pubsub</module>
         <module>acteur-annotations</module>
         <module>acteur-annotation-processors</module>
+        <module>acteur-server-sent-events</module>
     </modules>
     <url>https://github.com/timboudreau/acteur</url>
     <scm>

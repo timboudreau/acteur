@@ -23,23 +23,13 @@
  */
 package com.mastfrog.acteur;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
 import com.mastfrog.acteur.headers.Headers;
 import com.google.common.net.MediaType;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
-import com.mastfrog.acteur.Acteur.WrapperActeur;
-import com.mastfrog.acteur.annotations.Concluders;
 import com.mastfrog.acteur.annotations.Early;
-import com.mastfrog.acteur.annotations.HttpCall;
-import com.mastfrog.acteur.annotations.Precursors;
 import com.mastfrog.acteur.debug.Probe;
 import com.mastfrog.acteur.headers.HeaderValueType;
-import com.mastfrog.acteur.preconditions.Description;
-import com.mastfrog.acteur.preconditions.Example;
-import com.mastfrog.acteur.preconditions.Examples;
-import com.mastfrog.acteur.preconditions.Examples.Case;
 import com.mastfrog.settings.SettingsBuilder;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.giulius.scope.ReentrantScope;
@@ -52,14 +42,9 @@ import com.mastfrog.acteur.spi.ApplicationControl;
 import com.mastfrog.acteur.util.ErrorHandlers;
 import com.mastfrog.acteur.util.RequestID;
 import com.mastfrog.acteurbase.InstantiatingIterators;
-import com.mastfrog.parameters.Param;
-import com.mastfrog.parameters.Params;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.util.ConfigurationError;
 import com.mastfrog.util.Checks;
-import com.mastfrog.util.Exceptions;
-import com.mastfrog.util.Strings;
-import static com.mastfrog.util.collections.CollectionUtils.toList;
 import com.mastfrog.util.perf.Benchmark;
 import com.mastfrog.util.perf.Benchmark.Kind;
 import com.mastfrog.util.thread.QuietAutoCloseable;
@@ -74,10 +59,7 @@ import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpVersion;
 import io.netty.util.AsciiString;
 import java.io.IOException;
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Modifier;
 import java.nio.charset.Charset;
 import java.time.ZonedDateTime;
@@ -86,17 +68,15 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeMap;
 import java.util.concurrent.CountDownLatch;
-import org.netbeans.validation.api.Validator;
-import org.netbeans.validation.api.builtin.stringvalidation.StringValidators;
 import com.mastfrog.graal.annotation.Expose;
+import io.netty.handler.codec.http.DefaultHttpResponse;
+import io.netty.handler.codec.http.DefaultLastHttpContent;
+import io.netty.handler.codec.http.FullHttpResponse;
 
 /**
  * A web application. Principally, the application is a collection of Page
@@ -106,7 +86,7 @@ import com.mastfrog.graal.annotation.Expose;
  *
  * @author Tim Boudreau
  */
-@Expose(methods=@Expose.MethodInfo(name = "control", parameterTypes = {}))
+@Expose(methods = @Expose.MethodInfo(name = "control", parameterTypes = {}))
 public class Application implements Iterable<Page> {
 
     private static final Set<String> checkedTypes = Collections.synchronizedSet(new HashSet<String>());
@@ -172,6 +152,12 @@ public class Application implements Iterable<Page> {
         }
     }
 
+    final ChannelFutureListener errorLoggingListener = future -> {
+        if (!future.isSuccess() && future.cause() != null) {
+            internalOnError(future.cause());
+        }
+    };
+
     public boolean hasEarlyPages() {
         return !this.earlyPages.isEmpty();
     }
@@ -227,8 +213,14 @@ public class Application implements Iterable<Page> {
         @Override
         @SuppressWarnings("ThrowableResultIgnored")
         public void internalOnError(Throwable err) {
-            Checks.notNull("err", err);
-            Application.this.internalOnError(err);
+            if (err != null) {
+                Application.this.internalOnError(err);
+            }
+        }
+
+        public ChannelFuture logFailure(ChannelFuture future) {
+            Checks.notNull("future", future).addListener(Application.this.errorLoggingListener);
+            return future;
         }
     };
 
@@ -255,252 +247,14 @@ public class Application implements Iterable<Page> {
         return scope;
     }
 
-    private static String deConstantNameify(String name) {
-        StringBuilder sb = new StringBuilder();
-        boolean capitalize = true;
-        for (char c : name.toCharArray()) {
-            if (c == '_') {
-                sb.append(' ');
-            } else {
-                if (capitalize) {
-                    c = Character.toUpperCase(c);
-                    capitalize = false;
-                } else {
-                    c = Character.toLowerCase(c);
-                }
-                sb.append(c);
-            }
-        }
-        return sb.toString();
-    }
-
-    private void introspectAnnotation(Annotation a, Map<String, Object> into) throws IllegalAccessException, IllegalArgumentException, InvocationTargetException {
-        if (a instanceof HttpCall) {
-            return;
-        }
-        if (a instanceof Precursors) {
-            Precursors p = (Precursors) a;
-            for (Class<?> t : p.value()) {
-                for (Annotation anno : t.getAnnotations()) {
-                    introspectAnnotation(anno, into);
-                }
-            }
-        } else if (a instanceof Concluders) {
-            Concluders c = (Concluders) a;
-            for (Class<?> t : c.value()) {
-                for (Annotation anno : t.getAnnotations()) {
-                    introspectAnnotation(anno, into);
-                }
-            }
-        } else if (a instanceof Params) {
-            Params p = (Params) a;
-            for (Param par : p.value()) {
-                String name = par.value();
-                Map<String, Object> desc = new LinkedHashMap<>();
-                desc.put("type", par.type().toString());
-                if (!par.defaultValue().isEmpty()) {
-                    desc.put("Default value", par.defaultValue());
-                }
-                if (!par.example().isEmpty()) {
-                    desc.put("Example", par.example());
-                }
-                desc.put("required", par.required());
-                List<String> constraints = new LinkedList<>();
-                for (StringValidators validator : par.constraints()) {
-                    constraints.add(deConstantNameify(validator.name()));
-                }
-                for (Class<? extends Validator<String>> c : par.validators()) {
-                    Description des = c.getAnnotation(Description.class);
-                    if (des == null) {
-                        constraints.add(c.getSimpleName());
-                    } else {
-                        constraints.add(des.value());
-                    }
-                }
-                if (!constraints.isEmpty()) {
-                    desc.put("constraints", constraints);
-                }
-                into.put(name, desc);
-            }
-        } else if (a instanceof Examples) {
-            Examples e = (Examples) a;
-            int ix = 1;
-            for (Case kase : e.value()) {
-                Map<String, Object> m = new TreeMap<>();
-                if (!kase.title().isEmpty()) {
-                    m.put("title", kase.title());
-                }
-                if (!kase.description().isEmpty()) {
-                    m.put("description", kase.description());
-                }
-                Example ex = kase.value();
-                m.put("Sample URL", ex.value());
-                if (ex.inputType() != Object.class) {
-                    Object inp = reflectAndJsonify(ex.inputField(), ex.inputType());
-                    m.put("Sample Input", inp);
-                }
-                if (ex.outputType() != Object.class) {
-                    Object out = reflectAndJsonify(ex.outputField(), ex.outputType());
-                    m.put("Sample Output", out);
-                }
-                into.put("example-" + ix++, m);
-            }
-        } else {
-            Class<? extends Annotation> type = a.annotationType();
-            String name = type.getSimpleName();
-            for (java.lang.reflect.Method m : type.getMethods()) {
-                switch (m.getName()) {
-                    case "annotationType":
-                    case "toString":
-                    case "hashCode":
-                        break;
-                    default:
-                        if (m.getParameterTypes().length == 0 && m.getReturnType() != null) {
-                            Object mr = m.invoke(a);
-                            if (mr.getClass().isArray()) {
-                                mr = toList(mr);
-                            }
-//                            if (mr instanceof List<?>) {
-//                                List<Object> mrs = new ArrayList<>(5);
-//                                for (Object o : ((List<?>) mr)) {
-//                                    if (o instanceof Annotation) {
-//                                        Map<String, Object> ar = new LinkedHashMap<>();
-//                                        introspectAnnotation((Annotation) o, ar);
-//                                        mrs.add(ar);
-//                                    } else {
-//                                        mrs.add(o);
-//                                    }
-//                                }
-//                                into.put(name, mrs);
-//                            } else if (mr instanceof Annotation) {
-//                                Map<String, Object> ar = new LinkedHashMap<>();
-//                                introspectAnnotation((Annotation) mr, ar);
-//                                into.put(name, ar);
-//                            } else {
-                                into.put(m.getName(), mr);
-//                            }
-                        }
-                }
-            }
-            if (type.getAnnotation(Description.class) != null) {
-                Description d = type.getAnnotation(Description.class);
-                into.put("Description", d.value());
-            }
-        }
-    }
-
-    private String reflectAndJsonify(String field, Class<?> type) {
-        try {
-            Field f = type.getDeclaredField(field);
-            f.setAccessible(true);
-            if (f.getType() == String.class) {
-                String res = (String) f.get(null);
-                if (res != null) {
-                    res = res.replaceAll("\\&", "&amp;");
-                    res = Strings.literalReplaceAll("\"", "&quot;", res);
-                    res = Strings.literalReplaceAll(">", "&gt;", res);
-                    res = Strings.literalReplaceAll("<", "&lt;", res);
-                }
-                return "\n<pre>" + res + "</pre>\n";
-            }
-            Object o = f.get(null);
-            ObjectMapper mapper = deps.getInstance(ObjectMapper.class)
-                    .copy()
-                    .enable(SerializationFeature.INDENT_OUTPUT)
-                    .enable(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS);
-            return "<pre>" + mapper.writeValueAsString(o)
-                    .replace("\"", "&quot;") + "</pre>";
-        } catch (Exception e) {
-            return "Could not lookup and generate JSON from " + type.getName() + "." + field + ": "
-                    + e;
-        }
-    }
+    @Inject
+    private HelpGenerator helpGenerator;
 
     Map<String, Object> describeYourself() {
         Map<String, Object> m = new HashMap<>();
         List<Object> allPagesAndPageTypes = new ArrayList<>(this.earlyPages);
         allPagesAndPageTypes.addAll(this.pages);
-        for (Object o : allPagesAndPageTypes) {
-            if (o instanceof Class<?>) {
-                Class<?> type = (Class<?>) o;
-                Map<String, Object> pageDescription = new HashMap<>();
-                String typeName = type.getName();
-                if (typeName.endsWith(HttpCall.GENERATED_SOURCE_SUFFIX)) {
-                    typeName = typeName.substring(0, typeName.length() - HttpCall.GENERATED_SOURCE_SUFFIX.length());
-                }
-                pageDescription.put("type", type.getName());
-                String className = type.getSimpleName();
-                if (className.endsWith(HttpCall.GENERATED_SOURCE_SUFFIX)) {
-                    className = className.substring(0, className.length() - HttpCall.GENERATED_SOURCE_SUFFIX.length());
-                }
-                m.put(className, pageDescription);
-                Annotation[] l = type.getAnnotations();
-                for (Annotation a : l) {
-                    if (a instanceof HttpCall) {
-                        continue;
-                    }
-                    if (a instanceof Example) {
-                        Example ex = (Example) a;
-                        if (!ex.value().isEmpty()) {
-                            pageDescription.put("Sample URL", ((Example) a).value());
-                        }
-                        if (ex.inputType() != Object.class) {
-                            pageDescription.put("Sample Input", reflectAndJsonify(ex.inputField(), ex.inputType()));
-                        }
-                        if (ex.outputType() != Object.class) {
-                            pageDescription.put("Sample Output", reflectAndJsonify(ex.outputField(), ex.outputType()));
-                        }
-                        continue;
-                    }
-                    Map<String, Object> annoDescription = new HashMap<>();
-                    pageDescription.put(a.annotationType().getSimpleName(), annoDescription);
-                    try {
-                        introspectAnnotation(a, annoDescription);
-                    } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
-                        Exceptions.printStackTrace(ex);
-                    }
-                    if (annoDescription.size() == 1 && "value".equals(annoDescription.keySet().iterator().next())) {
-                        pageDescription.put(a.annotationType().getSimpleName(), annoDescription.values().iterator().next());
-                    }
-                }
-                try {
-                    Page p = (Page) deps.getInstance(type);
-                    p.application = this;
-                    for (Object acteur : p.acteurs(isDefaultCorsHandlingEnabled())) {
-                        Class<?> at = null;
-                        if (acteur instanceof Acteur.WrapperActeur) {
-                            at = ((WrapperActeur) acteur).type();
-                        } else if (acteur instanceof Class<?>) {
-                            at = (Class<?>) acteur;
-                        }
-                        if (at != null) {
-                            Map<String, Object> callFlow = new HashMap<>();
-                            for (Annotation a1 : at.getAnnotations()) {
-                                introspectAnnotation(a1, callFlow);
-                            }
-                            if (!className.equals(at.getSimpleName())) {
-                                if (!callFlow.isEmpty()) {
-                                    pageDescription.put(at.getSimpleName(), callFlow);
-                                }
-                            }
-                        } else if (acteur instanceof Acteur) {
-                            Map<String, Object> callFlow = new HashMap<>();
-                            for (Annotation a1 : acteur.getClass().getAnnotations()) {
-                                introspectAnnotation(a1, callFlow);
-                            }
-                            ((Acteur) acteur).describeYourself(callFlow);
-                            if (!callFlow.isEmpty()) {
-                                pageDescription.put(acteur.toString(), callFlow);
-                            }
-                        }
-                    }
-                } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
-                    // A page may legitiimately be uninstantiable
-                }
-            } else if (o instanceof Page) {
-                ((Page) o).describeYourself(m);
-            }
-        }
+        helpGenerator.generate(this, allPagesAndPageTypes, m);
         return m;
     }
 
@@ -599,7 +353,7 @@ public class Application implements Iterable<Page> {
         Headers.write(Headers.SERVER, getName(), response);
         Headers.write(Headers.DATE, ZonedDateTime.now(), response);
         if (debug) {
-            String pth = event instanceof HttpEvent ? ((HttpEvent) event).path().toString() : "";
+            String pth = event instanceof HttpEvent ? ((HttpEvent) event).path().toString() : "-";
             Headers.write(X_REQ_PATH, pth, response);
             Headers.write(X_ACTEUR, action.getClass().getName(), response);
             Headers.write(X_PAGE, page.getClass().getName(), response);
@@ -799,9 +553,14 @@ public class Application implements Iterable<Page> {
         HttpResponse response = createNotFoundResponse(event);
         onBeforeRespond(id, event, response.status());
         probe.onFallthrough(id, event);
-        ChannelFuture fut = channel.writeAndFlush(response);
+        ChannelFuture fut = channel.write(new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.NOT_FOUND, response.headers()));
+        if (response instanceof FullHttpResponse) {
+            fut = channel.writeAndFlush(new DefaultLastHttpContent(((FullHttpResponse) response).content()));
+        } else {
+            fut = channel.writeAndFlush(DefaultLastHttpContent.EMPTY_LAST_CONTENT);
+        }
         boolean keepAlive = event instanceof HttpEvent ? ((HttpEvent) event).requestsConnectionStayOpen() : false;
-        if (keepAlive) {
+        if (!keepAlive) {
             fut.addListener(ChannelFutureListener.CLOSE);
         }
     }

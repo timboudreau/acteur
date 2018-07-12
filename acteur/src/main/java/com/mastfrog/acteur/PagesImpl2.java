@@ -27,9 +27,11 @@ import com.mastfrog.acteur.websocket.WebSocketUpgradeActeur;
 import com.google.common.net.MediaType;
 import com.google.inject.name.Named;
 import com.mastfrog.acteur.errors.ResponseException;
+import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.acteur.server.ServerModule;
 import static com.mastfrog.acteur.server.ServerModule.DELAY_EXECUTOR;
+import static com.mastfrog.acteur.server.ServerModule.X_INTERNAL_COMPRESS_HEADER;
 import com.mastfrog.acteur.util.CacheControl;
 import com.mastfrog.acteur.util.RequestID;
 import com.mastfrog.acteurbase.ActeurState;
@@ -44,6 +46,7 @@ import com.mastfrog.giulius.scope.ReentrantScope;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.url.Path;
 import com.mastfrog.util.Exceptions;
+import com.mastfrog.util.Strings;
 import com.mastfrog.util.collections.ArrayUtils;
 import com.mastfrog.util.collections.CollectionUtils;
 import com.mastfrog.util.collections.Converter;
@@ -57,11 +60,13 @@ import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
 import io.netty.handler.codec.http.FullHttpResponse;
+import io.netty.handler.codec.http.HttpHeaderValues;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http.HttpVersion;
 import io.netty.handler.codec.http.websocketx.BinaryWebSocketFrame;
 import io.netty.handler.codec.http.websocketx.WebSocketFrame;
+import io.netty.util.AsciiString;
 import io.netty.util.Attribute;
 import static io.netty.util.CharsetUtil.UTF_8;
 import java.io.PrintStream;
@@ -101,6 +106,10 @@ class PagesImpl2 {
 
     private final boolean renderStackTraces;
 
+    private final boolean httpCompressorEnabled;
+
+    static final HeaderValueType<CharSequence> X_BODY_GENERATOR = Headers.header(new AsciiString("X-Body-Generator"));
+
     @Inject
     PagesImpl2(Application application, Settings settings, @Named(DELAY_EXECUTOR) ScheduledExecutorService scheduler,
             DeploymentMode mode, ReentrantScope scope, @Named(ServerModule.BACKGROUND_THREAD_POOL_NAME) ExecutorService exe) {
@@ -109,8 +118,66 @@ class PagesImpl2 {
         disableFilterPathsAndMethods = settings.getBoolean("disable.filter", false);
         renderStackTraces = settings.getBoolean(ServerModule.SETTINGS_KEY_RENDER_STACK_TRACES, !mode.isProduction());
         debug = settings.getBoolean("acteur.debug", false);
+        httpCompressorEnabled = settings.getBoolean(ServerModule.HTTP_COMPRESSION, true);
         ChainRunner chr = new ChainRunner(exe, scope);
         ch = new ChainsRunner(exe, scope, chr);
+    }
+
+    /**
+     * Determine if we should use channel.write() rather than
+     * channel.writeAndFlush() when sending the HTTP headers in response to a
+     * request. Better performance can be had by delaying sending the headers
+     * until the first wad of response body is available, BUT that means the
+     * HttpContentEncoder will not get to compress the first chunk of the HTTP
+     * response, which breaks the response. So, if the response is going to get
+     * compressed by Netty's HttpContentCompressor, flush the headers
+     * immediately.
+     *
+     * @param evt The event in question
+     * @param response The response
+     * @return True if the headers need not be flushed immediately
+     */
+    private boolean canPostponeFlush(Event<?> evt, ResponseImpl response) {
+        if (!response.hasListener()) {
+            // It is a full response or has no body - flush it immediately and
+            // be done
+            return false;
+        }
+        // Websocket event - irrelevant
+        if (!(evt instanceof HttpEvent)) {
+            return false;
+        }
+        HttpEvent httpEvent = (HttpEvent) evt;
+        // If X-Internal-Compress is present, the compressor is not going to touch it anyway
+        if (response.get(X_INTERNAL_COMPRESS_HEADER) != null) {
+            return true;
+        }
+        // If compression is off, it's all a non-issue
+        if (httpCompressorEnabled) {
+            // If the content encoding is explicitly set to "identity",
+            // the compressor will ignore it
+            CharSequence contentEncoding = response.get(Headers.CONTENT_ENCODING);
+            if (contentEncoding != null && (HttpHeaderValues.IDENTITY == contentEncoding || HttpHeaderValues.IDENTITY.contentEquals(contentEncoding))) {
+                return true;
+            }
+            CharSequence seq = httpEvent.header(Headers.ACCEPT_ENCODING);
+            // If the client does not acccept compressed responses we will not be sending one
+            if (seq != null) {
+                // Do the fast test first
+                if (seq == HttpHeaderValues.GZIP_DEFLATE || seq == HttpHeaderValues.GZIP || seq == HttpHeaderValues.DEFLATE) {
+                    return false;
+                }
+                // Test for gzip
+                if (Strings.charSequenceContains(seq, HttpHeaderValues.GZIP, debug)) {
+                    return false;
+                }
+                // Test for deflate
+                if (Strings.charSequenceContains(seq, HttpHeaderValues.DEFLATE, debug)) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     public CountDownLatch onEvent(RequestID id, Event<?> event, Channel channel, Object[] defaultContext) {
@@ -268,6 +335,9 @@ class PagesImpl2 {
                 HttpResponse httpResponse = response.toResponse(event, application.charset);
                 // Allow the application to add headers
                 httpResponse = application._decorateResponse(id, event, state.getLockedPage(), acteur, httpResponse);
+                if (debug && response.hasListener()) {
+                    httpResponse.headers().add(X_BODY_GENERATOR.name(), response.listenerString());
+                }
 
                 // Abort if the client disconnected
                 if (!channel.isOpen()) {
@@ -330,7 +400,7 @@ class PagesImpl2 {
         public void uncaughtException(Thread thread, Throwable thrwbl) {
             try {
                 if (inUncaughtException) {
-                    // We have recursed - something was thrown from the ErrorActeur - 
+                    // We have recursed - something was thrown from the ErrorActeur -
                     // bail out and we'll be caught by the catch block below
                     // and write a plain response
                     throw thrwbl;
@@ -425,16 +495,21 @@ class PagesImpl2 {
                 application.onBeforeRespond(id, event, response.internalStatus());
 
                 // Send the headers
-                ChannelFuture fut = channel.writeAndFlush(resp);
+                ChannelFuture fut;
+                if (canPostponeFlush(evt, response)) {
+                    // Better performance if we delay sending the headers until
+                    // the first response chunk is flushed, which is the responsibility
+                    // of the listener. So, here we'll just use write(), and let
+                    // whatever write the listener does cause a flush
+                    fut = channel.write(resp);
+                } else {
+                    fut = channel.writeAndFlush(resp);
+                }
 
-                fut.addListener((ChannelFutureListener) (ChannelFuture future) -> {
-                    if (!future.isSuccess() && future.cause() != null) {
-                        application.internalOnError(future.cause());
-                    }
-                });
+                fut.addListener(application.errorLoggingListener);
 
                 final Page pg = state.getLockedPage();
-                ChannelFuture bodyFuture = response.sendMessage(event, fut, resp);
+                ChannelFuture bodyFuture = response.sendMessage(event, fut, resp, response.hasListener());
                 if (bodyFuture == fut && resp instanceof FullHttpResponse) {
                     // In the case of keep-alive connections (at least where no listeners
                     // flushing responses later are involved), let database connections, etc.
@@ -442,6 +517,9 @@ class PagesImpl2 {
                     // alive for some time.
                     // XXX need to solve for the case of flushing multiple chunks with listeners
                     closeables.closeOn(fut);
+                }
+                if (bodyFuture != fut && !response.hasListener()) {
+                    bodyFuture.addListener(application.errorLoggingListener);
                 }
                 application.onAfterRespond(id, event, acteur, pg, state, HttpResponseStatus.OK, resp);
                 return bodyFuture;

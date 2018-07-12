@@ -29,7 +29,9 @@ import com.mastfrog.acteur.server.EventLoopFactory.DefaultEventLoopFactory;
 import static com.mastfrog.acteur.server.ServerModule.EVENT_THREADS;
 import static com.mastfrog.acteur.server.ServerModule.WORKER_THREADS;
 import com.mastfrog.giulius.thread.ThreadCount;
+import com.mastfrog.settings.Settings;
 import io.netty.bootstrap.ServerBootstrap;
+import io.netty.channel.ChannelFactory;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.ServerChannel;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -52,13 +54,34 @@ public abstract class EventLoopFactory {
 
     public abstract EventLoopGroup getWorkerGroup();
 
-    protected Class <? extends ServerChannel> channelType() {
+    protected Class<? extends ServerChannel> channelType() {
         return NioServerSocketChannel.class;
     }
 
+    protected ChannelFactory<? extends ServerChannel> channelFactory() {
+        if (channelType() == NioServerSocketChannel.class) {
+            return new NioServerChannelFactory(false);
+        }
+        return null;
+    }
+
     protected ServerBootstrap configureBootstrap(ServerBootstrap bootstrap) {
-        return bootstrap.group(getEventGroup(), getWorkerGroup())
-                .channel(channelType());
+        bootstrap.group(getEventGroup(), getWorkerGroup());
+        ChannelFactory<? extends ServerChannel> channelFactory = channelFactory();
+        if (channelFactory == null) {
+            try {
+                bootstrap.channel(channelType());
+            } catch (IllegalStateException ex) {
+                // a bootstrap configurer already set it - ok
+            }
+        } else {
+            try {
+                bootstrap.channelFactory(channelFactory);
+            } catch (IllegalStateException ex) {
+                // a bootstrap configurer already set it - ok
+            }
+        }
+        return bootstrap;
     }
 
     @Singleton
@@ -66,14 +89,21 @@ public abstract class EventLoopFactory {
 
         private final EventLoopGroup events;
         private final EventLoopGroup workers;
+        private final boolean debug;
 
         @Inject
         DefaultEventLoopFactory(@Named(EVENT_THREADS) Executor eventThreadFactory,
                 @Named(EVENT_THREADS) ThreadCount eventThreadCount,
                 @Named(WORKER_THREADS) Executor workerThreadFactory,
-                @Named(WORKER_THREADS) ThreadCount workerThreadCount) {
+                @Named(WORKER_THREADS) ThreadCount workerThreadCount,
+                Settings settings) {
+            debug = settings.getBoolean("channel.debug", false);
             events = new NioEventLoopGroup(eventThreadCount.get(), eventThreadFactory);
             workers = new NioEventLoopGroup(workerThreadCount.get(), workerThreadFactory);
+        }
+
+        protected ChannelFactory<? extends ServerChannel> channelFactory() {
+            return new NioServerChannelFactory(debug);
         }
 
         @Override

@@ -52,6 +52,7 @@ import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.QueryStringDecoder;
 import io.netty.util.AsciiString;
 import io.netty.util.CharsetUtil;
+import static io.netty.util.CharsetUtil.UTF_8;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
@@ -83,7 +84,7 @@ final class EventImpl implements HttpEvent {
         address = new InetSocketAddress("timboudreau.com", 8985); //XXX for tests
         this.channel = null;
         Codec codec = new ServerModule.CodecImpl(Providers.of(new ObjectMapper()));
-        this.converter = new ContentConverter(codec, Providers.of(Charset.defaultCharset()), null, null);
+        this.converter = new ContentConverter(codec, Providers.of(UTF_8), null);
     }
 
     public EventImpl(HttpRequest req, SocketAddress addr, ChannelHandlerContext channel, PathFactory paths, ContentConverter converter, boolean ssl) {
@@ -204,7 +205,7 @@ final class EventImpl implements HttpEvent {
     }
 
     @Override
-    public <T> T jsonContent(Class<T> type) throws IOException {
+    public <T> T jsonContent(Class<T> type) throws Exception {
         MediaType mimeType = header(Headers.CONTENT_TYPE);
         if (mimeType == null) {
             mimeType = MediaType.ANY_TYPE;

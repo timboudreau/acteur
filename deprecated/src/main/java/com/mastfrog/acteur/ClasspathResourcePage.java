@@ -63,7 +63,10 @@ import org.apache.commons.codec.binary.Base64;
  * flat files on disk.
  *
  * @author Tim Boudreau
+ * @deprecated This is Acteur 1.0 stuff.  Use the acteur-resources plugin which
+ * covers disk and classpath based resources.
  */
+@Deprecated
 public abstract class ClasspathResourcePage extends Page {
 
     private static Map<Class<?>, Map<Path, Integer>> sizes = new HashMap<>();

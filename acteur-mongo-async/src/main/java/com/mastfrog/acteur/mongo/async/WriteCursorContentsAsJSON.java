@@ -28,6 +28,7 @@ import com.mastfrog.acteur.Acteur;
 import com.mastfrog.acteur.Closables;
 import com.mastfrog.acteur.HttpEvent;
 import com.mastfrog.acteur.errors.Err;
+import static com.mastfrog.acteur.headers.Headers.CONTENT_ENCODING;
 import com.mastfrog.acteur.preconditions.Description;
 import com.mastfrog.acteur.spi.ApplicationControl;
 import com.mastfrog.acteurbase.Chain;
@@ -153,6 +154,8 @@ public class WriteCursorContentsAsJSON extends Acteur {
             if (res.thrwbl != null) {
                 reply(Err.of(res.thrwbl));
             } else {
+                setChunked(true);
+                add(CONTENT_ENCODING, "identity");
                 reply(HttpResponseStatus.OK);
                 setResponseBodyWriter((ChannelFutureListener) fact.create(res.cursor));
             }

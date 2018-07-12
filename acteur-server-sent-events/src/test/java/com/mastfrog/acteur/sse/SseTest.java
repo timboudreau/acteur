@@ -24,7 +24,6 @@
 
 package com.mastfrog.acteur.sse;
 
-import com.mastfrog.acteur.SilentRequestLogger;
 import com.mastfrog.giulius.tests.GuiceRunner;
 import com.mastfrog.giulius.tests.TestWith;
 import com.mastfrog.netty.http.client.StateType;

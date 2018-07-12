@@ -37,6 +37,7 @@ import com.mastfrog.acteur.server.ServerModule;
 import com.mastfrog.acteur.util.ErrorInterceptor;
 import com.mastfrog.acteur.util.Server;
 import com.mastfrog.giulius.Dependencies;
+import com.mastfrog.giulius.scope.ReentrantScope;
 import com.mastfrog.netty.http.test.harness.TestHarness;
 import com.mastfrog.settings.SettingsBuilder;
 import java.io.IOException;
@@ -74,7 +75,9 @@ public class SseApp extends Application implements Runnable {
 
         @Override
         protected void configure() {
-            install(new ServerModule<>(SseApp.class));
+            ReentrantScope scope = new ReentrantScope();
+            install(new ServerModule<SseApp>(scope, SseApp.class));
+            install(new ActeurServerSentEventsModule(scope));
             bind(ErrorInterceptor.class).to(TestHarness.class);
         }
     }

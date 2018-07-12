@@ -31,9 +31,11 @@ import com.mongodb.async.AsyncBatchCursor;
 import com.mongodb.async.SingleResultCallback;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.CompositeByteBuf;
+import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.handler.codec.http.DefaultHttpContent;
+import io.netty.handler.codec.http.DefaultLastHttpContent;
 import io.netty.handler.codec.http.LastHttpContent;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -65,6 +67,7 @@ final class CursorWriter<T> implements ChannelFutureListener, SingleResultCallba
         this.ctrl = ctrl;
         this.constant = constant;
         this.codec = codec;
+        System.out.println("Cursor writer finish headers");
     }
 
     ChannelFuture future(ChannelFuture channel) {
@@ -79,13 +82,17 @@ final class CursorWriter<T> implements ChannelFutureListener, SingleResultCallba
     }
 
     private boolean checkFailure(ChannelFuture f) {
-        if (!f.isSuccess()) {
+        // Always check isDone() - isSuccess() will be false if
+        // we have delayed sending the first headers until the
+        // first chunk is sent
+        if (f.isDone() && !f.isSuccess()) {
             try {
                 cursor.close();
                 f.channel().close();
                 return true;
             } finally {
                 if (f.cause() != null) {
+                    System.out.println("Cursor writer failure ");
                     ctrl.internalOnError(f.cause());
                 }
             }
@@ -105,6 +112,7 @@ final class CursorWriter<T> implements ChannelFutureListener, SingleResultCallba
             results.addAll(collectedResults);
             collectedResults.clear();
         }
+        System.out.println("Collected results: " + results.size());
         // Buffer count will be size + a comma for each, plus potential open and close marks and a leading comma
         int maxComponents = (results.size() * 2) + 5;
         // Use a composite byte buf for zero copy if using ByteBufCodec (which shares the
@@ -135,8 +143,10 @@ final class CursorWriter<T> implements ChannelFutureListener, SingleResultCallba
             addBuf(buf, constant.close());
         }
         if (buf.writerIndex() > 0) {
+            System.out.println("FLUSH ONE BUFFER: " + buf.readableBytes());
             f = future(f.channel().writeAndFlush(new DefaultHttpContent(buf)));
         } else {
+            System.out.println("Nothing to flush");
             f = future(f);
         }
         if (done) {
@@ -146,6 +156,7 @@ final class CursorWriter<T> implements ChannelFutureListener, SingleResultCallba
                 }
                 future1 = future(future1.channel().writeAndFlush(LastHttpContent.EMPTY_LAST_CONTENT));
                 if (closeConnection) {
+                    System.out.println("CLOSING CONNECTION");
                     future(future1.addListener(CLOSE));
                 }
             });
@@ -157,6 +168,28 @@ final class CursorWriter<T> implements ChannelFutureListener, SingleResultCallba
 
     @Override
     public void onResult(List<T> t, Throwable thrwbl) {
+        if (thrwbl != null) {
+            this.ctrl.internalOnError(thrwbl);
+        }
+        if (t != null && t.size() == 0) {
+            ChannelFuture f = future.get();
+            Channel ch = f.channel();
+            System.out.println("SEND NO RESULTS");
+            if (ch.isOpen()) {
+                ByteBuf buf = f.channel().alloc().buffer(2);
+                buf.writeByte('[');
+                buf.writeByte(']');
+                DefaultHttpContent ct = new DefaultHttpContent(buf);
+                ch.write(ct);
+                ChannelFuture fut2 = ch.writeAndFlush(DefaultLastHttpContent.EMPTY_LAST_CONTENT);
+                fut2.addListener((ChannelFuture f2) -> {
+                    if (f2.cause() != null) {
+                        ctrl.internalOnError(thrwbl);
+                    }
+                });
+            }
+            return;
+        }
         if (t == null) {
             done = true;
         } else {
@@ -164,11 +197,13 @@ final class CursorWriter<T> implements ChannelFutureListener, SingleResultCallba
                 collectedResults.addAll(t);
             }
         }
+        System.out.println("onRESULT with " + (t == null ? "done" : t.size() + " results"));
         ChannelFuture f = future.get();
         if (thrwbl != null) {
             ctrl.internalOnError(thrwbl);
             cursor.close();
             if (f != null) {
+                System.out.println("Close channel for error");
                 f.channel().close();
             }
         } else if (f != null) {
@@ -184,7 +219,9 @@ final class CursorWriter<T> implements ChannelFutureListener, SingleResultCallba
         @Override
         @SuppressWarnings("unchecked")
         public void operationComplete(ChannelFuture f) throws Exception {
-            cursor.next(CursorWriter.this);
+            if (!checkFailure(f)) {
+                cursor.next(CursorWriter.this);
+            }
         }
     };
 }

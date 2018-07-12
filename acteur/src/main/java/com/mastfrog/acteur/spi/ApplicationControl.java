@@ -26,6 +26,9 @@ package com.mastfrog.acteur.spi;
 import com.mastfrog.acteur.Event;
 import com.mastfrog.acteur.errors.ResponseException;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
+import io.netty.util.concurrent.Future;
+import io.netty.util.concurrent.GenericFutureListener;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.CountDownLatch;
@@ -56,5 +59,17 @@ public interface ApplicationControl {
                 internalOnError(thrown);
             }
         });
+    }
+
+    default ChannelFuture logFailure(ChannelFuture f) {
+        f.addListener(new GenericFutureListener<Future<? super Void>>() {
+            @Override
+            public void operationComplete(Future<? super Void> f) throws Exception {
+                if (f.cause() != null) {
+                    internalOnError(f.cause());
+                }
+            }
+        });
+        return f;
     }
 }

@@ -24,6 +24,7 @@
 package com.mastfrog.acteur;
 
 import com.google.common.base.Objects;
+import com.google.common.collect.Sets;
 import com.google.common.net.MediaType;
 import com.google.inject.Key;
 import com.google.inject.name.Names;
@@ -51,17 +52,17 @@ import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import static io.netty.channel.ChannelFutureListener.CLOSE;
 import io.netty.channel.FileRegion;
-import io.netty.handler.codec.http.DefaultFullHttpResponse;
 import io.netty.handler.codec.http.DefaultHttpContent;
 import io.netty.handler.codec.http.DefaultHttpHeaders;
 import io.netty.handler.codec.http.DefaultHttpResponse;
-import io.netty.handler.codec.http.EmptyHttpHeaders;
+import io.netty.handler.codec.http.DefaultLastHttpContent;
 import io.netty.handler.codec.http.HttpContent;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import static io.netty.handler.codec.http.HttpHeaderNames.CONTENT_ENCODING;
 import static io.netty.handler.codec.http.HttpHeaderNames.CONTENT_LENGTH;
 import static io.netty.handler.codec.http.HttpHeaderNames.TRANSFER_ENCODING;
 import io.netty.handler.codec.http.HttpHeaderValues;
+import static io.netty.handler.codec.http.HttpHeaderValues.IDENTITY;
 import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpMessage;
 import io.netty.handler.codec.http.HttpResponse;
@@ -84,6 +85,7 @@ import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
@@ -349,6 +351,10 @@ final class ResponseImpl extends Response {
                     }
                     return w;
                 }
+
+                public String toString() {
+                    return type.toString();
+                }
             });
         }
 
@@ -362,6 +368,10 @@ final class ResponseImpl extends Response {
         public Status write(Event<?> evt, Output out, int iteration) throws Exception {
             ResponseWriter actual = resp.call();
             return actual.write(evt, out, iteration);
+        }
+
+        public String toString() {
+            return "DynResponseWriter for " + resp.toString();
         }
     }
 
@@ -405,12 +415,25 @@ final class ResponseImpl extends Response {
                 mapper, chunked, !isKeepAlive(evt), svc, ctrl));
     }
 
+    String listenerString() {
+        if (listener != null) {
+            if (listener instanceof ResponseWriterListener) {
+                return ((ResponseWriterListener) listener).writer.getClass().getName();
+            }
+            if (listener instanceof Acteur.ScopeWrapper || listener instanceof Acteur.IWrapper) {
+                return listener.toString();
+            }
+            return listener.getClass().getName();
+        }
+        return "<no listener>";
+    }
+
     private static final class ResponseWriterListener extends AbstractOutput implements ChannelFutureListener {
 
         private volatile ChannelFuture future;
         private volatile int callCount = 0;
         private final boolean chunked;
-        private final ResponseWriter writer;
+        final ResponseWriter writer;
         private final boolean shouldClose;
         private final Event<?> evt;
         private final ExecutorService svc;
@@ -592,10 +615,19 @@ final class ResponseImpl extends Response {
         return status == null ? OK : status;
     }
 
+    private boolean has(CharSequence headerName) {
+        for (Entry<?> e : this.headers) {
+            if (e.is(headerName)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public HttpResponse toResponse(Event<?> evt, Charset defaultCharset) throws Exception {
         HttpResponseStatus status = internalStatus();
         if (!canHaveBody(status) && (message != null || listener != null)) {
-            if (listener != ChannelFutureListener.CLOSE) {
+            if (listener != ChannelFutureListener.CLOSE && listener != SEND_EMPTY_LAST_CHUNK) {
                 System.err.println(evt
                         + " attempts to attach a body to " + status
                         + " which cannot have one: " + message
@@ -607,62 +639,146 @@ final class ResponseImpl extends Response {
             defaultCharset = mimeType.charset().get();
         }
         ByteBuf buf = writeMessage(evt, defaultCharset);
-        HttpResponse resp;
+        if (buf != null && listener != null) {
+            throw new IllegalStateException("Both outbound buffer, and listener for header flush are present;"
+                    + " either one can write the response body, but not both");
+        }
         DefaultHttpHeaders hdrs = new DefaultHttpHeaders();
+        // Figure out if this response cannot possibly be anything more than headers
+        boolean noBody = (listener == null && buf == null) || status == NO_CONTENT || status == NOT_MODIFIED;
+        boolean hasInternalCompress = has(X_INTERNAL_COMPRESS);
+        boolean hasContentEncoding = has(CONTENT_ENCODING);
+        boolean hasTransferEncoding = has(TRANSFER_ENCODING);
         boolean hasContentLength = false;
-        boolean hasChunked = false;
+        // To ensure the compressor doesn't screw with things it shouldn't - we have a buffer with
+        // the complete response.
+        boolean addIdentityContentEncoding = buf != null && !hasContentEncoding && !hasInternalCompress;
+        // Iterate and filter the headers to create a usable response
         for (Entry<?> e : headers) {
-            // Remove things which cause problems for non-modified responses -
-            // browsers will hold the connection open regardless
-            if (this.status == NOT_MODIFIED || this.status == NO_CONTENT) {
-                if (e.decorator.is(CONTENT_LENGTH)) {
-                    hasContentLength = false;
+            if (noBody) {
+                // Ensure a response with no body is always a chunked response; discard content-length
+                // as it doesn't belong in a chunked response;  content encoding is irrelevant with no
+                // content, and same with transfer-encoding
+                if (e.is(CONTENT_LENGTH)) {
                     continue;
-                } else if (e.decorator.is(CONTENT_ENCODING)) {
+                } else if (e.is(CONTENT_ENCODING)) {
+                    hasContentEncoding = false;
                     continue;
-                } else if (e.decorator.is(TRANSFER_ENCODING)) {
-                    hasChunked = HttpHeaderValues.CHUNKED.contentEquals(e.stringValue());
+                } else if (e.is(TRANSFER_ENCODING)) {
+                    hasTransferEncoding = false;
                     continue;
                 }
             }
-            hasContentLength |= Headers.CONTENT_LENGTH.equals(e.decorator);
+            // Avoid double content-encoding headers
+            if (addIdentityContentEncoding && e.is(CONTENT_ENCODING)) {
+                continue;
+            }
+            hasContentLength |= e.is(CONTENT_LENGTH);
             e.write(hdrs);
         }
-        // Ensure a 0 content length is present for items with no content
-        if (buf == null && listener == null && !hasContentLength && status != NOT_MODIFIED && status != NO_CONTENT && !hasContentLength) {
-            hdrs.add(HttpHeaderNames.CONTENT_LENGTH, 0);
-        } else if (chunked) {
-            hdrs.add(HttpHeaderNames.TRANSFER_ENCODING, HttpHeaderValues.CHUNKED);
-        } else if (listener != null && !hasContentLength) {
-            hdrs.remove(CONTENT_LENGTH);
+        if (addIdentityContentEncoding) {
+            hdrs.add(CONTENT_ENCODING, IDENTITY);
+        }
+        if (noBody) {
+            // Return the buffer's memory to the pool if present
+            if (buf != null) {
+                buf.release();
+            }
+            // Using DefaultFullHttpResponse, especially with 0-byte responses,
+            // leaves the encoder in a bad state, where it will throw an exception
+            // if the connection is reused for another response.  So instead, we
+            // manually flush our own last content
+            hdrs.set(TRANSFER_ENCODING, HttpHeaderValues.CHUNKED);
+            listener = SEND_EMPTY_LAST_CHUNK;
+        } else {
+            if (chunked) {
+                if (!hasTransferEncoding) {
+                    hdrs.set(TRANSFER_ENCODING, HttpHeaderValues.CHUNKED);
+                }
+            } else if (buf != null) {
+                hdrs.set(CONTENT_LENGTH, buf.readableBytes());
+            }
+        }
+        HttpVersion version = HTTP_1_1;
+        if (!chunked && buf == null && listener != null && !hasContentEncoding) {
+            if (!hasContentLength && listener != CLOSE && listener != SEND_EMPTY_LAST_CHUNK) {
+                // Unless an HTTP 1.0 style response is really desired, this usually
+                // indicates a bug, and the connection to the browser will hang
+                // indefinitely at the end of the request
+                warn(evt);
+                version = HTTP_1_0;
+            }
+            hdrs.set(X_INTERNAL_COMPRESS, true);
         }
         if (buf != null) {
-            long size = buf.readableBytes();
-            hdrs.set(CONTENT_LENGTH, size);
-            if (size == 0L) {
-                resp = new DefaultFullHttpResponse(HTTP_1_1, status, null, hdrs, EmptyHttpHeaders.INSTANCE);
-            } else {
-                resp = new DefaultFullHttpResponse(HTTP_1_1, status, buf, hdrs, EmptyHttpHeaders.INSTANCE);
-            }
+//            return new DefaultFullHttpResponse(HTTP_1_1, status, buf, hdrs, EmptyHttpHeaders.INSTANCE);
+            listener = new SendOneBuffer(buf);
+            return new DefaultHttpResponse(version, status, hdrs);
         } else {
-            HttpVersion version = isHttp10StyleResponse() ? HTTP_1_0 : HTTP_1_1;
-            if (listener != null && !chunked) {
-                // The compressor will not see raw ByteBufs - the data needs to be pre-compressed
-                hdrs.add(X_INTERNAL_COMPRESS, TRUE);
-            }
-            resp = listener != null
-                    ? chunked ? new DefaultHttpResponse(version, status, hdrs)
-                            : new ListenerHackHttpResponse(version, evt.channel(), hdrs, status)
-                    : new DefaultHttpResponse(version, status, hdrs);
+            return new DefaultHttpResponse(version, status, hdrs);
         }
-        return resp;
     }
 
+    static Set<String> WARNED = Sets.newConcurrentHashSet();
+
+    static void warn(Event<?> evt) {
+        String pth = evt instanceof HttpEvent ? ((HttpEvent) evt).path().toString() : "";
+        if (!WARNED.contains(pth)) {
+            WARNED.add(pth);
+            System.err.println("Response to " + pth + " is non-chunked, has no content-length header but "
+                    + "will send response chunks using a listener.  The only way to avoid hanging "
+                    + "the client is to close the connection, HTTP 1.0 style, once all data is sent.");
+        }
+    }
+
+    private final String headersString(HttpHeaders resp) {
+        StringBuilder sb = new StringBuilder();
+        if (resp != null) {
+            for (Map.Entry<String, String> e : resp.entries()) {
+                sb.append('\n').append(e.getKey()).append(": ").append(e.getValue());
+            }
+        }
+        return sb.toString();
+    }
+
+    static final class SendOneBuffer implements ChannelFutureListener {
+
+        private final ByteBuf buf;
+
+        public SendOneBuffer(ByteBuf buf) {
+            this.buf = buf;
+        }
+
+        @Override
+        public void operationComplete(ChannelFuture future) throws Exception {
+            if (!future.isDone() || future.isSuccess()) {
+                future.channel().writeAndFlush(new DefaultLastHttpContent(buf));
+            }
+        }
+
+    }
     private static final AsciiString TRUE = AsciiString.of("1");
 
-    ChannelFuture sendMessage(Event<?> evt, ChannelFuture future, HttpMessage resp) {
+    static final SendEmptyLastChunk SEND_EMPTY_LAST_CHUNK = new SendEmptyLastChunk();
+
+    static final class SendEmptyLastChunk implements ChannelFutureListener {
+
+        @Override
+        public void operationComplete(ChannelFuture future) throws Exception {
+            if (!future.isDone() || future.isSuccess()) {
+                future.channel().writeAndFlush(LastHttpContent.EMPTY_LAST_CONTENT);
+            }
+        }
+
+    }
+
+    ChannelFuture sendMessage(Event<?> evt, ChannelFuture future, HttpMessage resp, boolean trigger) throws Exception {
         if (listener != null) {
-            future = future.addListener(listener);
+            if (trigger) {
+                listener.operationComplete(future);
+            } else {
+                future = future.addListener(listener);
+            }
             return future;
         } else if (!isKeepAlive(evt)) {
             future = future.addListener(ChannelFutureListener.CLOSE);
@@ -689,6 +805,10 @@ final class ResponseImpl extends Response {
 
         public void decorate(HttpMessage msg) {
             msg.headers().set(decorator.name(), value);
+        }
+
+        public boolean is(CharSequence name) {
+            return decorator.is(name);
         }
 
         public void write(HttpMessage msg) {

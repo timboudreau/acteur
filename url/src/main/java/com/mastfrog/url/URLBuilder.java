@@ -340,8 +340,12 @@ public final class URLBuilder extends AbstractBuilder<PathElement, URL> {
     static void append(StringBuilder sb, String toEscape, char... skip) {
         Checks.notNull("toEscape", toEscape);
         Checks.notNull("sb", sb);
-        Arrays.sort(skip);
-        for (char c : toEscape.toCharArray()) {
+        if (skip.length > 0) {
+            Arrays.sort(skip);
+        }
+        int max = toEscape.length();
+        for (int i = 0; i < max; i++) {
+            char c = toEscape.charAt(i);
             if (skip.length > 0 && Arrays.binarySearch(skip, c) >= 0) {
                 sb.append(c);
                 continue;
@@ -398,6 +402,9 @@ public final class URLBuilder extends AbstractBuilder<PathElement, URL> {
 
     static void appendEscaped(char c, StringBuilder to) {
         Checks.notNull("to", to);
+        if (c == 0) {
+            throw new IllegalArgumentException("Will not append the character 0");
+        }
         String hex = Integer.toHexString(c);
         to.append(URL_ESCAPE_PREFIX);
         if (hex.length() == 1) {
