@@ -1,0 +1,6 @@
+This file's presence activates the reflection-indexing profile in mastfrog-parent,
+which will cause META-INF/injection/reflective.json to be generated, which can be used
+by SubstrateVM for generating a native, ahead-of-time-compiled binary of a Java application.
+
+The index will include all methods, fields and constructors which must be available via
+reflection for instantiation by Guice, Jackson or similar.

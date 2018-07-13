@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>com.mastfrog</groupId>
-        <artifactId>mastfrog-parent-indexed</artifactId>
+        <artifactId>mastfrog-parent</artifactId>
         <version>2.5.0-dev</version>
         <relativePath/>
     </parent>
