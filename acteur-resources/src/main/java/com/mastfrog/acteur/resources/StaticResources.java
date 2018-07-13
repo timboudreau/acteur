@@ -23,12 +23,7 @@
  */
 package com.mastfrog.acteur.resources;
 
-import com.google.common.net.MediaType;
 import com.google.inject.ImplementedBy;
-import com.mastfrog.acteur.HttpEvent;
-import com.mastfrog.acteur.Page;
-import com.mastfrog.acteur.Response;
-import java.time.ZonedDateTime;
 
 /**
  * Source of static resources / files to be served.

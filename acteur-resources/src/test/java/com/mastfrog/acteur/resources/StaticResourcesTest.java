@@ -32,17 +32,25 @@ import static com.mastfrog.acteur.headers.Headers.IF_NONE_MATCH;
 import static com.mastfrog.acteur.headers.Headers.LAST_MODIFIED;
 import static com.mastfrog.acteur.headers.Headers.RANGE;
 import com.mastfrog.acteur.resources.ResourcesApp.Compression;
+import com.mastfrog.acteur.resources.ResourcesApp.DynFileResourcesModule;
 import static com.mastfrog.acteur.resources.ResourcesApp.FILES;
 import com.mastfrog.acteur.resources.ResourcesApp.NoCompression;
 import static com.mastfrog.acteur.resources.ResourcesApp.STUFF;
 import static com.mastfrog.acteur.resources.ResourcesApp.tmpdir;
+import com.mastfrog.acteur.util.Server;
+import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.giulius.tests.GuiceRunner;
 import com.mastfrog.giulius.tests.TestWith;
+import com.mastfrog.netty.http.client.State;
 import static com.mastfrog.netty.http.client.StateType.FullContentReceived;
 import com.mastfrog.netty.http.test.harness.TestHarness;
 import com.mastfrog.netty.http.test.harness.TestHarness.CallResult;
 import com.mastfrog.netty.http.test.harness.TestHarnessModule;
+import com.mastfrog.settings.Settings;
+import com.mastfrog.settings.SettingsBuilder;
 import com.mastfrog.util.Streams;
+import com.mastfrog.util.thread.Receiver;
+import io.netty.handler.codec.http.HttpResponse;
 import static io.netty.handler.codec.http.HttpResponseStatus.BAD_REQUEST;
 import static io.netty.handler.codec.http.HttpResponseStatus.NOT_IMPLEMENTED;
 import static io.netty.handler.codec.http.HttpResponseStatus.NOT_MODIFIED;
@@ -59,6 +67,7 @@ import java.nio.file.Files;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.time.Duration;
 import java.time.ZonedDateTime;
+import java.util.Map;
 import org.junit.AfterClass;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -82,6 +91,22 @@ import org.junit.runner.RunWith;
 public class StaticResourcesTest {
 
     private static final String HELLO_CONTENT = "Test test test\nThis is a test\nIt is like a test too\n";
+
+    public static void main(String[] args) throws Throwable {
+        System.setProperty("acteur.debug", "true");
+        setUpTempFiles();
+        try {
+            Settings settings= new SettingsBuilder().add("com/mastfrog/acteur/resources/StaticResourcesTest.properties").build();
+            Dependencies deps = new Dependencies(settings, new DynFileResourcesModule());
+            Server server = deps.getInstance(Server.class);
+//            Server server = new ServerBuilder().add(DynFileResourcesModule.class)
+//                    .applicationClass(ResourcesApp.class)
+//                    .add(settings).build();
+            server.start(3100).await();
+        } finally {
+            cleanUpTempFiles();
+        }
+    }
 
     @BeforeClass
     public static void setUpTempFiles() throws Exception {
@@ -180,10 +205,27 @@ public class StaticResourcesTest {
 
         har.get("static/another.txt")
                 .addHeader(IF_MODIFIED_SINCE, aLastModified)
+                .on(State.HeadersReceived.class, new Receiver<HttpResponse>() {
+                    @Override
+                    public void receive(HttpResponse object) {
+                        System.out.println("\n\nfor not modified with " + resources);
+                        for (Map.Entry<String, String> e : object.headers().entries()) {
+                            System.out.println(e.getKey() + ": " + e.getValue());
+                        }
+                    }
+                })
                 .go().assertStatus(NOT_MODIFIED);
 
         har.get("static/another.txt")
                 .addHeader(IF_MODIFIED_SINCE, helloLastModified.plus(Duration.ofDays(1)))
+                .on(State.HeadersReceived.class, new Receiver<HttpResponse>() {
+                    @Override
+                    public void receive(HttpResponse object) {
+                        for (Map.Entry<String, String> e : object.headers().entries()) {
+                            System.out.println(e.getKey() + ": " + e.getValue());
+                        }
+                    }
+                })
                 .go().await().assertStatus(NOT_MODIFIED);
 
         CallResult cb = har.get("static/another.txt")
@@ -239,7 +281,6 @@ public class StaticResourcesTest {
                     .addHeader(RANGE.toStringHeader(), "bytes=3000-3003")
                     .go().await()
                     .assertStatus(REQUESTED_RANGE_NOT_SATISFIABLE);
-
 
             ByteRanges compound = ByteRanges.builder().add(5, 15).add(25, 30).build();
             har.get("static/another.txt")

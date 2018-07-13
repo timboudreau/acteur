@@ -65,7 +65,7 @@ public final class CheckIfModifiedSinceHeader extends Acteur {
                 return;
             }
         }
-*/
+         */
         next();
     }
 

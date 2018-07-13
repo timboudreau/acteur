@@ -47,15 +47,18 @@ import com.mastfrog.util.collections.CollectionUtils;
 import com.mastfrog.util.thread.ThreadLocalTransfer;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
+import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import static io.netty.channel.ChannelFutureListener.CLOSE;
 import io.netty.channel.FileRegion;
+import io.netty.handler.codec.http.DefaultFullHttpResponse;
 import io.netty.handler.codec.http.DefaultHttpContent;
 import io.netty.handler.codec.http.DefaultHttpHeaders;
 import io.netty.handler.codec.http.DefaultHttpResponse;
 import io.netty.handler.codec.http.DefaultLastHttpContent;
+import io.netty.handler.codec.http.EmptyHttpHeaders;
 import io.netty.handler.codec.http.HttpContent;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import static io.netty.handler.codec.http.HttpHeaderNames.CONTENT_ENCODING;
@@ -108,6 +111,7 @@ final class ResponseImpl extends Response {
     ChannelFutureListener listener;
     private boolean chunked;
     private Duration delay;
+    private static final boolean debug = Boolean.getBoolean("acteur.debug");
 
     static final ThreadLocalTransfer<List<ResponseImpl>> shadowResponses = new ThreadLocalTransfer<>();
     List<ResponseImpl> alsoConsult;
@@ -650,6 +654,7 @@ final class ResponseImpl extends Response {
         boolean hasContentEncoding = has(CONTENT_ENCODING);
         boolean hasTransferEncoding = has(TRANSFER_ENCODING);
         boolean hasContentLength = false;
+
         // To ensure the compressor doesn't screw with things it shouldn't - we have a buffer with
         // the complete response.
         boolean addIdentityContentEncoding = buf != null && !hasContentEncoding && !hasInternalCompress;
@@ -676,6 +681,13 @@ final class ResponseImpl extends Response {
             hasContentLength |= e.is(CONTENT_LENGTH);
             e.write(hdrs);
         }
+        if (debug && evt instanceof HttpEvent) {
+            System.out.println("\n\n********************\n"
+                    + ((HttpEvent) evt).path() + " " + status + " hasInternalCompress "
+                    + hasInternalCompress + " hasContentLength " + hasContentLength
+                    + " hasTransferEncoding " + hasTransferEncoding + " hasContentEncoding " + hasContentEncoding
+                    + " chunked " + chunked + " noBody " + noBody);
+        }
         if (addIdentityContentEncoding) {
             hdrs.add(CONTENT_ENCODING, IDENTITY);
         }
@@ -688,15 +700,26 @@ final class ResponseImpl extends Response {
             // leaves the encoder in a bad state, where it will throw an exception
             // if the connection is reused for another response.  So instead, we
             // manually flush our own last content
-            hdrs.set(TRANSFER_ENCODING, HttpHeaderValues.CHUNKED);
-            listener = SEND_EMPTY_LAST_CHUNK;
+
+//            hdrs.set(TRANSFER_ENCODING, HttpHeaderValues.CHUNKED);
+//            listener = SEND_EMPTY_LAST_CHUNK;
+//            chunked = true;
+            if (debug) {
+                System.out.println("noBody - use empty last chunk listener");
+            }
+            hdrs.set(CONTENT_LENGTH, 0);
+            chunked = false;
+            return new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, status, Unpooled.EMPTY_BUFFER, hdrs, EmptyHttpHeaders.INSTANCE);
+
         } else {
             if (chunked) {
                 if (!hasTransferEncoding) {
+                    System.out.println("chunked and to xfer - set transfer encoding to chunked");
                     hdrs.set(TRANSFER_ENCODING, HttpHeaderValues.CHUNKED);
                 }
             } else if (buf != null) {
                 hdrs.set(CONTENT_LENGTH, buf.readableBytes());
+                System.out.println("set content-length to " + buf.readableBytes());
             }
         }
         HttpVersion version = HTTP_1_1;
@@ -708,10 +731,15 @@ final class ResponseImpl extends Response {
                 warn(evt);
                 version = HTTP_1_0;
             }
+            System.out.println("Set X-Internal-Compress");
             hdrs.set(X_INTERNAL_COMPRESS, true);
+        }
+        if (debug) {
+            System.out.println(" final headers " + headersString(hdrs));
         }
         if (buf != null) {
 //            return new DefaultFullHttpResponse(HTTP_1_1, status, buf, hdrs, EmptyHttpHeaders.INSTANCE);
+            System.out.println("  has a buffer, send it as a chunk");
             listener = new SendOneBuffer(buf);
             return new DefaultHttpResponse(version, status, hdrs);
         } else {
@@ -767,6 +795,10 @@ final class ResponseImpl extends Response {
         public void operationComplete(ChannelFuture future) throws Exception {
             if (!future.isDone() || future.isSuccess()) {
                 future.channel().writeAndFlush(LastHttpContent.EMPTY_LAST_CONTENT);
+            } else {
+                if (future.cause() != null) {
+                    future.cause().printStackTrace();
+                }
             }
         }
 
@@ -788,7 +820,10 @@ final class ResponseImpl extends Response {
 
     @Override
     public String toString() {
-        return "Response{" + "modified=" + modified + ", status=" + status + ", headers=" + headers + ", message=" + message + ", listener=" + listener + ", chunked=" + chunked + " has listener " + (this.listener != null) + '}';
+        return "Response{" + "modified=" + modified + ", status="
+                + status + ", headers=" + headers + ", message=" + message
+                + ", listener=" + listener + ", chunked=" + chunked
+                + '}';
     }
 
     private static final class Entry<T> {
