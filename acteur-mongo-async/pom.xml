@@ -11,11 +11,6 @@
     <dependencies>
         <dependency>
             <groupId>com.mastfrog</groupId>
-            <artifactId>annotation-processors</artifactId>
-            <scope>compile</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.mastfrog</groupId>
             <artifactId>util</artifactId>
         </dependency>
         <dependency>
