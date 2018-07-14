@@ -138,9 +138,11 @@ class PagesImpl2 {
      * @return True if the headers need not be flushed immediately
      */
     private boolean canPostponeFlush(Event<?> evt, ResponseImpl response) {
-        if (!response.hasListener()) {
+        if (response.hasNoPayload()) {
             // It is a full response or has no body - flush it immediately and
-            // be done
+            // be done - otherwise we are at the system's mercy for when the
+            // flush happens, which, for a small number of bytes, may be never
+            // or very late
             return false;
         }
         // Websocket event - irrelevant
@@ -150,6 +152,7 @@ class PagesImpl2 {
         HttpEvent httpEvent = (HttpEvent) evt;
         // If X-Internal-Compress is present, the compressor is not going to touch it anyway
         if (response.get(X_INTERNAL_COMPRESS_HEADER) != null) {
+            // XXX needed here?
             return true;
         }
         // If compression is off, it's all a non-issue

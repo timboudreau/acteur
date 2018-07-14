@@ -33,6 +33,7 @@ import com.mastfrog.acteur.ResponseWriter.Output;
 import com.mastfrog.acteur.ResponseWriter.Status;
 import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.acteur.headers.Headers;
+import static com.mastfrog.acteur.headers.Headers.CONTENT_TYPE;
 import com.mastfrog.acteur.headers.Method;
 import com.mastfrog.acteur.server.ServerModule;
 import static com.mastfrog.acteur.server.ServerModule.X_INTERNAL_COMPRESS;
@@ -628,8 +629,22 @@ final class ResponseImpl extends Response {
         return false;
     }
 
+    boolean hasNoPayload() {
+        HttpResponseStatus status = internalStatus();
+        if (status == NOT_MODIFIED || status == NO_CONTENT) {
+            return true;
+        }
+        if (listener == null && (message == null || (message instanceof String && ((String) message).isEmpty()))) {
+            return true;
+        }
+        return false;
+    }
+
+    private static final AsciiString ZERO = AsciiString.of("0");
     public HttpResponse toResponse(Event<?> evt, Charset defaultCharset) throws Exception {
         HttpResponseStatus status = internalStatus();
+        // Log cases where a payload is attached to a status code that cannot have a payload
+        // according to the HTTP spec
         if (!canHaveBody(status) && (message != null || listener != null)) {
             if (listener != ChannelFutureListener.CLOSE && listener != SEND_EMPTY_LAST_CHUNK) {
                 System.err.println(evt
@@ -638,15 +653,23 @@ final class ResponseImpl extends Response {
                         + " - " + listener);
             }
         }
-        MediaType mimeType = get(Headers.CONTENT_TYPE);
+        // Ensure we pass the correct character set based on the MIME type and failing
+        // over to the character set the application was configured with (default UTF-8):
+        MediaType mimeType = get(CONTENT_TYPE);
         if (mimeType != null && mimeType.charset().isPresent()) {
             defaultCharset = mimeType.charset().get();
         }
+        // Convert the message payload, if any, into a ByteBuf
         ByteBuf buf = writeMessage(evt, defaultCharset);
+        // If this happens, the application is telling the framework to do two contradictory things -
+        // you can either send a payload by attaching it to the response, or by attaching a listener
+        // which will be notified when the headers have been written (or flushed) to the socket
+        // buffer - but not both
         if (buf != null && listener != null) {
             throw new IllegalStateException("Both outbound buffer, and listener for header flush are present;"
                     + " either one can write the response body, but not both");
         }
+        // Start constructing the actual HTTP response
         DefaultHttpHeaders hdrs = new DefaultHttpHeaders();
         // Figure out if this response cannot possibly be anything more than headers
         boolean noBody = (listener == null && buf == null) || status == NO_CONTENT || status == NOT_MODIFIED;
@@ -661,7 +684,7 @@ final class ResponseImpl extends Response {
         // Iterate and filter the headers to create a usable response
         for (Entry<?> e : headers) {
             if (noBody) {
-                // Ensure a response with no body is always a chunked response; discard content-length
+                // Ensure a response with no body is always a zero content-length response; discard content-length
                 // as it doesn't belong in a chunked response;  content encoding is irrelevant with no
                 // content, and same with transfer-encoding
                 if (e.is(CONTENT_LENGTH)) {
@@ -681,6 +704,7 @@ final class ResponseImpl extends Response {
             hasContentLength |= e.is(CONTENT_LENGTH);
             e.write(hdrs);
         }
+        // Some debug logging
         if (debug && evt instanceof HttpEvent) {
             System.out.println("\n\n********************\n"
                     + ((HttpEvent) evt).path() + " " + status + " hasInternalCompress "
@@ -705,9 +729,9 @@ final class ResponseImpl extends Response {
 //            listener = SEND_EMPTY_LAST_CHUNK;
 //            chunked = true;
             if (debug) {
-                System.out.println("noBody - use empty last chunk listener");
+                System.out.println("noBody - set content-length: 0, chunked false");
             }
-            hdrs.set(CONTENT_LENGTH, 0);
+            hdrs.set(CONTENT_LENGTH, ZERO);
             chunked = false;
             return new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, status, Unpooled.EMPTY_BUFFER, hdrs, EmptyHttpHeaders.INSTANCE);
 
@@ -739,7 +763,9 @@ final class ResponseImpl extends Response {
         }
         if (buf != null) {
 //            return new DefaultFullHttpResponse(HTTP_1_1, status, buf, hdrs, EmptyHttpHeaders.INSTANCE);
-            System.out.println("  has a buffer, send it as a chunk");
+            if (debug) {
+                System.out.println("  has a buffer, send it as a chunk");
+            }
             listener = new SendOneBuffer(buf);
             return new DefaultHttpResponse(version, status, hdrs);
         } else {
@@ -759,7 +785,7 @@ final class ResponseImpl extends Response {
         }
     }
 
-    private final String headersString(HttpHeaders resp) {
+    private String headersString(HttpHeaders resp) {
         StringBuilder sb = new StringBuilder();
         if (resp != null) {
             for (Map.Entry<String, String> e : resp.entries()) {
