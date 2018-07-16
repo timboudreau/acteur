@@ -23,7 +23,6 @@
  */
 package com.mastfrog.marshallers.netty;
 
-import com.mastfrog.util.streams.Streams;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;
 import io.netty.buffer.ByteBufOutputStream;
@@ -45,9 +44,12 @@ final class InputStreamInterpreter implements Marshaller<InputStream, ByteBuf> {
     public void write(InputStream obj, ByteBuf into, Object[] hints) throws Exception {
         try (final ByteBufOutputStream out = new ByteBufOutputStream(into)) {
             try (final InputStream in = obj) {
-                Streams.copy(in, out);
+                byte[] buf = new byte[512];
+                int count = 0;
+                while ((count = in.read(buf)) > 0) {
+                    into.writeBytes(buf, 0, count);
+                }
             }
         }
     }
-
 }

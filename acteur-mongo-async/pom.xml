@@ -10,10 +10,6 @@
     <artifactId>acteur-mongo-async</artifactId>
     <dependencies>
         <dependency>
-            <groupId>com.mastfrog</groupId>
-            <artifactId>util</artifactId>
-        </dependency>
-        <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>giulius-mongodb-async</artifactId>
         </dependency>

@@ -20,7 +20,12 @@
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
-            <artifactId>util</artifactId>
+            <artifactId>util-preconditions</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>util-collections</artifactId>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>io.netty</groupId>
