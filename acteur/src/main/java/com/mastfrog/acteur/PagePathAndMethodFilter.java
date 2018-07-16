@@ -451,6 +451,7 @@ class PagePathAndMethodFilter {
 
         private final Method method;
         private final String path;
+        private int hash;
 
         MethodPath(Method method, String path) {
             this.method = method;
@@ -464,7 +465,10 @@ class PagePathAndMethodFilter {
 
         @Override
         public int hashCode() {
-            return path.hashCode() + (71 * (method.ordinal()));
+            if (hash != 0) {
+                return hash;
+            }
+            return hash = path.hashCode() + (71 * (method.ordinal()));
         }
 
         @Override

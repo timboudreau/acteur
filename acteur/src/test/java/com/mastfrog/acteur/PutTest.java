@@ -37,7 +37,6 @@ import org.junit.runner.RunWith;
 public class PutTest {
 
     public static void main(String[] args) throws IOException, InterruptedException {
-        System.setProperty("acteur.debug", "true");
         new ServerBuilder().applicationClass(EchoServer.class).add(
                 Settings.builder().add("port", 8123).build()).build().start().await();
     }
@@ -68,7 +67,6 @@ public class PutTest {
 
     @Test(timeout = 180000L)
     public void testPuts(TestHarness harn, Application application) throws Throwable {
-        System.setProperty("acteur.debug", "true");
         harn.get("foo/bar/baz").go().assertStatus(OK).assertContent("Hello world");
         harn.get("/").go().assertStatus(OK).assertContent("Hello world");
         for (int i = 0; i < 20; i++) {

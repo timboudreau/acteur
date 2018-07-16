@@ -565,10 +565,6 @@ public class ConnectionReuseTest {
         }
     }
 
-    static {
-        System.setProperty("acteur.debug", "true");
-    }
-
     // We use a raw netty http client here because we do not want response aggregation
     // or connection reuse handled transparently for us, but to guarantee the behavior
     // we need to test, which is making multiple requests of different types over a single
