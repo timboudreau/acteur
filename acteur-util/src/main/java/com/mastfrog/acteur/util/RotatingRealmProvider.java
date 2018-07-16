@@ -1,7 +1,7 @@
 package com.mastfrog.acteur.util;
 
 import com.mastfrog.settings.Settings;
-import com.mastfrog.util.Strings;
+import com.mastfrog.util.strings.Strings;
 import com.mastfrog.util.strings.RandomStrings;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;

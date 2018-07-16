@@ -27,7 +27,7 @@ import com.google.common.net.MediaType;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import com.mastfrog.giulius.Dependencies;
-import com.mastfrog.util.Codec;
+import com.mastfrog.util.codec.Codec;
 import com.mastfrog.util.time.TimeUtil;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;

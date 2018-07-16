@@ -23,7 +23,7 @@
  */
 package com.mastfrog.acteur.headers;
 
-import com.mastfrog.util.Strings;
+import com.mastfrog.util.strings.Strings;
 import com.mastfrog.util.strings.AppendableCharSequence;
 import io.netty.handler.codec.http.HttpHeaderNames;
 

@@ -43,11 +43,8 @@ import com.mastfrog.acteur.util.ErrorHandlers;
 import com.mastfrog.acteur.util.RequestID;
 import com.mastfrog.acteurbase.InstantiatingIterators;
 import com.mastfrog.settings.Settings;
-import com.mastfrog.util.ConfigurationError;
-import com.mastfrog.util.Checks;
-import com.mastfrog.util.perf.Benchmark;
-import com.mastfrog.util.perf.Benchmark.Kind;
-import com.mastfrog.util.thread.QuietAutoCloseable;
+import com.mastfrog.util.preconditions.ConfigurationError;
+import com.mastfrog.util.preconditions.Checks;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
@@ -77,6 +74,7 @@ import com.mastfrog.graal.annotation.Expose;
 import io.netty.handler.codec.http.DefaultHttpResponse;
 import io.netty.handler.codec.http.DefaultLastHttpContent;
 import io.netty.handler.codec.http.FullHttpResponse;
+import com.mastfrog.util.thread.QuietAutoCloseable;
 
 /**
  * A web application. Principally, the application is a collection of Page
@@ -437,7 +435,6 @@ public class Application implements Iterable<Page> {
      *
      * @param err
      */
-    @Benchmark(value = "uncaughtExceptions", publish = Kind.CALL_COUNT)
     final void internalOnError(Throwable err) {
         Checks.notNull("err", err);
         try {
@@ -466,7 +463,6 @@ public class Application implements Iterable<Page> {
      * @param channel
      * @return
      */
-    @Benchmark(value = "httpEvents", publish = Kind.CALL_COUNT)
     private CountDownLatch onEvent(final Event<?> event, final Channel channel) {
         assert scope != null : "Scope is null - Application members not injected?";
         // Create a new incremented id for this request

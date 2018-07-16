@@ -25,6 +25,7 @@ package com.mastfrog.acteur;
 
 import com.mastfrog.acteur.headers.Headers;
 import static com.mastfrog.acteur.headers.Headers.IF_UNMODIFIED_SINCE;
+import com.mastfrog.acteur.preconditions.Description;
 import static io.netty.handler.codec.http.HttpResponseStatus.PRECONDITION_FAILED;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoField;
@@ -35,6 +36,9 @@ import javax.inject.Inject;
  *
  * @author Tim Boudreau
  */
+@Description("Replies with a 304 Not-Modified status if the "
+        + "If-Modified-Since header in the current request matches the "
+        + "Last-Modified header already set on the current response")
 public final class CheckIfUnmodifiedSinceHeader extends Acteur {
 
     @Inject
@@ -55,7 +59,9 @@ public final class CheckIfUnmodifiedSinceHeader extends Acteur {
 
     @Override
     public void describeYourself(Map<String, Object> into) {
-        into.put("Supports If-Unmodified-Since", true);
+        into.put("Replies with a 304 Not-Modified status if the "
+        + "If-Modified-Since header in the current request matches the "
+        + "Last-Modified header already set on the current response", true);
     }
 
 }

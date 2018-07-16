@@ -48,7 +48,7 @@ import com.mastfrog.netty.http.test.harness.TestHarness.CallResult;
 import com.mastfrog.netty.http.test.harness.TestHarnessModule;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.settings.SettingsBuilder;
-import com.mastfrog.util.Streams;
+import com.mastfrog.util.streams.Streams;
 import com.mastfrog.util.thread.Receiver;
 import io.netty.handler.codec.http.HttpResponse;
 import static io.netty.handler.codec.http.HttpResponseStatus.BAD_REQUEST;

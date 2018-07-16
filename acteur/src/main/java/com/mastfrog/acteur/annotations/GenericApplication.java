@@ -31,7 +31,7 @@ import static com.mastfrog.acteur.annotations.GenericApplicationModule.EXCLUDED_
 import com.mastfrog.acteur.preconditions.Methods;
 import com.mastfrog.acteur.preconditions.Path;
 import com.mastfrog.acteur.preconditions.PathRegex;
-import com.mastfrog.util.Strings;
+import com.mastfrog.util.strings.Strings;
 import static com.mastfrog.util.collections.CollectionUtils.setOf;
 import com.mastfrog.util.strings.AlignedText;
 import java.util.ArrayList;

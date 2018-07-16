@@ -23,10 +23,10 @@
  */
 package com.mastfrog.url;
 
-import com.mastfrog.util.AbstractBuilder;
-import com.mastfrog.util.Checks;
-import static com.mastfrog.util.Checks.notNull;
-import com.mastfrog.util.Strings;
+import com.mastfrog.util.builder.AbstractBuilder;
+import com.mastfrog.util.preconditions.Checks;
+import static com.mastfrog.util.preconditions.Checks.notNull;
+import com.mastfrog.util.strings.Strings;
 import com.mastfrog.util.collections.CollectionUtils;
 import java.util.ArrayList;
 import java.util.Arrays;

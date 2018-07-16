@@ -23,7 +23,7 @@
  */
 package com.mastfrog.url;
 
-import com.mastfrog.util.Checks;
+import com.mastfrog.util.preconditions.Checks;
 
 /**
  * Aggregate object for a host and port.

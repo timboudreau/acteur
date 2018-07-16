@@ -23,7 +23,7 @@
  */
 package com.mastfrog.acteur.headers;
 
-import com.mastfrog.util.Exceptions;
+import com.mastfrog.util.preconditions.Exceptions;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import java.net.MalformedURLException;
 import java.net.URL;

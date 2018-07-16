@@ -11,7 +11,7 @@ import com.mastfrog.acteur.spi.ApplicationControl;
 import com.mastfrog.giulius.DeploymentMode;
 import com.mastfrog.giulius.ShutdownHookRegistry;
 import com.mastfrog.settings.Settings;
-import com.mastfrog.util.Streams;
+import com.mastfrog.util.streams.Streams;
 import com.mastfrog.util.strings.RandomStrings;
 import io.netty.buffer.ByteBufAllocator;
 import java.io.File;

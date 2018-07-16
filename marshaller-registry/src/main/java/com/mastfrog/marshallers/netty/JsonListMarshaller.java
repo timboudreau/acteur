@@ -24,7 +24,7 @@
 package com.mastfrog.marshallers.netty;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.mastfrog.util.Checks;
+import com.mastfrog.util.preconditions.Checks;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;
 import io.netty.buffer.ByteBufOutputStream;

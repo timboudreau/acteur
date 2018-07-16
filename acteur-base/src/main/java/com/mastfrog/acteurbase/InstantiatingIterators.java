@@ -24,7 +24,7 @@
 package com.mastfrog.acteurbase;
 
 import com.mastfrog.giulius.Dependencies;
-import com.mastfrog.util.Strings;
+import com.mastfrog.util.strings.Strings;
 import com.mastfrog.util.collections.CollectionUtils;
 import com.mastfrog.util.collections.Converter;
 import java.util.Iterator;

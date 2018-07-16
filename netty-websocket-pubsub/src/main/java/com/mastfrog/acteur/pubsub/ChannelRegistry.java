@@ -24,7 +24,7 @@
 package com.mastfrog.acteur.pubsub;
 
 import com.mastfrog.giulius.ShutdownHookRegistry;
-import com.mastfrog.util.Exceptions;
+import com.mastfrog.util.preconditions.Exceptions;
 import com.mastfrog.util.collections.CollectionUtils;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;

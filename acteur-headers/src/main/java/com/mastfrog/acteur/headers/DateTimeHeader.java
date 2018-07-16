@@ -23,8 +23,8 @@
  */
 package com.mastfrog.acteur.headers;
 
-import com.mastfrog.util.Checks;
-import com.mastfrog.util.Strings;
+import com.mastfrog.util.preconditions.Checks;
+import com.mastfrog.util.strings.Strings;
 import com.mastfrog.util.time.TimeUtil;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;

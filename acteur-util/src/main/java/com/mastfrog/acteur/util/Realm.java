@@ -23,10 +23,10 @@
  */
 package com.mastfrog.acteur.util;
 
-import com.mastfrog.util.Checks;
-import com.mastfrog.util.Strings;
-import static com.mastfrog.util.Strings.charSequenceHashCode;
-import static com.mastfrog.util.Strings.charSequencesEqual;
+import com.mastfrog.util.preconditions.Checks;
+import com.mastfrog.util.strings.Strings;
+import static com.mastfrog.util.strings.Strings.charSequenceHashCode;
+import static com.mastfrog.util.strings.Strings.charSequencesEqual;
 import javax.inject.Inject;
 import javax.inject.Named;
 

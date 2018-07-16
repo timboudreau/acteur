@@ -23,7 +23,7 @@
  */
 package com.mastfrog.marshallers.netty;
 
-import com.mastfrog.util.Streams;
+import com.mastfrog.util.streams.Streams;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;
 import io.netty.buffer.ByteBufOutputStream;

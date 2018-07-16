@@ -4,7 +4,7 @@ import com.google.inject.Inject;
 import com.mastfrog.acteur.HttpEvent;
 import com.mastfrog.acteur.Response;
 import com.mastfrog.acteur.cookie.auth.UserFinder.UserAndCookieValue;
-import com.mastfrog.util.Checks;
+import com.mastfrog.util.preconditions.Checks;
 import io.netty.handler.codec.http.cookie.Cookie;
 import javax.inject.Singleton;
 

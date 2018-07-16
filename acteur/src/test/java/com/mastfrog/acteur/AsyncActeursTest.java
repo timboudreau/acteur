@@ -41,7 +41,7 @@ import com.mastfrog.giulius.tests.TestWith;
 import com.mastfrog.netty.http.test.harness.TestHarness;
 import com.mastfrog.netty.http.test.harness.TestHarness.CallResult;
 import com.mastfrog.netty.http.test.harness.TestHarnessModule;
-import static com.mastfrog.util.Checks.notNull;
+import static com.mastfrog.util.preconditions.Checks.notNull;
 import static com.mastfrog.util.collections.CollectionUtils.map;
 import com.mastfrog.util.collections.StringObjectMap;
 import io.netty.handler.codec.http.HttpResponseStatus;

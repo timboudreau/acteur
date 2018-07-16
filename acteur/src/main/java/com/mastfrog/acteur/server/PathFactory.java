@@ -29,7 +29,7 @@ import static com.mastfrog.acteur.server.ServerModule.*;
 import com.mastfrog.url.Path;
 import com.mastfrog.url.Protocol;
 import com.mastfrog.url.URL;
-import com.mastfrog.util.Exceptions;
+import com.mastfrog.util.preconditions.Exceptions;
 import java.net.URI;
 import java.net.URISyntaxException;
 

@@ -25,8 +25,8 @@ package com.mastfrog.acteur.util;
 
 import static com.mastfrog.acteur.util.StrictTransportSecurity.SecurityElements.INCLUDE_SUBDOMAINS;
 import static com.mastfrog.acteur.util.StrictTransportSecurity.SecurityElements.PRELOAD;
-import static com.mastfrog.util.Checks.notNull;
-import com.mastfrog.util.Strings;
+import static com.mastfrog.util.preconditions.Checks.notNull;
+import com.mastfrog.util.strings.Strings;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.Collections;

@@ -24,7 +24,7 @@
 
 package com.mastfrog.acteur.headers;
 
-import com.mastfrog.util.Checks;
+import com.mastfrog.util.preconditions.Checks;
 import io.netty.util.AsciiString;
 
 /**

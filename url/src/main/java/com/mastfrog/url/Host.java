@@ -24,8 +24,8 @@
 package com.mastfrog.url;
 
 import org.netbeans.validation.api.Validating;
-import com.mastfrog.util.AbstractBuilder;
-import com.mastfrog.util.Checks;
+import com.mastfrog.util.builder.AbstractBuilder;
+import com.mastfrog.util.preconditions.Checks;
 import com.mastfrog.util.collections.CollectionUtils;
 import java.util.ArrayList;
 import java.util.Arrays;

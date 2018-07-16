@@ -25,8 +25,9 @@ package com.mastfrog.acteur;
 
 import com.mastfrog.acteur.headers.Headers;
 import static com.mastfrog.acteur.headers.Headers.IF_NONE_MATCH;
-import com.mastfrog.util.Checks;
-import com.mastfrog.util.Strings;
+import com.mastfrog.acteur.preconditions.Description;
+import com.mastfrog.util.preconditions.Checks;
+import com.mastfrog.util.strings.Strings;
 import static io.netty.handler.codec.http.HttpResponseStatus.NOT_MODIFIED;
 import java.util.Map;
 import javax.inject.Inject;
@@ -38,6 +39,9 @@ import javax.inject.Inject;
  *
  * @author Tim Boudreau
  */
+@Description("Replies with a 304 Not-Modified if the "
+        + "If-None-Match header in the current request matches the "
+        + "ETag header already set on the current response")
 public final class CheckIfNoneMatchHeader extends Acteur {
 
     @Inject
@@ -47,7 +51,6 @@ public final class CheckIfNoneMatchHeader extends Acteur {
         CharSequence etag = event.header(IF_NONE_MATCH);
         CharSequence pageEtag = response().get(Headers.ETAG);
         if (etag != null && pageEtag != null && Strings.charSequencesEqual(etag, pageEtag)) {
-            setResponseBodyWriter(ResponseImpl.SEND_EMPTY_LAST_CHUNK);
             reply(NOT_MODIFIED);
             return;
         }
@@ -56,8 +59,8 @@ public final class CheckIfNoneMatchHeader extends Acteur {
 
     @Override
     public void describeYourself(Map<String, Object> into) {
-        into.put("Replies with a 304 not modified if the "
+        into.put("Replies with a 304 Not-Modified if the "
                 + "If-None-Match header in the current request matches the "
-                + "ETag already set on the current page", true);
+                + "ETag header already set on the current response", true);
     }
 }

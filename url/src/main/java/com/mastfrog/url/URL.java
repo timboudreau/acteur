@@ -23,10 +23,10 @@
  */
 package com.mastfrog.url;
 
-import com.mastfrog.util.AbstractBuilder;
+import com.mastfrog.util.builder.AbstractBuilder;
 import org.netbeans.validation.api.Validating;
-import com.mastfrog.util.Checks;
-import com.mastfrog.util.NullArgumentException;
+import com.mastfrog.util.preconditions.Checks;
+import com.mastfrog.util.preconditions.NullArgumentException;
 import java.io.File;
 import java.net.MalformedURLException;
 import java.net.URI;

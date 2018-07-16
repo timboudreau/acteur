@@ -30,7 +30,7 @@ import com.mastfrog.acteur.util.Connection;
 import com.mastfrog.acteur.util.FrameOptions;
 import com.mastfrog.acteur.util.Realm;
 import com.mastfrog.acteur.util.StrictTransportSecurity;
-import com.mastfrog.util.Checks;
+import com.mastfrog.util.preconditions.Checks;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpMessage;

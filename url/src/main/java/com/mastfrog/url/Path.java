@@ -23,10 +23,10 @@
  */
 package com.mastfrog.url;
 
-import com.mastfrog.util.AbstractBuilder;
-import com.mastfrog.util.Checks;
-import com.mastfrog.util.Exceptions;
-import static com.mastfrog.util.Strings.charSequencesEqual;
+import com.mastfrog.util.builder.AbstractBuilder;
+import com.mastfrog.util.preconditions.Checks;
+import com.mastfrog.util.preconditions.Exceptions;
+import static com.mastfrog.util.strings.Strings.charSequencesEqual;
 import com.mastfrog.util.collections.CollectionUtils;
 import java.io.UnsupportedEncodingException;
 import java.net.URI;

@@ -23,7 +23,7 @@
  */
 package com.mastfrog.url;
 
-import com.mastfrog.util.AbstractBuilder;
+import com.mastfrog.util.builder.AbstractBuilder;
 import org.netbeans.validation.localization.LocalizationSupport;
 /**
  *

@@ -18,7 +18,6 @@ import com.mastfrog.giulius.tests.GuiceRunner;
 import com.mastfrog.netty.http.test.harness.TestHarness;
 import com.mastfrog.netty.http.test.harness.TestHarnessModule;
 import com.mastfrog.settings.Settings;
-import com.mastfrog.util.Types;
 import com.mastfrog.util.thread.Receiver;
 import io.netty.buffer.ByteBuf;
 import io.netty.handler.codec.http.FullHttpRequest;
@@ -159,7 +158,7 @@ public class PutTest {
                 out.write(buf);
                 ran = true;
             } else {
-                throw new AssertionError("Not a FullHttpRequest: " + evt.request() + " " + Types.list(evt.request().getClass()));
+                throw new AssertionError("Not a FullHttpRequest: " + evt.request() + " " + evt.request().getClass().getName());
             }
             return ResponseWriter.Status.NOT_DONE;
         }

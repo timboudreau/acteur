@@ -41,7 +41,7 @@ import com.mastfrog.giulius.tests.TestWith;
 import com.mastfrog.giulius.scope.ReentrantScope;
 import com.mastfrog.jackson.DurationSerializationMode;
 import com.mastfrog.jackson.TimeSerializationMode;
-import com.mastfrog.util.Exceptions;
+import com.mastfrog.util.preconditions.Exceptions;
 import com.mastfrog.util.time.TimeUtil;
 import com.mongodb.WriteConcern;
 import com.mongodb.async.AsyncBatchCursor;

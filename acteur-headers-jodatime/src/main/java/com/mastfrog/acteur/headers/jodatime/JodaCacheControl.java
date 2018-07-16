@@ -29,7 +29,7 @@ import static com.mastfrog.acteur.headers.jodatime.JodaCacheControlTypes.max_age
 import static com.mastfrog.acteur.headers.jodatime.JodaCacheControlTypes.must_revalidate;
 import static com.mastfrog.acteur.headers.jodatime.JodaCacheControlTypes.no_cache;
 import static com.mastfrog.acteur.headers.jodatime.JodaCacheControlTypes.no_store;
-import com.mastfrog.util.Strings;
+import com.mastfrog.util.strings.Strings;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;

@@ -1,6 +1,6 @@
 package com.mastfrog.acteur.util;
 
-import com.mastfrog.util.Strings;
+import com.mastfrog.util.strings.Strings;
 
 /**
  *

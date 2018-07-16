@@ -26,7 +26,7 @@ package com.mastfrog.acteur.mongo.async;
 import com.google.inject.Inject;
 import com.mastfrog.acteur.HttpEvent;
 import com.mastfrog.acteur.spi.ApplicationControl;
-import com.mastfrog.util.Codec;
+import com.mastfrog.util.codec.Codec;
 import com.mongodb.async.AsyncBatchCursor;
 import com.mongodb.async.SingleResultCallback;
 import io.netty.buffer.ByteBuf;

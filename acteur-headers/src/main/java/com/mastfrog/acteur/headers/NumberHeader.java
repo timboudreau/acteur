@@ -23,7 +23,7 @@
  */
 package com.mastfrog.acteur.headers;
 
-import com.mastfrog.util.Strings;
+import com.mastfrog.util.strings.Strings;
 
 /**
  * Header which is a number (so casting to long is unneeded for literals).

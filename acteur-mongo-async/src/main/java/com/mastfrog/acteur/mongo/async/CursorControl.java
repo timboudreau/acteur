@@ -23,7 +23,7 @@
  */
 package com.mastfrog.acteur.mongo.async;
 
-import com.mastfrog.util.Checks;
+import com.mastfrog.util.preconditions.Checks;
 import com.mongodb.CursorType;
 import com.mongodb.async.client.AggregateIterable;
 import com.mongodb.async.client.FindIterable;

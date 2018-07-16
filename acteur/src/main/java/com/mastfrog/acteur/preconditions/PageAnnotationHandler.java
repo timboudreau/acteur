@@ -29,7 +29,7 @@ import com.google.inject.Singleton;
 import com.mastfrog.acteur.Acteur;
 import com.mastfrog.acteur.Page;
 import com.mastfrog.giulius.Ordered;
-import com.mastfrog.util.ConfigurationError;
+import com.mastfrog.util.preconditions.ConfigurationError;
 import java.lang.annotation.Annotation;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;

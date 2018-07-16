@@ -11,7 +11,7 @@ import static com.mastfrog.acteur.cookie.auth.CookieAuthenticator.SETTINGS_KEY_C
 import static com.mastfrog.acteur.cookie.auth.CookieAuthenticator.SETTINGS_KEY_USE_COOKIE_HOST;
 import static com.mastfrog.acteur.cookie.auth.CookieAuthenticator.SETTINGS_KEY_USE_COOKIE_PORTS;
 import com.mastfrog.settings.Settings;
-import com.mastfrog.util.Strings;
+import com.mastfrog.util.strings.Strings;
 import io.netty.handler.codec.http.cookie.Cookie;
 import io.netty.handler.codec.http.cookie.DefaultCookie;
 import io.netty.util.AsciiString;

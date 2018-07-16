@@ -38,10 +38,10 @@ import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_URLS_HOST_NAM
 import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_GENERATE_URLS_WITH_INET_ADDRESS_GET_LOCALHOST;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.url.*;
-import com.mastfrog.util.Checks;
-import static com.mastfrog.util.Checks.notNull;
-import com.mastfrog.util.ConfigurationError;
-import com.mastfrog.util.Exceptions;
+import com.mastfrog.util.preconditions.Checks;
+import static com.mastfrog.util.preconditions.Checks.notNull;
+import com.mastfrog.util.preconditions.ConfigurationError;
+import com.mastfrog.util.preconditions.Exceptions;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.util.AsciiString;
 import java.net.InetAddress;

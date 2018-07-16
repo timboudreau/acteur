@@ -25,7 +25,7 @@ package com.mastfrog.acteur.pubsub;
 
 import com.mastfrog.giulius.ShutdownHookRegistry;
 import com.mastfrog.marshallers.netty.NettyContentMarshallers;
-import com.mastfrog.util.Checks;
+import com.mastfrog.util.preconditions.Checks;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.Channel;

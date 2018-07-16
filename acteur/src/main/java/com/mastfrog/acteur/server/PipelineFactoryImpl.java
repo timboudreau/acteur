@@ -44,9 +44,8 @@ import static com.mastfrog.acteur.server.ServerModule.SSL_ATTRIBUTE_KEY;
 import static com.mastfrog.acteur.server.ServerModule.X_INTERNAL_COMPRESS;
 import com.mastfrog.acteur.spi.ApplicationControl;
 import com.mastfrog.settings.Settings;
-import com.mastfrog.util.ConfigurationError;
+import com.mastfrog.util.preconditions.ConfigurationError;
 import com.mastfrog.util.thread.AutoCloseThreadLocal;
-import com.mastfrog.util.thread.QuietAutoCloseable;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
@@ -69,6 +68,7 @@ import io.netty.util.AttributeKey;
 import java.util.List;
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import com.mastfrog.util.thread.QuietAutoCloseable;
 
 @Singleton
 class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {

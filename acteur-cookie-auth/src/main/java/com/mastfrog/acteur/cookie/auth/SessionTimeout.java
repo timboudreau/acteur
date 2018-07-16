@@ -3,7 +3,7 @@ package com.mastfrog.acteur.cookie.auth;
 import com.google.inject.Inject;
 import com.mastfrog.giulius.DeploymentMode;
 import com.mastfrog.settings.Settings;
-import com.mastfrog.util.ConfigurationError;
+import com.mastfrog.util.preconditions.ConfigurationError;
 import java.time.Duration;
 import javax.inject.Singleton;
 

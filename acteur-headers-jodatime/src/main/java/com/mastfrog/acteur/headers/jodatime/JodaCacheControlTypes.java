@@ -23,7 +23,7 @@
  */
 package com.mastfrog.acteur.headers.jodatime;
 
-import com.mastfrog.util.Strings;
+import com.mastfrog.util.strings.Strings;
 
 /**
  * Enum of valid values for cache control

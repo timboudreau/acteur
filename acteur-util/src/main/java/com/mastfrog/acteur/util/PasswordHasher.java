@@ -24,9 +24,9 @@
 package com.mastfrog.acteur.util;
 
 import com.mastfrog.settings.Settings;
-import com.mastfrog.util.ConfigurationError;
-import com.mastfrog.util.Exceptions;
-import com.mastfrog.util.UniqueIDs;
+import com.mastfrog.util.preconditions.ConfigurationError;
+import com.mastfrog.util.preconditions.Exceptions;
+import com.mastfrog.util.strings.UniqueIDs;
 import java.nio.charset.Charset;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -58,7 +58,7 @@ public final class PasswordHasher {
     public static final String DEFAULT_HASHING_ALGORITHM = "SHA-512";
     public static final String SETTINGS_KEY_RANDOM_SALT_LENGTH = "randomSaltLength";
     public static final int DEFAULT_RANDOM_SALT_LENGTH = 48;
-    private UniqueIDs guids = UniqueIDs.noFile();
+    private final UniqueIDs guids = UniqueIDs.noFile();
     private final int saltLength;
 
     @Inject

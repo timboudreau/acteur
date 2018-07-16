@@ -23,7 +23,7 @@
  */
 package com.mastfrog.url;
 
-import com.mastfrog.util.Checks;
+import com.mastfrog.util.preconditions.Checks;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;

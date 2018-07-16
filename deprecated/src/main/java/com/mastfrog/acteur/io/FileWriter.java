@@ -25,7 +25,7 @@ package com.mastfrog.acteur.io;
 
 import com.google.inject.Inject;
 import com.mastfrog.acteur.Closables;
-import com.mastfrog.util.Checks;
+import com.mastfrog.util.preconditions.Checks;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;

@@ -24,8 +24,8 @@
 package com.mastfrog.acteurbase;
 
 import com.mastfrog.giulius.Dependencies;
-import com.mastfrog.util.Checks;
-import com.mastfrog.util.ConfigurationError;
+import com.mastfrog.util.preconditions.Checks;
+import com.mastfrog.util.preconditions.ConfigurationError;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Iterator;

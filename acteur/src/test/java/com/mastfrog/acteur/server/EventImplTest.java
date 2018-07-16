@@ -28,7 +28,7 @@ import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_URLS_HOST_NAM
 import com.mastfrog.settings.SettingsBuilder;
 import com.mastfrog.url.Path;
 import com.mastfrog.url.URL;
-import com.mastfrog.util.Strings;
+import com.mastfrog.util.strings.Strings;
 import io.netty.channel.embedded.EmbeddedChannel;
 import io.netty.handler.codec.http.DefaultHttpHeaders;
 import io.netty.handler.codec.http.DefaultHttpRequest;

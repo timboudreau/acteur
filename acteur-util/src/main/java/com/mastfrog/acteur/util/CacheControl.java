@@ -24,7 +24,7 @@
 package com.mastfrog.acteur.util;
 
 import static com.mastfrog.acteur.util.CacheControlTypes.*;
-import com.mastfrog.util.Strings;
+import com.mastfrog.util.strings.Strings;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.*;

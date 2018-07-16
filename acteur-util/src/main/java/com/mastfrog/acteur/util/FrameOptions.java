@@ -24,8 +24,8 @@
 package com.mastfrog.acteur.util;
 
 import static com.mastfrog.acteur.util.FrameOptions.FrameOptionType.ALLOW_FROM;
-import static com.mastfrog.util.Checks.notNull;
-import com.mastfrog.util.Strings;
+import static com.mastfrog.util.preconditions.Checks.notNull;
+import com.mastfrog.util.strings.Strings;
 import java.net.URI;
 import java.util.Iterator;
 import java.util.Objects;

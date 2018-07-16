@@ -1,7 +1,7 @@
 package com.mastfrog.acteur.server;
 
 import com.mastfrog.acteur.Event;
-import com.mastfrog.util.Codec;
+import com.mastfrog.util.codec.Codec;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;
 import io.netty.channel.Channel;

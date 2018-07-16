@@ -1,10 +1,9 @@
 package com.mastfrog.acteur;
 
 import com.mastfrog.acteur.spi.ApplicationControl;
-import com.mastfrog.util.Checks;
-import com.mastfrog.util.Exceptions;
-import com.mastfrog.util.Strings;
-import com.mastfrog.util.thread.NonThrowingAutoCloseable;
+import com.mastfrog.util.preconditions.Checks;
+import com.mastfrog.util.preconditions.Exceptions;
+import com.mastfrog.util.strings.Strings;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
@@ -15,6 +14,7 @@ import java.util.Timer;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.CopyOnWriteArrayList;
+import com.mastfrog.util.thread.QuietAutoCloseable;
 
 /**
  * A registry of resources (for example, streams or JDBC objects) which should
@@ -171,7 +171,7 @@ public final class Closables {
         }
     }
 
-    static final class AutoClosableWrapper implements NonThrowingAutoCloseable {
+    static final class AutoClosableWrapper implements QuietAutoCloseable {
 
         private final Reference<CompletionStage<?>> fut;
 

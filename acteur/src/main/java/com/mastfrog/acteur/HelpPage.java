@@ -33,7 +33,7 @@ import com.mastfrog.acteur.preconditions.Methods;
 import com.mastfrog.acteur.util.CacheControl;
 import com.mastfrog.acteur.util.Connection;
 import com.mastfrog.settings.Settings;
-import com.mastfrog.util.Strings;
+import com.mastfrog.util.strings.Strings;
 import com.mastfrog.util.collections.CollectionUtils;
 import static com.mastfrog.util.collections.CollectionUtils.supplierMap;
 import static com.mastfrog.util.collections.CollectionUtils.toList;

@@ -30,7 +30,7 @@ import com.google.inject.name.Names;
 import com.mastfrog.acteur.server.ServerModule;
 import com.mastfrog.giulius.scope.ReentrantScope;
 import com.mastfrog.settings.Settings;
-import com.mastfrog.util.Exceptions;
+import com.mastfrog.util.preconditions.Exceptions;
 import static com.mastfrog.util.collections.CollectionUtils.setOf;
 import java.io.IOException;
 import java.lang.reflect.Constructor;

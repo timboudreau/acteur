@@ -23,8 +23,8 @@
  */
 package com.mastfrog.url;
 
-import com.mastfrog.util.AbstractBuilder;
-import com.mastfrog.util.Checks;
+import com.mastfrog.util.builder.AbstractBuilder;
+import com.mastfrog.util.preconditions.Checks;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetEncoder;
 import java.util.Arrays;

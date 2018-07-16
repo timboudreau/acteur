@@ -38,7 +38,7 @@ import com.mastfrog.url.Path;
 import com.mastfrog.url.Protocol;
 import com.mastfrog.url.Protocols;
 import com.mastfrog.url.URL;
-import com.mastfrog.util.Codec;
+import com.mastfrog.util.codec.Codec;
 import com.mastfrog.util.collections.CollectionUtils;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufHolder;

@@ -24,7 +24,7 @@
 package com.mastfrog.acteur.headers.jodatime;
 
 import com.mastfrog.acteur.headers.AbstractHeader;
-import com.mastfrog.util.Strings;
+import com.mastfrog.util.strings.Strings;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.joda.time.Duration;

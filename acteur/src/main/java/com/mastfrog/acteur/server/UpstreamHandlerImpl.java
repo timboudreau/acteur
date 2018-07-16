@@ -28,7 +28,7 @@ import com.mastfrog.acteur.ContentConverter;
 import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_DECODE_REAL_IP;
 import com.mastfrog.acteur.spi.ApplicationControl;
 import com.mastfrog.settings.Settings;
-import com.mastfrog.util.Codec;
+import com.mastfrog.util.codec.Codec;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;

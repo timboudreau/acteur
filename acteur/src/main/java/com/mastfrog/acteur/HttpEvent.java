@@ -27,7 +27,7 @@ import com.google.common.base.Optional;
 import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.acteur.util.HttpMethod;
 import com.mastfrog.url.Path;
-import com.mastfrog.util.Exceptions;
+import com.mastfrog.util.preconditions.Exceptions;
 import io.netty.handler.codec.http.HttpRequest;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;

@@ -23,7 +23,7 @@
  */
 package com.mastfrog.url;
 
-import com.mastfrog.util.Checks;
+import com.mastfrog.util.preconditions.Checks;
 import org.netbeans.validation.localization.LocalizationSupport;
 
 /**

@@ -23,8 +23,8 @@
  */
 package com.mastfrog.acteur.mongo.async;
 
-import com.mastfrog.util.Checks;
-import com.mastfrog.util.Exceptions;
+import com.mastfrog.util.preconditions.Checks;
+import com.mastfrog.util.preconditions.Exceptions;
 import io.netty.buffer.ByteBuf;
 import io.netty.util.CharsetUtil;
 import java.nio.ByteBuffer;

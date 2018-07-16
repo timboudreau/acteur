@@ -28,11 +28,10 @@ import com.google.inject.ImplementedBy;
 import com.mastfrog.acteur.headers.Method;
 import com.mastfrog.acteur.preconditions.Description;
 import com.mastfrog.acteur.preconditions.PageAnnotationHandler;
-import com.mastfrog.util.Checks;
-import static com.mastfrog.util.Checks.notNull;
+import com.mastfrog.util.preconditions.Checks;
+import static com.mastfrog.util.preconditions.Checks.notNull;
 import static com.mastfrog.util.collections.CollectionUtils.setOf;
 import com.mastfrog.util.thread.AutoCloseThreadLocal;
-import com.mastfrog.util.thread.QuietAutoCloseable;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import static java.util.Collections.singleton;
@@ -42,6 +41,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import com.mastfrog.util.thread.QuietAutoCloseable;
 
 /**
  * Really an aggregation of Acteurs and a place to set header values; in recent

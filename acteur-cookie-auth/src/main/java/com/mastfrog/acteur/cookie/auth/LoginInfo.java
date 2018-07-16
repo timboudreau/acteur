@@ -3,7 +3,7 @@ package com.mastfrog.acteur.cookie.auth;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.mastfrog.util.Checks;
+import com.mastfrog.util.preconditions.Checks;
 import java.util.concurrent.ThreadLocalRandom;
 import org.netbeans.validation.api.InvalidInputException;
 import org.netbeans.validation.api.Problems;

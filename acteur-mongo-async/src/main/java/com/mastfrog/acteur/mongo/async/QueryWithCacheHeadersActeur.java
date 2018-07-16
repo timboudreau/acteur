@@ -32,7 +32,7 @@ import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.acteurbase.Chain;
 import com.mastfrog.acteurbase.Deferral;
 import com.mastfrog.acteurbase.Deferral.Resumer;
-import com.mastfrog.util.Strings;
+import com.mastfrog.util.strings.Strings;
 import com.mongodb.async.client.FindIterable;
 import com.mongodb.async.client.MongoCollection;
 import java.nio.charset.StandardCharsets;

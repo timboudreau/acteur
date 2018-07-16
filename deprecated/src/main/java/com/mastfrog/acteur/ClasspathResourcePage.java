@@ -27,7 +27,7 @@ import com.mastfrog.acteur.headers.Headers;
 import com.google.common.net.MediaType;
 import com.google.inject.Inject;
 import com.mastfrog.url.Path;
-import com.mastfrog.util.Streams;
+import com.mastfrog.util.streams.Streams;
 import com.mastfrog.util.streams.HashingInputStream;
 import com.mastfrog.acteur.headers.HeaderValueType;
 import static com.mastfrog.acteur.headers.Headers.CACHE_CONTROL;

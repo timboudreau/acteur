@@ -41,15 +41,14 @@ import com.mastfrog.acteurbase.Deferral;
 import com.mastfrog.acteurbase.Deferral.Resumer;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.settings.Settings;
-import com.mastfrog.util.Checks;
-import static com.mastfrog.util.Checks.noNullElements;
-import static com.mastfrog.util.Checks.notNull;
-import com.mastfrog.util.Exceptions;
+import com.mastfrog.util.preconditions.Checks;
+import static com.mastfrog.util.preconditions.Checks.noNullElements;
+import static com.mastfrog.util.preconditions.Checks.notNull;
+import com.mastfrog.util.preconditions.Exceptions;
 import com.mastfrog.util.collections.ArrayUtils;
 import com.mastfrog.util.collections.CollectionUtils;
 import com.mastfrog.util.function.EnhCompletableFuture;
 import com.mastfrog.util.function.ThrowingConsumer;
-import com.mastfrog.util.thread.NonThrowingAutoCloseable;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.handler.codec.http.HttpResponseStatus;
@@ -71,6 +70,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.inject.Inject;
+import com.mastfrog.util.thread.QuietAutoCloseable;
 
 /**
  * A single piece of logic which can
@@ -800,7 +800,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
         public void operationComplete(ChannelFuture future) throws Exception {
             // Do our prerequesites - set the page, and reenter request
             // scope with the same contents as when we were instantiated
-            try (NonThrowingAutoCloseable cl = Page.set(page)) {
+            try (QuietAutoCloseable cl = Page.set(page)) {
                 this.future = future;
                 delegate.call();
             }
@@ -841,7 +841,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
         @Override
         public void operationComplete(ChannelFuture future) throws Exception {
             this.future = future;
-            try (NonThrowingAutoCloseable cl = Page.set(page)) {
+            try (QuietAutoCloseable cl = Page.set(page)) {
                 wrapper.call();
             }
         }
@@ -869,6 +869,8 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
      */
     public final Acteur setResponseBodyWriter(final ChannelFutureListener listener) {
         if (listener == ChannelFutureListener.CLOSE || listener == ChannelFutureListener.CLOSE_ON_FAILURE
+                || listener == ResponseImpl.SEND_EMPTY_LAST_CHUNK
+                || listener instanceof ResponseImpl.SendOneBuffer
                 || listener instanceof IWrapper) {
             response();
             getResponse().contentWriter(listener);

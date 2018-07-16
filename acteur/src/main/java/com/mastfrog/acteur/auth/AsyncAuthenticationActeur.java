@@ -32,7 +32,7 @@ import com.mastfrog.acteur.preconditions.Authenticated;
 import static com.mastfrog.acteur.preconditions.Authenticated.OPTIONAL;
 import com.mastfrog.acteur.util.RequestID;
 import com.mastfrog.acteurbase.Chain;
-import com.mastfrog.util.Strings;
+import com.mastfrog.util.strings.Strings;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import static io.netty.handler.codec.http.HttpHeaderNames.WWW_AUTHENTICATE;
 import static io.netty.handler.codec.http.HttpResponseStatus.UNAUTHORIZED;

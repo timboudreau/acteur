@@ -23,7 +23,7 @@
  */
 package com.mastfrog.acteur.headers;
 
-import com.mastfrog.util.Checks;
+import com.mastfrog.util.preconditions.Checks;
 
 /**
  * Header that uses a byte range value

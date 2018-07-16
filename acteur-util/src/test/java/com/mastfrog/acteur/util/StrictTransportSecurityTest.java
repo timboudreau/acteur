@@ -26,7 +26,7 @@ package com.mastfrog.acteur.util;
 import com.mastfrog.acteur.util.StrictTransportSecurity.SecurityElements;
 import static com.mastfrog.acteur.util.StrictTransportSecurity.SecurityElements.INCLUDE_SUBDOMAINS;
 import static com.mastfrog.acteur.util.StrictTransportSecurity.SecurityElements.PRELOAD;
-import com.mastfrog.util.NullArgumentException;
+import com.mastfrog.util.preconditions.NullArgumentException;
 import com.mastfrog.util.time.TimeUtil;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;

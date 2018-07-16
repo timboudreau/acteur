@@ -27,10 +27,8 @@ import com.google.inject.ProvisionException;
 import com.mastfrog.acteurbase.Deferral.DeferredCode;
 import com.mastfrog.acteurbase.Deferral.Resumer;
 import com.mastfrog.giulius.scope.ReentrantScope;
-import com.mastfrog.util.Checks;
-import com.mastfrog.util.Exceptions;
-import com.mastfrog.util.thread.NonThrowingAutoCloseable;
-import com.mastfrog.util.thread.QuietAutoCloseable;
+import com.mastfrog.util.preconditions.Checks;
+import com.mastfrog.util.preconditions.Exceptions;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -39,6 +37,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import javax.inject.Inject;
+import com.mastfrog.util.thread.QuietAutoCloseable;
 
 /**
  * Runs a chain of AbstractActeurs, invoking the callback when the chain has
@@ -262,7 +261,7 @@ public final class ChainRunner {
                 } else {
                     // Ensure any ResponseDecorators are run with full
                     // scope contents
-                    try (NonThrowingAutoCloseable cl = scope.enter(state)) {
+                    try (QuietAutoCloseable cl = scope.enter(state)) {
                         onDone.onDone(newState, responses);
                     }
                 }

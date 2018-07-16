@@ -24,8 +24,8 @@
 package com.mastfrog.acteur;
 
 import com.mastfrog.acteur.headers.HeaderValueType;
-import com.mastfrog.util.Codec;
-import com.mastfrog.util.Streams;
+import com.mastfrog.util.codec.Codec;
+import com.mastfrog.util.streams.Streams;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.ByteBufOutputStream;

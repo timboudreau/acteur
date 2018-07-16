@@ -46,7 +46,7 @@ import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_CORS_ALLOW_HE
 import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_CORS_MAX_AGE_MINUTES;
 import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_CORS_REPLACE_ALLOW_HEADERS;
 import com.mastfrog.settings.Settings;
-import com.mastfrog.util.Strings;
+import com.mastfrog.util.strings.Strings;
 import com.mastfrog.util.collections.CollectionUtils;
 import static com.mastfrog.util.collections.CollectionUtils.setOf;
 import io.netty.handler.codec.http.HttpHeaderNames;

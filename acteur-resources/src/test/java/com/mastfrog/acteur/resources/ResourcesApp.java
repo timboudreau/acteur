@@ -34,7 +34,7 @@ import com.mastfrog.acteur.RequestLogger;
 import com.mastfrog.acteur.server.ServerModule;
 import com.mastfrog.acteur.util.RequestID;
 import com.mastfrog.netty.http.client.HttpClient;
-import com.mastfrog.util.Exceptions;
+import com.mastfrog.util.preconditions.Exceptions;
 import com.mastfrog.util.strings.RandomStrings;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import java.io.File;

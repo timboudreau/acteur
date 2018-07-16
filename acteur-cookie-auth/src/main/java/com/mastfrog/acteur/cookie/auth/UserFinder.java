@@ -2,7 +2,7 @@ package com.mastfrog.acteur.cookie.auth;
 
 import com.mastfrog.acteur.HttpEvent;
 import com.mastfrog.acteur.Response;
-import com.mastfrog.util.Checks;
+import com.mastfrog.util.preconditions.Checks;
 
 /**
  * Looks up a user in a database or wherever - to use Acteur Cookie

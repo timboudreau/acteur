@@ -27,7 +27,7 @@ package com.mastfrog.acteur.server;
 import com.google.inject.Singleton;
 import com.mastfrog.acteur.Application;
 import com.mastfrog.acteur.spi.ApplicationControl;
-import static com.mastfrog.util.Checks.notNull;
+import static com.mastfrog.util.preconditions.Checks.notNull;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;

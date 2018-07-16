@@ -24,7 +24,7 @@
 
 package com.mastfrog.acteur.headers;
 
-import static com.mastfrog.util.Strings.charSequencesEqual;
+import static com.mastfrog.util.strings.Strings.charSequencesEqual;
 import io.netty.util.AsciiString;
 
 /**

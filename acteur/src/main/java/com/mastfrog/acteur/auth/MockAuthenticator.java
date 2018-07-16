@@ -27,7 +27,7 @@ import com.mastfrog.acteur.util.PasswordHasher;
 import com.mastfrog.acteur.util.BasicCredentials;
 import com.google.inject.Singleton;
 import com.mastfrog.giulius.Dependencies;
-import com.mastfrog.util.ConfigurationError;
+import com.mastfrog.util.preconditions.ConfigurationError;
 import com.mastfrog.settings.Settings;
 import java.io.IOException;
 import javax.inject.Inject;

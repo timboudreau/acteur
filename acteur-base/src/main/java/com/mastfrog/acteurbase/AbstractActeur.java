@@ -23,7 +23,7 @@
  */
 package com.mastfrog.acteurbase;
 
-import com.mastfrog.util.Checks;
+import com.mastfrog.util.preconditions.Checks;
 
 /**
  * Base class for Acteurs. Implementations should implement ResponseFactory and
