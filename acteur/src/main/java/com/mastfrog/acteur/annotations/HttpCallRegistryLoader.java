@@ -142,7 +142,14 @@ public final class HttpCallRegistryLoader implements Iterable<Class<? extends Pa
                 // attributes!
                 int ix = 0;
                 // Look up all META-INF/http/pages.list files on the classpath
-                for (URL url : CollectionUtils.toIterable(cl.getResources(HttpCall.META_INF_PATH))) {
+                if (cl == null) { // graal?
+                    return Collections.emptyList();
+                }
+                Enumeration<URL> eurls = cl.getResources(HttpCall.META_INF_PATH);
+                if (eurls == null) { // graal
+                    return Collections.emptyList();
+                }
+                for (URL url : CollectionUtils.toIterable(eurls)) {
                     try (final InputStream in = url.openStream()) {
                         // Split into lines
                         String[] lines = Streams.readString(in, "UTF-8").split("\n");
