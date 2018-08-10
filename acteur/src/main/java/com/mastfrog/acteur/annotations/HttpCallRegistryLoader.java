@@ -34,6 +34,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.util.Collections;
+import static java.util.Collections.emptySet;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -109,7 +110,14 @@ public final class HttpCallRegistryLoader implements Iterable<Class<? extends Pa
     public Set<Class<? extends Module>> modules() throws IOException, ClassNotFoundException {
         Set<Class<? extends Module>> types = new HashSet();
         ClassLoader cl = type.getClassLoader();
-        for (URL url : CollectionUtils.toIterable(cl.getResources(GuiceModule.META_INF_PATH))) {
+        if (cl == null) {
+            return emptySet(); // graal
+        }
+        Enumeration<URL> eurls = cl.getResources(GuiceModule.META_INF_PATH);
+        if (eurls == null) {
+            return emptySet();
+        }
+        for (URL url : CollectionUtils.toIterable(eurls)) {
             try (final InputStream in = url.openStream()) {
                 // Split into lines
                 String[] lines = Streams.readString(in, "UTF-8").split("\n");
