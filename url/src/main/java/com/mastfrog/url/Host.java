@@ -214,7 +214,7 @@ public final class Host implements URLComponent, Validating, Iterable<Label> {
             return true;
         }
         boolean ip = isIpAddress();
-        boolean result = ip || (getTopLevelDomain() != null && getDomain() != null);
+        boolean result = ip || isLocalHostname() || isInternetHostname();
         if (result) {
             boolean someNumeric = false;
             boolean allNumeric = true;
@@ -243,6 +243,22 @@ public final class Host implements URLComponent, Validating, Iterable<Label> {
         return result;
     }
 
+    private boolean isDomain() {
+        return getDomain() != null;
+    }
+    
+    private boolean isLocalHostname() {
+        return (labels.length == 1 && !isDomain() && !isTopLevelDomain());
+    }
+    
+    private boolean isInternetHostname() {
+        return (isDomain() && isTopLevelDomain());
+    }
+    
+    private boolean isTopLevelDomain() {
+        return getTopLevelDomain() != null;
+    }
+
     @Override
     public Problems getProblems() {
         if (isLocalhost() && !"".equals(toString())) {
@@ -256,12 +272,11 @@ public final class Host implements URLComponent, Validating, Iterable<Label> {
         if (isIpV6Address()) {
             return problems;
         }
-        boolean isIp = isIpAddress();
         if (problems.allProblems().isEmpty()) {
-            if (!isIp && getTopLevelDomain() == null) {
+            if (!isIpAddress() && !isLocalHostname() && getTopLevelDomain() == null) {
                 problems.append(LocalizationSupport.getMessage(Host.class, "TopLevelDomainMissing"));
             }
-            if (!isIp && getDomain() == null) {
+            if (!isIpAddress() && !isLocalHostname() && getDomain() == null) {
                 problems.append(LocalizationSupport.getMessage(Host.class, "DomainMissing"));
             }
             if (length() > 255) {

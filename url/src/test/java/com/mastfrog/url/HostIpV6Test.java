@@ -163,6 +163,7 @@ public class HostIpV6Test {
         assertTrue(new Label("c").isValid());
         assertTrue(new Label("1").isValid());
         assertTrue(Host.parse("food.com").isValid());
+        assertTrue(Host.parse("my-host").isValid());
     }
 
     @Test
