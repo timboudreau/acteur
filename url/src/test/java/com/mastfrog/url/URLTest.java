@@ -574,8 +574,8 @@ public class URLTest {
 
     @Test
     public void validity() {
-        assertInvalid("http:///a/b/c");
-        assertInvalid("http://x/a/b/c");
+        assertInvalid("http:///127/b/c");
+        assertInvalid("http://127/a/b/c");
         assertInvalid("http://127.z.b.32/a/b/c");
         assertInvalid("http://127.z.b.32/a/b/c");
 
@@ -586,7 +586,7 @@ public class URLTest {
         lng.append(".com");
         assertInvalid("http://" + lng + "/x.txt");
         assertInvalid("http://");
-        assertInvalid("http://foo");
+        assertValid("http://my-host");
         assertInvalid("a");
         assertInvalid("a:b");
         assertInvalid("a:b:c");
