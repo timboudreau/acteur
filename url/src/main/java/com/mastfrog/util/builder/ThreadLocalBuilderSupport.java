@@ -23,7 +23,7 @@
  */
 package com.mastfrog.util.builder;
 
-import com.mastfrog.util.function.ThrowingRunnable;
+import com.mastfrog.function.throwing.ThrowingRunnable;
 import com.mastfrog.util.thread.AutoCloseThreadLocal;
 import java.util.function.BiFunction;
 import com.mastfrog.util.thread.QuietAutoCloseable;

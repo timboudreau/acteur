@@ -42,7 +42,7 @@ import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.util.preconditions.Exceptions;
 import com.mastfrog.util.strings.Strings;
-import com.mastfrog.util.function.ThrowingBiConsumer;
+import com.mastfrog.function.throwing.ThrowingBiConsumer;
 import com.mastfrog.util.thread.ResettableCountDownLatch;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
@@ -78,8 +78,8 @@ import io.netty.handler.codec.http.HttpUtil;
 import io.netty.handler.codec.http.HttpVersion;
 import io.netty.handler.codec.http.LastHttpContent;
 import io.netty.handler.stream.ChunkedWriteHandler;
-import static io.netty.util.CharsetUtil.UTF_8;
 import java.io.IOException;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -534,7 +534,7 @@ public class ConnectionReuseTest {
         }
 
         @Override
-        public void apply(HttpResponse resp, HttpContent obj) throws Exception {
+        public void accept(HttpResponse resp, HttpContent obj) throws Exception {
             if (resp != null) {
                 this.resp = resp;
 //                System.out.println(headersString());
@@ -703,11 +703,11 @@ public class ConnectionReuseTest {
                         HttpContent chunk = (HttpContent) msg;
                         if (chunk instanceof LastHttpContent) {
                             readingChunks = false;
-                            consumer.apply(lastResponse, chunk.duplicate());
+                            consumer.accept(lastResponse, chunk.duplicate());
                             latch.countDown();
                             latch.reset(1);
                         } else {
-                            consumer.apply(lastResponse, chunk.duplicate());
+                            consumer.accept(lastResponse, chunk.duplicate());
                         }
                     }
                 }

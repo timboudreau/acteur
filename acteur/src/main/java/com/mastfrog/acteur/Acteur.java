@@ -48,7 +48,7 @@ import com.mastfrog.util.preconditions.Exceptions;
 import com.mastfrog.util.collections.ArrayUtils;
 import com.mastfrog.util.collections.CollectionUtils;
 import com.mastfrog.util.function.EnhCompletableFuture;
-import com.mastfrog.util.function.ThrowingConsumer;
+import com.mastfrog.function.throwing.ThrowingConsumer;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.handler.codec.http.HttpResponseStatus;
@@ -416,7 +416,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
                     }
                 }
             });
-            c.apply(fut);
+            c.accept(fut);
         });
         return this;
     }
@@ -546,7 +546,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
         next();
         Deferral def = Page.get().getApplication().getDependencies().getInstance(Deferral.class);
         def.defer((Resumer res) -> {
-            cons.apply(res);
+            cons.accept(res);
         });
         return this;
     }
