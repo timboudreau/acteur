@@ -13,5 +13,9 @@
             <groupId>${project.groupId}</groupId>
             <artifactId>annotation-processors</artifactId>
         </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>annotation-tools</artifactId>
+        </dependency>
     </dependencies>
 </project>

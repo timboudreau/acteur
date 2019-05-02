@@ -23,7 +23,7 @@
  */
 package com.mastfrog.acteur.annotation.processors;
 
-import com.mastfrog.util.service.AbstractLineOrientedRegistrationAnnotationProcessor;
+import com.mastfrog.annotation.registries.AbstractLineOrientedRegistrationAnnotationProcessor;
 import com.mastfrog.util.service.ServiceProvider;
 import javax.annotation.processing.Processor;
 import javax.annotation.processing.SupportedAnnotationTypes;
