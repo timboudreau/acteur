@@ -8,6 +8,10 @@
         <relativePath/>
     </parent>
     <artifactId>netty-websocket-pubsub</artifactId>
+    <organization>
+        <name>Mastfrog Technologies</name>
+        <url>https://mastfrog.com</url>
+    </organization>
     <issueManagement>
         <system>Github</system>
         <url>https://github.com/timboudreau/acteur/issues</url>
