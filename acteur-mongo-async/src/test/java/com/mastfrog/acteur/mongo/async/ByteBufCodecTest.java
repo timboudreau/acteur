@@ -30,6 +30,7 @@ import com.mastfrog.acteur.mongo.async.ByteBufCodecTest.M;
 import com.mastfrog.giulius.mongodb.async.GiuliusMongoAsyncModule;
 import com.mastfrog.giulius.mongodb.async.MongoHarness;
 import com.mastfrog.giulius.tests.GuiceRunner;
+import com.mastfrog.giulius.tests.IfBinaryAvailable;
 import com.mastfrog.giulius.tests.TestWith;
 import com.mastfrog.util.preconditions.Exceptions;
 import com.mastfrog.util.streams.Streams;
@@ -64,6 +65,7 @@ import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
  */
 @RunWith(GuiceRunner.class)
 @TestWith({M.class, MongoHarness.Module.class})
+@IfBinaryAvailable("mongod")
 public class ByteBufCodecTest {
 
     private static final CodecRegistry DEFAULT_CODEC_REGISTRY

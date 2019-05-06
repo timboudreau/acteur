@@ -33,10 +33,10 @@ import com.google.inject.name.Named;
 import com.mastfrog.giulius.mongodb.async.MongoHarness;
 import com.mastfrog.giulius.scope.ReentrantScope;
 import com.mastfrog.giulius.tests.GuiceRunner;
+import com.mastfrog.giulius.tests.IfBinaryAvailable;
 import com.mastfrog.giulius.tests.TestWith;
 import com.mastfrog.jackson.JacksonModule;
 import static com.mastfrog.util.collections.CollectionUtils.map;
-import com.mongodb.async.SingleResultCallback;
 import com.mongodb.async.client.MongoCollection;
 import com.mongodb.client.model.DeleteOptions;
 import com.mongodb.client.result.DeleteResult;
@@ -49,8 +49,6 @@ import static java.util.Locale.UK;
 import static java.util.Locale.US;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 import javax.inject.Inject;
 import org.bson.Document;
 import org.bson.types.ObjectId;
@@ -66,6 +64,7 @@ import org.junit.runner.RunWith;
  */
 @RunWith(GuiceRunner.class)
 @TestWith({LocaleSerializationTest.M.class, MongoHarness.Module.class})
+@IfBinaryAvailable("mongod")
 public class LocaleSerializationTest {
 
     @Inject

@@ -32,6 +32,7 @@ import com.mastfrog.giulius.mongodb.async.MongoHarness;
 import com.mastfrog.giulius.mongodb.async.TestSupport;
 import com.mastfrog.giulius.scope.ReentrantScope;
 import com.mastfrog.giulius.tests.GuiceRunner;
+import com.mastfrog.giulius.tests.IfBinaryAvailable;
 import com.mastfrog.giulius.tests.TestWith;
 import com.mastfrog.jackson.DurationSerializationMode;
 import com.mastfrog.jackson.TimeSerializationMode;
@@ -57,6 +58,7 @@ import org.junit.runner.RunWith;
  */
 @RunWith(GuiceRunner.class)
 @TestWith({ArraysModule.class, MongoHarness.Module.class})
+@IfBinaryAvailable("mongod")
 public class TestBsonArrays {
 
     static final ArrayPayloadThing AP1 = new ArrayPayloadThing("one",

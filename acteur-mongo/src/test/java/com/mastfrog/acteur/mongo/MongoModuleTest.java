@@ -6,6 +6,7 @@ import com.google.inject.name.Named;
 import com.mastfrog.acteur.mongo.MongoModuleTest.MM;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.giulius.tests.GuiceRunner;
+import com.mastfrog.giulius.tests.IfBinaryAvailable;
 import com.mastfrog.giulius.tests.TestWith;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DB;
@@ -28,6 +29,7 @@ import org.junit.runner.RunWith;
  */
 @RunWith(GuiceRunner.class)
 @TestWith({MongoHarness.Module.class, MM.class})
+@IfBinaryAvailable("mongod")
 public class MongoModuleTest {
     static class MM extends AbstractModule {
         @Override

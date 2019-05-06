@@ -54,6 +54,7 @@ import com.mastfrog.giulius.mongodb.async.MongoHarness;
 import com.mastfrog.giulius.tests.GuiceRunner;
 import com.mastfrog.giulius.tests.TestWith;
 import com.mastfrog.giulius.scope.ReentrantScope;
+import com.mastfrog.giulius.tests.IfBinaryAvailable;
 import com.mastfrog.jackson.JacksonModule;
 import com.mastfrog.netty.http.client.HttpClient;
 import com.mastfrog.netty.http.test.harness.TestHarness;
@@ -100,6 +101,7 @@ import static org.junit.Assert.assertTrue;
  */
 @RunWith(GuiceRunner.class)
 @TestWith({M.class, TestHarnessModule.class, MongoHarness.Module.class})
+@IfBinaryAvailable("mongod")
 public class ActeurAsyncTest {
 
     static {

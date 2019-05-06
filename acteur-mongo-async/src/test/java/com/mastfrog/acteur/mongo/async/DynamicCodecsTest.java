@@ -39,6 +39,7 @@ import com.mastfrog.giulius.mongodb.async.MongoHarness;
 import com.mastfrog.giulius.tests.GuiceRunner;
 import com.mastfrog.giulius.tests.TestWith;
 import com.mastfrog.giulius.scope.ReentrantScope;
+import com.mastfrog.giulius.tests.IfBinaryAvailable;
 import com.mastfrog.jackson.DurationSerializationMode;
 import com.mastfrog.jackson.TimeSerializationMode;
 import com.mastfrog.util.preconditions.Exceptions;
@@ -77,6 +78,7 @@ import org.junit.runner.RunWith;
  */
 @RunWith(GuiceRunner.class)
 @TestWith({M.class, MongoHarness.Module.class})
+@IfBinaryAvailable("mongod")
 public class DynamicCodecsTest {
 
     private static final ZonedDateTime ZDT = TimeUtil.fromUnixTimestamp(0);

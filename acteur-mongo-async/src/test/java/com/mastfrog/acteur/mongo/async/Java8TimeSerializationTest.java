@@ -33,6 +33,7 @@ import com.google.inject.name.Named;
 import com.mastfrog.giulius.mongodb.async.MongoHarness;
 import com.mastfrog.giulius.scope.ReentrantScope;
 import com.mastfrog.giulius.tests.GuiceRunner;
+import com.mastfrog.giulius.tests.IfBinaryAvailable;
 import com.mastfrog.giulius.tests.TestWith;
 import com.mastfrog.jackson.DurationSerializationMode;
 import com.mastfrog.jackson.JacksonModule;
@@ -67,6 +68,7 @@ import org.junit.runner.RunWith;
  */
 @RunWith(GuiceRunner.class)
 @TestWith({Java8TimeSerializationTest.M.class, MongoHarness.Module.class})
+@IfBinaryAvailable("mongod")
 public class Java8TimeSerializationTest {
 
     @Inject
