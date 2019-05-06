@@ -28,11 +28,11 @@
             <artifactId>util-collections</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.kenai</groupId>
+            <groupId>com.mastfrog</groupId>
             <artifactId>simplevalidation</artifactId>
             <exclusions>
                 <exclusion>
-                    <groupId>com.kenai</groupId>
+                    <groupId>com.mastfrog</groupId>
                     <artifactId>nbstubs</artifactId>
                 </exclusion>
             </exclusions>
