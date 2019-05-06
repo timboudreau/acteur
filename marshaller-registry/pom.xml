@@ -8,6 +8,7 @@
         <relativePath/>
     </parent>
     <artifactId>marshaller-registry</artifactId>
+    <url>https://github.com/timboudreau/acteur</url>
     <name>Marshaller Registry</name>
     <dependencies>
         <dependency>
@@ -37,10 +38,11 @@
         <url>https://github.com/timboudreau/acteur/issues</url>
     </issueManagement>
     <scm>
-        <url>https://github.com/timboudreau/acteur</url>
+        <url>https://github.com/timboudreau/acteur.git</url>
         <connection>scm:git:https://github.com/timboudreau/acteur.git</connection>
         <developerConnection>git@github.com/timboudreau/acteur.git</developerConnection>
     </scm>
+    
     <organization>
         <name>Mastfrog Technologies</name>
         <url>https://mastfrog.com</url>
@@ -48,7 +50,8 @@
     <licenses>
         <license>
             <name>MIT</name>
-            <url>http://opensource.org/licenses/MIT</url>
+            <url>https://opensource.org/licenses/MIT</url>
+            <distribution>repo</distribution>
         </license>
     </licenses>
     <developers>

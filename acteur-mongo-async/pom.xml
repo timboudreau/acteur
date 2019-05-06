@@ -8,6 +8,7 @@
         <relativePath/>
     </parent>
     <artifactId>acteur-mongo-async</artifactId>
+    <url>https://github.com/timboudreau/acteur</url>
     <dependencies>
         <dependency>
             <groupId>${project.groupId}</groupId>
@@ -48,21 +49,23 @@
         </dependency>
     </dependencies>
     <scm>
-        <url>https://github.com/timboudreau/acteur</url>
+        <url>https://github.com/timboudreau/acteur.git</url>
         <connection>scm:git:https://github.com/timboudreau/acteur.git</connection>
         <developerConnection>git@github.com/timboudreau/acteur.git</developerConnection>
     </scm>
+    <issueManagement>
+        <system>Github</system>
+        <url>https://github.com/timboudreau/acteur/issues</url>
+    </issueManagement>
     <organization>
         <name>Mastfrog Technologies</name>
         <url>https://mastfrog.com</url>
     </organization>
-    <issueManagement>
-        <system>Github</system>
-        <url>https://github.com/timboudreau/acteur/issues</url>
-    </issueManagement><licenses>
+    <licenses>
         <license>
             <name>MIT</name>
-            <url>http://opensource.org/licenses/MIT</url>
+            <url>https://opensource.org/licenses/MIT</url>
+            <distribution>repo</distribution>
         </license>
     </licenses>
     <developers>

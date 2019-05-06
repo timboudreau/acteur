@@ -8,14 +8,27 @@
         <relativePath/>
     </parent>
     <artifactId>netty-websocket-pubsub</artifactId>
-    <organization>
-        <name>Mastfrog Technologies</name>
-        <url>https://mastfrog.com</url>
-    </organization>
+    <url>https://github.com/timboudreau/acteur</url>
+    <scm>
+        <url>https://github.com/timboudreau/acteur.git</url>
+        <connection>scm:git:https://github.com/timboudreau/acteur.git</connection>
+        <developerConnection>git@github.com/timboudreau/acteur.git</developerConnection>
+    </scm>
     <issueManagement>
         <system>Github</system>
         <url>https://github.com/timboudreau/acteur/issues</url>
-    </issueManagement><name>Netty Websocket Pubsub</name>
+    </issueManagement>
+    <licenses>
+        <license>
+            <name>MIT</name>
+            <url>https://opensource.org/licenses/MIT</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses><organization>
+        <name>Mastfrog Technologies</name>
+        <url>https://mastfrog.com</url>
+    </organization>
+    <name>Netty Websocket Pubsub</name>
     <dependencies>
         <dependency>
             <groupId>${project.groupId}</groupId>

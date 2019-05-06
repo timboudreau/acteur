@@ -2,6 +2,7 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <artifactId>acteur-parent</artifactId>
+    <url>https://github.com/timboudreau/acteur</url>
     <parent>
         <groupId>com.mastfrog</groupId>
         <artifactId>mastfrog-parent</artifactId>
@@ -35,10 +36,11 @@
         <url>https://github.com/timboudreau/acteur/issues</url>
     </issueManagement>
     <scm>
-        <url>https://github.com/timboudreau/acteur</url>
+        <url>https://github.com/timboudreau/acteur.git</url>
         <connection>scm:git:https://github.com/timboudreau/acteur.git</connection>
         <developerConnection>git@github.com/timboudreau/acteur.git</developerConnection>
     </scm>
+    
     <organization>
         <name>Mastfrog Technologies</name>
         <url>https://mastfrog.com</url>
@@ -46,7 +48,8 @@
     <licenses>
         <license>
             <name>MIT</name>
-            <url>http://opensource.org/licenses/MIT</url>
+            <url>https://opensource.org/licenses/MIT</url>
+            <distribution>repo</distribution>
         </license>
     </licenses>
     <developers>
