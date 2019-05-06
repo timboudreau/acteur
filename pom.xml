@@ -30,7 +30,10 @@
         <module>acteur-annotation-processors</module>
         <module>acteur-server-sent-events</module>
     </modules>
-    <url>https://github.com/timboudreau/acteur</url>
+    <issueManagement>
+        <system>Github</system>
+        <url>https://github.com/timboudreau/acteur/issues</url>
+    </issueManagement>
     <scm>
         <url>https://github.com/timboudreau/acteur</url>
         <connection>scm:git:https://github.com/timboudreau/acteur.git</connection>

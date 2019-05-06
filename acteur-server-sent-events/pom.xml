@@ -8,7 +8,10 @@
         <relativePath/>
     </parent>
     <artifactId>acteur-server-sent-events</artifactId>
-    <dependencies>
+    <issueManagement>
+        <system>Github</system>
+        <url>https://github.com/timboudreau/acteur/issues</url>
+    </issueManagement><dependencies>
         <dependency>
             <groupId>com.mastfrog</groupId>
             <artifactId>acteur</artifactId>

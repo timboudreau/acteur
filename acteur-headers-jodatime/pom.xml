@@ -8,7 +8,10 @@
         <relativePath/>
     </parent>
     <artifactId>acteur-headers-jodatime</artifactId>
-    <dependencies>
+    <issueManagement>
+        <system>Github</system>
+        <url>https://github.com/timboudreau/acteur/issues</url>
+    </issueManagement><dependencies>
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>acteur-headers</artifactId>

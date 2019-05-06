@@ -8,7 +8,10 @@
         <relativePath/>
     </parent>
     <artifactId>netty-websocket-pubsub</artifactId>
-    <name>Netty Websocket Pubsub</name>
+    <issueManagement>
+        <system>Github</system>
+        <url>https://github.com/timboudreau/acteur/issues</url>
+    </issueManagement><name>Netty Websocket Pubsub</name>
     <dependencies>
         <dependency>
             <groupId>${project.groupId}</groupId>
