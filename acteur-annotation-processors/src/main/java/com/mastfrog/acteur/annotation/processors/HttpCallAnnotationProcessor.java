@@ -60,6 +60,7 @@ import javax.lang.model.element.TypeElement;
 import javax.tools.Diagnostic;
 import javax.tools.JavaFileObject;
 import static com.mastfrog.acteur.annotation.processors.HttpCallAnnotationProcessor.INJECT_BODY_AS_ANNOTATION;
+import com.mastfrog.annotation.AnnotationUtils;
 
 /**
  * Processes the &#064;Defaults annotation, generating properties files in the
@@ -78,6 +79,7 @@ import static com.mastfrog.acteur.annotation.processors.HttpCallAnnotationProces
 })
 @SupportedSourceVersion(SourceVersion.RELEASE_8)
 public class HttpCallAnnotationProcessor extends IndexGeneratingProcessor<Line> {
+
     public static final String GENERATED_SOURCE_SUFFIX = "__GenPage";
     public static final String META_INF_PATH = "META-INF/http/pages.list";
 
@@ -98,15 +100,15 @@ public class HttpCallAnnotationProcessor extends IndexGeneratingProcessor<Line> 
         super(true, AnnotationIndexFactory.lines());
     }
 
-    private boolean isPageSubtype(Element e) {
+    private boolean isPageSubtype(Element e, AnnotationUtils utils) {
         return utils.isSubtypeOf(e, PAGE_FQN).isSubtype();
     }
 
-    private boolean isActeurSubtype(Element e) {
+    private boolean isActeurSubtype(Element e, AnnotationUtils utils) {
         return utils.isSubtypeOf(e, ACTEUR_FQN).isSubtype();
     }
 
-    private List<String> bindingTypes(Element el) {
+    private List<String> bindingTypes(Element el, AnnotationUtils utils) {
         AnnotationMirror mirror = utils.findMirror(el, HTTP_CALL_ANNOTATION);
         List<String> result = new ArrayList<String>(15);
         if (mirror != null) {
@@ -127,9 +129,9 @@ public class HttpCallAnnotationProcessor extends IndexGeneratingProcessor<Line> 
 
     int ix;
 
-    private List<String> deferred = new LinkedList<String>();
+    private List<String> deferred = new LinkedList<>();
 
-    private void sanityCheckNonHttpCallElement(Element el) {
+    private void sanityCheckNonHttpCallElement(Element el, AnnotationUtils utils) {
         AnnotationMirror inj = utils.findAnnotationMirror(el, INJECT_BODY_AS_ANNOTATION);
         if (inj != null) {
             utils.warn("@InjectRequestBodyAs annotation not applicable to classes not annotated with @HttpCall", el, inj);
@@ -153,7 +155,7 @@ public class HttpCallAnnotationProcessor extends IndexGeneratingProcessor<Line> 
     }
 
     @Override
-    public boolean handleProcess(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
+    public boolean handleProcess(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv, AnnotationUtils utils) {
 //        Set<Element> all = new HashSet<>(roundEnv.getElementsAnnotatedWith(HttpCall.class));
 //        all.addAll(roundEnv.getElementsAnnotatedWith(InjectUrlParametersAs.class));
 //        all.addAll(roundEnv.getElementsAnnotatedWith(InjectRequestBodyAs.class));
@@ -174,13 +176,13 @@ public class HttpCallAnnotationProcessor extends IndexGeneratingProcessor<Line> 
             for (Element e : all) {
                 AnnotationMirror am = utils.findAnnotationMirror(e, HTTP_CALL_ANNOTATION);
                 if (am == null) {
-                    sanityCheckNonHttpCallElement(e);
+                    sanityCheckNonHttpCallElement(e, utils);
                     continue;
                 }
                 Integer order = utils.annotationValue(am, "order", Integer.class, 0);
-                
-                boolean acteur = isActeurSubtype(e);
-                if (!isPageSubtype(e) && !acteur) {
+
+                boolean acteur = isActeurSubtype(e, utils);
+                if (!isPageSubtype(e, utils) && !acteur) {
                     processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Not a subclass of Page or Acteur: " + e.asType(), e);
                     continue;
                 }
@@ -192,7 +194,7 @@ public class HttpCallAnnotationProcessor extends IndexGeneratingProcessor<Line> 
                     // So, if it failed, make note of it, don't write the file out
                     // and we'll solve it on a subsequent round
                     AtomicBoolean err = new AtomicBoolean();
-                    String className = generatePageSource(te, err);
+                    String className = generatePageSource(te, err, utils);
                     if (!err.get()) {
                         processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE, "Generated " + className + " for " + e.asType(), e);
                     } else {
@@ -202,7 +204,7 @@ public class HttpCallAnnotationProcessor extends IndexGeneratingProcessor<Line> 
                     StringBuilder lines = new StringBuilder();
                     String canonicalName = utils.canonicalize(e.asType());
                     lines.append(canonicalName).append(":").append(order);
-                    List<String> bindingTypes = bindingTypes(e);
+                    List<String> bindingTypes = bindingTypes(e, utils);
                     if (!bindingTypes.isEmpty()) {
                         lines.append('{');
                         for (Iterator<String> it = bindingTypes.iterator(); it.hasNext();) {
@@ -245,7 +247,7 @@ public class HttpCallAnnotationProcessor extends IndexGeneratingProcessor<Line> 
     }
 
     @SuppressWarnings("unchecked")
-    private String generatePageSource(TypeElement typeElement, AtomicBoolean error) throws IOException {
+    private String generatePageSource(TypeElement typeElement, AtomicBoolean error, AnnotationUtils utils) throws IOException {
         PackageElement pkg = findPackage(typeElement);
         String className = typeElement.getSimpleName() + GENERATED_SOURCE_SUFFIX;
         ByteArrayOutputStream out = new ByteArrayOutputStream();

@@ -23,6 +23,7 @@
  */
 package com.mastfrog.acteur.annotation.processors;
 
+import com.mastfrog.annotation.AnnotationUtils;
 import com.mastfrog.annotation.registries.AbstractLineOrientedRegistrationAnnotationProcessor;
 import com.mastfrog.util.service.ServiceProvider;
 import javax.annotation.processing.Processor;
@@ -49,7 +50,7 @@ public class GuiceModuleAnnotationProcessor extends AbstractLineOrientedRegistra
     }
 
     @Override
-    protected void handleOne(Element e, AnnotationMirror anno, int order) {
+    protected void handleOne(Element e, AnnotationMirror anno, int order, AnnotationUtils utils) {
         addLine(META_INF_PATH, utils.canonicalize(e.asType()), e);
     }
 }
