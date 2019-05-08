@@ -47,6 +47,11 @@
             <groupId>${project.groupId}</groupId>
             <artifactId>jackson</artifactId>
         </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
     <scm>
         <url>https://github.com/timboudreau/acteur.git</url>
