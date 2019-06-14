@@ -83,6 +83,7 @@ public class ComprehensiveTest {
         harness.post("echo").setBody("Echo this back to me", PLAIN_TEXT_UTF_8)
                 .setTimeout(TIMEOUT).go()
                 .assertStatus(OK)
+                .await()
                 .assertContent("Echo this back to me");
 
     }
