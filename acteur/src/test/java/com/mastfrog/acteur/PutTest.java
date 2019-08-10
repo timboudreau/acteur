@@ -65,7 +65,7 @@ public class PutTest {
         }
     }
 
-    @Test(timeout = 180000L)
+    @Test(timeout = 240000L)
     public void testPuts(TestHarness harn, Application application) throws Throwable {
         harn.get("foo/bar/baz").go().assertStatus(OK).assertContent("Hello world");
         harn.get("/").go().assertStatus(OK).assertContent("Hello world");
@@ -87,7 +87,7 @@ public class PutTest {
                     //                    .assertStateSeen(com.mastfrog.netty.http.client.StateType.FullContentReceived)
                     .assertContent("Test " + i + " iter");
         }
-        harn.get(veryLongUrl(35)).setTimeout(Duration.ofMinutes(2)).go().await().assertStatus(OK);
+        harn.get(veryLongUrl(35)).setTimeout(Duration.ofMinutes(3)).go().await().assertStatus(OK);
     }
 
     private String veryLongUrl(int amt) {
