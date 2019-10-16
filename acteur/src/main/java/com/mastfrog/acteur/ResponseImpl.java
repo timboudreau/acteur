@@ -738,12 +738,12 @@ final class ResponseImpl extends Response {
         } else {
             if (chunked) {
                 if (!hasTransferEncoding) {
-                    System.out.println("chunked and to xfer - set transfer encoding to chunked");
+//                    System.out.println("chunked and to xfer - set transfer encoding to chunked");
                     hdrs.set(TRANSFER_ENCODING, HttpHeaderValues.CHUNKED);
                 }
             } else if (buf != null) {
                 hdrs.set(CONTENT_LENGTH, buf.readableBytes());
-                System.out.println("set content-length to " + buf.readableBytes());
+//                System.out.println("set content-length to " + buf.readableBytes());
             }
         }
         HttpVersion version = HTTP_1_1;

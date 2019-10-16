@@ -65,13 +65,15 @@ public class PutTest {
         }
     }
 
-    @Test(timeout = 240000L)
+    @Test(timeout = 360000L)
     public void testPuts(TestHarness harn, Application application) throws Throwable {
         harn.get("foo/bar/baz").go().assertStatus(OK).assertContent("Hello world");
         harn.get("/").go().assertStatus(OK).assertContent("Hello world");
-        for (int i = 0; i < 20; i++) {
+        for (int i = 0; i < 2; i++) {
 
-            harn.put("/").addHeader(Headers.header("X-Iteration"), "" + i)
+            harn.put("/")
+                    .setTimeout(Duration.ofSeconds(20))
+                    .addHeader(Headers.header("X-Iteration"), "" + i)
                     .onEvent(new Receiver<com.mastfrog.netty.http.client.State<?>>() {
                         @Override
                         public void receive(com.mastfrog.netty.http.client.State<?> state) {
