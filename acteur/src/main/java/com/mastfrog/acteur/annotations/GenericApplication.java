@@ -183,6 +183,7 @@ public class GenericApplication extends Application {
 
     static class GenericApplicationSettingsImpl extends GenericApplicationSettings {
 
+        @Inject // constructor for Graal's native-image code to detect
         GenericApplicationSettingsImpl() {
             super(false, false);
         }

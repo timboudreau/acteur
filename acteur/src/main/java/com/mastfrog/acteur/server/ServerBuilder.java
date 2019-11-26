@@ -68,6 +68,7 @@ public final class ServerBuilder {
     private final ReentrantScope scope;
     private boolean enableCors = true;
     private boolean enableHelp = false;
+    private boolean mergeNamespaces;
 
     public ServerBuilder(ReentrantScope scope) {
         this(DEFAULT_NAMESPACE, scope);
@@ -101,6 +102,21 @@ public final class ServerBuilder {
         Checks.notNull("namespace", namespace);
         this.namespace = namespace;
         this.scope = new ReentrantScope(new InjectionInfo());
+    }
+
+    /**
+     * If true, do not actually use the namespace feature of Dependencies -
+     * there is only one namespace - it is just not named "default". This
+     * is the common case, but for compatibility reasons is not currently
+     * the default.  This reduces memory footprint overhead when looking up
+     * bound settings, since reflection is not needed and there is only
+     * one place to look.
+     *
+     * @return
+     */
+    public ServerBuilder mergeNamespaces() {
+        this.mergeNamespaces = true;
+        return this;
     }
 
     /**
@@ -275,6 +291,10 @@ public final class ServerBuilder {
             db.add(instantiateModule(m, appModule, settings));
         }
         db.add(new CorsAndHelpModule(enableCors, enableHelp));
+
+        if (mergeNamespaces) {
+            db.mergeNamespaces();
+        }
         return db;        
     }
 

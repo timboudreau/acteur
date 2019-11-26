@@ -36,7 +36,6 @@ import com.mastfrog.acteur.Response;
 import com.mastfrog.acteur.headers.Method;
 import com.mastfrog.acteur.preconditions.Description;
 import com.mastfrog.acteur.preconditions.Methods;
-import com.mastfrog.acteur.resources.Resource;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.url.Path;
 import static io.netty.handler.codec.http.HttpResponseStatus.PARTIAL_CONTENT;

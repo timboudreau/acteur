@@ -21,14 +21,22 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-
 package com.mastfrog.acteur.debug;
+
+import com.google.inject.Singleton;
+import javax.inject.Inject;
 
 /**
  * Default implementation of Probe.
  *
  * @author Tim Boudreau
  */
+@Singleton
 class DefaultProbe implements Probe {
     // all methods have default bodies, do nothing here
+
+    @Inject
+    DefaultProbe() {
+        // constructor for Graal's native-image code to detect
+    }
 }

@@ -21,7 +21,7 @@ import org.junit.runner.RunWith;
 @TestWith({CompApp.Module.class, SilentRequestLogger.class})
 public class ComprehensiveTest {
 
-    private static final int TIMEOUT_SECONDS = 120;
+    private static final int TIMEOUT_SECONDS = 180;
     private static final int TIMEOUT_MILLIS = TIMEOUT_SECONDS * 1000;
     private final Duration TIMEOUT = Duration.ofSeconds(TIMEOUT_SECONDS);
 

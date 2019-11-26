@@ -38,6 +38,7 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
+import javax.inject.Inject;
 
 /**
  * Mechanism for pluggable handling of annotations - this way an application can
@@ -99,6 +100,11 @@ public abstract class PageAnnotationHandler {
      */
     @Singleton
     public static final class Registry {
+
+        @Inject
+        public Registry() {
+
+        }
 
         private final List<PageAnnotationHandler> handlers = new LinkedList<>();
         private final Set<Class<? super Page>> annotatedPages = Sets.newConcurrentHashSet();

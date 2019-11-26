@@ -3,6 +3,7 @@ package com.mastfrog.acteur.server;
 import com.google.inject.ImplementedBy;
 import com.mastfrog.acteur.server.UnknownNetworkEventHandler.UNEH;
 import io.netty.channel.ChannelHandlerContext;
+import javax.inject.Inject;
 
 /**
  * Handler which can receive Netty events which the framework cannot directly
@@ -16,6 +17,11 @@ public abstract class UnknownNetworkEventHandler {
     protected abstract void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception;
 
     static final class UNEH extends UnknownNetworkEventHandler {
+
+        @Inject
+        UNEH() {
+            // constructor for Graal's native-image code to detect
+        }
 
         @Override
         protected void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {

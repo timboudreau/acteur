@@ -26,6 +26,8 @@ package com.mastfrog.acteur;
 import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
+import com.google.inject.name.Named;
+import com.google.inject.name.Names;
 import com.mastfrog.acteur.headers.Headers;
 import static com.mastfrog.acteur.headers.Headers.CONTENT_LENGTH;
 import static com.mastfrog.acteur.headers.Method.GET;
@@ -43,7 +45,8 @@ import com.mastfrog.settings.Settings;
 import com.mastfrog.util.preconditions.Exceptions;
 import com.mastfrog.util.strings.Strings;
 import com.mastfrog.function.throwing.ThrowingBiConsumer;
-import com.mastfrog.util.thread.ResettableCountDownLatch;
+import com.mastfrog.function.throwing.ThrowingRunnable;
+import com.mastfrog.util.thread.OneThreadLatch;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.CompositeByteBuf;
@@ -78,15 +81,16 @@ import io.netty.handler.codec.http.HttpUtil;
 import io.netty.handler.codec.http.HttpVersion;
 import io.netty.handler.codec.http.LastHttpContent;
 import io.netty.handler.stream.ChunkedWriteHandler;
+import io.netty.util.AttributeKey;
 import java.io.IOException;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import org.junit.After;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
@@ -105,154 +109,156 @@ import org.junit.Test;
  */
 public class ConnectionReuseTest {
 
-    private TinyHttpClient client;
-    private Dependencies deps;
-    private ServerControl ctrl;
-    private Receiver receiver = new Receiver();
-    private ReuseApp app;
     private String compressedContent;
+    private static final com.mastfrog.util.net.PortFinder FINDER
+            = new com.mastfrog.util.net.PortFinder();
 
     @Test
     public void testMulti() throws Throwable {
-        // Test slamming through a mix of chunked, not chunked,
-        // compressed and not compressed
-        client.request("/ok");
-        receiver.assertNoBody();
+        withRunningServer((port, ctrl, app, receiver, client) -> {
+            // Test slamming through a mix of chunked, not chunked,
+            // compressed and not compressed
+            client.request("/ok");
+            receiver.assertNoBody();
 //        receiver.assertHeader(HttpHeaderNames.CONTENT_LENGTH, "0");
-        app.rethrowIfThrown();
+            app.rethrowIfThrown();
 
-        client.request("/notmodifiedchunky");
+            client.request("/notmodifiedchunky");
 //        receiver.assertHeader(HttpHeaderNames.TRANSFER_ENCODING, HttpHeaderValues.CHUNKED.toString());
 //        receiver.assertNoHeader(HttpHeaderNames.CONTENT_LENGTH);
 //        receiver.assertHeader(HttpHeaderNames.CONTENT_LENGTH, "0");
-        receiver.assertNoBody();
-        app.rethrowIfThrown();
+            receiver.assertNoBody();
+            app.rethrowIfThrown();
 
-        client.request("/ok");
-        receiver.assertNoBody();
-        app.rethrowIfThrown();
+            client.request("/ok");
+            receiver.assertNoBody();
+            app.rethrowIfThrown();
 
-        client.request("/compressed");
-        receiver.assertBody(compressedContent);
-        app.rethrowIfThrown();
+            client.request("/compressed");
+            receiver.assertBody(compressedContent);
+            app.rethrowIfThrown();
 
-        client.request("/ok");
-        receiver.assertNoBody();
-        app.rethrowIfThrown();
+            client.request("/ok");
+            receiver.assertNoBody();
+            app.rethrowIfThrown();
 
-        client.request("/notsochunky");
-        receiver.assertHasBody();
-        app.rethrowIfThrown();
+            client.request("/notsochunky");
+            receiver.assertHasBody();
+            app.rethrowIfThrown();
 
-        client.request("/notmodified");
-        receiver.assertNoBody();
-        app.rethrowIfThrown();
+            client.request("/notmodified");
+            receiver.assertNoBody();
+            app.rethrowIfThrown();
 
-        client.request("/notsochunky");
-        receiver.assertHasBody();
-        app.rethrowIfThrown();
+            client.request("/notsochunky");
+            receiver.assertHasBody();
+            app.rethrowIfThrown();
 
-        client.request("/notmodifiedchunky");
-        receiver.assertNoBody();
-        app.rethrowIfThrown();
+            client.request("/notmodifiedchunky");
+            receiver.assertNoBody();
+            app.rethrowIfThrown();
 
-        client.request("/chunky");
-        receiver.assertHasBody();
-        app.rethrowIfThrown();
+            client.request("/chunky");
+            receiver.assertHasBody();
+            app.rethrowIfThrown();
 
-        client.request("/notsochunky");
-        receiver.assertHasBody();
-        app.rethrowIfThrown();
+            client.request("/notsochunky");
+            receiver.assertHasBody();
+            app.rethrowIfThrown();
 
-        client.request("/chunky");
-        receiver.assertHasBody();
-        app.rethrowIfThrown();
+            client.request("/chunky");
+            receiver.assertHasBody();
+            app.rethrowIfThrown();
 
 //        client.request("/notchunky");
 //        receiver.assertNoBody();
 //        app.rethrowIfThrown();
+            client.request("/notmodified");
+            receiver.assertNoBody();
+            app.rethrowIfThrown();
 
-        client.request("/notmodified");
-        receiver.assertNoBody();
-        app.rethrowIfThrown();
+            client.request("/doesntexist");
+            receiver.assertHasBody();
+            app.rethrowIfThrown();
 
-        client.request("/doesntexist");
-        receiver.assertHasBody();
-        app.rethrowIfThrown();
+            client.request("/notmodifiedchunky");
+            receiver.assertNoBody();
+            app.rethrowIfThrown();
 
-        client.request("/notmodifiedchunky");
-        receiver.assertNoBody();
-        app.rethrowIfThrown();
+            client.request("/chunky");
+            receiver.assertHasBody();
+            app.rethrowIfThrown();
 
-        client.request("/chunky");
-        receiver.assertHasBody();
-        app.rethrowIfThrown();
+            client.request("/compressed");
+            receiver.assertBody(compressedContent);
+            app.rethrowIfThrown();
 
-        client.request("/compressed");
-        receiver.assertBody(compressedContent);
-        app.rethrowIfThrown();
+            client.request("/okchunky");
+            receiver.assertNoBody();
+            app.rethrowIfThrown();
 
-        client.request("/okchunky");
-        receiver.assertNoBody();
-        app.rethrowIfThrown();
+            client.request("/compressed");
+            receiver.assertBody(compressedContent);
+            app.rethrowIfThrown();
 
-        client.request("/compressed");
-        receiver.assertBody(compressedContent);
-        app.rethrowIfThrown();
+            client.request("/notmodified");
+            receiver.assertNoBody();
+            app.rethrowIfThrown();
 
-        client.request("/notmodified");
-        receiver.assertNoBody();
-        app.rethrowIfThrown();
+            client.request("/compressed");
+            receiver.assertBody(compressedContent);
+            app.rethrowIfThrown();
 
-        client.request("/compressed");
-        receiver.assertBody(compressedContent);
-        app.rethrowIfThrown();
-
-        client.request("/ok");
-        receiver.assertNoBody();
-        app.rethrowIfThrown();
+            client.request("/ok");
+            receiver.assertNoBody();
+            app.rethrowIfThrown();
+        });
     }
 
     @Test
     public void testHello() throws Throwable {
-        // Test that multiple un-chunked responses over a single connection can be made
-        // without the HttpContentEncoder complaining
-        client.request("/hello");
-        receiver.assertBody("hello 1");
-        app.rethrowIfThrown();
+        withRunningServer((port, ctrl, app, receiver, client) -> {
+            // Test that multiple un-chunked responses over a single connection can be made
+            // without the HttpContentEncoder complaining
+            client.request("/hello");
+            receiver.assertBody("hello 1");
+            app.rethrowIfThrown();
 
-        client.request("/hello");
-        receiver.assertBody("hello 2");
-        app.rethrowIfThrown();
+            client.request("/hello");
+            receiver.assertBody("hello 2");
+            app.rethrowIfThrown();
 
-        client.request("/hello");
-        receiver.assertBody("hello 3");
-        app.rethrowIfThrown();
+            client.request("/hello");
+            receiver.assertBody("hello 3");
+            app.rethrowIfThrown();
 
-        client.request("/hello");
-        receiver.assertBody("hello 4");
-        app.rethrowIfThrown();
+            client.request("/hello");
+            receiver.assertBody("hello 4");
+            app.rethrowIfThrown();
+        });
     }
 
     @Test
     public void testChunky() throws Throwable {
-        // --------------------------------
-        // Test that chunked responses work correctly
-        client.request("/chunky");
-        receiver.assertBody("chunky 1");
-        app.rethrowIfThrown();
+        withRunningServer((port, ctrl, app, receiver, client) -> {
+            // --------------------------------
+            // Test that chunked responses work correctly
+            client.request("/chunky");
+            receiver.assertBody("chunky 1");
+            app.rethrowIfThrown();
 
-        client.request("/chunky");
-        receiver.assertBody("chunky 2");
-        app.rethrowIfThrown();
+            client.request("/chunky");
+            receiver.assertBody("chunky 2");
+            app.rethrowIfThrown();
 
-        client.request("/chunky");
-        receiver.assertBody("chunky 3");
-        app.rethrowIfThrown();
+            client.request("/chunky");
+            receiver.assertBody("chunky 3");
+            app.rethrowIfThrown();
 
-        client.request("/chunky");
-        receiver.assertBody("chunky 4");
-        app.rethrowIfThrown();
+            client.request("/chunky");
+            receiver.assertBody("chunky 4");
+            app.rethrowIfThrown();
+        });
     }
 
     @Test
@@ -260,176 +266,197 @@ public class ConnectionReuseTest {
         if (true) {
             return;
         }
-        // --------------------------------
-        // Test that throwing raw byte bufs down the socket works correctly
-        client.request("/notchunky");
-        receiver.assertBody("notchunky 1");
-        app.rethrowIfThrown();
+        withRunningServer((port, ctrl, app, receiver, client) -> {
 
-        client.request("/notchunky");
-        receiver.assertBody("notchunky 2");
-        app.rethrowIfThrown();
+            // --------------------------------
+            // Test that throwing raw byte bufs down the socket works correctly
+            client.request("/notchunky");
+            receiver.assertBody("notchunky 1");
+            app.rethrowIfThrown();
 
-        client.request("/notchunky");
-        receiver.assertBody("notchunky 3");
-        app.rethrowIfThrown();
+            client.request("/notchunky");
+            receiver.assertBody("notchunky 2");
+            app.rethrowIfThrown();
 
-        client.request("/notchunky");
-        receiver.assertBody("notchunky 4");
-        app.rethrowIfThrown();
+            client.request("/notchunky");
+            receiver.assertBody("notchunky 3");
+            app.rethrowIfThrown();
+
+            client.request("/notchunky");
+            receiver.assertBody("notchunky 4");
+            app.rethrowIfThrown();
+        });
     }
 
     @Test
     public void testCompressed() throws Throwable {
-        // --------------------------------
-        // Test that compressed chunks work correctly
-        client.request("/compressed");
-        receiver.assertBody(compressedContent);
-//        receiver.assertHeader("X-Compressed", "1");
-        app.rethrowIfThrown();
+        withRunningServer((port, ctrl, app, receiver, client) -> {
 
-        client.request("/compressed");
-        receiver.assertBody(compressedContent);
+            // --------------------------------
+            // Test that compressed chunks work correctly
+            client.request("/compressed");
+            receiver.assertBody(compressedContent);
 //        receiver.assertHeader("X-Compressed", "1");
-        app.rethrowIfThrown();
+            app.rethrowIfThrown();
 
-        client.request("/compressed");
-        receiver.assertBody(compressedContent);
+            client.request("/compressed");
+            receiver.assertBody(compressedContent);
 //        receiver.assertHeader("X-Compressed", "1");
-        app.rethrowIfThrown();
+            app.rethrowIfThrown();
 
-        client.request("/compressed");
-        receiver.assertBody(compressedContent);
+            client.request("/compressed");
+            receiver.assertBody(compressedContent);
 //        receiver.assertHeader("X-Compressed", "1");
-        app.rethrowIfThrown();
+            app.rethrowIfThrown();
+
+            client.request("/compressed");
+            receiver.assertBody(compressedContent);
+//        receiver.assertHeader("X-Compressed", "1");
+            app.rethrowIfThrown();
+        });
     }
 
     @Test
     public void testOk() throws Throwable {
-        // --------------------------------
-        // Test that compressed chunks work correctly
-        client.request("/ok");
-        receiver.assertNoBody();
-        app.rethrowIfThrown();
+        withRunningServer((port, ctrl, app, receiver, client) -> {
+            // --------------------------------
+            // Test that compressed chunks work correctly
+            client.request("/ok");
+            receiver.assertNoBody();
+            app.rethrowIfThrown();
 
-        client.request("/ok");
-        receiver.assertNoBody();
-        app.rethrowIfThrown();
+            client.request("/ok");
+            receiver.assertNoBody();
+            app.rethrowIfThrown();
 
-        client.request("/ok");
-        receiver.assertNoBody();
-        app.rethrowIfThrown();
+            client.request("/ok");
+            receiver.assertNoBody();
+            app.rethrowIfThrown();
 
-        client.request("/ok");
-        receiver.assertNoBody();
-        app.rethrowIfThrown();
+            client.request("/ok");
+            receiver.assertNoBody();
+            app.rethrowIfThrown();
+        });
     }
 
     @Test
     public void testNotModified() throws Throwable {
-        // --------------------------------
-        // Test that compressed chunks work correctly
-        client.request("/notmodified");
-        receiver.assertNoBody();
-        app.rethrowIfThrown();
+        withRunningServer((port, ctrl, app, receiver, client) -> {
+            // --------------------------------
+            // Test that compressed chunks work correctly
+            client.request("/notmodified");
+            receiver.assertNoBody();
+            app.rethrowIfThrown();
 
-        client.request("/notmodified");
-        receiver.assertNoBody();
-        app.rethrowIfThrown();
+            client.request("/notmodified");
+            receiver.assertNoBody();
+            app.rethrowIfThrown();
 
-        client.request("/notmodified");
-        receiver.assertNoBody();
-        app.rethrowIfThrown();
+            client.request("/notmodified");
+            receiver.assertNoBody();
+            app.rethrowIfThrown();
 
-        client.request("/notmodified");
-        receiver.assertNoBody();
-        app.rethrowIfThrown();
+            client.request("/notmodified");
+            receiver.assertNoBody();
+            app.rethrowIfThrown();
+        });
     }
 
     @Test
     public void testOkChunky() throws Throwable {
-        // --------------------------------
-        // Test that compressed chunks work correctly
-        client.request("/okchunky");
-        receiver.assertNoBody();
-        app.rethrowIfThrown();
+        withRunningServer((port, ctrl, app, receiver, client) -> {
+            // --------------------------------
+            // Test that compressed chunks work correctly
+            client.request("/okchunky");
+            receiver.assertNoBody();
+            app.rethrowIfThrown();
 
-        client.request("/okchunky");
-        receiver.assertNoBody();
-        app.rethrowIfThrown();
+            client.request("/okchunky");
+            receiver.assertNoBody();
+            app.rethrowIfThrown();
 
-        client.request("/okchunky");
-        receiver.assertNoBody();
-        app.rethrowIfThrown();
+            client.request("/okchunky");
+            receiver.assertNoBody();
+            app.rethrowIfThrown();
 
-        client.request("/okchunky");
-        receiver.assertNoBody();
-        app.rethrowIfThrown();
+            client.request("/okchunky");
+            receiver.assertNoBody();
+            app.rethrowIfThrown();
+        });
     }
 
     @Test
     public void testNotModifiedChunky() throws Throwable {
-        // --------------------------------
-        // Test that compressed chunks work correctly
-        client.request("/notmodifiedchunky");
-        receiver.assertNoBody();
-        app.rethrowIfThrown();
+        withRunningServer((port, ctrl, app, receiver, client) -> {
+            // --------------------------------
+            // Test that compressed chunks work correctly
+            client.request("/notmodifiedchunky");
+            receiver.assertNoBody();
+            app.rethrowIfThrown();
 
-        client.request("/notmodifiedchunky");
-        receiver.assertNoBody();
-        app.rethrowIfThrown();
+            client.request("/notmodifiedchunky");
+            receiver.assertNoBody();
+            app.rethrowIfThrown();
 
-        client.request("/notmodifiedchunky");
-        receiver.assertNoBody();
-        app.rethrowIfThrown();
+            client.request("/notmodifiedchunky");
+            receiver.assertNoBody();
+            app.rethrowIfThrown();
 
-        client.request("/notmodifiedchunky");
-        receiver.assertNoBody();
-        app.rethrowIfThrown();
+            client.request("/notmodifiedchunky");
+            receiver.assertNoBody();
+            app.rethrowIfThrown();
+        });
+    }
+
+    interface WithRunningServer {
+
+        void go(int port, ServerControl ctrl, ReuseApp app, Receiver receiver, TinyHttpClient client) throws Throwable;
+    }
+
+    static void withRunningServer(WithRunningServer wr) throws Exception, Throwable {
+        // Provide a completely separate environment for each test method,
+        // so calls cannot interfere with each other - the previous iteration relied
+        // on static counters, and so would fail unexpectedly depending on the
+        // parallel test settings and number of cores.
+        ThrowingRunnable all = ThrowingRunnable.oneShot(true);
+        try {
+            int port = FINDER.findAvailableServerPort();
+            Settings settings = Settings.builder().add("port", port)
+                    .add("neverKeepAlive", false)
+                    //                .add("channel.debug", true)
+                    .add(SETTINGS_KEY_CORS_ENABLED, false)
+                    .add(HTTP_COMPRESSION_THRESHOLD, 5)
+                    .build();
+            ServerModule<ReuseApp> sm = new ServerModule<>(ReuseApp.class, 4, 2, 1);
+            Dependencies deps = new Dependencies(settings, sm/*, new SilentRequestLogger()*/, new AbstractModule() {
+                @Override
+                protected void configure() {
+                    bind(ErrorInterceptor.class).to(EI.class);
+                    bind(AtomicInteger.class).annotatedWith(Names.named("count")).toInstance(new AtomicInteger());
+                    bind(AtomicInteger.class).annotatedWith(Names.named("nc-count")).toInstance(new AtomicInteger());
+                }
+            });
+            ServerControl ctrl = deps.getInstance(Server.class).start(port);
+            ReuseApp app = (ReuseApp) deps.getInstance(Application.class);
+            all.andAlways(() -> ctrl.shutdown(true));
+            all.andAlways(deps::shutdown);
+            Receiver receiver = new Receiver();
+            TinyHttpClient client = new TinyHttpClient(receiver, port);
+            all.andAlways(client::shutdown);
+            wr.go(port, ctrl, app, receiver, client);
+        } finally {
+            all.run();
+        }
     }
 
     @Before
     public void startup() throws IOException {
-        int port = new com.mastfrog.util.net.PortFinder().findAvailableServerPort();
-        Settings settings = Settings.builder().add("port", port)
-                .add("neverKeepAlive", false)
-//                .add("channel.debug", true)
-                .add(SETTINGS_KEY_CORS_ENABLED, false)
-                .add(HTTP_COMPRESSION_THRESHOLD, 5)
-                .build();
-        ServerModule<ReuseApp> sm = new ServerModule<>(ReuseApp.class, 4, 2, 1);
-        deps = new Dependencies(settings, sm/*, new SilentRequestLogger()*/, new AbstractModule() {
-            @Override
-            protected void configure() {
-                bind(ErrorInterceptor.class).to(EI.class);
-            }
-        });
-        ctrl = deps.getInstance(Server.class).start(port);
-        app = (ReuseApp) deps.getInstance(Application.class);
-
-        client = new TinyHttpClient(receiver, port);
-
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < 100; i++) {
             sb.append(i).append(':').append("abcdefghijklmnopqrstuvwxyz012345678910");
         }
         sb.append('\n');
         compressedContent = sb.toString();
-    }
-
-    @After
-    public void shutdown() throws InterruptedException {
-        try {
-            if (client != null) {
-                client.shutdown();
-            }
-        } finally {
-            try {
-                ctrl.shutdown(true);
-            } finally {
-                deps.shutdown();
-            }
-        }
     }
 
     static final class Receiver implements ThrowingBiConsumer<HttpResponse, HttpContent> {
@@ -449,11 +476,14 @@ public class ConnectionReuseTest {
         }
 
         HttpContent awaitContent() throws InterruptedException {
-            for (int i = 0; lastContent == null && i < 30; i++) {
+            for (int i = 0; lastContent == null && i < 300; i++) {
+                if (lastContent != null) {
+                    break;
+                }
                 synchronized (this) {
                     if (lastContent == null) {
 //                        System.out.println("loop wait " + i);
-                        wait(100);
+                        wait(50);
                     } else {
                         return lastContent;
                     }
@@ -575,17 +605,11 @@ public class ConnectionReuseTest {
         private final Set<Channel> channels = new HashSet<>();
         private final Bootstrap bootstrap;
         private final int port;
-        private final ResettableCountDownLatch latch = new ResettableCountDownLatch(1);
 
         TinyHttpClient(ThrowingBiConsumer<HttpResponse, HttpContent> consumer, int port) {
             bootstrap = new Bootstrap();
-            bootstrap.group(group).channel(NioSocketChannel.class).handler(new HttpUploadClientInitializer(consumer, latch));
+            bootstrap.group(group).channel(NioSocketChannel.class).handler(new HttpUploadClientInitializer(consumer));
             this.port = port;
-        }
-
-        void waitForDone() throws InterruptedException {
-//            latch.reset(1);
-            latch.await(200, TimeUnit.MILLISECONDS);
         }
 
         @SuppressWarnings("deprecation")
@@ -607,12 +631,14 @@ public class ConnectionReuseTest {
         private Channel channel;
         private Throwable thrown;
 
-        public void request(String path) throws InterruptedException {
+        static final AttributeKey<OneThreadLatch> latchKey = AttributeKey.valueOf(OneThreadLatch.class, "client");
+
+        public OneThreadLatch request(String path) throws InterruptedException {
             if (thrown != null) {
                 Exceptions.chuck(thrown);
             }
 //            System.out.println("\n\n****************\nrequest " + path);
-            latch.reset(1);
+            OneThreadLatch latch = new OneThreadLatch();
             if (channel == null) {
 //                System.out.println("open channel");
                 channel = bootstrap.connect("localhost", port).sync().channel();
@@ -622,10 +648,13 @@ public class ConnectionReuseTest {
                         if (f.cause() != null) {
                             f.cause().printStackTrace();
                         }
+                        latch.releaseAll();
 //                        System.out.println("Channel closed");
                     }
                 });
             }
+            channel.attr(latchKey).set(latch);
+
 //            assertTrue("Keep alive failed.", channel.isOpen());
             assertTrue("Keep alive failed.", channel.isWritable());
             HttpRequest request = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, path);
@@ -639,21 +668,21 @@ public class ConnectionReuseTest {
                     if (f.cause() != null) {
                         f.cause().printStackTrace();
                         thrown = f.cause();
+                        latch.releaseAll();
                     }
 //                    System.out.println("message flushed");
                 }
             });
-            waitForDone();
+            latch.await(500, TimeUnit.MILLISECONDS);
+            return latch;
         }
 
         class HttpUploadClientInitializer extends ChannelInitializer<SocketChannel> {
 
             final ThrowingBiConsumer<HttpResponse, HttpContent> consumer;
-            private final ResettableCountDownLatch latch;
 
-            public HttpUploadClientInitializer(ThrowingBiConsumer<HttpResponse, HttpContent> consumer, ResettableCountDownLatch latch) {
+            public HttpUploadClientInitializer(ThrowingBiConsumer<HttpResponse, HttpContent> consumer) {
                 this.consumer = consumer;
-                this.latch = latch;
             }
 
             @Override
@@ -663,7 +692,7 @@ public class ConnectionReuseTest {
                 pipeline.addLast("inflater", new HttpContentDecompressor());
                 pipeline.addLast("agg", new HttpObjectAggregator(16384));
                 pipeline.addLast("chunkedWriter", new ChunkedWriteHandler());
-                pipeline.addLast("handler", new HttpClientHandler(consumer, latch));
+                pipeline.addLast("handler", new HttpClientHandler(consumer));
 //                pipeline.addLast("deflater", new HttpContentCompressor());
             }
 
@@ -673,12 +702,10 @@ public class ConnectionReuseTest {
 
                 private boolean readingChunks;
                 private final ThrowingBiConsumer<HttpResponse, HttpContent> consumer;
-                private final ResettableCountDownLatch latch;
                 HttpResponse lastResponse;
 
-                public HttpClientHandler(ThrowingBiConsumer<HttpResponse, HttpContent> consumer, ResettableCountDownLatch latch) {
+                public HttpClientHandler(ThrowingBiConsumer<HttpResponse, HttpContent> consumer) {
                     this.consumer = consumer;
-                    this.latch = latch;
                 }
 
                 @Override
@@ -704,8 +731,8 @@ public class ConnectionReuseTest {
                         if (chunk instanceof LastHttpContent) {
                             readingChunks = false;
                             consumer.accept(lastResponse, chunk.duplicate());
-                            latch.countDown();
-                            latch.reset(1);
+                            OneThreadLatch latch = ctx.channel().attr(latchKey).get();
+                            latch.releaseAll();
                         } else {
                             consumer.accept(lastResponse, chunk.duplicate());
                         }
@@ -874,11 +901,12 @@ public class ConnectionReuseTest {
 
         static final class ChunkyReuseActeur extends Acteur implements ChannelFutureListener {
 
-            static int count;
-
             int loops;
+            private final AtomicInteger count;
 
-            ChunkyReuseActeur() {
+            @Inject
+            ChunkyReuseActeur(@Named("count") AtomicInteger count) {
+                this.count = count;
                 add(Headers.CONNECTION, Connection.keep_alive);
                 setChunked(true);
                 setResponseBodyWriter(this);
@@ -896,7 +924,7 @@ public class ConnectionReuseTest {
                 switch (loops) {
                     case 1:
                         ByteBuf buf = channel.alloc().buffer(7);
-                        buf.writeCharSequence("chunky " + ++count, UTF_8);
+                        buf.writeCharSequence("chunky " + count.incrementAndGet(), UTF_8);
                         DefaultHttpContent ct = new DefaultHttpContent(buf);
                         channel.writeAndFlush(ct).addListener(this);
                         break;
@@ -926,10 +954,11 @@ public class ConnectionReuseTest {
             int loops;
             byte[] bytes;
 
-            NotChunkyReuseActeur() {
+            @Inject
+            NotChunkyReuseActeur(@Named("nc-count") AtomicInteger count) {
                 add(Headers.CONNECTION, Connection.keep_alive);
                 setChunked(false);
-                bytes = ("notchunky " + ++count).getBytes(UTF_8);
+                bytes = ("notchunky " + count.incrementAndGet()).getBytes(UTF_8);
                 add(CONTENT_LENGTH, bytes.length);
                 setResponseBodyWriter(this);
                 ok();
@@ -974,7 +1003,6 @@ public class ConnectionReuseTest {
             NotSoChunkyReuseActeur() {
                 add(Headers.CONNECTION, Connection.keep_alive);
                 setChunked(false);
-                System.out.println("send not so chunky payload");
                 ok("notsochunky " + ++count);
             }
         }

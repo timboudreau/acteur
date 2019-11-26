@@ -22,6 +22,7 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 import java.lang.annotation.Target;
+import java.time.Duration;
 import java.util.List;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
@@ -35,17 +36,20 @@ import org.junit.runner.RunWith;
 @TestWith({M.class, TestHarnessModule.class, SilentRequestLogger.class})
 public class TestAnnotations {
 
-    @Test(timeout=8000)
+    private static final long TIMEOUT = 16000;
+    private static final Duration TO = Duration.ofMillis(TIMEOUT);
+
+    @Test(timeout=TIMEOUT)
     public void test(TestHarness harn) throws IOException, Throwable {
-        harn.get("one").go().assertStatus(BAD_REQUEST);
+        harn.get("one").setTimeout(TO).go().assertStatus(BAD_REQUEST);
         assertTrue(annotationHandlerCalled);
-        harn.get("one").addQueryPair("foo", "hey").go().assertStatus(BAD_REQUEST);
-        harn.get("one").addQueryPair("foo", "hey").addQueryPair("bar", "you").go().assertStatus(OK).assertContent("one");
-        harn.get("two").go().assertStatus(BAD_REQUEST);
-        harn.get("two").addQueryPair("baz", "hey").go().assertStatus(OK).assertContent("two");
-        harn.get("two").addQueryPair("quux", "you").go().assertStatus(OK).assertContent("two");
-        harn.get("three").go().assertStatus(NOT_FOUND);
-        harn.post("three").go().assertStatus(OK).assertContent("three");
+        harn.get("one").setTimeout(TO).addQueryPair("foo", "hey").go().assertStatus(BAD_REQUEST);
+        harn.get("one").setTimeout(TO).addQueryPair("foo", "hey").addQueryPair("bar", "you").go().assertStatus(OK).assertContent("one");
+        harn.get("two").setTimeout(TO).go().assertStatus(BAD_REQUEST);
+        harn.get("two").setTimeout(TO).addQueryPair("baz", "hey").go().assertStatus(OK).assertContent("two");
+        harn.get("two").setTimeout(TO).addQueryPair("quux", "you").go().assertStatus(OK).assertContent("two");
+        harn.get("three").setTimeout(TO).go().assertStatus(NOT_FOUND);
+        harn.post("three").setTimeout(TO).go().assertStatus(OK).assertContent("three");
         // Also test that default CORS headers work
         harn.options("foo").go().assertStatus(NO_CONTENT);
     }

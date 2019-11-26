@@ -23,18 +23,26 @@
  */
 package com.mastfrog.acteur;
 
+import com.google.inject.Singleton;
 import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.acteur.util.RequestID;
 import com.mastfrog.util.time.TimeUtil;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import java.time.Duration;
+import javax.inject.Inject;
 
 /**
  * A trivial default logger implementation
  *
  * @author Tim Boudreau
  */
+@Singleton
 class DefaultRequestLogger implements RequestLogger {
+
+    @Inject
+    DefaultRequestLogger() {
+        // constructor for Graal's native-image code to detect
+    }
 
     @Override
     public void onBeforeEvent(RequestID rid, Event<?> event) {

@@ -108,27 +108,40 @@ public class GenericApplicationModule<T extends GenericApplication> extends Serv
     }
 
     public static <T extends Module> T instantiateModule(Class<T> m, Settings settings, ReentrantScope scope) throws NoSuchMethodException, InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
+        boolean log = settings.getBoolean("gamlog", false);
         try {
             try {
                 Constructor<T> c = m.getDeclaredConstructor();
                 c.setAccessible(true);
                 return c.newInstance();
             } catch (NoSuchMethodException e) {
+                if (log) {
+                    e.printStackTrace();
+                }
                 try {
                     Constructor<T> c = m.getDeclaredConstructor(Settings.class);
                     c.setAccessible(true);
                     return c.newInstance(settings);
                 } catch (NoSuchMethodException e1) {
+                    if (log) {
+                        e1.printStackTrace();
+                    }
                     try {
                         Constructor<T> c = m.getDeclaredConstructor(Settings.class, ReentrantScope.class);
                         c.setAccessible(true);
                         return c.newInstance(settings, scope);
                     } catch (NoSuchMethodException e2) {
+                        if (log) {
+                            e2.printStackTrace();
+                        }
                         try {
                             Constructor<T> c = m.getDeclaredConstructor(ReentrantScope.class, Settings.class);
                             c.setAccessible(true);
                             return c.newInstance(scope, settings);
                         } catch (NoSuchMethodException e3) {
+                            if (log) {
+                                e3.printStackTrace();
+                            }
                             Constructor<T> c = m.getDeclaredConstructor(ReentrantScope.class);
                             c.setAccessible(true);
                             return c.newInstance(scope);
@@ -137,6 +150,9 @@ public class GenericApplicationModule<T extends GenericApplication> extends Serv
                 }
             }
         } catch (NoSuchMethodException e) {
+            if (log) {
+                e.printStackTrace();
+            }
             return m.newInstance();
         }
     }

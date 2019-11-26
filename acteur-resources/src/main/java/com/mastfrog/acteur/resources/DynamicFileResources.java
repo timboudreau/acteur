@@ -187,7 +187,7 @@ public class DynamicFileResources implements StaticResources {
             CacheControl cc = new CacheControl(CacheControlTypes.Public, CacheControlTypes.must_revalidate)
                     .add(CacheControlTypes.max_age, maxAge);
             response.add(CACHE_CONTROL, cc)
-                    .add(LAST_MODIFIED, TimeUtil.fromUnixTimestamp(file.lastModified()))
+                    .add(LAST_MODIFIED, TimeUtil.fromUnixTimestamp(file.lastModified()).withNano(0))
                     .add(ETAG, etag())
                     .add(ACCEPT_RANGES, HttpHeaderValues.BYTES);
 

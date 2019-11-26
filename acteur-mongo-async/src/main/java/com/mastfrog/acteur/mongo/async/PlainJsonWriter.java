@@ -31,7 +31,7 @@ import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.CharsetEncoder;
-import javax.xml.bind.DatatypeConverter;
+import java.util.Base64;
 import org.bson.AbstractBsonWriter;
 import org.bson.BSONException;
 import org.bson.BsonBinary;
@@ -225,7 +225,8 @@ class PlainJsonWriter extends AbstractBsonWriter {
     protected void doWriteBinaryData(BsonBinary bb) {
         writeNameHelper(getName());
         rawWriteChar('"');
-        _writeString(DatatypeConverter.printBase64Binary(bb.getData()));
+//        _writeString(DatatypeConverter.printBase64Binary(bb.getData()));
+        _writeString(Base64.getEncoder().encodeToString(bb.getData()));
         rawWriteChar('"');
     }
 

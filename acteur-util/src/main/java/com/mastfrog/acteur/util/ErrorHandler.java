@@ -74,6 +74,11 @@ public abstract class ErrorHandler {
 
         final List<ErrorHandler> handlers = new ArrayList<>(3);
 
+        @Inject
+        public Registry() {
+            // constructor for Graal's native-image code to detect
+        }
+
         public void register(ErrorHandler handler) {
             handlers.add(handler);
             Collections.sort(handlers, (ErrorHandler o1, ErrorHandler o2) -> {

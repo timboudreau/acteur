@@ -24,6 +24,7 @@
 package com.mastfrog.acteur.server;
 
 import io.netty.channel.ChannelPipeline;
+import javax.inject.Inject;
 
 /**
  * Default impl
@@ -31,6 +32,11 @@ import io.netty.channel.ChannelPipeline;
  * @author Tim Boudreau
  */
 class DefaultPipelineDecorator implements PipelineDecorator {
+
+    @Inject
+    public DefaultPipelineDecorator() {
+        // constructor for Graal's native-image code to detect
+    }
 
     @Override
     public void onCreatePipeline(ChannelPipeline pipeline) {

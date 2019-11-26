@@ -28,6 +28,7 @@ import com.google.inject.Singleton;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
+import javax.inject.Inject;
 
 /**
  *
@@ -35,6 +36,11 @@ import java.util.regex.Pattern;
  */
 @Singleton
 class PathPatterns {
+
+    @Inject
+    public PathPatterns() {
+        // for Graal analysis
+    }
 
     static String patternFromGlob(String pattern) {
         if (pattern.length() > 0 && pattern.charAt(0) == '/') {
