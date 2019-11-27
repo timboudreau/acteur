@@ -612,6 +612,7 @@ final class ResponseImpl extends Response {
         }
         NettyContentMarshallers marshallers = p.getApplication().getDependencies().getInstance(NettyContentMarshallers.class);
         ByteBuf buf = evt.channel().alloc().ioBuffer();
+        buf.touch("response-impl-write-message");
         marshallers.write(message, buf, charset);
         return buf;
     }
@@ -641,6 +642,7 @@ final class ResponseImpl extends Response {
     }
 
     private static final AsciiString ZERO = AsciiString.of("0");
+
     public HttpResponse toResponse(Event<?> evt, Charset defaultCharset) throws Exception {
         HttpResponseStatus status = internalStatus();
         // Log cases where a payload is attached to a status code that cannot have a payload
@@ -733,8 +735,9 @@ final class ResponseImpl extends Response {
             }
             hdrs.set(CONTENT_LENGTH, ZERO);
             chunked = false;
-            return new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, status, Unpooled.EMPTY_BUFFER, hdrs, EmptyHttpHeaders.INSTANCE);
-
+            DefaultFullHttpResponse result = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, status, Unpooled.EMPTY_BUFFER, hdrs, EmptyHttpHeaders.INSTANCE);
+            result.touch("response-impl-a");
+            return result;
         } else {
             if (chunked) {
                 if (!hasTransferEncoding) {
@@ -761,16 +764,18 @@ final class ResponseImpl extends Response {
         if (debug) {
             System.out.println(" final headers " + headersString(hdrs));
         }
+        DefaultHttpResponse result;
         if (buf != null) {
 //            return new DefaultFullHttpResponse(HTTP_1_1, status, buf, hdrs, EmptyHttpHeaders.INSTANCE);
             if (debug) {
                 System.out.println("  has a buffer, send it as a chunk");
             }
             listener = new SendOneBuffer(buf);
-            return new DefaultHttpResponse(version, status, hdrs);
+            result = new DefaultHttpResponse(version, status, hdrs);
         } else {
-            return new DefaultHttpResponse(version, status, hdrs);
+            result = new DefaultHttpResponse(version, status, hdrs);
         }
+        return result;
     }
 
     static Set<String> WARNED = Sets.newConcurrentHashSet();

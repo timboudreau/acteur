@@ -86,6 +86,7 @@ import java.util.function.Supplier;
 import javax.inject.Inject;
 import org.netbeans.validation.api.InvalidInputException;
 import com.mastfrog.util.thread.QuietAutoCloseable;
+import io.netty.util.ReferenceCounted;
 
 /**
  *
@@ -368,6 +369,14 @@ class PagesImpl2 {
                 Exceptions.chuck(ee);
             } catch (Exception | Error e) {
                 uncaughtException(Thread.currentThread(), e);
+            } finally {
+                Object o = event.request();
+                if (o instanceof ReferenceCounted) {
+                    ReferenceCounted rc = (ReferenceCounted) o;
+                    if (rc.refCnt() > 0) {
+                        ((ReferenceCounted) o).release();
+                    }
+                }
             }
         }
 
@@ -447,6 +456,7 @@ class PagesImpl2 {
                             ByteBuf buf;
                             if (renderStackTraces) {
                                 buf = channel.alloc().ioBuffer();
+                                buf.touch("uncaught-exception-handling-a");
                                 try (PrintStream ps = new PrintStream(new ByteBufOutputStream(buf))) {
                                     thrwbl.printStackTrace(ps);
                                 }
@@ -457,8 +467,10 @@ class PagesImpl2 {
                                 }
                                 byte[] bytes = msg.getBytes(UTF_8);
                                 buf = Unpooled.wrappedBuffer(bytes);
+                                buf.touch("uncaught-exception-handling-b");
                             }
                             resp = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.INTERNAL_SERVER_ERROR, buf);
+                            ((DefaultFullHttpResponse) resp).touch("uncaught-exception-handling-c");
                             Headers.write(Headers.CONTENT_TYPE, MediaType.PLAIN_TEXT_UTF_8, resp);
                             Headers.write(Headers.CONTENT_LENGTH, (long) buf.writerIndex(), resp);
                             Headers.write(Headers.CONTENT_LANGUAGE, Locale.ENGLISH, resp);

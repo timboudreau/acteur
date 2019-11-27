@@ -97,7 +97,7 @@ public class AuthenticateBasicActeur extends AuthenticationActeur {
 
     @Benchmark(value = "failedAuthentication", publish = Kind.CALL_COUNT)
     private void unauthorized(Realm realm, HttpEvent evt, AuthenticationDecorator decorator, Page page, Response response) {
-        decorator.onAuthenticationFailed(null, page, response);
+        decorator.onAuthenticationFailed(evt, page, response);
         add(Headers.WWW_AUTHENTICATE, realm);
         setState(new RespondWith(HttpResponseStatus.UNAUTHORIZED));
         setResponseBodyWriter(ChannelFutureListener.CLOSE);

@@ -69,6 +69,10 @@ import java.util.List;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import com.mastfrog.util.thread.QuietAutoCloseable;
+import io.netty.handler.codec.http.FullHttpMessage;
+import io.netty.handler.codec.http.HttpContent;
+import io.netty.handler.codec.http.HttpMessage;
+import io.netty.util.ReferenceCounted;
 
 @Singleton
 class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
@@ -95,7 +99,7 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
     private final int compressionThreshold;
     private final boolean compressionCheckContentType;
     private final boolean compressionDebug;
-    
+
     @Inject
     PipelineFactoryImpl(Provider<ChannelHandler> handler,
             Provider<ApplicationControl> app, Settings settings,
@@ -161,7 +165,7 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
         pipeline.addLast(PipelineDecorator.ENCODER, encoder);
         if (aggregateChunks) {
             ChannelHandler aggregator = hasEarly ? new SelectiveAggregator(maxContentLength, application)
-                    : new HttpObjectAggregator(maxContentLength);
+                    : new Agg(maxContentLength);
             pipeline.addLast(PipelineDecorator.AGGREGATOR, aggregator);
         }
         if (httpCompression) {
@@ -176,14 +180,54 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
         decorator.onPipelineInitialized(pipeline);
     }
 
+    static final class Agg extends HttpObjectAggregator {
+
+        // For debugging buffer leaks, add a few
+        // more touches - particularly when also using the netty
+        // http client in tests, it is difficult to know whether
+        // a leaking buffer came from the client or the server being
+        // tested
+        public Agg(int maxContentLength) {
+            super(maxContentLength);
+        }
+
+        public Agg(int maxContentLength, boolean closeOnExpectationFailed) {
+            super(maxContentLength, closeOnExpectationFailed);
+        }
+
+        @Override
+        protected void finishAggregation(FullHttpMessage aggregated) throws Exception {
+            aggregated.touch("agg-finish-aggregation");
+            super.finishAggregation(aggregated);
+        }
+
+        @Override
+        protected void aggregate(FullHttpMessage aggregated, HttpContent content) throws Exception {
+            aggregated.touch("agg-aggregate");
+            content.touch("agg-aggregate-content");
+            super.aggregate(aggregated, content);
+        }
+
+        @Override
+        protected Object newContinueResponse(HttpMessage start, int maxContentLength, ChannelPipeline pipeline) {
+            Object result = super.newContinueResponse(start, maxContentLength, pipeline);
+            if (result instanceof ReferenceCounted) {
+                ((ReferenceCounted) result).touch("agg-new-continue-resp");
+            }
+            return result;
+        }
+    }
+
     static final class HackHttpResponseEncoder extends HttpResponseEncoder {
 
         @Override
         protected void encode(ChannelHandlerContext ctx, Object msg, List<Object> out) throws Exception {
             if (msg instanceof ByteBuf && ((ByteBuf) msg).readableBytes() > 0) {
                 out.add(((ByteBuf) msg).retain());
+                ((ByteBuf) msg).touch("hack-http-response-encode");
                 return;
             } else if (msg instanceof ByteBuf && ((ByteBuf) msg).readableBytes() == 0) {
+                ((ByteBuf) msg).touch("hack-http-response-encode-2");
                 return;
             }
             super.encode(ctx, msg, out); //To change body of generated methods, choose Tools | Templates.
@@ -191,6 +235,7 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
     }
 
     static final boolean ACTEUR_DEBUG = Boolean.getBoolean("acteur.debug");
+
     static final class SelectiveCompressor extends HttpContentCompressor {
 
         private final int compressionThreshold;
@@ -223,12 +268,19 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
             if (debug) {
                 System.out.println("Encode " + msg);
             }
-            super.encode(ctx, msg, out); //To change body of generated methods, choose Tools | Templates.
+            if (msg instanceof ReferenceCounted) {
+                ((ReferenceCounted) msg).touch("selective-compressor-encode");
+            }
+            super.encode(ctx, msg, out);
         }
 
         @Override
         public boolean acceptInboundMessage(Object msg) throws Exception {
-            return super.acceptInboundMessage(msg); //To change body of generated methods, choose Tools | Templates.
+            if (msg instanceof ReferenceCounted) {
+                ((ReferenceCounted) msg).touch("sel-compressor-accept-inbound");
+            }
+            boolean result = super.acceptInboundMessage(msg);
+            return result;
         }
 
         @Override
@@ -260,13 +312,16 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
             if (compressionCheckContentType) {
                 String contentType = hdrs.get(HttpHeaderNames.CONTENT_TYPE);
                 if (contentType != null) {
-                    if (contentType.startsWith("image/") || contentType.startsWith("video/") || contentType.startsWith("audio/")){
+                    if (contentType.startsWith("image/") || contentType.startsWith("video/") || contentType.startsWith("audio/")) {
                         if (debug) {
                             System.out.println("Media content, not compressing.");
                         }
                         return null;
                     }
                 }
+            }
+            if (headers instanceof ReferenceCounted) {
+                ((ReferenceCounted) headers).touch("selective-compressor-encode");
             }
 
             Result result = super.beginEncode(headers, acceptEncoding);
@@ -312,6 +367,9 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
 
         @Override
         public boolean acceptInboundMessage(Object msg) throws Exception {
+            if (msg instanceof ReferenceCounted) {
+                ((ReferenceCounted) msg).touch("selective-agg-accept-inbound");
+            }
             if (!hasEarlyPages) {
                 return super.acceptInboundMessage(msg);
             }

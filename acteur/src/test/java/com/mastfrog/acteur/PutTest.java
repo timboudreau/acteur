@@ -155,7 +155,7 @@ public class PutTest {
             if (req != null) {
                 ran = true;
                 ByteBuf buf = req.content();
-                out.write(buf);
+                out.write(buf.retainedDuplicate());
                 ran = true;
             } else {
                 throw new AssertionError("Not a FullHttpRequest: " + evt.request() + " " + evt.request().getClass().getName());
