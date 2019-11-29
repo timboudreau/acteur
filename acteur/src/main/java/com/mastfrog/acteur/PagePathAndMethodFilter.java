@@ -46,6 +46,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 
 /**
@@ -56,9 +57,80 @@ class PagePathAndMethodFilter {
 
     private final PathPatterns pp = new PathPatterns();
     private final Map<Method, ByMethod> all = new EnumMap<>(Method.class);
-    Set<MethodPath> matchesCache = Sets.newConcurrentHashSet();
-    Set<MethodPath> nonMatchesCache = Sets.newConcurrentHashSet();
+    private final Set<MethodPath> matchesCache = Sets.newConcurrentHashSet();
+    private final Set<MethodPath> nonMatchesCache = Sets.newConcurrentHashSet();
     private final List<Object> unknowns = new ArrayList<>(5);
+    static final boolean DEBUG = Boolean.getBoolean("path.cache.debug");
+
+    private final Function<String, String> basePathFilter;
+
+    PagePathAndMethodFilter(Function<String, String> basePathFilter) {
+        this.basePathFilter = basePathFilter;
+    }
+
+    PagePathAndMethodFilter() {
+        this.basePathFilter = new IdentityFunction();
+    }
+
+    PagePathAndMethodFilter(String basePath) {
+        this(filterForBasePath(basePath));
+    }
+
+    private static final Function<String, String> filterForBasePath(String basePath) {
+        if (basePath == null || basePath.isEmpty() || "/".equals(basePath.trim())) {
+            return new IdentityFunction();
+        } else {
+            return DEBUG ? new DebugBasePathFilterFunction(new BasePathFilterFunction(basePath))
+                    : new BasePathFilterFunction(basePath);
+        }
+    }
+
+    static final class DebugBasePathFilterFunction implements Function<String, String> {
+
+        private final BasePathFilterFunction f;
+
+        public DebugBasePathFilterFunction(BasePathFilterFunction f) {
+            this.f = f;
+        }
+
+        public String apply(String t) {
+            String result = f.apply(t);
+            System.out.println("URI for '" + t + "' with base path '"
+                    + f.basePath + "' stripped to: '" + (result == null
+                            ? "<null>"
+                            : result) + "'");
+            return result;
+        }
+    }
+
+    static final class BasePathFilterFunction implements Function<String, String> {
+
+        final String basePath;
+
+        public BasePathFilterFunction(String basePath) {
+            this.basePath = '/' + trimLeadingAndTrailingSlashes(basePath);
+        }
+
+        @Override
+        public String apply(String t) {
+            if (basePath.equals(t) || (t.length() == basePath.length() + 1 && t.charAt(t.length() - 1) == '/')) {
+                return "";
+            } else if (t.startsWith(basePath) && t.charAt(basePath.length()) == '/') {
+                return t.substring(basePath.length() + 1);
+            }
+            return null;
+        }
+
+    }
+
+    static final class IdentityFunction implements Function<String, String> {
+
+        @Override
+        public String apply(String t) {
+            return t;
+        }
+
+    }
 
     boolean isEmpty() {
         return all.isEmpty() && unknowns.isEmpty();
@@ -107,7 +179,14 @@ class PagePathAndMethodFilter {
     }
 
     public boolean match(HttpRequest req) {
-        MethodPath mp = new MethodPath(req);
+        String path = this.basePathFilter.apply(req.uri());
+        if (path == null) {
+            return false;
+        }
+        path = trimLeadingAndTrailingSlashes(trimQuery(path));
+        Method method = Method.get(req);
+
+        MethodPath mp = new MethodPath(method, path);
         if (nonMatchesCache.contains(mp)) {
             return false;
         }
@@ -138,18 +217,40 @@ class PagePathAndMethodFilter {
     }
 
     public List<Object> listFor(HttpRequest req) {
-        MethodPath mp = new MethodPath(req);
+        String path = this.basePathFilter.apply(req.uri());
+        if (path == null) {
+            // Base path didn't match
+            if (DEBUG) {
+                System.out.println("  did not match base path: "
+                        + req.method() + " of '" + req.uri()
+                        + "' as '" + path + "'");
+            }
+            return Collections.emptyList();
+        }
+        path = trimLeadingAndTrailingSlashes(trimQuery(path));
+        Method method = Method.get(req);
+        MethodPath mp = new MethodPath(method, path);
         List<Object> checkFirst = unknowns;
         if (nonMatchesCache.contains(mp)) {
             return checkFirst;
         }
         ByMethod bm = all.get(mp.method);
         if (bm == null) {
+            if (DEBUG) {
+                System.out.println("  no ByMethod for "
+                        + req.method() + " of '" + req.uri()
+                        + "' as '" + path + "'");
+            }
             return checkFirst;
         }
-        List<List<Object>> matches = bm.matchingLists(trimLeadingAndTrailingSlashes(trimQuery(req.uri())));
+        List<List<Object>> matches = bm.matchingLists(path);
         matches.add(0, checkFirst);
-        return CollectionUtils.combinedList(matches);
+        List<Object> result = CollectionUtils.combinedList(matches);
+        if (DEBUG) {
+            System.out.println("  possible matches for " + req.method()
+                    + " of '" + req.uri() + "' as '" + path + "': " + result);
+        }
+        return result;
     }
 
     void add(Page page) {
@@ -458,11 +559,10 @@ class PagePathAndMethodFilter {
             this.path = path;
         }
 
-        MethodPath(HttpRequest req) {
-            path = trimLeadingAndTrailingSlashes(trimQuery(req.uri()));
-            method = Method.get(req);
-        }
-
+//        MethodPath(HttpRequest req) {
+//            path = trimLeadingAndTrailingSlashes(trimQuery(req.uri()));
+//            method = Method.get(req);
+//        }
         @Override
         public int hashCode() {
             if (hash != 0) {

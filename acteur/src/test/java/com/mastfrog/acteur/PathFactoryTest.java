@@ -1,7 +1,6 @@
 package com.mastfrog.acteur;
 
 import com.google.inject.name.Names;
-import com.mastfrog.giulius.annotations.Defaults;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.giulius.tests.GuiceTest;
 import com.mastfrog.giulius.tests.TestWith;
@@ -17,7 +16,6 @@ import static org.junit.Assert.*;
 import org.junit.Test;
 
 @TestWith({M.class})
-@Defaults({"hostname=example.com", "basepath=foo/bar", "port=8080"})
 public class PathFactoryTest extends GuiceTest {
 
     static class M extends ServerModule<A> {

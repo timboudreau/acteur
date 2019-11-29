@@ -122,10 +122,9 @@ public class Application implements Iterable<Page> {
     @Inject
     Probe probe;
 
-    private PagePathAndMethodFilter earlyPageMatcher;
     private List<Object> earlyPages = new ArrayList<>(10);
 
-    final PagePathAndMethodFilter normalPageMatcher = new PagePathAndMethodFilter();
+    private final PathFilters filters = PathFilters.create(this::dependenciesUnsafe);
 
     private final RequestID.Factory ids = new RequestID.Factory();
 
@@ -161,7 +160,7 @@ public class Application implements Iterable<Page> {
     }
 
     public boolean isEarlyPageMatch(HttpRequest req) {
-        boolean result = earlyPageMatcher != null && earlyPageMatcher.match(req);
+        boolean result = filters.isEarlyPageMatch(req);
         return result;
     }
 
@@ -193,7 +192,7 @@ public class Application implements Iterable<Page> {
                 earlyPages.add(CORSResource.class);
             }
             pages.add(0, CORSResource.class);
-            normalPageMatcher.add(CORSResource.class);
+            filters.addNormalPage(CORSResource.class);
         }
     }
 
@@ -274,13 +273,10 @@ public class Application implements Iterable<Page> {
         }
         assert checkConstructor(page);
         if (page.getAnnotation(Early.class) != null) {
-            if (earlyPageMatcher == null) {
-                earlyPageMatcher = new PagePathAndMethodFilter();
-            }
-            earlyPageMatcher.add(page);
+            filters.addEarlyPage(page);
             earlyPages.add(page);
         } else {
-            normalPageMatcher.add(page);
+            filters.addNormalPage(page);
             pages.add(page);
         }
     }
@@ -288,13 +284,10 @@ public class Application implements Iterable<Page> {
     @SuppressWarnings("unchecked")
     protected final void add(Page page) {
         if (page.getClass().getAnnotation(Early.class) != null) {
-            if (earlyPageMatcher == null) {
-                earlyPageMatcher = new PagePathAndMethodFilter();
-            }
-            earlyPageMatcher.add(page);
+            filters.addEarlyPage(page);
             earlyPages.add(page);
         } else {
-            normalPageMatcher.add(page);
+            filters.addNormalPage(page);
             pages.add(page);
         }
     }
@@ -352,6 +345,9 @@ public class Application implements Iterable<Page> {
         Headers.write(Headers.DATE, ZonedDateTime.now(), response);
         if (debug) {
             String pth = event instanceof HttpEvent ? ((HttpEvent) event).path().toString() : "-";
+            if (pth.isEmpty()) {
+                pth = "/";
+            }
             Headers.write(X_REQ_PATH, pth, response);
             Headers.write(X_ACTEUR, action.getClass().getName(), response);
             Headers.write(X_PAGE, page.getClass().getName(), response);
@@ -481,6 +477,10 @@ public class Application implements Iterable<Page> {
         }
     }
 
+    Dependencies dependenciesUnsafe() {
+        return deps;
+    }
+
     @SuppressWarnings({"unchecked", "ThrowableInstanceNotThrown", "ThrowableInstanceNeverThrown"})
     Dependencies getDependencies() {
         if (deps == null) {
@@ -503,7 +503,7 @@ public class Application implements Iterable<Page> {
     }
 
     Iterator<Page> iterator(HttpEvent evt) {
-        List<Object> all = filter(normalPageMatcher, evt);
+        List<Object> all = filter(filters.normalPages(), evt);
         return all.isEmpty() ? Collections.emptyIterator()
                 : iterators.iterable(all, Page.class).iterator();
     }
@@ -513,9 +513,9 @@ public class Application implements Iterable<Page> {
         if (!checkedEarlyHelp && deps.getInstance(Settings.class).getBoolean("help.early", false)) {
             checkedEarlyHelp = true;
             earlyPages.add(HelpPage.class);
-            earlyPageMatcher.addHelp(deps.getInstance(Settings.class).getString(Help.HELP_URL_PATTERN_SETTINGS_KEY, "^help$"));
+            filters.earlyPages().addHelp(deps.getInstance(Settings.class).getString(Help.HELP_URL_PATTERN_SETTINGS_KEY, "^help$"));
         }
-        List<Object> all = filter(earlyPageMatcher, evt);
+        List<Object> all = filter(filters.earlyPages(), evt);
         return all.isEmpty() ? Collections.emptyIterator() : iterators.iterable(all, Page.class).iterator();
     }
 
@@ -538,7 +538,10 @@ public class Application implements Iterable<Page> {
         if (!checkedEarlyHelp && deps.getInstance(Settings.class).getBoolean("help.early", false)) {
             checkedEarlyHelp = true;
             earlyPages.add(HelpPage.class);
-            earlyPageMatcher.addHelp(deps.getInstance(Settings.class).getString(Help.HELP_URL_PATTERN_SETTINGS_KEY, "^help$"));
+            filters.earlyPages()
+                    .addHelp(deps.getInstance(Settings.class)
+                            .getString(Help.HELP_URL_PATTERN_SETTINGS_KEY,
+                                    "^help$"));
         }
         return iterators.iterable(earlyPages, Page.class).iterator();
     }
