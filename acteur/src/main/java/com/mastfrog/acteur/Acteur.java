@@ -146,7 +146,7 @@ import com.mastfrog.util.thread.QuietAutoCloseable;
  * Acteurs are run.
  * <p/>
  * With either of the methods which return a <code>CompletableFuture</code>, you
- * <b>must call <code>complete()</code> or <code>completeExceptionally()
+ * <b>must call <code>complete()</code> or <code>completeExceptionally()</code>
  * <i>no matter what happens</i></b> or your application will suffer from
  * "request dropped on the floor" bugs where the connection is held open but no
  * response is ever sent.
@@ -183,7 +183,10 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
     }
 
     /**
-     * Create an acteur.
+     * Create an acteur; subclasses should simply list objects they need for processing
+     * the request as arguments, and they will be injected by Guice, either from bindings
+     * the application was set up with, or objects provided by other Acteurs which have
+     * already been run for this request.
      *
      * @param async If true, the framework should prefer to run the <i>next</i>
      * action asynchronously
