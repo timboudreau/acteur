@@ -69,7 +69,9 @@ public class ByteBufCodec implements Codec<ByteBuf> {
     @Override
     public ByteBuf decode(BsonReader reader, DecoderContext dc) {
         ByteBuf buf = alloc.buffer();
-        PlainJsonWriter json = new PlainJsonWriter(buf, new JsonWriterSettings(false));
+        JsonWriterSettings settings = JsonWriterSettings.builder()
+                .indent(false).build();
+        PlainJsonWriter json = new PlainJsonWriter(buf, settings);
         json.pipe(reader);
         return buf;
     }
