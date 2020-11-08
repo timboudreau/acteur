@@ -8,6 +8,7 @@
         <version>2.7.1</version>
         <relativePath/>
     </parent>
+    <version>2.7.1.1</version>
     <artifactId>acteur-annotation-processors</artifactId>
     <url>https://github.com/timboudreau/acteur</url>
     <scm>
