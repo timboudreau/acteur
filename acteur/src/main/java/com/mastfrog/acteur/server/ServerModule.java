@@ -779,7 +779,6 @@ public class ServerModule<A extends Application> extends AbstractModule {
 
         @Override
         protected void onStartup(Application application, Channel channel) throws Exception {
-            System.out.println("INJECTING APPLICATION " + application);
             deps.get().injectMembers(application);
         }
     }

@@ -61,6 +61,7 @@ import javax.tools.Diagnostic;
 import javax.tools.JavaFileObject;
 import static com.mastfrog.acteur.annotation.processors.HttpCallAnnotationProcessor.INJECT_BODY_AS_ANNOTATION;
 import com.mastfrog.annotation.AnnotationUtils;
+import java.util.Arrays;
 
 /**
  * Processes the &#064;Defaults annotation, generating properties files in the
@@ -251,6 +252,7 @@ public class HttpCallAnnotationProcessor extends IndexGeneratingProcessor<Line> 
         PackageElement pkg = findPackage(typeElement);
         String className = typeElement.getSimpleName() + GENERATED_SOURCE_SUFFIX;
         ByteArrayOutputStream out = new ByteArrayOutputStream();
+        boolean hasNumble = utils.type("com.mastfrog.parameters.Types") != null;
         try (PrintStream ps = new PrintStream(out, false, "UTF-8")) {
             ps.println("package " + pkg.getQualifiedName() + ";");
             TypeElement outer = typeElement;
@@ -258,6 +260,14 @@ public class HttpCallAnnotationProcessor extends IndexGeneratingProcessor<Line> 
                 outer = (TypeElement) outer.getEnclosingElement();
             }
             ps.println("\nimport com.mastfrog.acteur.Page;");
+            // Hotfix for JDK 15's javac, where enum constants no longer show up as fully
+            // qualified names in an array when you call toString() on the elements
+            ps.println("\n\nimport static com.mastfrog.acteur.headers.Method.*;");
+            if (hasNumble) {
+                ps.println("\nimport static com.mastfrog.parameters.Types.*;");
+                ps.println("\nimport static org.netbeans.validation.api.builtin.stringvalidation.StringValidators.*;");
+            }
+            ps.println("");
             for (AnnotationMirror am : typeElement.getAnnotationMirrors()) {
                 ps.println("import " + am.getAnnotationType() + ";");
             }
@@ -304,6 +314,11 @@ public class HttpCallAnnotationProcessor extends IndexGeneratingProcessor<Line> 
                             error.set(true);
                             break ams;
                         } else {
+                            // XXX in the case that el.getValue().getValue() instanceof List,
+                            // need to get the FQN of the enum constants and ensure they are imported;
+                            // for now, hotfixing this on JDK 15 by simply applying a static import
+                            // of Method.* regardless, since that is where this is showing up - but other
+                            // enum constant taking annotations will have this problem tooß
                             ps.print(el.getValue());
                         }
                         if (!it.hasNext()) {
