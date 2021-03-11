@@ -40,5 +40,13 @@
             <groupId>${project.groupId}</groupId>
             <artifactId>annotation-tools</artifactId>
         </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>java-vogon</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>function</artifactId>
+        </dependency>
     </dependencies>
 </project>

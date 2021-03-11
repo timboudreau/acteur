@@ -61,7 +61,20 @@ import javax.tools.Diagnostic;
 import javax.tools.JavaFileObject;
 import static com.mastfrog.acteur.annotation.processors.HttpCallAnnotationProcessor.INJECT_BODY_AS_ANNOTATION;
 import com.mastfrog.annotation.AnnotationUtils;
-import java.util.Arrays;
+import static com.mastfrog.annotation.AnnotationUtils.simpleName;
+import static com.mastfrog.annotation.AnnotationUtils.types;
+import com.mastfrog.function.TriConsumer;
+import com.mastfrog.java.vogon.ClassBuilder;
+import com.mastfrog.java.vogon.LinesBuilder;
+import static java.nio.charset.StandardCharsets.UTF_8;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Objects;
+import java.util.function.Consumer;
+import javax.lang.model.element.Modifier;
+import javax.lang.model.type.ArrayType;
+import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.TypeMirror;
 
 /**
  * Processes the &#064;Defaults annotation, generating properties files in the
@@ -247,108 +260,239 @@ public class HttpCallAnnotationProcessor extends IndexGeneratingProcessor<Line> 
         return (PackageElement) el;
     }
 
-    @SuppressWarnings("unchecked")
     private String generatePageSource(TypeElement typeElement, AtomicBoolean error, AnnotationUtils utils) throws IOException {
-        PackageElement pkg = findPackage(typeElement);
-        String className = typeElement.getSimpleName() + GENERATED_SOURCE_SUFFIX;
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
         boolean hasNumble = utils.type("com.mastfrog.parameters.Types") != null;
-        try (PrintStream ps = new PrintStream(out, false, "UTF-8")) {
-            ps.println("package " + pkg.getQualifiedName() + ";");
-            TypeElement outer = typeElement;
-            while (!outer.getEnclosingElement().equals(pkg)) {
-                outer = (TypeElement) outer.getEnclosingElement();
-            }
-            ps.println("\nimport com.mastfrog.acteur.Page;");
-            // Hotfix for JDK 15's javac, where enum constants no longer show up as fully
-            // qualified names in an array when you call toString() on the elements
-            ps.println("\n\nimport static com.mastfrog.acteur.headers.Method.*;");
-            if (hasNumble) {
-                ps.println("\nimport static com.mastfrog.parameters.Types.*;");
-                ps.println("\nimport static org.netbeans.validation.api.builtin.stringvalidation.StringValidators.*;");
-            }
-            ps.println("");
-            for (AnnotationMirror am : typeElement.getAnnotationMirrors()) {
-                ps.println("import " + am.getAnnotationType() + ";");
-            }
-            ps.println();
-            List<String> precursorClassNames = new ArrayList<>();
-            List<String> denoumentClassNames = new ArrayList<>();
-            ams:
-            for (AnnotationMirror am : typeElement.getAnnotationMirrors()) {
-                if (am.getAnnotationType().toString().equals(PRECURSORS_ANNOTATION)) {
-                    if (!am.getElementValues().entrySet().isEmpty()) {
-                        for (String s : utils.typeList(am, "value")) {
-                            precursorClassNames.add(s.replace('$', '.'));
-                        }
-                        continue;
+        PackageElement pkg = findPackage(typeElement);
+        ClassBuilder<String> cb = ClassBuilder.forPackage(pkg.getQualifiedName())
+                .named(typeElement.getSimpleName() + GENERATED_SOURCE_SUFFIX)
+                .extending(simpleName(PAGE_FQN))
+                .importing(PAGE_FQN, ACTEUR_FQN,
+                        "static com.mastfrog.acteur.headers.Method.*"
+                )
+                .conditionally(hasNumble, b -> {
+                    b.importing("static com.mastfrog.parameters.Types.*",
+                            "static org.netbeans.validation.api.builtin.stringvalidation.StringValidators.*");
+                })
+                .docComment("Generated from annotations on ", typeElement.getSimpleName(),
+                        " using Java Vogon", "http://github.com/timboudreau/annotation-utils")
+                .annotatedWith(GENERATED_FROM_ANNOTATION, ab -> {
+                    ab.addClassArgument("value", typeElement.asType().toString());
+                });
+        List<String> precursorClassNames = new ArrayList<>();
+        List<String> denoumentClassNames = new ArrayList<>();
+
+        List<String> argDebugComments = new ArrayList<>();
+        argDebugComments.add("JDK 15 Annotation Argument Debug Info");
+
+        typeElement.getAnnotationMirrors().forEach(am -> {
+            cb.importing(am.getAnnotationType().toString());
+            if (am.getAnnotationType().toString().equals(PRECURSORS_ANNOTATION)) {
+                if (!am.getElementValues().entrySet().isEmpty()) {
+                    for (String s : utils.typeList(am, "value")) {
+                        String valueClass = s.replace('$', '.');
+                        precursorClassNames.add(valueClass);
                     }
                 }
-                if (am.getAnnotationType().toString().equals(EARLY_ANNOTATION)) {
-                    denoumentClassNames.add(0, INSTALL_CHUNK_HANDLER_ACTEUR);
-                }
-                if (am.getAnnotationType().toString().equals(CONCLUDERS_ANNOTATION)) {
-                    if (!am.getElementValues().entrySet().isEmpty()) {
-                        for (String s : utils.typeList(am, "value")) {
-                            denoumentClassNames.add(s.replace('$', '.'));
-                        }
-                        continue;
+                return;
+            }
+            if (am.getAnnotationType().toString().equals(EARLY_ANNOTATION)) {
+                denoumentClassNames.add(0, INSTALL_CHUNK_HANDLER_ACTEUR);
+                return;
+            }
+            if (am.getAnnotationType().toString().equals(CONCLUDERS_ANNOTATION)) {
+                if (!am.getElementValues().entrySet().isEmpty()) {
+                    for (String s : utils.typeList(am, "value")) {
+                        denoumentClassNames.add(s.replace('$', '.'));
                     }
-                }
-                ps.print("@" + am.getAnnotationType());
-                boolean first = true;
-                Iterator<?> it = am.getElementValues().entrySet().iterator();
-                if (it.hasNext()) {
-                    while (it.hasNext()) {
-                        Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> el = (Map.Entry<? extends ExecutableElement, ? extends AnnotationValue>) it.next();
-                        if (first) {
-                            ps.print('(');
-                            first = false;
-                        } else {
-                            ps.print(',');
-                        }
-                        String key = "" + el.getKey();
-                        ps.print(key.substring(0, key.length() - 2));
-                        ps.print('=');
-                        if ("<error>".equals(el.getValue().getValue())) {
-                            error.set(true);
-                            break ams;
-                        } else {
-                            // XXX in the case that el.getValue().getValue() instanceof List,
-                            // need to get the FQN of the enum constants and ensure they are imported;
-                            // for now, hotfixing this on JDK 15 by simply applying a static import
-                            // of Method.* regardless, since that is where this is showing up - but other
-                            // enum constant taking annotations will have this problem tooß
-                            ps.print(el.getValue());
-                        }
-                        if (!it.hasNext()) {
-                            ps.print(")\n");
-                        }
-                    }
-                } else {
-                    ps.print('\n');
+                    return;
                 }
             }
-            ps.println("@" + GENERATED_FROM_ANNOTATION + "(" + typeElement.asType().toString() + ".class)");
-            ps.println("\npublic final class " + className + " extends " + PAGE_FQN + " {\n");
-            ps.println("    " + className + "(){");
-            for (String p : precursorClassNames) {
-                ps.println("        add(" + p + ".class); // precursor");
+            cb.annotatedWith(am.getAnnotationType().toString(), ab -> {
+                AnnotationArgumentsInfo args = arguments(am, error, utils);
+                argDebugComments.add(am.getAnnotationType().toString() + ": ");
+                copyAnnotation(args, argDebugComments, ab, utils, error);
+            });
+        });
+
+        cb.constructor().setModifier(Modifier.PUBLIC).body(bb -> {
+            // For now,
+            argDebugComments.forEach(bb::lineComment);
+            if (!precursorClassNames.isEmpty()) {
+                bb.lineComment("precursors");
+                for (String p : precursorClassNames) {
+                    bb.invoke("add").withClassArgument(p).inScope();
+                }
             }
-            ps.println("        add(" + typeElement.getQualifiedName() + ".class); // generator");
-            for (String p : denoumentClassNames) {
-                ps.println("        add(" + p + ".class); // concluder");
+            bb.lineComment("generator");
+            bb.invoke("add").withClassArgument(typeElement.getQualifiedName().toString()).inScope();
+            if (!denoumentClassNames.isEmpty()) {
+                bb.lineComment("concluders");
+                for (String p : denoumentClassNames) {
+                    bb.invoke("add").withClassArgument(p).inScope();
+                }
             }
-            ps.println("    }");
-            ps.println("}");
-            ps.flush();
-        }
+        });
         if (!error.get()) {
-            JavaFileObject jfo = processingEnv.getFiler().createSourceFile(pkg.getQualifiedName() + "." + className, typeElement);
+            JavaFileObject jfo = processingEnv.getFiler().createSourceFile(cb.fqn(), typeElement);
             try (OutputStream stream = jfo.openOutputStream()) {
-                stream.write(out.toByteArray());
+                stream.write(cb.build().getBytes(UTF_8));
             }
         }
-        return pkg.getQualifiedName() + "." + className;
+        return cb.fqn();
     }
+
+    private void copyAnnotation(AnnotationArgumentsInfo args, List<String> argDebugComments, ClassBuilder.AnnotationBuilder<?> ab, AnnotationUtils utils, AtomicBoolean error) {
+        args.forEach((name, element, val) -> {
+            copyOneArgument(argDebugComments, name, val, ab, element, error, utils);
+        });
+    }
+
+    private void copyOneArgument(List<String> argDebugComments, String name, Object val, ClassBuilder.AnnotationBuilder<?> ab, ExecutableElement element, AtomicBoolean error, AnnotationUtils utils) {
+        argDebugComments.add(" * " + name + " = " + val + " is " + (val == null ? "null" : val.getClass().getName()));
+        if (val instanceof List<?>) {
+            ab.addArrayArgument(name, avb -> {
+                List<?> l = (List<?>) val;
+                for (Object o : l) {
+                    addAnnotationArgument(argDebugComments, o, element, avb::expression);
+                }
+            });
+        } else if (val instanceof AnnotationMirror) {
+            AnnotationMirror sub = (AnnotationMirror) val;
+            AnnotationArgumentsInfo subArgs = arguments(sub, error, utils);
+            ab.addAnnotationArgument(name, sub.getAnnotationType().toString(), abSub -> {
+                copyAnnotation(subArgs, argDebugComments, abSub, utils, error);
+            });
+        } else if (val instanceof TypeMirror) {
+            ab.addClassArgument(name, val.toString());
+        } else if (val instanceof String) {
+            ab.addArgument(name, (String) val);
+        } else if (val instanceof Character) {
+            char c = (Character) val;
+            switch (c) {
+                case '\\':
+                    ab.addExpressionArgument(name, "'\\\\'");
+                    break;
+                case '\'':
+                    ab.addExpressionArgument(name, "'\\''");
+                    break;
+                default:
+                    ab.addExpressionArgument(name, "'" + c + "'s");
+            }
+        } else {
+            addAnnotationArgument(argDebugComments, val, element, v -> {
+                ab.addExpressionArgument(name, v);
+            });
+        }
+    }
+
+    private void addAnnotationArgument(List<String> argDebugComments, Object o, ExecutableElement element, Consumer<String> avb) {
+        argDebugComments.add("    ** " + o.getClass().getName());
+        argDebugComments.add("    **** " + types(o));
+        argDebugComments.add(" --------- " + o + " ---------");
+        if (o instanceof AnnotationValue) {
+            AnnotationValue av = (AnnotationValue) o;
+
+            TypeMirror retType = element.getReturnType();
+            argDebugComments.add("RET TYPE: " + retType);
+            argDebugComments.add("  RET TYPE KIND " + retType.getKind());
+            argDebugComments.add("     RTT " + processingEnv.getElementUtils().getAllTypeElements(retType.toString()));
+            argDebugComments.add("     RET TYPE types " + types(retType));
+            boolean isClass = false;
+            String enumType = null;
+            if (retType instanceof ArrayType) {
+                ArrayType at = (ArrayType) retType;
+                at.getComponentType();
+                argDebugComments.add("    COMPONENT TYPE " + at.getComponentType());
+                argDebugComments.add("       COMP TYPE kind " + at.getComponentType().getKind() + " types " + types(at.getComponentType()));
+
+                DeclaredType dt = (DeclaredType) at.getComponentType();
+                Element el = dt.asElement();
+                argDebugComments.add("        ELE KIND " + el.getKind() + " types " + types(el));
+                switch (el.getKind()) {
+                    case ENUM:
+                        enumType = dt.toString();
+                        break;
+                }
+            } else if (retType instanceof DeclaredType) {
+                DeclaredType dt = (DeclaredType) retType;
+                Element el = dt.asElement();
+                switch (el.getKind()) {
+                    case ENUM:
+                        enumType = dt.toString();
+                        break;
+                }
+            }
+            if (enumType != null) {
+                avb.accept(enumType + "." + av.toString());
+            } else {
+                if (isClass) {
+                    avb.accept(av.toString() + ".class");
+                } else {
+                    avb.accept(av.toString());
+                }
+            }
+        } else {
+            argDebugComments.add("  * OTYPES " + types(o));
+            if (o instanceof TypeMirror) {
+                avb.accept(o + ".class");
+            } else if (o instanceof String) {
+                avb.accept(escapeAndQuoteString((String) o));
+            } else if (o instanceof Character) {
+                char c = (Character) o;
+                switch (c) {
+                    case '\\':
+                        avb.accept("'\\\\'");
+                        break;
+                    case '\'':
+                        avb.accept("'\\''");
+                        break;
+                    default:
+                        avb.accept("'" + c + "'s");
+                }
+            } else {
+                avb.accept(Objects.toString(o));
+            }
+        }
+    }
+
+    private String escapeAndQuoteString(String s) {
+        return LinesBuilder.escape(s);
+    }
+
+    private AnnotationArgumentsInfo arguments(AnnotationMirror am, AtomicBoolean error, AnnotationUtils utils) {
+        AnnotationArgumentsInfo result = new AnnotationArgumentsInfo();
+
+        am.getElementValues().forEach((ExecutableElement ee, AnnotationValue av) -> {
+            if ("<error>".equals(av.getValue() + "")) {
+                error.set(true);
+                utils.warn("Erroneous type " + av.getValue() + " for "
+                        + ee.getSimpleName() + " in " + am
+                        + ". If this is to be generated in a subsequent round of annotation processing, this may be a non-problem.");
+//                return;
+            }
+            Object val = av.getValue();
+            result.add(ee.getSimpleName().toString(), ee, val);
+        });
+        return result;
+    }
+
+    private static final class AnnotationArgumentsInfo {
+
+        private final Map<String, ExecutableElement> elements = new HashMap<>(8);
+        private final Map<String, Object> arguments = new LinkedHashMap<>(8);
+
+        void add(String name, ExecutableElement ex, Object arg) {
+            elements.put(name, ex);
+            arguments.put(name, arg);
+        }
+
+        void forEach(TriConsumer<String, ExecutableElement, Object> argConsumer) {
+            arguments.forEach((name, arg) -> {
+                ExecutableElement el = elements.get(name);
+                assert el != null;
+                argConsumer.accept(name, el, arg);
+            });
+        }
+    }
+
 }
