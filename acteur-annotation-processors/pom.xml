@@ -5,10 +5,9 @@
     <parent>
         <groupId>com.mastfrog</groupId>
         <artifactId>mastfrog-parent</artifactId>
-        <version>2.7.1</version>
+        <version>2.7.2</version>
         <relativePath/>
     </parent>
-    <version>2.7.1.1</version>
     <artifactId>acteur-annotation-processors</artifactId>
     <url>https://github.com/timboudreau/acteur</url>
     <scm>

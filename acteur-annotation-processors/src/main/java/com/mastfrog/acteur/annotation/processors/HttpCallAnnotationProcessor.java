@@ -156,7 +156,7 @@ public class HttpCallAnnotationProcessor extends IndexGeneratingProcessor<Line> 
         }
         AnnotationMirror early = utils.findAnnotationMirror(el, EARLY_ANNOTATION);
         if (early != null) {
-            utils.warn("@Early annotation not applicable to classes not annotated with @HttpCall", el, early);
+            utils.log("@Early annotation not applicable to classes not annotated with @HttpCall", el, early);
         }
         AnnotationMirror pre = utils.findAnnotationMirror(el, PRECURSORS_ANNOTATION);
         if (pre != null) {
@@ -395,7 +395,7 @@ public class HttpCallAnnotationProcessor extends IndexGeneratingProcessor<Line> 
             TypeMirror retType = element.getReturnType();
             argDebugComments.add("RET TYPE: " + retType);
             argDebugComments.add("  RET TYPE KIND " + retType.getKind());
-            argDebugComments.add("     RTT " + processingEnv.getElementUtils().getAllTypeElements(retType.toString()));
+//            argDebugComments.add("     RTT " + processingEnv.getElementUtils().getAllTypeElements(retType.toString()));
             argDebugComments.add("     RET TYPE types " + types(retType));
             boolean isClass = false;
             String enumType = null;
@@ -423,7 +423,14 @@ public class HttpCallAnnotationProcessor extends IndexGeneratingProcessor<Line> 
                 }
             }
             if (enumType != null) {
-                avb.accept(enumType + "." + av.toString());
+                // In JDK 15, enum elements do not contain the type as a prefix;
+                // in earlier versions they do, and getting this wrong will result
+                // in uncompilable code
+                if (av.toString().indexOf('.') < 0) {
+                    avb.accept(enumType + "." + av.toString());
+                } else {
+                    avb.accept(av.toString());
+                }
             } else {
                 if (isClass) {
                     avb.accept(av.toString() + ".class");
@@ -468,7 +475,7 @@ public class HttpCallAnnotationProcessor extends IndexGeneratingProcessor<Line> 
                 utils.warn("Erroneous type " + av.getValue() + " for "
                         + ee.getSimpleName() + " in " + am
                         + ". If this is to be generated in a subsequent round of annotation processing, this may be a non-problem.");
-//                return;
+                return;
             }
             Object val = av.getValue();
             result.add(ee.getSimpleName().toString(), ee, val);
