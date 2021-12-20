@@ -34,6 +34,7 @@ class StringHeader extends AbstractHeader<String> {
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public String toString(String value) {
         return value;
     }

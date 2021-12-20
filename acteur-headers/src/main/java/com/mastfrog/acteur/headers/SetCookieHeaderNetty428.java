@@ -42,6 +42,7 @@ final class SetCookieHeaderNetty428 extends AbstractHeader<Cookie> {
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public String toString(Cookie value) {
         Checks.notNull("value", value);
         return strict ? ServerCookieEncoder.STRICT.encode(value) 

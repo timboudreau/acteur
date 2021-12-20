@@ -50,6 +50,7 @@ public class AbstractActeur<T, R extends T, S extends ActeurState<T, R>> {
     private S state;
     private R response;
     final ActeurResponseFactory<T, R> factory;
+    static final boolean DEBUG = Boolean.getBoolean("acteur.debug");
     /**
      * If running with assertions enabled, this will be a throwable which can be
      * used to determine the instantiation point of this AbstractActeur.
@@ -67,9 +68,7 @@ public class AbstractActeur<T, R extends T, S extends ActeurState<T, R>> {
     protected AbstractActeur(ActeurResponseFactory<T, R> factory) {
         Checks.notNull("factory", factory);
         this.factory = factory;
-        boolean asserts = false;
-        assert asserts = true;
-        if (asserts) {
+        if (DEBUG) {
             creationStackTrace = new Throwable();
         }
     }

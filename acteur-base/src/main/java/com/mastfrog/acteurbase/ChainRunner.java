@@ -24,6 +24,7 @@
 package com.mastfrog.acteurbase;
 
 import com.google.inject.ProvisionException;
+import static com.mastfrog.acteurbase.AbstractActeur.DEBUG;
 import com.mastfrog.acteurbase.Deferral.DeferredCode;
 import com.mastfrog.acteurbase.Deferral.Resumer;
 import com.mastfrog.giulius.scope.ReentrantScope;
@@ -91,7 +92,7 @@ public final class ChainRunner {
             // the headers, *if* the first acteur in the first chain fully processes the request
             // - useful for some applications that use @Early, and may provide
             // a slight performance boost
-            if (firstSync) {
+            if (firstSync || allSync) {
                 try {
                     cc.call();
                 } catch (Exception ex) {
@@ -137,7 +138,7 @@ public final class ChainRunner {
             @Override
             public Resumer defer() {
                 if (deferred.compareAndSet(false, true)) {
-                    if (Boolean.getBoolean("acteur.debug")) {
+                    if (DEBUG) {
                         stack = new Exception("Defer");
                     }
                     return ActeurInvoker.this;
@@ -154,7 +155,7 @@ public final class ChainRunner {
             public Resumer defer(DeferredCode code) {
                 if (deferred.compareAndSet(false, true)) {
                     deferredCode.set(code);
-                    if (Boolean.getBoolean("acteur.debug")) {
+                    if (DEBUG) {
                         stack = new Exception("Defer with code");
                     }
                     return ActeurInvoker.this;
@@ -176,6 +177,10 @@ public final class ChainRunner {
 
         private synchronized void addToContext(Object[] ctx) {
             if (ctx != null && ctx.length > 0) {
+                if (this.state.length == 0) {
+                    this.state = ctx;
+                    return;
+                }
                 Object[] nue = new Object[this.state.length + ctx.length];
                 System.arraycopy(this.state, 0, nue, 0, this.state.length);
                 System.arraycopy(ctx, 0, nue, this.state.length, ctx.length);

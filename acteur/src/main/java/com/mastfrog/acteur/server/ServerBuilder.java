@@ -38,11 +38,13 @@ import com.mastfrog.settings.Settings;
 import com.mastfrog.settings.SettingsBuilder;
 import static com.mastfrog.settings.SettingsBuilder.DEFAULT_NAMESPACE;
 import com.mastfrog.util.preconditions.Checks;
+import static com.mastfrog.util.preconditions.Checks.nonNegative;
 import com.mastfrog.util.preconditions.Exceptions;
 import io.netty.handler.ssl.SslContext;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.security.cert.CertificateException;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.HashSet;
@@ -106,11 +108,10 @@ public final class ServerBuilder {
 
     /**
      * If true, do not actually use the namespace feature of Dependencies -
-     * there is only one namespace - it is just not named "default". This
-     * is the common case, but for compatibility reasons is not currently
-     * the default.  This reduces memory footprint overhead when looking up
-     * bound settings, since reflection is not needed and there is only
-     * one place to look.
+     * there is only one namespace - it is just not named "default". This is the
+     * common case, but for compatibility reasons is not currently the default.
+     * This reduces memory footprint overhead when looking up bound settings,
+     * since reflection is not needed and there is only one place to look.
      *
      * @return
      */
@@ -271,7 +272,13 @@ public final class ServerBuilder {
     public Server build() throws IOException {
         return toDependenciesBuilder().build().getInstance(Server.class);
     }
-    
+
+    private Duration shutdownHookWaitMillis;
+
+    public ServerBuilder withShutdownHookWaitMillis(Duration dur) {
+        return this;
+    }
+
     public DependenciesBuilder toDependenciesBuilder() throws IOException {
         SettingsBuilder sb = new SettingsBuilder(namespace);
         sb.addDefaultLocations();
@@ -281,6 +288,12 @@ public final class ServerBuilder {
         Settings settings = sb.build();
         ScopeProvider appModule = appModule(settings);
         DependenciesBuilder db = new DependenciesBuilder().add(appModule);
+        if (shutdownHookWaitMillis != null) {
+            db.withShutdownHookExecutorAwaitDuration(shutdownHookWaitMillis);
+        } else if (!Boolean.getBoolean("unit.test")) {
+            db.withShutdownHookExecutorAwaitDuration(Duration.ofMinutes(1));
+        }
+
         db.enableOnlyBindingsFor(settingsBindings.toArray(new SettingsBindings[settingsBindings.size()]));
         db.add(settings, namespace);
         db.add(settings, DEFAULT_NAMESPACE);
@@ -295,7 +308,7 @@ public final class ServerBuilder {
         if (mergeNamespaces) {
             db.mergeNamespaces();
         }
-        return db;        
+        return db;
     }
 
     @SuppressWarnings("unchecked")

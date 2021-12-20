@@ -50,10 +50,15 @@ import java.util.function.Function;
 import java.util.regex.Pattern;
 
 /**
+ * Pre-intercepts the method and path and, for pages that specify them,
+ * trims down the set of Page classes that need to be run against a
+ * request to only those that either specify nothing or could possibly
+ * match the request, significantly reducing the work done to process an
+ * invalid request.
  *
  * @author Tim Boudreau
  */
-class PagePathAndMethodFilter {
+final class PagePathAndMethodFilter {
 
     private final PathPatterns pp = new PathPatterns();
     private final Map<Method, ByMethod> all = new EnumMap<>(Method.class);

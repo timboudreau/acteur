@@ -27,6 +27,7 @@ import com.google.common.net.MediaType;
 import com.mastfrog.acteur.util.BasicCredentials;
 import com.mastfrog.acteur.util.CacheControl;
 import com.mastfrog.acteur.util.Connection;
+import com.mastfrog.acteur.util.ConnectionHeaderData;
 import com.mastfrog.acteur.util.FrameOptions;
 import com.mastfrog.acteur.util.Realm;
 import com.mastfrog.acteur.util.StrictTransportSecurity;
@@ -82,7 +83,7 @@ public final class Headers {
     public static final HeaderValueType<CharSequence> ACCEPT_RANGES = header(HttpHeaderNames.ACCEPT_RANGES);
     public static final HeaderValueType<CharSequence> CONTENT_ENCODING = header(HttpHeaderNames.CONTENT_ENCODING);
     public static final HeaderValueType<CharSequence> USER_AGENT = header(HttpHeaderNames.USER_AGENT);
-    public static final HeaderValueType<Connection> CONNECTION = new ConnectionHeader();
+    public static final HeaderValueType<ConnectionHeaderData> CONNECTION = new ConnectionHeader();
     public static final HeaderValueType<Number> CONTENT_LENGTH = new NumberHeader(HttpHeaderNames.CONTENT_LENGTH);
     public static final HeaderValueType<URI> CONTENT_LOCATION = new UriHeader(HttpHeaderNames.CONTENT_LOCATION);
     public static final HeaderValueType<URI> LOCATION = new UriHeader(HttpHeaderNames.LOCATION);

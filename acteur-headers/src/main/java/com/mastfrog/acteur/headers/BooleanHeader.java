@@ -38,6 +38,7 @@ final class BooleanHeader extends AbstractHeader<Boolean> {
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public String toString(Boolean value) {
         Checks.notNull("value", value);
         return value.toString();

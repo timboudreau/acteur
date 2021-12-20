@@ -43,5 +43,4 @@ public class ActeurBaseModule extends AbstractModule {
     protected void configure() {
         scope.bindTypes(binder(), Chain.class, Deferral.class);
     }
-
 }

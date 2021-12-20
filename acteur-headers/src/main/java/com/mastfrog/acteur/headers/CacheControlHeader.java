@@ -46,6 +46,7 @@ final class CacheControlHeader extends AbstractHeader<CacheControl> {
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public String toString(CacheControl value) {
         Checks.notNull("value", value);
         return value.toString();

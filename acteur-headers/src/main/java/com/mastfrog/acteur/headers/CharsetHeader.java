@@ -30,13 +30,14 @@ import java.nio.charset.Charset;
  *
  * @author Tim Boudreau
  */
-class CharsetHeader extends AbstractHeader<Charset> {
+final class CharsetHeader extends AbstractHeader<Charset> {
 
     CharsetHeader(CharSequence name) {
         super(Charset.class, name);
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public String toString(Charset value) {
         return value.name();
     }
@@ -46,5 +47,4 @@ class CharsetHeader extends AbstractHeader<Charset> {
         Checks.notNull("value", value);
         return Charset.forName(value.toString());
     }
-
 }

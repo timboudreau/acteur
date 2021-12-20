@@ -63,6 +63,7 @@ import com.mastfrog.acteurbase.Chain;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.giulius.InjectionInfo;
 import com.mastfrog.giulius.scope.ReentrantScope;
+import com.mastfrog.giulius.thread.ExecutorServiceBuilder;
 import com.mastfrog.graal.annotation.Expose;
 import com.mastfrog.graal.annotation.Expose.MethodInfo;
 import com.mastfrog.graal.annotation.ExposeMany;
@@ -79,6 +80,7 @@ import com.mastfrog.util.codec.Codec;
 import com.mastfrog.util.preconditions.ConfigurationError;
 import com.mastfrog.util.strings.Strings;
 import static com.mastfrog.util.collections.CollectionUtils.setOf;
+import static com.mastfrog.util.preconditions.Checks.greaterThanZero;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.PooledByteBufAllocator;
@@ -121,73 +123,83 @@ import org.netbeans.validation.api.InvalidInputException;
  */
 @SuppressWarnings("deprecation")
 @ExposeMany({
-    @Expose(type="com.fasterxml.jackson.databind.ObjectMapper", methods=@MethodInfo(parameterTypes = {}))}
+    @Expose(type = "com.fasterxml.jackson.databind.ObjectMapper", methods = @MethodInfo(parameterTypes = {}))}
 )
 public class ServerModule<A extends Application> extends AbstractModule {
 
     /**
-     * Header which, when attached to a response, bypasses the compresser - used in
-     * an application which supports HTTP compression but which, for some resources,
-     * will serve pre-compressed data.
+     * Header which, when attached to a response, bypasses the compresser - used
+     * in an application which supports HTTP compression but which, for some
+     * resources, will serve pre-compressed data.
      */
     public static final AsciiString X_INTERNAL_COMPRESS = new AsciiString("X-Internal-Compress");
     /**
-     * Header which, when attached to a response, bypasses the compresser - used in
-     * an application which supports HTTP compression but which, for some resources,
-     * will serve pre-compressed data.
+     * Header which, when attached to a response, bypasses the compresser - used
+     * in an application which supports HTTP compression but which, for some
+     * resources, will serve pre-compressed data.
      */
     public static final HeaderValueType<CharSequence> X_INTERNAL_COMPRESS_HEADER = Headers.header(X_INTERNAL_COMPRESS);
     /**
-     * Sets the HTTP compression level from 0 to 9, 0 meaning no compression,
-     * 9 meaning maximum compression; the default is 6.
+     * Sets the HTTP compression level from 0 to 9, 0 meaning no compression, 9
+     * meaning maximum compression; the default is 6.
      */
     public static final String HTTP_COMPRESSION_LEVEL = "compression.level";
     /**
-     * Sets the size of the history buffer for compression - should be in the range
-     * 9 to 15, higher numbers meaning better commpression at the cost of memory.
+     * Sets the size of the history buffer for compression - should be in the
+     * range 9 to 15, higher numbers meaning better commpression at the cost of
+     * memory.
      */
     public static final String HTTP_COMPRESSION_WINDOW_BITS = "compression.window.bits";
     /**
-     * Sets the amount of memory to use for compression state, from 1 to 9, higher numbers
-     * using more memory but getting better and faster compression.
+     * Sets the amount of memory to use for compression state, from 1 to 9,
+     * higher numbers using more memory but getting better and faster
+     * compression.
      */
     public static final String HTTP_COMPRESSION_MEMORY_LEVEL = "compression.memory.level";
 
     /**
-     * Sets the compression threshold <i>for responses which have their Content-Length set</i> -
-     * Netty's HttpContentCompressor decides to act before HTTP chunks are seen, so chunked
-     * responses will use the default behavior.  If you are sending raw ByteBufs or attaching
-     * the bytes in <code>Acteur.ok(bytes)</code> or <code>Acteur.reply(responseCode, bytes)</code>
-     * then this will disable compression for messages smaller than this threshold (for small
-     * messages, compression can make them bigger).
+     * Sets the compression threshold <i>for responses which have their
+     * Content-Length set</i> - Netty's HttpContentCompressor decides to act
+     * before HTTP chunks are seen, so chunked responses will use the default
+     * behavior. If you are sending raw ByteBufs or attaching the bytes in
+     * <code>Acteur.ok(bytes)</code> or
+     * <code>Acteur.reply(responseCode, bytes)</code> then this will disable
+     * compression for messages smaller than this threshold (for small messages,
+     * compression can make them bigger).
      */
     public static final String HTTP_COMPRESSION_THRESHOLD = "compression.threshold";
 
     /**
-     * If true, the response compressor will check the response's Content-Type header and avoid
-     * compressing responses with media types that are pre-compressed or liable to be made larger
-     * by gzip or deflate compression, such as mpeg or jpeg.  This is off by default, since it adds
+     * If true, the response compressor will check the response's Content-Type
+     * header and avoid compressing responses with media types that are
+     * pre-compressed or liable to be made larger by gzip or deflate
+     * compression, such as mpeg or jpeg. This is off by default, since it adds
      * a small amount of overhead to each response.
      */
     public static final String HTTP_COMPRESSION_CHECK_RESPONSE_CONTENT_TYPE = "compression.check.content.type";
 
     /**
      * Default value for settings key <code>compression.level</code>
+     *
      * @see com.mastfrog.acteur.server.ServerModule.HTTP_COMPRESSION_LEVEL
      */
     public static final int DEFAULT_COMPRESSION_LEVEL = 6;
     /**
      * Default value for settings key <code>compression.window.bits</code>
+     *
      * @see com.mastfrog.acteur.server.ServerModule.HTTP_COMPRESSION_WINDOW_BITS
      */
     public static final int DEFAULT_COMPRESSION_WINDOW_BITS = 15;
     /**
      * Default value for settings key <code>compression.memory.level</code>
-     * @see com.mastfrog.acteur.server.ServerModule.HTTP_COMPRESSION_MEMORY_LEVEL
+     *
+     * @see
+     * com.mastfrog.acteur.server.ServerModule.HTTP_COMPRESSION_MEMORY_LEVEL
      */
     public static final int DEFAULT_COMPRESSION_MEMORY_LEVEL = 8;
     /**
      * Default value for settings key <code>compression.threshold</code>
+     *
      * @see com.mastfrog.acteur.server.ServerModule.HTTP_THRESHOLD
      */
     public static final int DEFAULT_COMPRESSION_THRESHOLD = 256;
@@ -652,7 +664,6 @@ public class ServerModule<A extends Application> extends AbstractModule {
         this(scope, appType, -1, -1, -1);
     }
 
-
     /**
      * Get the Guice scope used for injecting dynamic request-related objects
      * into Acteur constructors.
@@ -661,6 +672,59 @@ public class ServerModule<A extends Application> extends AbstractModule {
      */
     public final ReentrantScope applicationScope() {
         return scope;
+    }
+
+    private ThreadModule configureThreadPools(ThreadModule threads) {
+        configureThreadPool(threads, EVENT_THREADS);
+        configureThreadPool(threads, WORKER_THREADS);
+        configureThreadPool(threads, BACKGROUND_THREAD_POOL_NAME);
+        configureThreadPool(threads, DELAY_EXECUTOR);
+        return threads;
+    }
+
+    private void configureThreadPool(ThreadModule threads, String pool) {
+        ExecutorServiceBuilder bldr = threads.builder(pool)
+                .daemon()
+                .withThreadSupplier(FTL_THREADS);
+        switch (pool) {
+            case EVENT_THREADS:
+                bldr.withDefaultThreadCount(4)
+                        .withThreadPriority(Thread.MAX_PRIORITY - 1)
+                        .withThreadSupplier(FTL_THREADS)
+                        // Ensure request serving threads are shut down after
+                        // other application level threads are
+                        .shutdownCoordination(ExecutorServiceBuilder.ShutdownBatch.LATE)
+                        .eager();
+                if (eventThreads > 0) {
+                    bldr.withExplicitThreadCount(eventThreads);
+                }
+                break;
+            case WORKER_THREADS:
+                bldr.withDefaultThreadCount(16)
+                        .workStealing()
+                        .shutdownCoordination(ExecutorServiceBuilder.ShutdownBatch.LATE)
+                        .eager();
+                if (workerThreads > 0) {
+                    bldr.withExplicitThreadCount(workerThreads);
+                }
+                break;
+            case BACKGROUND_THREAD_POOL_NAME:
+                bldr.withDefaultThreadCount(32)
+                        .legacyThreadCountName(BACKGROUND_THREADS)
+                        .workStealing();
+
+                if (backgroundThreads > 0) {
+                    bldr.withExplicitThreadCount(backgroundThreads);
+                }
+                break;
+            case DELAY_EXECUTOR:
+                bldr.withDefaultThreadCount(8)
+                        .withThreadPoolType(ThreadPoolType.SCHEDULED);
+                break;
+            default :
+                throw new IllegalArgumentException("Unknown thread pool binding " + pool);
+        }
+        bldr.bind();
     }
 
     @Override
@@ -690,40 +754,8 @@ public class ServerModule<A extends Application> extends AbstractModule {
         // to another server
         install(new ActeurBaseModule(scope));
 
-        ThreadModule threads = new ThreadModule();
-        threads.builder(EVENT_THREADS)
-                .withDefaultThreadCount(4)
-                .withThreadPriority(Thread.MAX_PRIORITY)
-                .withThreadSupplier(FTL_THREADS)
-                .eager()
-                .forkJoin()
-                .withExplicitThreadCount(eventThreads).bind();
+        install(configureThreadPools(new ThreadModule()));
 
-        threads.builder(WORKER_THREADS)
-                .withDefaultThreadCount(8)
-                .withExplicitThreadCount(workerThreads)
-                .withThreadSupplier(FTL_THREADS)
-                .eager()
-                .forkJoin()
-                .bind();
-
-        threads.builder(BACKGROUND_THREAD_POOL_NAME)
-                .withDefaultThreadCount(32)
-                .withExplicitThreadCount(backgroundThreads)
-                .legacyThreadCountName(BACKGROUND_THREADS)
-                .withThreadSupplier(FTL_THREADS)
-                .daemon()
-                .workStealing()
-                .bind();
-
-        threads.builder(DELAY_EXECUTOR)
-                .withDefaultThreadCount(4)
-                .withThreadSupplier(FTL_THREADS)
-                .daemon()
-                .withThreadPoolType(ThreadPoolType.SCHEDULED)
-                .bind();
-
-        install(threads);
         bind(UncaughtExceptionHandler.class).to(Uncaught.class);
 
         Provider<ExecutorService> workerProvider = getProvider(Key.<ExecutorService>get(ExecutorService.class, Names.named(EVENT_THREADS)));
@@ -1084,7 +1116,6 @@ public class ServerModule<A extends Application> extends AbstractModule {
         return bootstrap;
     }
 
-
     static final class NoOpServerBootstrapConfigurer implements ServerBootstrapConfigurer {
 
         @Inject
@@ -1179,33 +1210,35 @@ public class ServerModule<A extends Application> extends AbstractModule {
             ServerBootstrap result = new ServerBootstrap();
             ByteBufAllocator alloc = allocator.get();
             Settings settings = this.settings.get();
-            Set<String> keys = settings.allKeys();
             result.option(ChannelOption.ALLOCATOR, alloc);
-            result = result.childOption(ChannelOption.ALLOCATOR, alloc);
-            result = result.childOption(ChannelOption.TCP_NODELAY, settings.getBoolean(SETTINGS_KEY_SOCKET_TCP_NODELAY, DEFAULT_TCP_NODELAY));
-            if (keys.contains(SETTINGS_KEY_SOCKET_MAX_MESSAGES_PER_READ) && keys.contains(SETTINGS_KEY_SOCKET_MAX_MESSAGES_PER_INDIVIDUAL_READ)) {
-                int maxOverall = nonNegative(SETTINGS_KEY_SOCKET_MAX_MESSAGES_PER_READ, nonZero(SETTINGS_KEY_SOCKET_MAX_MESSAGES_PER_READ, settings.getInt(SETTINGS_KEY_SOCKET_MAX_MESSAGES_PER_READ)));
-                int maxIndividual = nonNegative(SETTINGS_KEY_SOCKET_MAX_MESSAGES_PER_INDIVIDUAL_READ, nonZero(SETTINGS_KEY_SOCKET_MAX_MESSAGES_PER_INDIVIDUAL_READ, settings.getInt(SETTINGS_KEY_SOCKET_MAX_MESSAGES_PER_INDIVIDUAL_READ)));
-                result = result.option(ChannelOption.RCVBUF_ALLOCATOR, new DefaultMaxBytesRecvByteBufAllocator(maxOverall, maxIndividual));
-            } else if (keys.contains(SETTINGS_KEY_SOCKET_MAX_MESSAGES_PER_READ) != keys.contains(SETTINGS_KEY_SOCKET_MAX_MESSAGES_PER_INDIVIDUAL_READ)) {
-                throw new ConfigurationError("Either both " + SETTINGS_KEY_SOCKET_MAX_MESSAGES_PER_READ + " *and* " + SETTINGS_KEY_SOCKET_MAX_MESSAGES_PER_INDIVIDUAL_READ
-                        + " must be set, or neither of them.");
-            }
-            if (keys.contains(SETTINGS_KEY_SOCKET_SO_RCVBUF)) {
-                result = result.option(ChannelOption.SO_SNDBUF, nonNegative(SETTINGS_KEY_SOCKET_SO_RCVBUF, settings.getInt(SETTINGS_KEY_SOCKET_SO_RCVBUF)));
-            }
-            if (keys.contains(SETTINGS_KEY_SOCKET_SO_SNDBUF)) {
-                result = result.childOption(ChannelOption.SO_SNDBUF, nonNegative(SETTINGS_KEY_SOCKET_SO_SNDBUF, settings.getInt(SETTINGS_KEY_SOCKET_SO_SNDBUF)));
-            }
-            if (keys.contains(SETTINGS_KEY_SOCKET_CONNECT_TIMEOUT_MILLIS)) {
-                result = result.option(ChannelOption.CONNECT_TIMEOUT_MILLIS,
-                        nonNegative(SETTINGS_KEY_SOCKET_CONNECT_TIMEOUT_MILLIS, settings.getInt(SETTINGS_KEY_SOCKET_CONNECT_TIMEOUT_MILLIS)));
-            }
-            if (keys.contains(SETTINGS_KEY_SOCKET_WRITE_SPIN_COUNT)) {
-                result = result.childOption(ChannelOption.WRITE_SPIN_COUNT,
-                        nonNegative(SETTINGS_KEY_SOCKET_WRITE_SPIN_COUNT,
-                                nonZero(SETTINGS_KEY_SOCKET_WRITE_SPIN_COUNT, settings.getInt(SETTINGS_KEY_SOCKET_WRITE_SPIN_COUNT))));
-            }
+            result.childOption(ChannelOption.ALLOCATOR, alloc);
+            result.childOption(ChannelOption.TCP_NODELAY, settings.getBoolean(SETTINGS_KEY_SOCKET_TCP_NODELAY, DEFAULT_TCP_NODELAY));
+
+            settings.ifIntPresent(SETTINGS_KEY_SOCKET_MAX_MESSAGES_PER_READ, maxOverall -> {
+                settings.ifIntPresent(SETTINGS_KEY_SOCKET_MAX_MESSAGES_PER_INDIVIDUAL_READ, maxIndividual -> {
+                    result.option(ChannelOption.RCVBUF_ALLOCATOR, new DefaultMaxBytesRecvByteBufAllocator(
+                            nonNegative(SETTINGS_KEY_SOCKET_MAX_MESSAGES_PER_READ, maxOverall),
+                            nonNegative(SETTINGS_KEY_SOCKET_MAX_MESSAGES_PER_INDIVIDUAL_READ, maxIndividual)));
+                });
+            });
+
+            settings.ifIntPresent(SETTINGS_KEY_SOCKET_SO_RCVBUF, val -> {
+                result.option(ChannelOption.SO_SNDBUF, nonNegative(SETTINGS_KEY_SOCKET_SO_RCVBUF, val));
+            });
+
+            settings.ifIntPresent(SETTINGS_KEY_SOCKET_SO_SNDBUF, val -> {
+                result.childOption(ChannelOption.SO_SNDBUF, nonNegative(SETTINGS_KEY_SOCKET_SO_SNDBUF, val));
+            });
+
+            settings.ifIntPresent(SETTINGS_KEY_SOCKET_CONNECT_TIMEOUT_MILLIS, val -> {
+                result.option(ChannelOption.CONNECT_TIMEOUT_MILLIS,
+                        nonNegative(SETTINGS_KEY_SOCKET_CONNECT_TIMEOUT_MILLIS, val));
+            });
+
+            settings.ifIntPresent(SETTINGS_KEY_SOCKET_WRITE_SPIN_COUNT, val -> {
+                result.childOption(ChannelOption.WRITE_SPIN_COUNT,
+                        greaterThanZero(SETTINGS_KEY_SOCKET_WRITE_SPIN_COUNT, val));
+            });
             return bootstrapConfigurer.get().configureServerBootstrap(configureServerBootstrap(result, settings), settings);
         }
     }
@@ -1291,50 +1324,6 @@ public class ServerModule<A extends Application> extends AbstractModule {
     }
 
     protected void onAfterStart(Server server, Dependencies deps) {
-    }
-
-    /**
-     * Start a server
-     *
-     * @return an object to wait on, which can be used to shut down the server
-     * @throws IOException if something goes wrong
-     * @throws InterruptedException if something goes wrong
-     * @deprecated Use ServerBuilder instead
-     */
-    @Deprecated
-    public ServerControl start() throws IOException, InterruptedException {
-        return start(null);
-    }
-
-    /**
-     * Start a server
-     *
-     * @param port The port to start on
-     * @return an object to wait on, which can be used to shut down the server
-     * @throws IOException if something goes wrong
-     * @throws InterruptedException if something goes wrong
-     * @deprecated Use ServerBuilder instead
-     */
-    @Deprecated
-    public ServerControl start(Integer port) throws IOException, InterruptedException {
-        MutableSettings settings = SettingsBuilder.createDefault().buildMutableSettings();
-        if (port != null) {
-            settings.setInt("port", port);
-        }
-        Integer pt = settings.getInt("port");
-
-        if (pt == null) {
-            settings.setInt("port", port == null ? 8080 : port);
-            pt = 8080;
-        }
-        onInit(settings);
-        Dependencies dependencies = new Dependencies(settings, this);
-        Server server = dependencies.getInstance(Server.class);
-        onBeforeStart(server, dependencies);
-
-        ServerControl result = server.start(pt);
-        onAfterStart(server, dependencies);
-        return result;
     }
 
     private static class CISC extends TypeLiteral<ChannelInitializer<SocketChannel>> {

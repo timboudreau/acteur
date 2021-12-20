@@ -37,6 +37,7 @@ final class ByteRangeHeader extends AbstractHeader<ByteRanges> {
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public String toString(ByteRanges value) {
         Checks.notNull("value", value);
         return value.toString();

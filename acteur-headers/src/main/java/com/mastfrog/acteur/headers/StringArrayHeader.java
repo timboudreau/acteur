@@ -38,6 +38,7 @@ final class StringArrayHeader extends AbstractHeader<String[]> {
     }
     
     @Override
+    @SuppressWarnings("deprecation")
     public String toString(String... value) {
         Checks.notNull("value", value);
         StringBuilder sb = new StringBuilder();

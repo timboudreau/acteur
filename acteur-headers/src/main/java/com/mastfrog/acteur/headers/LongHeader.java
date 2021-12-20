@@ -36,6 +36,7 @@ class LongHeader extends AbstractHeader<Long> {
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public String toString(Long value) {
         return value.toString();
     }

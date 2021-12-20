@@ -39,6 +39,7 @@ final class WebSocketLocationHeader extends AbstractHeader<URL> {
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public String toString(URL value) {
         return value.toExternalForm();
     }

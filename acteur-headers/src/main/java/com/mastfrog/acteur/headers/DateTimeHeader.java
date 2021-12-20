@@ -44,6 +44,7 @@ class DateTimeHeader extends AbstractHeader<ZonedDateTime> {
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public String toString(ZonedDateTime value) {
         Checks.notNull("value", value);
         value = value.withZoneSameInstant(ZoneId.systemDefault());

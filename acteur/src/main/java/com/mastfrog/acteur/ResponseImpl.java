@@ -92,6 +92,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -648,7 +649,7 @@ final class ResponseImpl extends Response {
         // Log cases where a payload is attached to a status code that cannot have a payload
         // according to the HTTP spec
         if (!canHaveBody(status) && (message != null || listener != null)) {
-            if (listener != ChannelFutureListener.CLOSE && listener != SEND_EMPTY_LAST_CHUNK) {
+            if (debug && listener != ChannelFutureListener.CLOSE && listener != SEND_EMPTY_LAST_CHUNK) {
                 System.err.println(evt
                         + " attempts to attach a body to " + status
                         + " which cannot have one: " + message
@@ -758,7 +759,6 @@ final class ResponseImpl extends Response {
                 warn(evt);
                 version = HTTP_1_0;
             }
-            System.out.println("Set X-Internal-Compress");
             hdrs.set(X_INTERNAL_COMPRESS, true);
         }
         if (debug) {
@@ -778,13 +778,14 @@ final class ResponseImpl extends Response {
         return result;
     }
 
-    static Set<String> WARNED = Sets.newConcurrentHashSet();
+    static Set<String> WARNED = ConcurrentHashMap.newKeySet();
 
     static void warn(Event<?> evt) {
         String pth = evt instanceof HttpEvent ? ((HttpEvent) evt).path().toString() : "";
-        if (!WARNED.contains(pth)) {
-            WARNED.add(pth);
-            System.err.println("Response to " + pth + " is non-chunked, has no content-length header but "
+        String mth = evt instanceof HttpEvent ? ((HttpEvent) evt).method().toString() : "";
+        if (WARNED.add(mth + pth)) {
+            System.err.println("Response to " + mth + " " + pth
+                    + " is non-chunked, has no content-length header but "
                     + "will send response chunks using a listener.  The only way to avoid hanging "
                     + "the client is to close the connection, HTTP 1.0 style, once all data is sent.");
         }
@@ -908,9 +909,11 @@ final class ResponseImpl extends Response {
         public <R> HeaderValueType<R> match(HeaderValueType<R> decorator) {
             if (this.decorator.equals(decorator)) { // Equality test is case-insensitive name match
                 if (this.decorator.type() != decorator.type()) {
-                    System.err.println("Requesting header " + decorator + " of type " + decorator.type().getName()
-                            + " but returning header of type " + this.decorator.type().getName() + " - if set, this"
-                            + " will probably throw a ClassCastException.");
+                    if (debug) {
+                        System.err.println("Requesting header " + decorator + " of type " + decorator.type().getName()
+                                + " but returning header of type " + this.decorator.type().getName() + " - if set, this"
+                                + " will probably throw a ClassCastException.");
+                    }
                 }
                 return (HeaderValueType<R>) this.decorator;
             }

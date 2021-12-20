@@ -37,6 +37,7 @@ class HeaderNamesHeader extends AbstractHeader<HeaderValueType<?>[]> {
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public String toString(HeaderValueType[] value) {
         StringBuilder sb = new StringBuilder();
         for (HeaderValueType t : value) {

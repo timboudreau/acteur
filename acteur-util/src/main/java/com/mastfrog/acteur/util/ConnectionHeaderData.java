@@ -1,7 +1,7 @@
-/* 
+/*
  * The MIT License
  *
- * Copyright 2013 Tim Boudreau.
+ * Copyright 2021 Mastfrog Technologies.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,33 +21,29 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.mastfrog.acteur.headers;
+package com.mastfrog.acteur.util;
 
-import com.mastfrog.acteur.util.BasicCredentials;
-import com.mastfrog.util.preconditions.Checks;
-import io.netty.handler.codec.http.HttpHeaderNames;
+import com.mastfrog.util.strings.Strings;
 
 /**
  *
  * @author Tim Boudreau
  */
-class BasicCredentialsHeader extends AbstractHeader<BasicCredentials> {
+public interface ConnectionHeaderData {
 
-    BasicCredentialsHeader() {
-        super(BasicCredentials.class, HttpHeaderNames.AUTHORIZATION);
+    default boolean isKnownConnectionValue() {
+        return false;
     }
 
-    @Override
-    @SuppressWarnings("deprecation")
-    public String toString(BasicCredentials value) {
-        Checks.notNull("value", value);
-        return value.toString();
+    static ConnectionHeaderData fromString(CharSequence seq) {
+        if (Strings.charSequencesEqual(seq, "keep-alive", true)) {
+            return Connection.keep_alive;
+        } else if (Strings.charSequencesEqual(seq, "close", true)) {
+            return Connection.close;
+        } else if (Strings.charSequencesEqual(seq, "upgrade", true)) {
+            return Connection.upgrade;
+        } else {
+            return new UnknownConnectionHeaderData(seq);
+        }
     }
-
-    @Override
-    public BasicCredentials toValue(CharSequence value) {
-        Checks.notNull("value", value);
-        return BasicCredentials.parse(value);
-    }
-
 }

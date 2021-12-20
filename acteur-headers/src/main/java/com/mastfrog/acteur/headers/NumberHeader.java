@@ -37,6 +37,7 @@ class NumberHeader extends AbstractHeader<Number> {
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public String toString(Number value) {
         return Long.toString(value.longValue());
     }

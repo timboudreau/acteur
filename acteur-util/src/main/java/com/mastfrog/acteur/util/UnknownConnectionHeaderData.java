@@ -1,7 +1,7 @@
-/* 
+/*
  * The MIT License
  *
- * Copyright 2013 Tim Boudreau.
+ * Copyright 2021 Mastfrog Technologies.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,33 +21,41 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.mastfrog.acteur.headers;
+package com.mastfrog.acteur.util;
 
-import com.mastfrog.acteur.util.BasicCredentials;
-import com.mastfrog.util.preconditions.Checks;
-import io.netty.handler.codec.http.HttpHeaderNames;
+import static com.mastfrog.util.preconditions.Checks.notNull;
+import com.mastfrog.util.strings.Strings;
 
 /**
+ * Header data for the <code>connection</code> header when it is malformed or
+ * unrecognized.
  *
  * @author Tim Boudreau
  */
-class BasicCredentialsHeader extends AbstractHeader<BasicCredentials> {
+final class UnknownConnectionHeaderData implements ConnectionHeaderData {
 
-    BasicCredentialsHeader() {
-        super(BasicCredentials.class, HttpHeaderNames.AUTHORIZATION);
+    private final CharSequence text;
+
+    UnknownConnectionHeaderData(CharSequence text) {
+        this.text = notNull("text", text);
     }
 
     @Override
-    @SuppressWarnings("deprecation")
-    public String toString(BasicCredentials value) {
-        Checks.notNull("value", value);
-        return value.toString();
+    public String toString() {
+        return text.toString();
+    }
+
+    public boolean equals(Object o) {
+        if (o == this) {
+            return true;
+        } else if (o == null || !(o instanceof ConnectionHeaderData)) {
+            return false;
+        }
+        return text.equals(o.toString());
     }
 
     @Override
-    public BasicCredentials toValue(CharSequence value) {
-        Checks.notNull("value", value);
-        return BasicCredentials.parse(value);
+    public int hashCode() {
+        return Strings.charSequenceHashCode(text);
     }
-
 }

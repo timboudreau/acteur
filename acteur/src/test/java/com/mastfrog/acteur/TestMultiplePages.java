@@ -4,6 +4,9 @@ import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import com.mastfrog.acteur.server.ServerModule;
 import com.mastfrog.acteur.util.RequestID;
+import com.mastfrog.acteur.util.Server;
+import com.mastfrog.giulius.Dependencies;
+import com.mastfrog.util.net.PortFinder;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
@@ -24,8 +27,11 @@ public class TestMultiplePages {
     @SuppressWarnings("deprecation")
     public void test() throws InterruptedException, IOException {
         ServerModule<A> m = new ServerModule<>(A.class, 1, 2, 64);
+        Dependencies deps = new Dependencies(m);
+        Server serv = deps.getInstance(Server.class);
+        PortFinder pf = new PortFinder();
         // XXX what is this test for?
-        m.start(9773).shutdown(true);
+        serv.start(pf.findAvailableServerPort()).shutdown(true);
     }
 
     private static class A extends Application {

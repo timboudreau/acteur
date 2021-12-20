@@ -28,9 +28,14 @@ package com.mastfrog.acteur.util;
  *
  * @author Tim Boudreau
  */
-public enum Connection {
+public enum Connection implements ConnectionHeaderData {
     close, keep_alive, upgrade;
-    
+
+    @Override
+    public boolean isKnownConnectionValue() {
+        return true;
+    }
+
     @Override
     public String toString() {
         switch (this) {

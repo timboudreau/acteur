@@ -24,7 +24,9 @@
 package com.mastfrog.acteur.headers;
 
 import com.mastfrog.acteur.util.Connection;
+import com.mastfrog.acteur.util.ConnectionHeaderData;
 import com.mastfrog.util.preconditions.Checks;
+import static com.mastfrog.util.preconditions.Checks.notNull;
 import com.mastfrog.util.strings.Strings;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.util.AsciiString;
@@ -33,36 +35,33 @@ import io.netty.util.AsciiString;
  *
  * @author Tim Boudreau
  */
-final class ConnectionHeader extends AbstractHeader<Connection> {
+final class ConnectionHeader extends AbstractHeader<ConnectionHeaderData> {
 
     private static final AsciiString close = AsciiString.of(Connection.close.toString());
     private static final AsciiString keep_alive = AsciiString.of(Connection.keep_alive.toString());
 
     ConnectionHeader() {
-        super(Connection.class, HttpHeaderNames.CONNECTION);
+        super(ConnectionHeaderData.class, HttpHeaderNames.CONNECTION);
     }
 
     @Override
-    public CharSequence toCharSequence(Connection value) {
-        Checks.notNull("value", value);
-        switch (value) {
-            case close:
-                return ConnectionHeader.close;
-            case keep_alive:
-                return ConnectionHeader.keep_alive;
+    public CharSequence toCharSequence(ConnectionHeaderData value) {
+        if (value instanceof Connection) {
+            Connection cv = (Connection) value;
+            switch (cv) {
+                // Use statically allocated strings where they exist
+                case close:
+                    return close;
+                case keep_alive:
+                    return keep_alive;
+            }
         }
-        return value.toString();
+        return notNull("value", value).toString();
     }
 
     @Override
-    public Connection toValue(CharSequence value) {
-        Checks.notNull("value", value);
-        if (Strings.charSequencesEqual(close, value, true)) {
-            return Connection.close;
-        } else if (Strings.charSequencesEqual(keep_alive, value, true)) {
-            return Connection.keep_alive;
-        }
-        return null;
+    public ConnectionHeaderData toValue(CharSequence value) {
+        return ConnectionHeaderData.fromString(notNull("value", value));
     }
 
 }

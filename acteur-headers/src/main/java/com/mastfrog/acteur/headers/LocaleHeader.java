@@ -37,6 +37,7 @@ class LocaleHeader extends AbstractHeader<Locale> {
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public String toString(Locale value) {
         Checks.notNull("value", value);
         return value.toLanguageTag();
