@@ -24,7 +24,6 @@
 package com.mastfrog.acteur;
 
 import com.google.common.base.Objects;
-import com.google.common.collect.Sets;
 import com.google.common.net.MediaType;
 import com.google.inject.Key;
 import com.google.inject.name.Names;
