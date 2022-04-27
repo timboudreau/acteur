@@ -36,7 +36,7 @@ import org.junit.runner.RunWith;
 @TestWith({M.class, TestHarnessModule.class, SilentRequestLogger.class})
 public class TestAnnotations {
 
-    private static final long TIMEOUT = 16000;
+    private static final long TIMEOUT = 60000;
     private static final Duration TO = Duration.ofMillis(TIMEOUT);
 
     @Test(timeout=TIMEOUT)

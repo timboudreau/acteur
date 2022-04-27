@@ -67,8 +67,12 @@ public class PutTest {
 
     @Test(timeout = 360000L)
     public void testPuts(TestHarness harn, Application application) throws Throwable {
-        harn.get("foo/bar/baz").go().assertStatus(OK).assertContent("Hello world");
-        harn.get("/").go().assertStatus(OK).assertContent("Hello world");
+        harn.get("foo/bar/baz")
+                .setTimeout(Duration.ofSeconds(20))
+                .go().assertStatus(OK).assertContent("Hello world");
+        harn.get("/")
+                .setTimeout(Duration.ofSeconds(20))
+                .go().assertStatus(OK).assertContent("Hello world");
         for (int i = 0; i < 2; i++) {
 
             harn.put("/")
