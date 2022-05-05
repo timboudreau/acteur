@@ -28,13 +28,20 @@ import com.mastfrog.acteur.util.RequestID;
 import io.netty.handler.codec.http.HttpResponseStatus;
 
 /**
- * Logger which can be injected, which takes care of actually logging
- * each request and response.
+ * Logger which can be injected, which takes care of actually logging each
+ * request and response.
  *
  * @author Tim Boudreau
  */
 @ImplementedBy(DefaultRequestLogger.class)
 public interface RequestLogger {
-    void onBeforeEvent (RequestID rid, Event<?> event);
-    void onRespond (RequestID rid, Event<?> event, HttpResponseStatus status);
+
+    public static RequestLogger SILENT = (rid, evt, status) -> {
+    };
+
+    default void onBeforeEvent(RequestID rid, Event<?> event) {
+        // do nothing
+    }
+
+    void onRespond(RequestID rid, Event<?> event, HttpResponseStatus status);
 }
