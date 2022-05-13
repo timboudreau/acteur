@@ -1,11 +1,14 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
- xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"     xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project
+         xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
+
     <parent>
         <groupId>com.mastfrog</groupId>
         <artifactId>mastfrog-parent</artifactId>
-        <version>2.8.1</version>
+        <version>3.0.0-dev</version>
         <relativePath/>
     </parent>
     <artifactId>acteur-resources</artifactId>
@@ -44,7 +47,7 @@
             <groupId>org.xeustechnologies</groupId>
             <artifactId>jtar</artifactId>
         </dependency>
-        <!-- https://mvnrepository.com/artifact/com.jcraft/jzlib -->
+<!-- https://mvnrepository.com/artifact/com.jcraft/jzlib -->
         <dependency>
             <groupId>com.jcraft</groupId>
             <artifactId>jzlib</artifactId>
@@ -54,15 +57,18 @@
         <system>Github</system>
         <url>https://github.com/timboudreau/acteur/issues</url>
     </issueManagement>
+
     <scm>
         <url>https://github.com/timboudreau/acteur.git</url>
         <connection>scm:git:https://github.com/timboudreau/acteur.git</connection>
         <developerConnection>git@github.com/timboudreau/acteur.git</developerConnection>
     </scm>
+
     <organization>
         <name>Mastfrog Technologies</name>
         <url>https://mastfrog.com</url>
     </organization>
+
     <licenses>
         <license>
             <name>MIT</name>
@@ -70,6 +76,7 @@
             <distribution>repo</distribution>
         </license>
     </licenses>
+
     <developers>
         <developer>
             <name>Tim Boudreau</name>
@@ -77,6 +84,7 @@
             <url>https://timboudreau.com</url>
         </developer>
     </developers>
+
     <build>
         <plugins>
             <plugin>
@@ -92,6 +100,7 @@
                 <version>3.0.0-M4</version>
                 <configuration>
                     <!--
+                        
                     <parallelMavenExecution>false</parallelMavenExecution>
                     <reuseForks>false</reuseForks>
                     <parallel>none</parallel>
@@ -100,6 +109,7 @@
                     <forkCount>0</forkCount>
                     <trimStackTrace>false</trimStackTrace>
                     <useFile>false</useFile>
+                    
                     -->
                     <parallelMavenExecution>true</parallelMavenExecution>
                     <perCoreThreadCount>8</perCoreThreadCount>
