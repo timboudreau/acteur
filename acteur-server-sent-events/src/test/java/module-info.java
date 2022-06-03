@@ -2,7 +2,10 @@
 open module com.mastfrog.acteur.server.sent.events {
     exports com.mastfrog.acteur.sse;
 
+    requires com.mastfrog.scopes;
     requires com.mastfrog.giulius;
+    requires com.mastfrog.giulius.settings;
+    requires com.mastfrog.giulius.tests;
     // Sibling com.mastfrog/acteur-3.0.0-dev
     requires com.mastfrog.acteur;
     requires com.mastfrog.acteur.headers;
@@ -10,6 +13,12 @@ open module com.mastfrog.acteur.server.sent.events {
 
     // Inferred from source scan
     requires com.mastfrog.preconditions;
-    requires com.mastfrog.scopes;
 
+    // Inferred from source scan
+    requires com.mastfrog.util.function;
+    requires com.mastfrog.netty.http.client;
+    requires com.mastfrog.netty.http.test.harness;
+
+    // Inferred from test-source-scan
+    requires junit;
 }

@@ -26,6 +26,9 @@ open module com.mastfrog.url {
     // Sibling com.mastfrog/util-function-3.0.0-dev
     requires com.mastfrog.util.function;
 
+    // Inferred from test-source-scan
+    requires junit;
+
     // derived from com.mastfrog/simplevalidation-1.14 in com/mastfrog/simplevalidation/1.14/simplevalidation-1.14.pom
     requires simplevalidation;
 

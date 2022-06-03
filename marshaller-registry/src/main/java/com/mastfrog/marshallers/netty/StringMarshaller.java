@@ -23,7 +23,6 @@
  */
 package com.mastfrog.marshallers.netty;
 
-import com.google.common.net.MediaType;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import io.netty.util.CharsetUtil;

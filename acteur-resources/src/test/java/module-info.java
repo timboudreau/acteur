@@ -4,26 +4,45 @@ open module com.mastfrog.acteur.resources {
     exports com.mastfrog.acteur.resources.markup;
 
     // Sibling com.mastfrog/acteur-3.0.0-dev
-    requires com.mastfrog.acteur;
-    requires com.mastfrog.acteur.headers;
-    requires com.mastfrog.acteur.util;
-    requires com.mastfrog.giulius.settings;
-    requires com.mastfrog.url;
-    requires com.mastfrog.scopes;
+    requires transitive com.mastfrog.acteur;
 
     // Transitive detected by source scan
     requires com.mastfrog.giulius;
+    requires com.mastfrog.acteur.headers;
+    requires com.mastfrog.acteur.util;
+    requires com.mastfrog.giulius.settings;
+    requires com.mastfrog.giulius.tests;
+    requires com.mastfrog.url;
+    requires com.mastfrog.scopes;
+    requires com.mastfrog.netty.http.client;
+    requires com.mastfrog.netty.http.test.harness;
+
+    // Inferred from source scan
     requires com.mastfrog.misc;
+
+    // Inferred from source scan
     requires com.mastfrog.preconditions;
+
+    // Inferred from source scan
     requires com.mastfrog.streams;
+
+    // Inferred from source scan
     requires com.mastfrog.strings;
+
+    // Inferred from source scan
     requires com.mastfrog.time;
+
+    // Inferred from source scan
+    requires com.mastfrog.util.function;
 
     // derived from io.netty/netty-buffer-0.0.0-? in io/netty/netty-buffer/4.1.76.Final/netty-buffer-4.1.76.Final.pom
     requires io.netty.buffer;
 
     // derived from org.xeustechnologies/jtar-1.1 in org/xeustechnologies/jtar/1.1/jtar-1.1.pom
     requires jtar;
+
+    // Inferred from test-source-scan
+    requires junit;
 
     // derived from com.jcraft/jzlib-1.1.3 in com/jcraft/jzlib/1.1.3/jzlib-1.1.3.pom
     requires jzlib;

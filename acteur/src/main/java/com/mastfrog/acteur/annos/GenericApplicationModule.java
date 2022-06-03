@@ -21,7 +21,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.mastfrog.acteur.annotations;
+package com.mastfrog.acteur.annos;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.inject.Module;

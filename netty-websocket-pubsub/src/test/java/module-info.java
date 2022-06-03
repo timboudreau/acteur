@@ -17,7 +17,9 @@ open module com.mastfrog.netty.websocket.pubsub {
     requires com.mastfrog.preconditions;
 
     // derived from io.netty/netty-codec-http-0.0.0-? in io/netty/netty-codec-http/4.1.76.Final/netty-codec-http-4.1.76.Final.pom
-    requires io.netty.codec.http;
-    requires io.netty.transport;
-    requires javax.inject;
+    requires transitive io.netty.codec.http;
+
+    // Inferred from test-source-scan
+    requires transitive junit;
+
 }

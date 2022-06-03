@@ -63,6 +63,7 @@ final class JsonObjectMarshaller implements Marshaller<Object, ByteBuf> {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public Object read(ByteBuf data, Object[] hints) throws IOException {
         Class<?> type = findHint(Class.class, hints, Object.class);
         ObjectMapper m;

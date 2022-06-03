@@ -8,6 +8,7 @@ open module com.mastfrog.acteur.mongo {
 
     // Sibling com.mastfrog/giulius-3.0.0-dev
     requires com.mastfrog.giulius;
+    requires com.mastfrog.giulius.tests;
 
     // Sibling com.mastfrog/giulius-mongodb-3.0.0-dev
     requires com.mastfrog.giulius.mongodb;
@@ -17,6 +18,12 @@ open module com.mastfrog.acteur.mongo {
 
     // Sibling com.mastfrog/jackson-mongodb-3.0.0-dev
     requires com.mastfrog.jackson.mongodb;
+
+    // Inferred from source scan
+    requires com.mastfrog.preconditions;
+
+    // Inferred from test-source-scan
+    requires junit;
 
     // derived from org.mongodb/mongo-java-driver-0.0.0-? in org/mongodb/mongo-java-driver/3.12.11/mongo-java-driver-3.12.11.pom
     requires mongo.java.driver;

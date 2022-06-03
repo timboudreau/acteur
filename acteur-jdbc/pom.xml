@@ -21,7 +21,7 @@
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>injection-reflection-indexer</artifactId>
-            <scope>compile</scope>
+            <scope>provided</scope>
         </dependency>
     </dependencies>
     <issueManagement>

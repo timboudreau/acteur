@@ -1,4 +1,4 @@
-package com.mastfrog.acteur.annotations;
+package com.mastfrog.acteur.annos;
 
 import com.google.inject.Inject;
 import com.mastfrog.acteur.ActeurFactory;

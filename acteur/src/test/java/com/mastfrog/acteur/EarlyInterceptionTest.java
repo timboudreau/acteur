@@ -26,7 +26,7 @@ package com.mastfrog.acteur;
 import com.google.common.net.MediaType;
 import com.google.inject.AbstractModule;
 import com.mastfrog.acteur.EarlyInterceptionTest.IceptModule;
-import com.mastfrog.acteur.annotations.Early;
+import com.mastfrog.acteur.annos.Early;
 import com.mastfrog.acteur.headers.Headers;
 import static com.mastfrog.acteur.headers.Method.POST;
 import com.mastfrog.acteur.preconditions.Methods;

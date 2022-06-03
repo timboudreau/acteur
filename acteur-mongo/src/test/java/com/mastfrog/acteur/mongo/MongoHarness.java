@@ -1,5 +1,6 @@
 package com.mastfrog.acteur.mongo;
 
+import com.mastfrog.giulius.mongo.MongoInitializer;
 import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;

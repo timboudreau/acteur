@@ -31,7 +31,9 @@ open module com.mastfrog.acteur.headers {
     requires io.netty.handler;
     requires io.netty.resolver;
     requires io.netty.transport;
-    
     requires java.logging;
+
+    // Inferred from test-source-scan
+    requires junit;
 
 }

@@ -16,10 +16,11 @@ open module com.mastfrog.marshaller.registry {
 
     // derived from io.netty/netty-buffer-0.0.0-? in io/netty/netty-buffer/4.1.76.Final/netty-buffer-4.1.76.Final.pom
     requires io.netty.buffer;
-    requires io.netty.common;
 
     // derived from com.fasterxml.jackson.core/jackson-databind-0.0.0-? in com/fasterxml/jackson/core/jackson-databind/2.9.9.3/jackson-databind-2.9.9.3.pom
     requires transitive com.fasterxml.jackson.databind;
     requires java.desktop;
 
+    // Inferred from test-source-scan
+    requires junit;
 }

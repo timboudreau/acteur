@@ -1,10 +1,14 @@
-package com.mastfrog.acteur.annotations;
+package com.mastfrog.acteur.annos;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.TypeLiteral;
 import com.google.inject.name.Names;
 import com.mastfrog.acteur.Page;
 import com.mastfrog.acteur.SilentRequestLogger;
+import com.mastfrog.acteur.annos.AnotherPage;
+import com.mastfrog.acteur.annos.FakePage;
+import com.mastfrog.acteur.annotations.GuiceModule;
+import com.mastfrog.acteur.annos.ZZZPage;
 import com.mastfrog.acteur.server.ServerBuilder;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.giulius.tests.GuiceRunner;

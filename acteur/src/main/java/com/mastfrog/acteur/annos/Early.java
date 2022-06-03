@@ -21,7 +21,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.mastfrog.acteur.annotations;
+package com.mastfrog.acteur.annos;
 
 import com.mastfrog.acteur.ChunkHandler;
 import com.mastfrog.acteur.preconditions.Description;

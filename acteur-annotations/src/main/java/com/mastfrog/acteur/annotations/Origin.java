@@ -22,7 +22,7 @@
  * THE SOFTWARE.
  */
 
-package com.mastfrog.parameters.gen;
+package com.mastfrog.acteur.annotations;
 
 import static java.lang.annotation.ElementType.TYPE;
 import java.lang.annotation.Retention;

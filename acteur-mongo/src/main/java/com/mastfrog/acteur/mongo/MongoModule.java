@@ -23,6 +23,9 @@
  */
 package com.mastfrog.acteur.mongo;
 
+import com.mastfrog.giulius.mongo.MongoConfigModule;
+import com.mastfrog.giulius.mongo.MongoInitializer;
+import com.mastfrog.giulius.mongo.GiuliusMongoModule;
 import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 import com.mastfrog.acteur.Acteur;

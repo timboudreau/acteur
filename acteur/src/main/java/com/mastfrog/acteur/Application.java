@@ -27,7 +27,7 @@ import com.mastfrog.acteur.headers.Headers;
 import com.google.common.net.MediaType;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
-import com.mastfrog.acteur.annotations.Early;
+import com.mastfrog.acteur.annos.Early;
 import com.mastfrog.acteur.debug.Probe;
 import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.settings.SettingsBuilder;

@@ -11,7 +11,6 @@ open module com.mastfrog.acteur {
     exports com.mastfrog.acteur.websocket;
 
     requires static com.mastfrog.injection.reflection.indexer;
-    
     // Sibling com.mastfrog/acteur-annotations-3.0.0-dev:compile
     requires com.mastfrog.acteur.annotations;
 
@@ -39,18 +38,26 @@ open module com.mastfrog.acteur {
     requires com.mastfrog.giulius;
 
     // Transitive detected by source scan
+    requires com.mastfrog.giulius.annotations;
+    requires com.mastfrog.giulius.annotation.processors;
     requires com.mastfrog.giulius.settings;
+    requires com.mastfrog.giulius.tests;
 
     // Sibling com.mastfrog/giulius-threadpool-3.0.0-dev
     requires com.mastfrog.giulius.threadpool;
 
     // Sibling com.mastfrog/marshaller-registry-3.0.0-dev
     requires com.mastfrog.marshaller.registry;
+    
+    requires com.mastfrog.netty.http.client;
+    requires com.mastfrog.netty.http.test.harness;
 
     // Inferred from source scan
-
     // Sibling com.mastfrog/util-misc-3.0.0-dev
     requires com.mastfrog.misc;
+
+    // Inferred from source scan
+    requires com.mastfrog.net;
 
     // Inferred from source scan
     requires com.mastfrog.preconditions;
@@ -84,6 +91,9 @@ open module com.mastfrog.acteur {
     requires java.logging;
 
     // derived from org.javassist/javassist-3.28.0-GA in org/javassist/javassist/3.28.0-GA/javassist-3.28.0-GA.pom
-    requires transitive javassist;
+    requires javassist;
+
+    // Inferred from test-source-scan
+    requires junit;
 
 }

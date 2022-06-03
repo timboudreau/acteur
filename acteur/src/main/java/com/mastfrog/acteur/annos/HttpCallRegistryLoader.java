@@ -21,11 +21,13 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.mastfrog.acteur.annotations;
+package com.mastfrog.acteur.annos;
 
 import com.google.inject.Module;
 import com.mastfrog.acteur.Page;
-import com.mastfrog.parameters.gen.Origin;
+import com.mastfrog.acteur.annotations.GuiceModule;
+import com.mastfrog.acteur.annotations.HttpCall;
+import com.mastfrog.acteur.annotations.Origin;
 import com.mastfrog.util.preconditions.Exceptions;
 import com.mastfrog.util.streams.Streams;
 import com.mastfrog.util.collections.CollectionUtils;

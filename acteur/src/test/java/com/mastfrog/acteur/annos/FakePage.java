@@ -1,8 +1,8 @@
-package com.mastfrog.acteur.annotations;
+package com.mastfrog.acteur.annos;
 
 import com.mastfrog.acteur.annotations.HttpCall;
 import com.mastfrog.acteur.Page;
-import com.mastfrog.acteur.annotations.FakePage.Foo.Bar;
+import com.mastfrog.acteur.annos.FakePage.Foo.Bar;
 import com.mastfrog.util.strings.RandomStrings;
 
 /**

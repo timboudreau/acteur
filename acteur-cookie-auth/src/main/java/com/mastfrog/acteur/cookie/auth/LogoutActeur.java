@@ -3,7 +3,7 @@ package com.mastfrog.acteur.cookie.auth;
 import com.google.inject.Inject;
 import com.mastfrog.acteur.Acteur;
 import com.mastfrog.acteur.HttpEvent;
-import com.mastfrog.acteur.annotations.Precursors;
+import com.mastfrog.acteur.annos.Precursors;
 import java.net.URISyntaxException;
 
 /**

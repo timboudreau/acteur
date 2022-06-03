@@ -23,6 +23,7 @@
  */
 package com.mastfrog.acteur.mongo.util;
 
+import com.mastfrog.giulius.mongo.util.InvalidParameterException;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.mastfrog.acteur.HttpEvent;

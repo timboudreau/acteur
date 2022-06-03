@@ -1,4 +1,4 @@
-package com.mastfrog.acteur.annotations;
+package com.mastfrog.acteur.annos;
 
 import com.mastfrog.acteur.Acteur;
 import java.lang.annotation.ElementType;

@@ -8,10 +8,8 @@ open module com.mastfrog.acteur.mongo.async {
     requires com.mastfrog.acteur.headers;
     requires com.mastfrog.acteur.util;
     requires com.mastfrog.scopes;
-    requires com.mastfrog.annotation.processors;
-    requires com.mastfrog.giulius.settings;
 
-    // Transitive detected by source scan
+//    // Transitive detected by source scan
 //    requires com.mastfrog.acteur.deprecated;
 
     // Inferred from source scan
@@ -40,6 +38,9 @@ open module com.mastfrog.acteur.mongo.async {
 
     // Inferred from source scan
     requires com.mastfrog.time;
+
+    // Inferred from test-source-scan
+    requires junit;
     provides com.mastfrog.jackson.JacksonConfigurer with
        com.mastfrog.acteur.mongo.async.ObjectIdToJSONConfigurer;
 
