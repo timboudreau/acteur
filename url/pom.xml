@@ -1,16 +1,24 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<project
+     xmlns="http://maven.apache.org/POM/4.0.0"
+     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+     xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+
     <parent>
         <groupId>com.mastfrog</groupId>
         <artifactId>mastfrog-parent</artifactId>
-        <version>2.8.1</version>
+        <version>2.8.2</version>
         <relativePath/>
     </parent>
+
     <modelVersion>4.0.0</modelVersion>
     <artifactId>url</artifactId>
+
     <url>https://github.com/timboudreau/acteur</url>
     <name>URL</name>
+
     <dependencies>
+
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>util-function</artifactId>
@@ -27,7 +35,9 @@
             <groupId>${project.groupId}</groupId>
             <artifactId>util-collections</artifactId>
         </dependency>
+
         <dependency>
+
             <groupId>com.mastfrog</groupId>
             <artifactId>simplevalidation</artifactId>
             <exclusions>
@@ -36,26 +46,32 @@
                     <artifactId>nbstubs</artifactId>
                 </exclusion>
             </exclusions>
+
         </dependency>
+
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <scope>test</scope>
         </dependency>
+
     </dependencies>
     <issueManagement>
         <system>Github</system>
         <url>https://github.com/timboudreau/acteur/issues</url>
     </issueManagement>
+
     <scm>
         <url>https://github.com/timboudreau/acteur.git</url>
         <connection>scm:git:https://github.com/timboudreau/acteur.git</connection>
         <developerConnection>git@github.com/timboudreau/acteur.git</developerConnection>
     </scm>
+
     <organization>
         <name>Mastfrog Technologies</name>
         <url>https://mastfrog.com</url>
     </organization>
+
     <licenses>
         <license>
             <name>MIT</name>
@@ -63,6 +79,7 @@
             <distribution>repo</distribution>
         </license>
     </licenses>
+
     <developers>
         <developer>
             <name>Tim Boudreau</name>
@@ -70,4 +87,5 @@
             <url>https://timboudreau.com</url>
         </developer>
     </developers>
+
 </project>
