@@ -27,19 +27,37 @@ import static org.junit.Assert.assertEquals;
 import org.junit.Test;
 
 /**
+ * Tests that quotes are stripped from etag headers.
  *
  * @author Tim Boudreau
  */
 public class ETagHeaderTest {
 
+    private static final String unquoted = "abcd";
+    private static final String quoted = "\"abcd\"";
+
     @Test
     public void testHeaderIsQuotedCorrectly() {
-        String unquoted = "abcd";
-        String quoted = "\"abcd\"";
         assertEquals(quoted, Headers.ETAG.toCharSequence(unquoted).toString());
         assertEquals(quoted, Headers.ETAG.toCharSequence(quoted).toString());
         assertEquals(unquoted, Headers.ETAG.toValue(unquoted).toString());
         assertEquals(unquoted, Headers.ETAG.toValue(quoted).toString());
+    }
+
+    @Test
+    public void testHeaderQuotingForIfNoneMatch() {
+        assertEquals(quoted, Headers.IF_NONE_MATCH.toCharSequence(unquoted).toString());
+        assertEquals(quoted, Headers.IF_NONE_MATCH.toCharSequence(quoted).toString());
+        assertEquals(unquoted, Headers.IF_NONE_MATCH.toValue(unquoted).toString());
+        assertEquals(unquoted, Headers.IF_NONE_MATCH.toValue(quoted).toString());
+    }
+
+    @Test
+    public void testHeaderQuotingForIfMatch() {
+        assertEquals(quoted, Headers.IF_MATCH.toCharSequence(unquoted).toString());
+        assertEquals(quoted, Headers.IF_MATCH.toCharSequence(quoted).toString());
+        assertEquals(unquoted, Headers.IF_MATCH.toValue(unquoted).toString());
+        assertEquals(unquoted, Headers.IF_MATCH.toValue(quoted).toString());
     }
 
 }

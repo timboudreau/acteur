@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright 2017 Tim Boudreau.
+ * Copyright 2022 Mastfrog Technologies.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,31 +21,33 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-
 package com.mastfrog.acteur.headers;
 
-import com.mastfrog.util.preconditions.Checks;
+import com.mastfrog.acteur.util.CacheControl;
+import com.mastfrog.acteur.util.CacheControlTypes;
 import io.netty.util.AsciiString;
 
 /**
+ * Handles the HTTP 1.0 <code>Pragma: no-cache</code> header style.
  *
  * @author Tim Boudreau
  */
-final class CharSequenceHeader extends AbstractHeader<CharSequence> {
+final class PragmaHeader extends AbstractHeader<CacheControl> {
 
-    CharSequenceHeader(CharSequence name) {
-        super(CharSequence.class, AsciiString.of(name));
-    }
-    
-    @Override
-    public CharSequence toValue(CharSequence value) {
-        Checks.notNull("value", value);
-        return AsciiString.of(value);
+    static final AsciiString PRAGMA = AsciiString.cached("pragma");
+    private static final AsciiString NO_CACHE = AsciiString.cached("no-cache");
+    private static final CacheControl RESP = CacheControl.$(CacheControlTypes.no_cache);
+
+    PragmaHeader() {
+        super(CacheControl.class, PRAGMA);
     }
 
     @Override
-    public CharSequence toCharSequence(CharSequence value) {
-        Checks.notNull("value", value);
-        return value;
+    public CacheControl toValue(CharSequence value) {
+        if (NO_CACHE.contentEqualsIgnoreCase(value)) {
+            return RESP;
+        }
+        return null;
     }
+
 }

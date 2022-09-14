@@ -27,7 +27,7 @@ package com.mastfrog.acteur.headers;
  *
  * @author Tim Boudreau
  */
-class ETagHeader extends AbstractHeader<CharSequence> {
+final class ETagHeader extends AbstractHeader<CharSequence> {
 
     ETagHeader(CharSequence name) {
         super(CharSequence.class, name);
