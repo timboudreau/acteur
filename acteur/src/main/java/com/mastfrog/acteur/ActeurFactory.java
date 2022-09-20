@@ -330,6 +330,11 @@ public class ActeurFactory {
             this.deps = deps;
             this.type = type;
         }
+        
+        @Override
+        public String toString() {
+            return "Deserialize and inject the request body as " + type.getName();
+        }
 
         @Override
         public com.mastfrog.acteur.State getState() {
@@ -375,7 +380,7 @@ public class ActeurFactory {
 
         @Override
         public void describeYourself(Map<String, Object> into) {
-            into.put("Expects JSON Request Body", true);
+            into.put("Expects JSON Request Body", toString());
         }
     }
 

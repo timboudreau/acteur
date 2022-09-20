@@ -112,7 +112,11 @@ class DateTimeHeader extends AbstractHeader<ZonedDateTime> {
 //                result = result.withYear(2_000 + result.getYear());
 //            }
 //        }
-        return result.withZoneSameInstant(ZoneId.systemDefault());
+        ZonedDateTime res = result.withZoneSameInstant(ZoneId.systemDefault());
+        if ("Z".equals(res.getZone().toString())) {
+            res = res.withZoneSameInstant(ZoneId.of("GMT"));
+        }
+        return res;
     }
 
 }

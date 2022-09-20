@@ -141,9 +141,7 @@ public class HttpCallAnnotationProcessor extends IndexGeneratingProcessor<Line> 
 
     Set<Element> elements = new HashSet<>();
 
-    int ix;
-
-    private List<String> deferred = new LinkedList<>();
+    private final List<String> deferred = new LinkedList<>();
 
     private void sanityCheckNonHttpCallElement(Element el, AnnotationUtils utils) {
         AnnotationMirror inj = utils.findAnnotationMirror(el, INJECT_BODY_AS_ANNOTATION);
@@ -193,11 +191,11 @@ public class HttpCallAnnotationProcessor extends IndexGeneratingProcessor<Line> 
                     sanityCheckNonHttpCallElement(e, utils);
                     continue;
                 }
-                Integer order = utils.annotationValue(am, "order", Integer.class, 0);
+                int order = utils.annotationValue(am, "order", Integer.class, 0);
 
                 boolean acteur = isActeurSubtype(e, utils);
                 if (!isPageSubtype(e, utils) && !acteur) {
-                    processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Not a subclass of Page or Acteur: " + e.asType(), e);
+                    processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Not a subclass of Page or Acteur: " + e.asType(), e, am);
                     continue;
                 }
                 elements.add(e);

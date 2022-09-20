@@ -28,6 +28,7 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.google.inject.Singleton;
 import com.mastfrog.acteur.Acteur.WrapperActeur;
 import com.mastfrog.acteur.annotations.Concluders;
+import com.mastfrog.acteur.annotations.GeneratedFrom;
 import com.mastfrog.acteur.annotations.HttpCall;
 import com.mastfrog.acteur.annotations.Precursors;
 import com.mastfrog.acteur.preconditions.Description;
@@ -154,7 +155,7 @@ public final class HelpGenerator {
                         }
                     }
                 } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
-                    // A page may legitiimately be uninstantiable
+                    // A page may legitimately be uninstantiable
                 }
             } else if (o instanceof Page) {
                 ((Page) o).describeYourself(m);
@@ -225,9 +226,16 @@ public final class HelpGenerator {
                 }
                 into.put("example-" + ix++, m);
             }
-        } else {
+        } else if (a instanceof GeneratedFrom) {
+                GeneratedFrom gf = (GeneratedFrom) a;
+                Class<?> from = gf.value();
+                into.put("name", from.getName());
+                Description desc = from.getAnnotation(Description.class);
+                if (desc != null) {
+                    into.put("description", desc.value());
+                }
+        } else if (a != null) {
             Class<? extends Annotation> type = a.annotationType();
-//            String name = type.getSimpleName();
             for (java.lang.reflect.Method m : type.getMethods()) {
                 switch (m.getName()) {
                     case "annotationType":
