@@ -5,16 +5,34 @@ import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.google.inject.name.Named;
 import com.google.inject.name.Names;
+import com.mastfrog.acteur.mongo.MongoDaemonVersion.MongoVersion;
+import com.mastfrog.giulius.Ordered;
 import com.mastfrog.giulius.ShutdownHookRegistry;
+import com.mastfrog.settings.Settings;
+import com.mastfrog.util.file.FileUtils;
 import com.mastfrog.util.preconditions.Checks;
 import com.mastfrog.util.preconditions.Exceptions;
+import com.mastfrog.util.strings.Strings;
+import com.mongodb.MongoClient;
+import com.mongodb.MongoClientSettings;
+import com.mongodb.ServerAddress;
+import com.mongodb.connection.ClusterConnectionMode;
+import com.mongodb.connection.ClusterSettings;
 import java.io.File;
 import java.io.IOException;
+import static java.lang.System.currentTimeMillis;
 import java.net.ConnectException;
 import java.net.DatagramSocket;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Random;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import org.bson.Document;
 
 /**
  * Starts a local mongodb over java.io.tmpdir and cleans it up on shutdown; uses
@@ -33,11 +51,10 @@ public class MongoHarness {
     private final int port;
     private final Init mongo;
     private static int count = 1;
-    
     /*
     Try to connect too soon and you get a crash: https://jira.mongodb.org/browse/SERVER-23441
-    */
-    private static final int CONNECT_WAIT_MILLIS = 500;
+     */
+    private static final int CONNECT_WAIT_MILLIS = 250;
 
     @Inject
     MongoHarness(@Named("mongoPort") int port, Init mongo) throws IOException, InterruptedException {
@@ -46,81 +63,165 @@ public class MongoHarness {
     }
 
     @Singleton
+    @Ordered(Integer.MIN_VALUE)
     static class Init extends MongoInitializer implements Runnable {
 
         private final File mongoDir;
         private Process mongo;
         private int port;
+        private volatile boolean mongodbGreaterThan36 = false;
+        private final String replSetId = "rs" + Long.toString(currentTimeMillis(), 36);
+        private final boolean replicaSet;
+        private final List<String> additionalArgs = new ArrayList<>();
+        private final String explicitName;
 
         @SuppressWarnings("LeakingThisInConstructor")
         @Inject
-        public Init(MongoInitializer.Registry registry, ShutdownHookRegistry shutdownHooks) {
+        public Init(Registry registry, ShutdownHookRegistry shutdownHooks, Settings settings) {
             super(registry);
+            replicaSet = settings.getBoolean("mongo.replica.set", false);
             shutdownHooks.add(this);
+            explicitName = settings.getString("testname");
+            String addtl = settings.getString("mongod.additional.args");
+            if (addtl != null) {
+                for (CharSequence seq : Strings.splitUniqueNoEmpty(' ', addtl)) {
+                    additionalArgs.add(seq.toString());
+                }
+            }
             mongoDir = createMongoDir();
         }
 
         @Override
-        protected void onBeforeCreateMongoClient(String host, int port) {
+        public void onMongoClientCreated(MongoClient client) {
+            if (replicaSet) {
+                client.getDatabase("admin").runCommand(
+                        new Document("replSetInitiate", new Document("_id", replSetId)
+                                .append("members", Arrays.asList(new Document("host", "localhost:" + port)
+                                        .append("_id", 1)))));
+            }
+            mongodbGreaterThan36 = version().majorVersion() > 3
+                    || (version().majorVersion() == 3 && version().minorVersion() > 6);
+        }
+
+        @Override
+        public void onBeforeCreateMongoClient(String host, int port) {
             try {
-                this.port = port;
                 mongo = startMongoDB(port);
             } catch (IOException | InterruptedException ex) {
                 Exceptions.chuck(ex);
             }
         }
 
-        public void stop() {
-            if (mongo != null) {
-                ProcessBuilder pb = new ProcessBuilder().command("mongod", "--dbpath",
-                        mongoDir.getAbsolutePath(), "--shutdown", "--port", "" + port);
+        void handleOutput(ProcessBuilder pb, String suffix) {
+            if (suffix == null) {
+                suffix = "";
+            }
+            if (Boolean.getBoolean("acteur.debug")) {
                 pb.redirectError(ProcessBuilder.Redirect.INHERIT);
                 pb.redirectOutput(ProcessBuilder.Redirect.INHERIT);
-                try {
-                    System.out.println("Try graceful mongodb shutdown " + pb);
-                    Process shutdown = pb.start();
-                    boolean exited = false;
-                    for (int i = 0; i < 19000; i++) {
-                        try {
-                            int exit = shutdown.exitValue();
-                            System.out.println("Shutdown mongodb call exited with " + exit);
-                            break;
-                        } catch (IllegalThreadStateException ex) {
-//                            System.out.println("no exit code yet, sleeping");
-                            try {
-                                Thread.sleep(10);
-                            } catch (InterruptedException ex1) {
-                                Exceptions.printStackTrace(ex1);
+            } else if (Boolean.getBoolean("mongo.tmplog")) {
+                String tmq = System.getProperty("testMethodQname");
+                if (tmq == null) {
+                    tmq = MongoHarness.class.getSimpleName();
+                }
+                tmq += "-" + System.currentTimeMillis() + "-" + suffix;
+                File tmp = new File(System.getProperty("java.io.tmpdir"));
+                File err = new File(tmp, tmq + ".err");
+                File out = new File(tmp, tmq + ".err");
+                pb.redirectError(err);
+                pb.redirectOutput(out);
+            } else {
+                System.err.println("Discarding mongodb output.  Set system property acteur.debug to true to inherit "
+                        + "it, or mongo.tmplog to true to write it to a file in /tmp");
+                pb.redirectError(new File("/dev/null"));
+                pb.redirectOutput(new File("/dev/null"));
+                // JDK 9:
+//                pb.redirectError(ProcessBuilder.Redirect.DISCARD);
+//                pb.redirectOutput(ProcessBuilder.Redirect.DISCARD);
+            }
+        }
+
+        public void stop() {
+            stop(true);
+        }
+
+        public void stop(boolean deleteDbDir) {
+            try {
+                if (mongo != null) {
+                    String mongodExe = System.getProperty("mongo.binary", "mongod");
+                    String[] cmd = new String[]{mongodExe, "--dbpath",
+                        mongoDir.getAbsolutePath(), "--shutdown", "--port", "" + port};
+                    ProcessBuilder pb = new ProcessBuilder().command(cmd);
+                    handleOutput(pb, "mongodb-shutdown");
+                    try {
+                        boolean exited = false;
+                        boolean destroyCalled = false;
+                        if (!mongodbGreaterThan36) {
+                            Process shutdown = pb.start();
+                            System.err.println("Try graceful mongodb shutdown " + Arrays.toString(cmd));
+                            for (int i = 0; i < 19000; i++) {
+                                try {
+                                    int exit = shutdown.exitValue();
+                                    System.err.println("Shutdown mongodb call exited with " + exit);
+                                    break;
+                                } catch (IllegalThreadStateException ex) {
+                                    try {
+                                        Thread.sleep(10);
+                                    } catch (InterruptedException ex1) {
+                                        Exceptions.printStackTrace(ex1);
+                                    }
+                                }
                             }
-                        }
-                    }
-                    System.out.println("Wait for mongodb exit");
-                    for (int i = 0; i < 10000; i++) {
-                        try {
-                            int code = mongo.exitValue();
-                            System.out.println("Exit code " + code);
-                            exited = true;
-                            break;
-                        } catch (IllegalThreadStateException ex) {
-//                            System.out.println("Not exited yet; sleep 100ms");
-                            try {
-                                Thread.sleep(10);
-                            } catch (InterruptedException ex1) {
-                                Exceptions.printStackTrace(ex1);
-                            }
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        }
-                        if (!exited && i > 30) {
-                            System.out.println("Mongodb has not exited; kill it");
+                        } else {
+                            destroyCalled = true;
                             mongo.destroy();
                         }
+                        System.err.println("Wait for mongodb exit");
+                        for (int i = 0; i < 10000; i++) {
+                            try {
+                                int code = mongo.exitValue();
+                                System.err.println("Mongo server exit code " + code);
+                                exited = true;
+                                mongo = null;
+                                return;
+                            } catch (IllegalThreadStateException ex) {
+//                            System.out.println("Not exited yet; sleep 100ms");
+                                try {
+                                    Thread.sleep(10);
+                                } catch (InterruptedException ex1) {
+                                    Exceptions.printStackTrace(ex1);
+                                }
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
+                            if (!exited && i > 30) {
+//                            System.err.println("Mongodb has not exited; kill it");
+                                if (destroyCalled) {
+                                    mongo.destroyForcibly();
+                                } else {
+                                    destroyCalled = true;
+                                    mongo.destroy();
+                                }
+                            }
+                            if (!exited && i > 100) {
+                                mongo.destroyForcibly();
+                            }
+                        }
+                    } catch (IOException ex) {
+                        Exceptions.chuck(ex);
+                        mongo = null;
                     }
-                } catch (IOException ex) {
-                    Exceptions.chuck(ex);
                     mongo = null;
                 }
-                mongo = null;
+            } finally {
+                if (mongoDir != null && mongoDir.exists()) {
+                    try {
+                        FileUtils.deltree(mongoDir.toPath());
+                    } catch (IOException ex) {
+                        Logger.getLogger(MongoHarness.class.getName())
+                                .log(Level.SEVERE, null, ex);
+                    }
+                }
             }
         }
 
@@ -146,7 +247,10 @@ public class MongoHarness {
             File tmp = new File(System.getProperty("java.io.tmpdir"));
             String fname = System.getProperty("testMethodQname");
             if (fname == null) {
-                fname = "mongo-" + System.currentTimeMillis() + "-" + count++;
+                fname = explicitName;
+                if (fname == null) {
+                    fname = "mongo-" + System.currentTimeMillis() + "-" + count++;
+                }
             } else {
                 fname += "-" + System.currentTimeMillis() + "-" + count++;
             }
@@ -163,17 +267,117 @@ public class MongoHarness {
             return failed;
         }
 
-        private Process startMongoDB(int port) throws IOException, InterruptedException {
+        static boolean macOs() {
+            return System.getProperty("os.name", "").contains("Mac OS");
+        }
+
+        private String mongodExe() {
+            return System.getProperty("mongo.binary", "mongod");
+        }
+
+        private MongoVersion version() {
+            String mongodExe = mongodExe();
+            MongoDaemonVersion verFinder;
+            if (mongodExe != null) {
+                verFinder = MongoDaemonVersion.forBinary(Paths.get(mongodExe));
+            } else {
+                verFinder = MongoDaemonVersion.systemPath();
+            }
+            MongoVersion ver = verFinder.version();
+            return ver;
+        }
+
+        Process startMongoDB(int port) throws IOException, InterruptedException {
             Checks.nonZero("port", port);
             Checks.nonNegative("port", port);
-            System.out.println("Starting mongodb on port " + port + " with data dir " + mongoDir);
-            ProcessBuilder pb = new ProcessBuilder().command("mongod", "--dbpath",
-                    mongoDir.getAbsolutePath(), "--nojournal", "--smallfiles", "-nssize", "1",
-                    "--noprealloc", "--slowms", "5", "--port", "" + port,
-                    "--maxConns", "50", /*"--nohttpinterface",*/ "--syncdelay", "0", "--oplogSize", "1");
-            System.out.println(pb.command());
-            pb.redirectError(ProcessBuilder.Redirect.INHERIT);
-            pb.redirectOutput(ProcessBuilder.Redirect.INHERIT);
+            System.err.println("Starting mongodb on port " + port + " with data dir " + mongoDir);
+            boolean useInMemoryEngine = Boolean.getBoolean("mongo.harness.memory");
+            String mongodExe = mongodExe();
+            ProcessBuilder pb;
+            boolean setCacheSize = Boolean.getBoolean("mongodb.set.cache.size");
+            MongoVersion ver = version();
+            if (ver.isNone()) {
+                System.err.println("COULD NOT FIND THE MONGO VERSION - configuraing cli args blindly");
+            }
+            System.err.println("Starting mongod " + ver);
+
+            if (useInMemoryEngine) {
+                switch (ver.majorVersion()) {
+                    case 3:
+                        pb = new ProcessBuilder().command(mongodExe,
+                                "--storageEngine", "inMemory",
+                                "--nounixsocket",
+                                "--maxConns", "50",
+                                "--port", "" + port);
+                        break;
+                    case 6:
+                        if (!macOs()) {
+                            // mongodb-community 6.0.1 from homebrew has broken socket options
+                            // for the inMemory storage engine and will crash
+                            pb = new ProcessBuilder().command(mongodExe,
+                                    "--dbpath", mongoDir.getAbsolutePath(),
+                                    "--nojournal",
+                                    "--slowms", "5",
+                                    "--port", "" + port,
+                                    "--maxConns", "50",
+                                    "--oplogSize", "1",
+                                    "--nounixsocket");
+                            break;
+                        }
+                    default: // v4 and up - needs dbPath for metadata and index generation
+                        pb = new ProcessBuilder().command(mongodExe,
+                                "--dbpath", mongoDir.getAbsolutePath(),
+                                "--storageEngine", "inMemory",
+                                "--nounixsocket",
+                                "--maxConns", "50",
+                                "--port", "" + port);
+
+                }
+            } else {
+                List<String> cmd;
+                switch (ver.majorVersion()) {
+                    case 3:
+                    case 4:
+                        cmd = new ArrayList<>(Arrays.asList(
+                                mongodExe,
+                                "--dbpath", mongoDir.getAbsolutePath(),
+                                //                                "--nojournal",
+                                "--smallfiles",
+                                "-nssize", "1",
+                                "--noprealloc",
+                                "--slowms", "5",
+                                "--port", "" + port,
+                                "--maxConns", "50",
+                                "--syncdelay", "0",
+                                "--oplogSize", "1",
+                                "--nounixsocket"));
+                        break;
+                    default:
+                        cmd = new ArrayList<>(Arrays.asList(
+                                mongodExe,
+                                "--dbpath", mongoDir.getAbsolutePath(),
+                                //                                "--nojournal",
+                                "--slowms", "5",
+                                "--port", "" + port,
+                                "--maxConns", "50",
+                                "--oplogSize", "1",
+                                "--nounixsocket"));
+                }
+                // These options are good on 3.x through at least 6.0.1
+                if (replicaSet) {
+                    cmd.add("--replSet");
+                    cmd.add(replSetId);
+                }
+                if (setCacheSize) {
+                    cmd.add("--wiredTigerCacheSizeGB");
+                    cmd.add("1");
+                }
+                cmd.addAll(additionalArgs);
+                System.out.println(Strings.join(' ', cmd));
+                pb = new ProcessBuilder().command(cmd);
+            }
+            System.err.println(pb.command());
+            handleOutput(pb, "mongodb");
 
             // XXX instead of sleep, loop trying to connect?
             Process result = pb.start();
@@ -182,7 +386,7 @@ public class MongoHarness {
                 try {
                     Socket s = new Socket("localhost", port);
                     s.close();
-                    Thread.sleep(CONNECT_WAIT_MILLIS);;
+                    Thread.sleep(CONNECT_WAIT_MILLIS);
                     break;
                 } catch (ConnectException e) {
                     if (i > 1750) {
@@ -240,6 +444,7 @@ public class MongoHarness {
      * @throws InterruptedException
      */
     public void start() throws IOException, InterruptedException {
+        mongo.port = port;
         mongo.start();
     }
 
@@ -252,7 +457,23 @@ public class MongoHarness {
         return port;
     }
 
+    /**
+     * Use this module in a test to automatically start MongoDB the first time
+     * something requests a class related to it for injection. Automatically
+     * finds an unused, non-standard port. Inject MongoHarness and call its
+     * <code>port()</code> method if you need the port.
+     */
     public static class Module extends AbstractModule {
+
+        private final int port;
+
+        public Module() {
+            this(-1);
+        }
+
+        public Module(int port) {
+            this.port = port;
+        }
 
         @Override
         protected void configure() {
@@ -262,6 +483,9 @@ public class MongoHarness {
         }
 
         private int findPort() {
+            if (port > 0) {
+                return port;
+            }
             Random r = new Random(System.currentTimeMillis());
             int port;
             do {
@@ -274,9 +498,9 @@ public class MongoHarness {
         }
 
         private boolean available(int port) {
-            try (ServerSocket ss = new ServerSocket(port)) {
+            try ( ServerSocket ss = new ServerSocket(port)) {
                 ss.setReuseAddress(true);
-                try (DatagramSocket ds = new DatagramSocket(port)) {
+                try ( DatagramSocket ds = new DatagramSocket(port)) {
                     ds.setReuseAddress(true);
                     return true;
                 } catch (IOException e) {

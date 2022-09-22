@@ -21,15 +21,17 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.mastfrog.acteur.mongo.async;
+package com.mastfrog.acteur.mongo.reactive;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.inject.Inject;
 import com.google.inject.util.Providers;
-import static com.mastfrog.acteur.mongo.async.ActeurMongoModule.JACKSON_BINDING_NAME;
-import com.mastfrog.giulius.mongodb.async.DynamicCodecs;
-import com.mastfrog.giulius.mongodb.async.Java8DateTimeCodecProvider;
+import static com.mastfrog.acteur.mongo.reactive.ActeurMongoModule.JACKSON_BINDING_NAME;
+import com.mastfrog.giulius.mongodb.reactive.DynamicCodecs;
+import com.mastfrog.giulius.mongodb.reactive.Java8DateTimeCodecProvider;
+import static com.mastfrog.util.collections.CollectionUtils.map;
 import java.time.ZonedDateTime;
+import java.util.Locale;
 import javax.inject.Named;
 import javax.inject.Provider;
 import org.bson.BsonReader;
@@ -48,12 +50,15 @@ class JacksonCodecs implements DynamicCodecs {
 
     private final Provider<ObjectMapper> mapper;
     private final ByteBufCodec bufCodec;
-    private final Java8DateTimeCodecProvider timeCodecs = new Java8DateTimeCodecProvider();
+    private final Java8DateTimeCodecProvider timeCodecs
+            = new Java8DateTimeCodecProvider();
 
     @Inject
-    JacksonCodecs(@Named(JACKSON_BINDING_NAME) Provider<ObjectMapper> mapper, ByteBufCodec bufCodec) {
+    JacksonCodecs(@Named(JACKSON_BINDING_NAME) Provider<ObjectMapper> mapper,
+            ByteBufCodec bufCodec) {
         this.mapper = mapper;
         this.bufCodec = bufCodec;
+        ObjectMapper om = mapper.get();
     }
 
     @Override
@@ -69,7 +74,6 @@ class JacksonCodecs implements DynamicCodecs {
         if (ZonedDateTime.class == type) {
             return null;
         }
-        System.out.println("CREATE CODE " + type.getName());
         return new JacksonCodec<>(mapper, Providers.of(bufCodec), type);
     }
 

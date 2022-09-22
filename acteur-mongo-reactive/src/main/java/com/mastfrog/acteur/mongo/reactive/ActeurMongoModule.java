@@ -21,51 +21,64 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.mastfrog.acteur.mongo.async;
+package com.mastfrog.acteur.mongo.reactive;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 import com.google.inject.TypeLiteral;
 import com.google.inject.name.Names;
-import com.google.inject.util.Providers;
-import com.mastfrog.acteur.mongo.async.MongoUpdater.MongoResult;
-import com.mastfrog.acteur.mongo.async.QueryWithCacheHeadersActeur.EtagResult;
-import com.mastfrog.giulius.mongodb.async.GiuliusMongoAsyncModule;
-import com.mastfrog.giulius.mongodb.async.MongoAsyncConfig;
+import com.mastfrog.acteur.mongo.reactive.MongoUpdater.MongoResult;
+import com.mastfrog.acteur.mongo.reactive.WriteCursorContentsAsJSON.CursorResult;
+import com.mastfrog.acteur.mongo.reactive.WriteCursorContentsAsJSON.SingleResult;
+import com.mastfrog.giulius.mongodb.reactive.DynamicCodecs;
+import com.mastfrog.giulius.mongodb.reactive.GiuliusMongoReactiveStreamsModule;
+import com.mastfrog.giulius.mongodb.reactive.Java8DateTimeCodecProvider;
+import com.mastfrog.giulius.mongodb.reactive.MongoAsyncConfig;
+import com.mastfrog.giulius.mongodb.reactive.MongoAsyncInitializer;
+import com.mastfrog.giulius.mongodb.reactive.MongoFutureCollection;
 import com.mastfrog.giulius.scope.ReentrantScope;
-import com.mastfrog.acteur.mongo.async.WriteCursorContentsAsJSON.CursorResult;
-import com.mastfrog.acteur.mongo.async.WriteCursorContentsAsJSON.SingleResult;
-import com.mastfrog.giulius.mongodb.async.DynamicCodecs;
-import com.mastfrog.giulius.mongodb.async.Java8DateTimeCodecProvider;
-import com.mastfrog.giulius.mongodb.async.MongoAsyncInitializer;
-import com.mastfrog.giulius.mongodb.async.MongoFutureCollection;
 import com.mastfrog.jackson.JacksonModule;
+import com.mastfrog.jackson.configuration.JacksonConfigurer;
 import static com.mastfrog.util.preconditions.Checks.notNull;
-import com.mongodb.async.client.AggregateIterable;
-import com.mongodb.async.client.FindIterable;
-import com.mongodb.async.client.MongoClientSettings;
-import com.mongodb.async.client.MongoCollection;
-import com.mongodb.async.client.MongoIterable;
+import com.mongodb.MongoClientSettings;
+import com.mongodb.reactivestreams.client.AggregatePublisher;
+import com.mongodb.reactivestreams.client.FindPublisher;
+import com.mongodb.reactivestreams.client.MongoCollection;
 import java.util.HashSet;
-import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import javax.inject.Named;
 import javax.inject.Provider;
+import javax.inject.Singleton;
 import org.bson.Document;
 import org.bson.codecs.Codec;
 import org.bson.codecs.configuration.CodecProvider;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.conversions.Bson;
+import org.reactivestreams.Publisher;
 
 /**
+ * Sets up Acteur with the mongo-reactive-streams bindings and convenience
+ * acteurs to write out cursor contents, etc.
+ * <p>
+ * The methods for configuring Jackson on this class are specifically for
+ * configuring how Java classes are mapped to BSON - you still want to install
+ * JacksonModule and configure that for how HTTP output is handled.
+ * </p><p>
+ * The most efficient way to use cursors and collections is to apply a type of
+ * ByteBuf to the collection before passing it to a cursor - this module
+ * installs codecs that can bypass instantiating Java objects in a lot of cases
+ * and directly translate BSON to JSON in a buffer ready to emit to the socket.
+ * </p>
  *
  * @author Tim Boudreau
  */
 public final class ActeurMongoModule extends AbstractModule implements MongoAsyncConfig<ActeurMongoModule> {
 
     public static final String JACKSON_BINDING_NAME = "mongo";
-    private final GiuliusMongoAsyncModule base = new GiuliusMongoAsyncModule();
+    private final GiuliusMongoReactiveStreamsModule base = new GiuliusMongoReactiveStreamsModule();
     private final ReentrantScope scope;
     private final Set<Class<?>> jacksonCodecs = new HashSet<>();
     private final JacksonModule jacksonModule = new JacksonModule(JACKSON_BINDING_NAME, false);
@@ -77,10 +90,8 @@ public final class ActeurMongoModule extends AbstractModule implements MongoAsyn
         base.withCodec(ByteBufCodec.class);
         base.withDynamicCodecs(JacksonCodecs.class);
         base.withCodecProvider(AdditionalJacksonCodecs.class);
-        withJacksonConfigurer(com.mastfrog.jackson.configuration.JacksonConfigurer.javaTimeConfigurer());
-        withJacksonConfigurer(com.mastfrog.jackson.configuration.JacksonConfigurer.localeConfigurer());
-        withJacksonConfigurer(ObjectIdJacksonConfigurer.class);
-        registerJacksonType(Locale.class);
+        withJacksonConfigurer2(ObjectIdJacksonConfigurer.class);
+        withJacksonConfigurer(JacksonConfigurer.localeConfigurer());
     }
 
     public ActeurMongoModule withJavaTimeSerializationMode(com.mastfrog.jackson.configuration.TimeSerializationMode timeMode, com.mastfrog.jackson.configuration.DurationSerializationMode durationMode) {
@@ -100,7 +111,7 @@ public final class ActeurMongoModule extends AbstractModule implements MongoAsyn
         return this;
     }
 
-    public ActeurMongoModule withJacksonConfigurer(com.mastfrog.jackson.configuration.JacksonConfigurer configurer) {
+    public ActeurMongoModule withJacksonConfigurer(JacksonConfigurer configurer) {
         jacksonModule.withConfigurer(configurer);
         return this;
     }
@@ -128,36 +139,43 @@ public final class ActeurMongoModule extends AbstractModule implements MongoAsyn
         return this;
     }
 
+    @Override
     public ActeurMongoModule withCodecProvider(CodecProvider prov) {
         base.withCodecProvider(prov);
         return this;
     }
 
+    @Override
     public ActeurMongoModule withCodec(Codec<?> prov) {
         base.withCodec(prov);
         return this;
     }
 
+    @Override
     public ActeurMongoModule withCodecProvider(Class<? extends CodecProvider> prov) {
         base.withCodecProvider(prov);
         return this;
     }
 
+    @Override
     public ActeurMongoModule withCodec(Class<? extends Codec<?>> prov) {
         base.withCodec(prov);
         return this;
     }
 
+    @Override
     public ActeurMongoModule withClientSettings(MongoClientSettings settings) {
         base.withClientSettings(settings);
         return this;
     }
 
+    @Override
     public ActeurMongoModule bindCollection(String bindingName, String collectionName) {
         base.bindCollection(bindingName, collectionName);
         return this;
     }
 
+    @Override
     public <T> ActeurMongoModule bindCollection(String bindingName, String collectionName, Class<T> type) {
         base.bindCollection(bindingName, collectionName, type);
         return this;
@@ -168,13 +186,18 @@ public final class ActeurMongoModule extends AbstractModule implements MongoAsyn
         return this;
     }
 
+    public ActeurMongoModule loadJacksonConfigurersFromMetaInfServices() {
+        jacksonModule.loadFromMetaInfServices();
+        return this;
+    }
+
     @Override
     protected void configure() {
         install(base);
         scope.bindTypes(binder(), Bson.class, Document.class, MongoResult.class, MongoCollection.class, SingleResult.class,
-                CursorResult.class, FindIterable.class, EtagResult.class, CacheHeaderInfo.class, AggregateIterable.class, MongoIterable.class,
+                CursorResult.class, FindPublisher.class, ETagResult.class, CacheHeaderInfo.class, AggregatePublisher.class, Publisher.class,
                 MongoFutureCollection.class);
-        Provider<CursorControl> ctrlProvider = scope.provider(CursorControl.class, Providers.<CursorControl>of(defaultCursorControl));
+        Provider<CursorControl> ctrlProvider = scope.provider(CursorControl.class, () -> defaultCursorControl.copy());
         bind(CursorControl.class).toProvider(ctrlProvider);
         bind(GenerifiedFindIterable.literal).toProvider(GenerifiedFindIterable.class);
         bind(GenerifiedMongoIterable.literal).toProvider(GenerifiedMongoIterable.class);
@@ -186,11 +209,13 @@ public final class ActeurMongoModule extends AbstractModule implements MongoAsyn
         install(jacksonModule);
     }
 
+    @Singleton
     static class AdditionalJacksonCodecs implements CodecProvider {
 
         final Set<Class<?>> types;
         private final Provider<ObjectMapper> mapper;
         private final Provider<ByteBufCodec> codec;
+        private final Map<Class<?>, JacksonCodec<?>> cache = new ConcurrentHashMap<>();
 
         @Inject
         public AdditionalJacksonCodecs(@Named("__jm") Set<Class<?>> types, @Named(JACKSON_BINDING_NAME) Provider<ObjectMapper> mapper, Provider<ByteBufCodec> codec) {
@@ -200,9 +225,12 @@ public final class ActeurMongoModule extends AbstractModule implements MongoAsyn
         }
 
         @Override
+        @SuppressWarnings("unchecked")
         public <T> Codec<T> get(Class<T> type, CodecRegistry cr) {
             if (types.contains(type)) {
-                return new JacksonCodec<>(mapper, codec, type);
+                return (Codec<T>) cache.computeIfAbsent(type, t -> {
+                    return new JacksonCodec<>(mapper, codec, t);
+                });
             }
             return null;
         }
@@ -231,59 +259,59 @@ public final class ActeurMongoModule extends AbstractModule implements MongoAsyn
         throw new UnsupportedOperationException("Already using Jackson codecs.");
     }
 
-    private static class GenerifiedFindIterable implements Provider<FindIterable<?>> {
+    private static class GenerifiedFindIterable implements Provider<FindPublisher<?>> {
 
         @SuppressWarnings("unchecked")
-        private final Provider<FindIterable> find;
-        private static final TypeLiteral<FindIterable<?>> literal = new TypeLiteral<FindIterable<?>>() {
+        private final Provider<FindPublisher> find;
+        private static final TypeLiteral<FindPublisher<?>> literal = new TypeLiteral<FindPublisher<?>>() {
         };
 
         @Inject
         @SuppressWarnings("unchecked")
-        public GenerifiedFindIterable(Provider<FindIterable> find) {
+        public GenerifiedFindIterable(Provider<FindPublisher> find) {
             this.find = find;
         }
 
         @Override
-        public FindIterable<?> get() {
+        public FindPublisher<?> get() {
             return find.get();
         }
     }
 
-    private static class GenerifiedMongoIterable implements Provider<MongoIterable<?>> {
+    private static class GenerifiedMongoIterable implements Provider<Publisher<?>> {
 
         @SuppressWarnings("unchecked")
-        private final Provider<MongoIterable> find;
-        private static final TypeLiteral<MongoIterable<?>> literal = new TypeLiteral<MongoIterable<?>>() {
+        private final Provider<Publisher> find;
+        private static final TypeLiteral<Publisher<?>> literal = new TypeLiteral<Publisher<?>>() {
         };
 
         @Inject
         @SuppressWarnings("unchecked")
-        public GenerifiedMongoIterable(Provider<MongoIterable> find) {
+        public GenerifiedMongoIterable(Provider<Publisher> find) {
             this.find = find;
         }
 
         @Override
-        public MongoIterable<?> get() {
+        public Publisher<?> get() {
             return find.get();
         }
     }
 
-    private static class GenerifiedAggregateIterable implements Provider<AggregateIterable<?>> {
+    private static class GenerifiedAggregateIterable implements Provider<AggregatePublisher<?>> {
 
         @SuppressWarnings("unchecked")
-        private final Provider<AggregateIterable> find;
-        private static final TypeLiteral<AggregateIterable<?>> literal = new TypeLiteral<AggregateIterable<?>>() {
+        private final Provider<AggregatePublisher> find;
+        private static final TypeLiteral<AggregatePublisher<?>> literal = new TypeLiteral<AggregatePublisher<?>>() {
         };
 
         @Inject
         @SuppressWarnings("unchecked")
-        public GenerifiedAggregateIterable(Provider<AggregateIterable> find) {
+        public GenerifiedAggregateIterable(Provider<AggregatePublisher> find) {
             this.find = find;
         }
 
         @Override
-        public AggregateIterable<?> get() {
+        public AggregatePublisher<?> get() {
             return find.get();
         }
     }

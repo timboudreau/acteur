@@ -21,14 +21,14 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.mastfrog.acteur.mongo.async;
+package com.mastfrog.acteur.mongo.reactive;
 
 import com.google.inject.Inject;
 import com.mastfrog.acteur.HttpEvent;
 import com.mastfrog.acteur.spi.ApplicationControl;
 import com.mastfrog.util.codec.Codec;
-import com.mongodb.async.AsyncBatchCursor;
-import com.mongodb.async.SingleResultCallback;
+import com.mongodb.internal.async.AsyncBatchCursor;
+import com.mongodb.internal.async.SingleResultCallback;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.CompositeByteBuf;
 import io.netty.channel.Channel;

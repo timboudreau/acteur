@@ -33,6 +33,7 @@
         <module>acteur-cookie-auth</module>
         <module>acteur-base</module>
         <module>acteur-mongo-async</module>
+        <module>acteur-mongo-reactive</module>
         <module>marshaller-registry</module>
         <module>acteur-headers-jodatime</module>
         <module>netty-websocket-pubsub</module>
