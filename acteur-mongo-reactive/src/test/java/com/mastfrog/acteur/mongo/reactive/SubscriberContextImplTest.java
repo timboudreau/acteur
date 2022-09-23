@@ -66,7 +66,7 @@ public class SubscriberContextImplTest extends AbstractSubscriberContextTest {
     }
 
     @Override
-    protected Runnable additionalRunnable() {
+    public Runnable additionalRunnable() {
         ReentrantScope sc = SCOPE.get();
         assertNotNull(sc);
         return () -> {
@@ -75,7 +75,7 @@ public class SubscriberContextImplTest extends AbstractSubscriberContextTest {
     }
 
     @Override
-    protected SubscriberContext createContext(UN un) {
+    public SubscriberContext createContext(UN un) {
         SubscriberContext ctx = CTX.get();
         assertNotNull("Not in context", ctx);
         return ctx;
@@ -97,7 +97,7 @@ public class SubscriberContextImplTest extends AbstractSubscriberContextTest {
     }
 
     @Override
-    protected boolean checksUncaughtHandler() {
+    public boolean checksUncaughtHandler() {
         return false;
     }
 }
