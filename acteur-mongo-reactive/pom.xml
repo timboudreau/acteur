@@ -136,7 +136,7 @@
                     <forkMode>none</forkMode>
 
                     <systemPropertyVariables>
-                        <acteur.debug>false</acteur.debug>
+                        <acteur.debug>true</acteur.debug>
                     </systemPropertyVariables>
 
                 </configuration>

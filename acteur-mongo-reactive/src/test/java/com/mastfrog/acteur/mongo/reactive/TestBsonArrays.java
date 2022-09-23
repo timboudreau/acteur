@@ -70,7 +70,7 @@ public class TestBsonArrays {
     @Test
     public void test(@Named("aps") MongoCollection<ArrayPayloadThing> coll) {
         TestSupport.await(ts -> {
-            coll.insertMany(Arrays.asList(AP1, AP2)).subscribe( ts.callback(ur -> {
+            coll.insertMany(Arrays.asList(AP1, AP2)).subscribe(ts.callback(ur -> {
                 ts.done();
             }));
         });
@@ -108,8 +108,8 @@ public class TestBsonArrays {
             Inner[] nue = new Inner[]{new Inner("replacement", currentTimeMillis())};
             coll.updateOne(new Document("name", "one"), new Document("$set", new Document("inners", nue)))
                     .subscribe(ts.callback(ur -> {
-                ts.done();
-            }));
+                        ts.done();
+                    }));
         });
         TestSupport.await(ts -> {
             coll.find(new Document("name", "one")).subscribe(ts.callback(item -> {
@@ -133,6 +133,9 @@ public class TestBsonArrays {
                     .withJavaTimeSerializationMode(com.mastfrog.jackson.TimeSerializationMode.TIME_AS_EPOCH_MILLIS, com.mastfrog.jackson.DurationSerializationMode.DURATION_AS_MILLIS)
                     .bindCollection("aps", ArrayPayloadThing.class)
                     .registerJacksonTypes(ArrayPayloadThing.class, Inner.class, Inner[].class);
+            bind(Thread.UncaughtExceptionHandler.class).toInstance((thread, thrown) -> {
+                thrown.printStackTrace();
+            });
 
             bind(ByteBufAllocator.class).toInstance(ByteBufAllocator.DEFAULT);
             install(m);

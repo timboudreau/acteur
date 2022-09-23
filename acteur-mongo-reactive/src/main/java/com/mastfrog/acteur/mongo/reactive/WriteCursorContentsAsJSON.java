@@ -34,18 +34,13 @@ import com.mastfrog.acteur.spi.ApplicationControl;
 import com.mastfrog.acteurbase.Chain;
 import com.mastfrog.acteurbase.Deferral;
 import com.mastfrog.acteurbase.Deferral.Resumer;
-import com.mastfrog.giulius.mongodb.reactive.Subscribers;
-import com.mongodb.internal.async.AsyncBatchCursor;
-import com.mongodb.internal.async.SingleResultCallback;
+import com.mastfrog.giulius.mongodb.reactive.util.Subscribers;
 import com.mongodb.reactivestreams.client.FindPublisher;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import static io.netty.handler.codec.http.HttpResponseStatus.GONE;
 import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 import org.reactivestreams.Publisher;
-import org.reactivestreams.Subscriber;
-import org.reactivestreams.Subscription;
 
 /**
  *
@@ -56,23 +51,22 @@ import org.reactivestreams.Subscription;
 public class WriteCursorContentsAsJSON extends Acteur {
 
     @Inject
-    WriteCursorContentsAsJSON(Deferral def, CursorControl ctrl, Chain<Acteur, ? extends Chain<Acteur, ?>> chain, Closables clos, FindPublisher<?> find) {
-        find(find, ctrl, def, chain, clos);
+    @SuppressWarnings("unchecked")
+    WriteCursorContentsAsJSON(Deferral def, CursorControl ctrl,
+            Chain<Acteur, ? extends Chain<Acteur, ?>> chain,
+            Closables clos, FindPublisher<?> find, Subscribers subscribers) {
+        find(find, ctrl, def, chain, clos, subscribers);
     }
 
     @SuppressWarnings("unchecked")
-    private <T> Publisher<T> find(Publisher<T> result, CursorControl ctrl, Deferral def, Chain<Acteur, ? extends Chain<Acteur, ?>> chain, final Closables clos) {
+    private <T> Publisher<T> find(Publisher<T> result, CursorControl ctrl, Deferral def, Chain<Acteur, ? extends Chain<Acteur, ?>> chain, final Closables clos, Subscribers subscribers) {
         Publisher<T> target = ctrl._apply(result);
 
         def.defer((Resumer resumer) -> {
             if (ctrl.isFindOne()) {
-                Subscribers.first(target, new SingleResultResume<>(resumer));
+                subscribers.first(target, new SingleResultResume<>(resumer));
             } else {
                 resumer.resume(new CursorResult<>(result, null));
-//                result.subscribe(new JustSubscribe<>((thrown -> {
-//                    resumer.resume(new CursorResult<>(thrown != null ? null : result, thrown));
-//                })));
-//                it.batchCursor(new CursorResultResume<>(clos, resumer));
             }
         });
         if (ctrl.isFindOne()) {
@@ -83,35 +77,6 @@ public class WriteCursorContentsAsJSON extends Acteur {
         setChunked(true);
         next(result);
         return result;
-    }
-
-    static class JustSubscribe<T> implements Subscriber<T> {
-
-        private final Consumer<Throwable> onSubscribe;
-
-        JustSubscribe(Consumer<Throwable> onSubscribe) {
-            this.onSubscribe = onSubscribe;
-        }
-
-        @Override
-        public void onSubscribe(Subscription s) {
-            onSubscribe.accept(null);
-        }
-
-        @Override
-        public void onNext(T t) {
-            // do nothing
-        }
-
-        @Override
-        public void onError(Throwable thrwbl) {
-            onSubscribe.accept(thrwbl);
-        }
-
-        @Override
-        public void onComplete() {
-            // do nothing
-        }
     }
 
     static final class SingleResultResume<T> implements BiConsumer<T, Throwable> {
@@ -128,24 +93,6 @@ public class WriteCursorContentsAsJSON extends Acteur {
         }
     }
 
-    /*
-    static final class CursorResultResume<T> implements SingleResultCallback<AsyncBatchCursor<T>> {
-
-        private final Closables clos;
-        private final Resumer resumer;
-
-        public CursorResultResume(Closables clos, Resumer resumer) {
-            this.clos = clos;
-            this.resumer = resumer;
-        }
-
-        @Override
-        public void onResult(AsyncBatchCursor<T> t, Throwable thrwbl) {
-            clos.add(t);
-            resumer.resume(new CursorResult<>(t, thrwbl));
-        }
-    }
-     */
     static final class SingleResult {
 
         final Object result;
@@ -157,6 +104,7 @@ public class WriteCursorContentsAsJSON extends Acteur {
         }
     }
 
+    @Description("Sends a single JSON object as a non-array result")
     static class SendSingleResult extends Acteur {
 
         @Inject
@@ -185,6 +133,8 @@ public class WriteCursorContentsAsJSON extends Acteur {
         }
     }
 
+    @Description("Streams the contents of a cursor / FindIterable to the "
+            + "response as a JSON array")
     static class SendCursorResult extends Acteur {
 
         @Inject

@@ -31,7 +31,7 @@ import com.mastfrog.acteur.mongo.reactive.ByteBufCodecTest.CB;
 import com.mastfrog.acteur.mongo.reactive.DynamicCodecsTest.ArrayThing.SubThing;
 import com.mastfrog.acteur.mongo.reactive.DynamicCodecsTest.M;
 import com.mastfrog.giulius.mongodb.reactive.MongoHarness;
-import com.mastfrog.giulius.mongodb.reactive.Subscribers;
+import com.mastfrog.giulius.mongodb.reactive.util.Subscribers;
 import com.mastfrog.giulius.scope.ReentrantScope;
 import com.mastfrog.giulius.tests.GuiceRunner;
 import com.mastfrog.giulius.tests.IfBinaryAvailable;
@@ -75,17 +75,17 @@ public class DynamicCodecsTest {
     private static final ZonedDateTime ZDT = TimeUtil.fromUnixTimestamp(0);
 
     @Test
-    public void testZonedDateTime(@Named("stuff") MongoCollection<Document> stuff) throws Throwable {
+    public void testZonedDateTime(@Named("stuff") MongoCollection<Document> stuff, Subscribers subscribers) throws Throwable {
         ObjectId id = new ObjectId();
         Document a = new Document("one", "hello").append("zdt", ZDT).append("thing", id);
         CB<Object> waitForInsert = new CB<>();
         stuff.withWriteConcern(WriteConcern.ACKNOWLEDGED)
                 .insertMany(Arrays.asList(a))
-                .subscribe(Subscribers.first(waitForInsert));
+                .subscribe(subscribers.first(waitForInsert));
         waitForInsert.get();
 
         Document doc = SRC.run((BiConsumer<Document, Throwable> cb) -> {
-            stuff.find().subscribe(Subscribers.first(cb));
+            stuff.find().subscribe(subscribers.first(cb));
         });
 
         assertNotNull(doc);
@@ -103,13 +103,14 @@ public class DynamicCodecsTest {
     }
 
     @Test
-    public void testJacksonCodecs(@Named("stuff") MongoCollection<Document> stuff) throws Throwable {
+    public void testJacksonCodecs(@Named("stuff") MongoCollection<Document> stuff,
+            Subscribers subscribers) throws Throwable {
         Document a = new Document("one", "hello").append("two", "\tworldпрод\nhmm");
         Document b = new Document("one", "stuff").append("two", "moreStuff");
         CB<Object> waitForInsert = new CB<>();
         stuff.withWriteConcern(WriteConcern.ACKNOWLEDGED).insertMany(
                 Arrays.asList(a, b))
-                .subscribe(Subscribers.first(waitForInsert));
+                .subscribe(subscribers.first(waitForInsert));
         waitForInsert.get();
 
         FindPublisher<Thing> f = stuff.find(Thing.class).batchSize(2);
@@ -117,7 +118,7 @@ public class DynamicCodecsTest {
         final CountDownLatch latch = new CountDownLatch(1);
         final AtomicReference<Throwable> th = new AtomicReference<>();
 
-        Subscribers.multiple(f)
+        subscribers.multiple(f)
                 .whenComplete((list, thrown) -> {
                     if (thrown != null) {
                         th.set(thrown);
@@ -266,8 +267,7 @@ public class DynamicCodecsTest {
         }
         return ref.get();
     }
-*/
-
+     */
     public static class Thing {
 
         private final String _id;
@@ -327,6 +327,10 @@ public class DynamicCodecsTest {
                     //                    .registerJacksonType(ZonedDateTime.class)
                     .registerJacksonType(SubThing.class);
             bind(ByteBufAllocator.class).toInstance(ByteBufAllocator.DEFAULT);
+            bind(Thread.UncaughtExceptionHandler.class).toInstance((thread, thrown) -> {
+                thrown.printStackTrace();
+            });
+
 //            install(new JacksonModule(ActeurMongoModule.JACKSON_BINDING_NAME, false).withConfigurer(ObjectIdJacksonConfigurer.class));
             install(m);
         }

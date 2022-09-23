@@ -37,18 +37,24 @@ import com.mastfrog.giulius.mongodb.reactive.Java8DateTimeCodecProvider;
 import com.mastfrog.giulius.mongodb.reactive.MongoAsyncConfig;
 import com.mastfrog.giulius.mongodb.reactive.MongoAsyncInitializer;
 import com.mastfrog.giulius.mongodb.reactive.MongoFutureCollection;
+import com.mastfrog.giulius.mongodb.reactive.util.SubscriberContext;
 import com.mastfrog.giulius.scope.ReentrantScope;
 import com.mastfrog.jackson.JacksonModule;
 import com.mastfrog.jackson.configuration.JacksonConfigurer;
 import static com.mastfrog.util.preconditions.Checks.notNull;
+import com.mastfrog.util.preconditions.Exceptions;
+import com.mastfrog.util.thread.QuietAutoCloseable;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.reactivestreams.client.AggregatePublisher;
 import com.mongodb.reactivestreams.client.FindPublisher;
 import com.mongodb.reactivestreams.client.MongoCollection;
+import java.lang.Thread.UncaughtExceptionHandler;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import javax.inject.Named;
 import javax.inject.Provider;
 import javax.inject.Singleton;
@@ -83,6 +89,7 @@ public final class ActeurMongoModule extends AbstractModule implements MongoAsyn
     private final Set<Class<?>> jacksonCodecs = new HashSet<>();
     private final JacksonModule jacksonModule = new JacksonModule(JACKSON_BINDING_NAME, false);
     private CursorControl defaultCursorControl = CursorControl.DEFAULT;
+    private boolean bindSubscribers = true;
 
     public ActeurMongoModule(ReentrantScope scope) {
         this.scope = scope;
@@ -92,6 +99,11 @@ public final class ActeurMongoModule extends AbstractModule implements MongoAsyn
         base.withCodecProvider(AdditionalJacksonCodecs.class);
         withJacksonConfigurer2(ObjectIdJacksonConfigurer.class);
         withJacksonConfigurer(JacksonConfigurer.localeConfigurer());
+    }
+
+    public ActeurMongoModule dontBindSubscribers() {
+        bindSubscribers = false;
+        return this;
     }
 
     public ActeurMongoModule withJavaTimeSerializationMode(com.mastfrog.jackson.configuration.TimeSerializationMode timeMode, com.mastfrog.jackson.configuration.DurationSerializationMode durationMode) {
@@ -206,6 +218,10 @@ public final class ActeurMongoModule extends AbstractModule implements MongoAsyn
         bind(GenerifiedMongoFutureCollection.literal).toProvider(GenerifiedMongoFutureCollection.class);
         bind(new TypeLiteral<Set<Class<?>>>() {
         }).annotatedWith(Names.named("__jm")).toInstance(jacksonCodecs);
+
+        if (bindSubscribers) {
+            bind(SubscriberContext.class).to(SubscriberContextImpl.class);
+        }
         install(jacksonModule);
     }
 
@@ -350,6 +366,56 @@ public final class ActeurMongoModule extends AbstractModule implements MongoAsyn
         public MongoFutureCollection<?> get() {
             return find.get();
         }
+    }
+
+    static class SubscriberContextImpl extends SubscriberContext {
+
+        private final ReentrantScope scope;
+        private final UncaughtExceptionHandler handler;
+
+        @Inject
+        SubscriberContextImpl(ReentrantScope scope, UncaughtExceptionHandler handler) {
+            this.scope = scope;
+            this.handler = handler;
+        }
+
+        @Override
+        protected void onThrow(Throwable thrown) {
+            handler.uncaughtException(Thread.currentThread(), thrown);
+        }
+
+        @Override
+        protected QuietAutoCloseable beforeAfter() {
+            try {
+                Thread t = Thread.currentThread();
+                UncaughtExceptionHandler old = t.getUncaughtExceptionHandler();
+                t.setUncaughtExceptionHandler(handler);
+                return () -> {
+                    if (old != handler) {
+                        Thread.currentThread().setUncaughtExceptionHandler(old);
+                    }
+                };
+            } catch (Exception | Error e) {
+                onThrow(e);
+                return Exceptions.chuck(e);
+            }
+        }
+
+        @Override
+        public <T, R> BiConsumer<T, R> wrap(BiConsumer<T, R> runnable) {
+            return scope.wrap(super.wrap(runnable));
+        }
+
+        @Override
+        public <T> Consumer<T> wrap(Consumer<T> runnable) {
+            return scope.wrap(super.wrap(runnable));
+        }
+
+        @Override
+        public Runnable wrap(Runnable runnable) {
+            return scope.wrap(super.wrap(runnable));
+        }
+
     }
 
 }

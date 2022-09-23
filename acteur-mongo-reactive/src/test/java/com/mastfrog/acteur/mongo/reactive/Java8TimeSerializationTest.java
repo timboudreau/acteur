@@ -31,7 +31,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.inject.AbstractModule;
 import com.google.inject.name.Named;
 import com.mastfrog.giulius.mongodb.reactive.MongoHarness;
-import com.mastfrog.giulius.mongodb.reactive.Subscribers;
+import com.mastfrog.giulius.mongodb.reactive.util.Subscribers;
 import com.mastfrog.giulius.scope.ReentrantScope;
 import com.mastfrog.giulius.tests.GuiceRunner;
 import com.mastfrog.giulius.tests.IfBinaryAvailable;
@@ -81,17 +81,18 @@ public class Java8TimeSerializationTest {
 
     @Test
     @SuppressWarnings("deprecation")
-    public void testJava8ElementsInDocument(@Named("more") MongoCollection<Document> c) throws IOException, Throwable {
+    public void testJava8ElementsInDocument(@Named("more") MongoCollection<Document> c,
+            Subscribers subscribers) throws IOException, Throwable {
         Document d = new Document("now", ZonedDateTime.now()).append("offset", OffsetDateTime.now())
                 .append("local", LocalDateTime.now());
 
         SRC.run(cb -> {
             c.withWriteConcern(WriteConcern.ACKNOWLEDGED).insertOne(d)
-                    .subscribe(Subscribers.first(cb));
+                    .subscribe(subscribers.first(cb));
         });
 
         Document g = SRC.<Document>run(cb -> {
-            c.find().subscribe(Subscribers.first(cb));
+            c.find().subscribe(subscribers.first(cb));
         });
         assertNotNull(g);
 
@@ -101,7 +102,7 @@ public class Java8TimeSerializationTest {
     }
 
     @Test
-    public void testTimeSerialization(@Named("times") MongoCollection<TimeThing> c) throws IOException, Throwable {
+    public void testTimeSerialization(@Named("times") MongoCollection<TimeThing> c, Subscribers subscribers) throws IOException, Throwable {
         TimeThing tt = new TimeThing();
         Map<String, Object> m = toMap(tt);
 
@@ -113,11 +114,12 @@ public class Java8TimeSerializationTest {
         assertEquals(tt, tt2);
 
         SRC.run(cb -> {
-            c.insertOne(tt).subscribe(Subscribers.first(cb));
+            c.insertOne(tt).subscribe(subscribers.first(cb));
         });
 
         Document d = SRC.<Document>run(sd -> {
-            c.withDocumentClass(Document.class).find().subscribe(Subscribers.first(sd));
+            c.withDocumentClass(Document.class).find().subscribe(
+                    subscribers.first(sd));
         });
 
         assertNotNull(d);
@@ -127,7 +129,7 @@ public class Java8TimeSerializationTest {
         assertTrue(o instanceof java.util.Date);
 
         TimeThing tt3 = SRC.<TimeThing>run(cb
-                -> c.find().subscribe(Subscribers.first(cb)));
+                -> c.find().subscribe(subscribers.first(cb)));
 
         assertNotNull(tt3);
         assertEquals(tt, tt3);
@@ -150,6 +152,10 @@ public class Java8TimeSerializationTest {
                             DurationSerializationMode.DURATION_AS_STRING);
 
             bind(ByteBufAllocator.class).toInstance(ByteBufAllocator.DEFAULT);
+
+            bind(Thread.UncaughtExceptionHandler.class).toInstance((thread, thrown) -> {
+                thrown.printStackTrace();
+            });
 
             install(new JacksonModule(false)
                     .withConfigurer2(ObjectIdToJSONConfigurer.class)

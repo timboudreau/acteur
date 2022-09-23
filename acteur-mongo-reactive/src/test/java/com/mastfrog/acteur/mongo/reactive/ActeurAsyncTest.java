@@ -32,11 +32,14 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Scopes;
 import com.google.inject.name.Named;
 import com.mastfrog.acteur.Acteur;
+import com.mastfrog.acteur.Event;
 import com.mastfrog.acteur.HttpEvent;
+import com.mastfrog.acteur.Page;
 import com.mastfrog.acteur.annotations.Concluders;
 import com.mastfrog.acteur.annotations.GenericApplication;
 import com.mastfrog.acteur.annotations.GenericApplicationModule;
 import com.mastfrog.acteur.annotations.HttpCall;
+import com.mastfrog.acteur.debug.Probe;
 import com.mastfrog.acteur.errors.Err;
 import com.mastfrog.acteur.headers.Headers;
 import static com.mastfrog.acteur.headers.Method.DELETE;
@@ -48,11 +51,13 @@ import com.mastfrog.acteur.preconditions.Methods;
 import com.mastfrog.acteur.preconditions.Path;
 import com.mastfrog.acteur.server.ServerBuilder;
 import com.mastfrog.acteur.util.ErrorInterceptor;
+import com.mastfrog.acteur.util.RequestID;
 import com.mastfrog.acteur.util.Server;
+import com.mastfrog.acteurbase.ActeurState;
 import com.mastfrog.giulius.mongodb.reactive.DynamicCodecs;
 import com.mastfrog.giulius.mongodb.reactive.MongoAsyncInitializer;
 import com.mastfrog.giulius.mongodb.reactive.MongoHarness;
-import com.mastfrog.giulius.mongodb.reactive.Subscribers;
+import com.mastfrog.giulius.mongodb.reactive.util.Subscribers;
 import com.mastfrog.giulius.scope.ReentrantScope;
 import com.mastfrog.giulius.tests.GuiceRunner;
 import com.mastfrog.giulius.tests.IfBinaryAvailable;
@@ -71,10 +76,12 @@ import com.mastfrog.util.preconditions.Exceptions;
 import com.mongodb.WriteConcern;
 import com.mongodb.reactivestreams.client.MongoCollection;
 import io.netty.buffer.ByteBuf;
+import io.netty.handler.codec.http.HttpResponseStatus;
 import static io.netty.handler.codec.http.HttpResponseStatus.CREATED;
 import static io.netty.handler.codec.http.HttpResponseStatus.NOT_MODIFIED;
 import static io.netty.handler.codec.http.HttpResponseStatus.OK;
 import java.io.IOException;
+import java.text.MessageFormat;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Arrays;
@@ -169,7 +176,7 @@ public class ActeurAsyncTest {
     }
 
     @Test(timeout = TEST_TIMEOUT)
-    public void test(TestHarness harn, ObjectMapper mapper, @Named("stuff") MongoCollection<Document> stuff) throws Throwable {
+    public void test(TestHarness harn, ObjectMapper mapper, @Named("stuff") MongoCollection<Document> stuff, Subscribers subscribers) throws Throwable {
         Thing one = harn.get("/oneThing")
                 .setTimeout(HTTP_TIMEOUT)
                 .go().assertStatus(OK).throwIfError().content(Thing.class);
@@ -209,7 +216,7 @@ public class ActeurAsyncTest {
         CountDownLatch latch = new CountDownLatch(1);
         Throwable[] th = new Throwable[1];
         Document[] d = new Document[1];
-        stuff.find(new Document("name", "skiddoo")).subscribe(Subscribers.first((Document t, Throwable thrwbl) -> {
+        stuff.find(new Document("name", "skiddoo")).subscribe(subscribers.first((Document t, Throwable thrwbl) -> {
             th[0] = thrwbl;
             d[0] = t;
             latch.countDown();
@@ -271,6 +278,9 @@ public class ActeurAsyncTest {
                 .assertStatus(OK).throwIfError().content();
 
         Thing[] things4 = mapper.readValue(s, Thing[].class);
+
+        System.out.println("Have " + things4.length + " things");
+
         assertEquals(201, things3.length);
         for (Thing t : things4) {
             if (things3[0]._id.equals(t._id)) {
@@ -278,6 +288,8 @@ public class ActeurAsyncTest {
                 assertEquals("wrong int value", things3[0].rand, t.rand);
             }
         }
+
+        System.out.println("Now do the problem thing");
 
         CallResult cr = harn.get("/etagstuff")
                 .setTimeout(HTTP_TIMEOUT)
@@ -344,6 +356,8 @@ public class ActeurAsyncTest {
                     .withConfigurer2(ObjectIdToJSONConfigurer.class));
             bind(HttpClient.class).toProvider(HttpClientProvider.class)
                     .in(Scopes.SINGLETON);
+            
+//            bind(Probe.class).to(ProbeImpl.class);
         }
     }
 
@@ -394,9 +408,12 @@ public class ActeurAsyncTest {
 
     static class Populator extends MongoAsyncInitializer {
 
+        private final Subscribers subscribers;
+
         @Inject
-        Populator(Registry reg) {
+        Populator(Registry reg, Subscribers subscribers) {
             super(reg);
+            this.subscribers = subscribers;
         }
 
         @Override
@@ -414,7 +431,7 @@ public class ActeurAsyncTest {
             final CountDownLatch latch = new CountDownLatch(1);
             collection.withDocumentClass(Document.class)
                     .insertMany(docs).subscribe(
-                    Subscribers.first((t, thrwbl) -> {
+                    subscribers.first((t, thrwbl) -> {
                         if (thrwbl != null) {
                             failure = thrwbl;
                             thrwbl.printStackTrace();
@@ -662,6 +679,48 @@ public class ActeurAsyncTest {
 //                return false;
 //            }
 //            return true;
+        }
+    }
+
+    static class ProbeImpl implements Probe {
+
+        @Override
+        public void onBeforeProcessRequest(RequestID id, Event<?> req) {
+
+        }
+
+        @Override
+        public void onBeforeRunPage(RequestID id, Event<?> evt, Page page) {
+
+        }
+
+        @Override
+        public void onActeurWasRun(RequestID id, Event<?> evt, Page page, Acteur acteur, ActeurState result) {
+            System.out.println("wasRun " + ((HttpEvent) evt).path() + " " + acteur.getClass().getSimpleName() + " state " + result);
+        }
+
+        @Override
+        public void onFallthrough(RequestID id, Event<?> evt) {
+            System.out.println("FALLTHROUGH! " + ((HttpEvent) evt).path());
+        }
+
+        @Override
+        public void onInfo(String info, Object... objs) {
+            System.out.println(MessageFormat.format(info, objs));
+        }
+
+        @Override
+        public void onThrown(RequestID id, Event<?> evt, Throwable thrown) {
+            System.out.println("THROWN! " + ((HttpEvent) evt).path());
+            thrown.printStackTrace();
+        }
+
+        @Override
+        public void onBeforeSendResponse(RequestID id, Event<?> evt, Acteur acteur,
+                HttpResponseStatus status, boolean hasListener, Object message) {
+            System.out.println("BEFORE SEND RESP! " + ((HttpEvent) evt).path()
+                    + " " + acteur.getClass().getSimpleName() + status + " lis " + hasListener
+                    + " msg " + message);
         }
 
     }

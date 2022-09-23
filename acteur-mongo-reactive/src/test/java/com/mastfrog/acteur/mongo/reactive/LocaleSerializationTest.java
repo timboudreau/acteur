@@ -33,7 +33,7 @@ import com.google.inject.name.Named;
 import static com.mastfrog.acteur.mongo.reactive.ActeurMongoModule.JACKSON_BINDING_NAME;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.giulius.mongodb.reactive.MongoHarness;
-import com.mastfrog.giulius.mongodb.reactive.Subscribers;
+import com.mastfrog.giulius.mongodb.reactive.util.Subscribers;
 import com.mastfrog.giulius.scope.ReentrantScope;
 import com.mastfrog.giulius.tests.GuiceRunner;
 import com.mastfrog.giulius.tests.IfBinaryAvailable;
@@ -47,6 +47,7 @@ import com.mongodb.client.result.DeleteResult;
 import com.mongodb.reactivestreams.client.MongoCollection;
 import io.netty.buffer.ByteBufAllocator;
 import java.io.IOException;
+import java.lang.Thread.UncaughtExceptionHandler;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Locale;
@@ -96,7 +97,8 @@ public class LocaleSerializationTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    public void testLocaleSerialization(@Named("locs") MongoCollection<LocThing> c) throws IOException, Throwable {
+    public void testLocaleSerialization(@Named("locs") MongoCollection<LocThing> c,
+            Subscribers subscribers) throws IOException, Throwable {
         // First, test that plain Jackson serialization works with JacksonModule. By default,
         // Jackson will serialize locale names using underscores, not dashes, to separate the
         // language and country codes.  This breaks cross-language portability.
@@ -112,13 +114,13 @@ public class LocaleSerializationTest {
 
         // Write one into mongodb
         SRC<Object> src = new SRC<>();
-        c.insertOne(def).subscribe(Subscribers.first(src));
+        c.insertOne(def).subscribe(subscribers.first(src));
         src.assertNotThrown();
 
         // Ensure that when encoded as string keys and values, we get
         // sane stuff using hyphens
         SRC<Document> dtc = new SRC<>();
-        c.withDocumentClass(Document.class).find().subscribe(Subscribers.first(dtc));
+        c.withDocumentClass(Document.class).find().subscribe(subscribers.first(dtc));
         Document d = dtc.assertNotThrown();
         text = new HashMap<>(d.get("text", Map.class));
         assertTrue(text + "", text.containsKey("en-US"));
@@ -127,7 +129,7 @@ public class LocaleSerializationTest {
 
         // Make sure an identical object can really be deserialized
         SRC<LocThing> ltc = new SRC<>();
-        c.find().subscribe(Subscribers.first(ltc));
+        c.find().subscribe(subscribers.first(ltc));
 
         LocThing lt2 = ltc.assertHasResult();
         assertEquals(def, lt2);
@@ -139,18 +141,18 @@ public class LocaleSerializationTest {
 
         SRC<DeleteResult> del = new SRC<>();
 
-        c.deleteOne(new Document(), new DeleteOptions()).subscribe(Subscribers.first(del));
+        c.deleteOne(new Document(), new DeleteOptions()).subscribe(subscribers.first(del));
         del.assertNotThrown();
 
         SRC<Object> pt = new SRC<>();
-        c.withDocumentClass(Document.class).insertOne(leg).subscribe(Subscribers.first(pt));
+        c.withDocumentClass(Document.class).insertOne(leg).subscribe(subscribers.first(pt));
         pt.assertNotThrown();
 
-        c.withDocumentClass(Document.class).find().subscribe(Subscribers.first(dtc));
+        c.withDocumentClass(Document.class).find().subscribe(subscribers.first(dtc));
         Document retrieved = dtc.assertHasResult();
         assertEquals("en_US", retrieved.get("defaultLocale", String.class));
 
-        c.find().subscribe(Subscribers.first(ltc));
+        c.find().subscribe(subscribers.first(ltc));
         LocThing lt3 = ltc.assertHasResult();
 
         assertEquals(US, lt3.defaultLocale);
@@ -168,6 +170,10 @@ public class LocaleSerializationTest {
 //                                        .withJacksonConfigurer(JacksonConfigurer.javaTimeConfigurer())
 //                    .loadJacksonConfigurersFromMetaInfServices()
                     .bindCollection("locs", LocThing.class);
+            
+            bind(UncaughtExceptionHandler.class).toInstance((thread, thrown) -> {
+                thrown.printStackTrace();
+            });
 
             bind(ByteBufAllocator.class).toInstance(ByteBufAllocator.DEFAULT);
             install(new JacksonModule(true)

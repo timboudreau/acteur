@@ -29,7 +29,7 @@ import com.google.inject.name.Named;
 import com.mastfrog.acteur.mongo.reactive.ByteBufCodecTest.M;
 import com.mastfrog.giulius.mongodb.reactive.GiuliusMongoReactiveStreamsModule;
 import com.mastfrog.giulius.mongodb.reactive.MongoHarness;
-import com.mastfrog.giulius.mongodb.reactive.Subscribers;
+import com.mastfrog.giulius.mongodb.reactive.util.Subscribers;
 import com.mastfrog.giulius.tests.GuiceRunner;
 import com.mastfrog.giulius.tests.IfBinaryAvailable;
 import com.mastfrog.giulius.tests.TestWith;
@@ -75,7 +75,7 @@ public class ByteBufCodecTest {
                     new BsonValueCodecProvider()));
 
     @Test
-    public void test(@Named("stuff") MongoCollection<Document> stuff) throws InterruptedException, IOException {
+    public void test(@Named("stuff") MongoCollection<Document> stuff, Subscribers subscribers) throws InterruptedException, IOException {
         byte[] bytes = new byte[120];
         for (int i = 0; i < bytes.length; i++) {
             bytes[i] = (byte) (120 - i);
@@ -99,7 +99,7 @@ public class ByteBufCodecTest {
                 .append("bytes", bytes);
 
         CB<Object> cb = new CB<>();
-        stuff.insertOne(document).subscribe(Subscribers.first(cb));
+        stuff.insertOne(document).subscribe(subscribers.first(cb));
         cb.get();
         Thread.sleep(200);
 
@@ -117,7 +117,7 @@ public class ByteBufCodecTest {
                         .append("bytes", 1)
                         .append("_id", 1)
                 )
-                .subscribe(Subscribers.first(bb));
+                .subscribe(subscribers.first(bb));
         ByteBuf buf = bb.get();
         assertNotNull(buf);
 

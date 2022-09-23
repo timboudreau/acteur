@@ -39,7 +39,7 @@ final class ETagResult {
     private Throwable thrown;
     private ZonedDateTime lastModified;
 
-    synchronized boolean ifNotThrown(Consumer<Throwable> thr) {
+    boolean ifNotThrown(Consumer<Throwable> thr) {
         if (hasThrown()) {
             thr.accept(thrown);
             return false;
@@ -47,33 +47,29 @@ final class ETagResult {
         return true;
     }
 
-    synchronized boolean hasThrown() {
+    boolean hasThrown() {
         return thrown != null;
     }
 
-    synchronized Optional<String> etag() {
+    Optional<String> etag() {
         return Optional.ofNullable(etag);
     }
 
-    synchronized Optional<Throwable> thrown() {
-        return Optional.ofNullable(thrown);
+    Optional<ZonedDateTime> lastModified() {
+        return Optional.ofNullable(lastModified);
     }
 
-    synchronized Optional<ZonedDateTime> lastModified() {
-        return Optional.of(lastModified);
-    }
-
-    synchronized ETagResult setEtag(String etag) {
+    ETagResult setEtag(String etag) {
         this.etag = etag;
         return this;
     }
 
-    synchronized ETagResult setThrown(Throwable thrown) {
+    ETagResult setThrown(Throwable thrown) {
         this.thrown = thrown;
         return this;
     }
 
-    synchronized ETagResult updateLastModified(ZonedDateTime lastModified) {
+    ETagResult updateLastModified(ZonedDateTime lastModified) {
         if (lastModified != null) {
             if (this.lastModified == null) {
                 this.lastModified = lastModified;

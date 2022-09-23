@@ -140,6 +140,7 @@ public final class CacheHeaderInfo {
         } else if (o instanceof Date) {
             return TimeUtil.fromUnixTimestamp(((Date) o).getTime());
         } else if (o instanceof String) {
+
             try {
                 return TimeUtil.fromIsoFormat(o.toString());
             } catch (Exception e) {

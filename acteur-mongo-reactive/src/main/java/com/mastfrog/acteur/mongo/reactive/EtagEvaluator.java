@@ -24,7 +24,10 @@
 package com.mastfrog.acteur.mongo.reactive;
 
 import com.mastfrog.acteurbase.Deferral;
+import com.mastfrog.giulius.mongodb.reactive.util.SubscriberContext;
+import com.mastfrog.util.preconditions.Exceptions;
 import com.mastfrog.util.strings.Strings;
+import com.mastfrog.util.thread.QuietAutoCloseable;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.List;
@@ -42,7 +45,7 @@ import org.reactivestreams.Subscription;
  *
  * @author Tim Boudreau
  */
-final class EtagEvaluator implements Subscriber<Document> {
+final class EtagEvaluator implements Subscriber<Document>, QuietAutoCloseable {
 
     private static final byte[] NO_VALUE = new byte[]{0};
     private static final byte[] ZERO = new byte[]{127};
@@ -51,72 +54,110 @@ final class EtagEvaluator implements Subscriber<Document> {
     private final ETagResult result;
     private final Deferral.Resumer resumer;
     private final CacheHeaderInfo cacheInfo;
+    private volatile Subscription subscription;
+    private volatile boolean cancelled;
     private int count = 0;
+    private final SubscriberContext ctx;
 
-    EtagEvaluator(ETagResult result, CacheHeaderInfo cacheInfo, Deferral.Resumer resumer) {
+    EtagEvaluator(ETagResult result, CacheHeaderInfo cacheInfo, Deferral.Resumer resumer, SubscriberContext ctx) {
         this.result = result;
         this.cacheInfo = cacheInfo;
         digest = cacheInfo.newDigest();
         this.resumer = resumer;
+        this.ctx = ctx;
     }
 
     @Override
     public void onSubscribe(Subscription s) {
-        s.request(Long.MAX_VALUE);
+        subscription = s;
+        if (cancelled) {
+            s.cancel();
+        } else {
+            s.request(Long.MAX_VALUE);
+        }
+    }
+
+    @Override
+    public void close() {
+        cancelled = true;
+        Subscription s = subscription;
+        if (s != null) {
+            s.cancel();
+        }
     }
 
     @Override
     public void onNext(Document doc) {
-        count++;
-        result.updateLastModified(cacheInfo.findLastModified(doc));
-        for (String key : cacheInfo.etagFields()) {
-            digest.update(key.getBytes(StandardCharsets.UTF_8));
-            if ("_id".equals(key)) {
-                ObjectId id = doc.getObjectId("_id");
-                digest.update(id.toByteArray());
-            } else {
-                BsonDocument bd = doc.toBsonDocument();
-                if (doc.containsKey(key)) {
-                    BsonValue val = bd.get(key);
-                    if (!updateDigestFromBson(val, digest)) {
-                        Object o = doc.get(key);
-                        digest.update(key.getBytes(StandardCharsets.US_ASCII));
-                        byte[] bytes;
-                        if (o == null) {
-                            bytes = ZERO;
+
+        try {
+            ctx.run(() -> {
+                count++;
+                result.updateLastModified(cacheInfo.findLastModified(doc));
+                for (String key : cacheInfo.etagFields()) {
+                    digest.update(key.getBytes(StandardCharsets.UTF_8));
+                    if ("_id".equals(key)) {
+                        ObjectId id = doc.getObjectId("_id");
+                        digest.update(id.toByteArray());
+                    } else {
+                        BsonDocument bd = doc.toBsonDocument();
+                        if (doc.containsKey(key)) {
+                            BsonValue val = bd.get(key);
+                            if (!updateDigestFromBson(val, digest)) {
+                                Object o = doc.get(key);
+                                digest.update(key.getBytes(StandardCharsets.US_ASCII));
+                                byte[] bytes;
+                                if (o == null) {
+                                    bytes = ZERO;
+                                } else {
+                                    bytes = o.toString().getBytes(StandardCharsets.UTF_8);
+                                }
+                                digest.update(bytes);
+                            }
                         } else {
-                            bytes = o.toString().getBytes(StandardCharsets.UTF_8);
+                            digest.update(NO_VALUE);
                         }
-                        digest.update(bytes);
                     }
-                } else {
-                    digest.update(NO_VALUE);
                 }
-            }
+            });
+        } catch (Throwable t) {
+            t.printStackTrace(System.out);
+            result.setThrown(t);
+            resume();
         }
     }
 
     @Override
     public void onError(Throwable thrwbl) {
-        thrwbl.printStackTrace();
-        result.setThrown(thrwbl);
-        resumer.resume(result);
+        ctx.run(() -> {
+            thrwbl.printStackTrace();
+            result.setThrown(thrwbl);
+            resume();
+        });
+    }
+
+    private void resume() {
+        if (!cancelled) {
+            resumer.resume(result);
+        }
     }
 
     @Override
     public void onComplete() {
-        try {
-            if (!result.hasThrown()) {
-                if (count == 0) {
-                    digest.update((byte) 1);
+        ctx.run(() -> {
+            try {
+                if (!result.hasThrown()) {
+                    if (count == 0) {
+                        digest.update((byte) 1);
+                    }
+                    result.setEtag(Strings.toBase64(digest.digest()));
+                    resume();
                 }
-                result.setEtag(Strings.toBase64(digest.digest()));
-                resumer.resume(result);
+            } catch (Exception | Error thr) {
+                result.setThrown(thr);
+                resume();
+                Exceptions.chuck(thr);
             }
-        } catch (Exception | Error thr) {
-            result.setThrown(thr);
-            resumer.resume(result);
-        }
+        });
     }
 
     private static boolean updateDigestFromBson(BsonValue val, final MessageDigest digest) {
@@ -187,10 +228,6 @@ final class EtagEvaluator implements Subscriber<Document> {
         return true;
     }
 
-    static byte[] toBytes(float val) {
-        return toBytes(Float.floatToIntBits(val));
-    }
-
     static byte[] toBytes(double val) {
         return toBytes(Double.doubleToLongBits(val));
     }
@@ -204,5 +241,48 @@ final class EtagEvaluator implements Subscriber<Document> {
         byte[] result = new byte[]{(byte) (val & 0xFF), (byte) ((val >>> 8) & 0xFF), (byte) ((val >>> 16) & 0xFF), (byte) ((val >>> 24) & 0xFF), (byte) ((val >>> 32) & 0xFF), (byte) ((val >>> 40) & 0xFF), (byte) ((val >>> 48) & 0xFF), (byte) ((val >>> 56) & 0xFF)};
         return result;
     }
+    /*
+    static enum EvalState {
+        INIITIAL,
+        SUBSCRIBED,
+        SOME_OUTPUT_RECEIVED,
+        ERRORED,
+        COMPLETED,
+        CANCELLED,
+    }
 
+    static class StatePair {
+
+        private final EvalState state;
+        private final Subscription subscription;
+        private final Throwable thrown;
+
+        public StatePair(EvalState state, Subscription subscriber, Throwable thrown) {
+            this.state = state;
+            this.subscription = subscriber;
+            this.thrown = thrown;
+        }
+
+        public StatePair withThrown(Throwable thr) {
+            if (thr == null || thr == thrown) {
+                return this;
+            }
+            return new StatePair(ERRORED, subscription, thrown);
+        }
+
+        public StatePair withState(EvalState es) {
+            if (es == state) {
+                return this;
+            }
+            return new StatePair(es, subscription, thrown);
+        }
+
+        public StatePair withSubscription(Subscription sub) {
+            if (sub == subscription) {
+                return this;
+            }
+            return new StatePair(SUBSCRIBED, sub, thrown);
+        }
+    }
+     */
 }

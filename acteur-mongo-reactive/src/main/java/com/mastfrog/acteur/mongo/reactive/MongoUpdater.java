@@ -30,7 +30,7 @@ import com.mastfrog.acteur.spi.ApplicationControl;
 import com.mastfrog.acteurbase.Chain;
 import com.mastfrog.acteurbase.Deferral;
 import com.mastfrog.acteurbase.Deferral.Resumer;
-import com.mastfrog.giulius.mongodb.reactive.Subscribers;
+import com.mastfrog.giulius.mongodb.reactive.util.Subscribers;
 import static com.mastfrog.util.collections.CollectionUtils.map;
 import com.mongodb.WriteConcern;
 import com.mongodb.reactivestreams.client.MongoCollection;
@@ -56,12 +56,14 @@ public final class MongoUpdater {
     private final Chain<Acteur, ? extends Chain<Acteur, ?>> chain;
     private final Deferral deferral;
     private final ApplicationControl ctrl;
+    private final Subscribers subscribers;
 
     @Inject
-    MongoUpdater(Chain<Acteur, ? extends Chain<Acteur, ?>> chain, Deferral deferral, ApplicationControl ctrl) {
+    MongoUpdater(Chain<Acteur, ? extends Chain<Acteur, ?>> chain, Deferral deferral, ApplicationControl ctrl, Subscribers subscribers) {
         this.chain = chain;
         this.deferral = deferral;
         this.ctrl = ctrl;
+        this.subscribers = subscribers;
     }
 
     public <T> Updates<T> withCollection(MongoCollection<T> collection) {
@@ -135,7 +137,7 @@ public final class MongoUpdater {
             chain.add(MongoResultActeur.class);
             deferral.defer((Resumer resumer) -> {
                 collection.insertMany(objs)
-                        .subscribe(Subscribers.callback(
+                        .subscribe(subscribers.callback(
                                 new VoidCallback<>(resumer, message == null ? objs : message, onSuccess, onInsert)));
             });
         }
@@ -185,9 +187,9 @@ public final class MongoUpdater {
             chain.add(MongoResultActeur.class);
             deferral.defer((Resumer resumer) -> {
                 if (isMany) {
-                    Subscribers.callback(collection.deleteMany(obj), new DeleteCallback(resumer, message, onSuccess, onDelete));
+                    subscribers.callback(collection.deleteMany(obj), new DeleteCallback(resumer, message, onSuccess, onDelete));
                 } else {
-                    Subscribers.callback(collection.deleteOne(obj), new DeleteCallback(resumer, message, onSuccess, onDelete));
+                    subscribers.callback(collection.deleteOne(obj), new DeleteCallback(resumer, message, onSuccess, onDelete));
                 }
             });
         }
@@ -198,7 +200,7 @@ public final class MongoUpdater {
             used = true;
             chain.add(MongoResultActeur.class);
             deferral.defer((Resumer resumer) -> {
-                Subscribers.callback(collection.insertOne(obj),
+                subscribers.callback(collection.insertOne(obj),
                         new VoidCallback<>(resumer, message == null ? obj : message, onSuccess, onInsert));
             });
         }
@@ -224,7 +226,7 @@ public final class MongoUpdater {
             used = true;
             chain.add(MongoResultActeur.class);
             deferral.defer((Resumer resumer) -> {
-                Subscribers.callback(
+                subscribers.callback(
                         collection.updateOne(query, new Document("$set", new Document(m))),
                         new UpdateResultCallback(resumer, message, status, onUpdate));
             });
