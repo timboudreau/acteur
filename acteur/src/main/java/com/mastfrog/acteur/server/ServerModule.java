@@ -49,6 +49,7 @@ import com.mastfrog.acteur.headers.Headers;
 import static com.mastfrog.acteur.headers.Headers.COOKIE_B;
 import static com.mastfrog.acteur.headers.Headers.X_FORWARDED_PROTO;
 import com.mastfrog.acteur.headers.Method;
+import com.mastfrog.acteur.request.HttpProtocolRequest;
 import com.mastfrog.acteur.spi.ApplicationControl;
 import com.mastfrog.giulius.thread.ConventionalThreadSupplier;
 import com.mastfrog.giulius.thread.ThreadModule;
@@ -717,7 +718,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
                 bldr.withDefaultThreadCount(8)
                         .withThreadPoolType(ThreadPoolType.SCHEDULED);
                 break;
-            default :
+            default:
                 throw new IllegalArgumentException("Unknown thread pool binding " + pool);
         }
         bldr.bind();
@@ -792,23 +793,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
         }).toProvider(CookiesProvider2.class);
         bind(Protocol.class).toProvider(ProtocolProvider.class);
         bind(WebSocketFrame.class).toProvider(WebSocketFrameProvider.class);
-//        bind(Guice42InjectionRequester.class).asEagerSingleton();
-    }
-
-    static final class Guice42InjectionRequester extends ServerLifecycleHook {
-
-        private final Provider<Dependencies> deps;
-
-        @Inject
-        Guice42InjectionRequester(Registry reg, Provider<Dependencies> deps) {
-            super(reg);
-            this.deps = deps;
-        }
-
-        @Override
-        protected void onStartup(Application application, Channel channel) throws Exception {
-            deps.get().injectMembers(application);
-        }
+        bind(HttpProtocolRequest.class).toProvider(HttpProtocolRequestProvider.class);
     }
 
     private static final class WebSocketFrameProvider implements Provider<WebSocketFrame> {
@@ -1002,13 +987,32 @@ public class ServerModule<A extends Application> extends AbstractModule {
 
         @SuppressWarnings("unchecked")
         @Inject
-        public EventProvider(Provider<Event> eventProvider) {
+        EventProvider(Provider<Event> eventProvider) {
             this.eventProvider = eventProvider;
         }
 
         @Override
         public Event<?> get() {
             return eventProvider.get();
+        }
+    }
+
+    private static class HttpProtocolRequestProvider implements Provider<HttpProtocolRequest> {
+
+        private final Provider<Event<?>> eventProvider;
+
+        @Inject
+        HttpProtocolRequestProvider(Provider<Event<?>> eventProvider) {
+            this.eventProvider = eventProvider;
+        }
+
+        @Override
+        public HttpProtocolRequest get() {
+            Event<?> evt = eventProvider.get();
+            if (evt instanceof HttpProtocolRequest) {
+                return (HttpProtocolRequest) evt;
+            }
+            return null;
         }
     }
 

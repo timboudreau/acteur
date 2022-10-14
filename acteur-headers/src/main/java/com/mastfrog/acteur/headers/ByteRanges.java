@@ -25,10 +25,10 @@ package com.mastfrog.acteur.headers;
 
 import com.mastfrog.util.preconditions.Checks;
 import com.mastfrog.util.strings.Strings;
-import com.mastfrog.util.collections.CollectionUtils;
 import io.netty.util.AsciiString;
 import java.util.ArrayList;
 import java.util.Arrays;
+import static java.util.Arrays.asList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -161,7 +161,7 @@ public final class ByteRanges implements Iterable<Range> {
 
     @Override
     public Iterator<Range> iterator() {
-        return CollectionUtils.toIterator(ranges);
+        return asList(ranges).iterator();
     }
     
     public CharSequence toCharSequence() {

@@ -38,7 +38,6 @@ import com.mastfrog.settings.Settings;
 import com.mastfrog.settings.SettingsBuilder;
 import static com.mastfrog.settings.SettingsBuilder.DEFAULT_NAMESPACE;
 import com.mastfrog.util.preconditions.Checks;
-import static com.mastfrog.util.preconditions.Checks.nonNegative;
 import com.mastfrog.util.preconditions.Exceptions;
 import io.netty.handler.ssl.SslContext;
 import java.io.IOException;

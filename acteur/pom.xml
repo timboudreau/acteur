@@ -14,6 +14,8 @@
         <relativePath/>
     </parent>
 
+    <version>2.8.7.1</version>
+
     <artifactId>acteur</artifactId>
 
     <url>https://github.com/timboudreau/acteur</url>
@@ -24,14 +26,14 @@
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>annotation-processors</artifactId>
-            <scope>compile</scope>
-            <version>${project.version}</version>
+            <scope>provided</scope>
+            <version>${mastfrog.version}</version>
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>acteur-annotations</artifactId>
-            <version>${project.version}</version>
-            <scope>compile</scope>
+            <version>${mastfrog.version}</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
@@ -56,6 +58,7 @@
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>acteur-headers</artifactId>
+            <version>${mastfrog.version}.1</version>
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>

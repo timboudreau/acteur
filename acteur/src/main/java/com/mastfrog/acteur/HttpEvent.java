@@ -25,6 +25,7 @@ package com.mastfrog.acteur;
 
 import com.google.common.base.Optional;
 import com.mastfrog.acteur.headers.HeaderValueType;
+import com.mastfrog.acteur.request.HttpProtocolRequest;
 import com.mastfrog.acteur.util.HttpMethod;
 import com.mastfrog.url.Path;
 import com.mastfrog.util.preconditions.Exceptions;
@@ -39,7 +40,7 @@ import java.util.Map;
  *
  * @author Tim Boudreau
  */
-public interface HttpEvent extends Event<HttpRequest> {
+public interface HttpEvent extends Event<HttpRequest>, HttpProtocolRequest {
 
     /**
      * Get the HTTP method for this request
@@ -146,7 +147,9 @@ public interface HttpEvent extends Event<HttpRequest> {
      * @param name The parameter name
      * @return A parameter which may not be present
      * @since 2.0.0
+     * @deprecated Uses obsolete com.google.common.base.Optional
      */
+    @Deprecated
     Optional<Integer> intUrlParameter(String name);
 
     /**
@@ -155,7 +158,9 @@ public interface HttpEvent extends Event<HttpRequest> {
      * @param name The parameter name
      * @return A long which may not be present
      * @since 2.0.0
+     * @deprecated Uses obsolete com.google.common.base.Optional
      */
+    @Deprecated
     Optional<Long> longUrlParameter(String name);
 
     /**

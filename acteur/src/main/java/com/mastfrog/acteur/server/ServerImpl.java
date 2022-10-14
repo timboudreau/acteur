@@ -30,8 +30,8 @@ import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_SYSTEM_EXIT_O
 import com.mastfrog.acteur.spi.ApplicationControl;
 import com.mastfrog.acteur.util.Server;
 import com.mastfrog.acteur.util.ServerControl;
-import com.mastfrog.giulius.ShutdownHookRegistry;
 import com.mastfrog.settings.Settings;
+import com.mastfrog.shutdown.hooks.ShutdownHookRegistry;
 import com.mastfrog.util.preconditions.Exceptions;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;

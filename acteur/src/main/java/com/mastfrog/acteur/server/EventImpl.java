@@ -40,14 +40,19 @@ import com.mastfrog.url.Protocols;
 import com.mastfrog.url.URL;
 import com.mastfrog.util.codec.Codec;
 import com.mastfrog.util.collections.CollectionUtils;
+import com.mastfrog.util.preconditions.Checks;
+import static com.mastfrog.util.preconditions.Checks.nonNegative;
+import static com.mastfrog.util.preconditions.Checks.notNull;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufHolder;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.HttpHeaderNames;
+import static io.netty.handler.codec.http.HttpHeaderNames.CONNECTION;
 import io.netty.handler.codec.http.HttpHeaderValues;
 import static io.netty.handler.codec.http.HttpHeaderNames.HOST;
+import static io.netty.handler.codec.http.HttpHeaderValues.KEEP_ALIVE;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.QueryStringDecoder;
 import io.netty.util.AsciiString;
@@ -67,6 +72,7 @@ import java.util.Map;
  */
 final class EventImpl implements HttpEvent {
 
+    private static final AsciiString HTTPS = AsciiString.of("https");
     private final HttpRequest req;
     private final Path path;
     private final SocketAddress address;
@@ -76,8 +82,9 @@ final class EventImpl implements HttpEvent {
     private ContentConverter converter;
     private boolean ssl;
     private boolean early;
+    private Map<String, String> paramsMap;
 
-    public EventImpl(HttpRequest req, PathFactory paths) {
+    EventImpl(HttpRequest req, PathFactory paths) {
         this.req = req;
         this.path = paths.toPath(req.uri());
         this.paths = paths;
@@ -87,7 +94,7 @@ final class EventImpl implements HttpEvent {
         this.converter = new ContentConverter(codec, Providers.of(UTF_8), null);
     }
 
-    public EventImpl(HttpRequest req, SocketAddress addr, ChannelHandlerContext channel, PathFactory paths, ContentConverter converter, boolean ssl) {
+    EventImpl(HttpRequest req, SocketAddress addr, ChannelHandlerContext channel, PathFactory paths, ContentConverter converter, boolean ssl) {
         this.req = req;
         this.path = paths.toPath(req.uri());
         address = addr;
@@ -161,13 +168,11 @@ final class EventImpl implements HttpEvent {
         return proto + "://" + host + uri;
     }
 
-
     EventImpl early() {
         early = true;
         return this;
     }
 
-    private static final AsciiString HTTPS = AsciiString.of("https");
     public boolean isSsl() {
         boolean result = ssl;
         if (!result) {
@@ -223,7 +228,7 @@ final class EventImpl implements HttpEvent {
         if (type.charset().isPresent()) {
             encoding = type.charset().get();
         } else {
-            encoding = CharsetUtil.UTF_8;
+            encoding = UTF_8;
         }
         ByteBuf content = content();
         if (content == null) {
@@ -253,7 +258,7 @@ final class EventImpl implements HttpEvent {
 
     @Override
     public String header(CharSequence nm) {
-        return req.headers().get(nm);
+        return req.headers().get(notNull("nm", nm));
     }
 
     @Override
@@ -289,7 +294,6 @@ final class EventImpl implements HttpEvent {
         }
         return null;
     }
-    private Map<String, String> paramsMap;
 
     @Override
     public synchronized Map<String, String> urlParametersAsMap() {
@@ -320,16 +324,12 @@ final class EventImpl implements HttpEvent {
             return false;
         }
         boolean hasKeepAlive = req.headers()
-                .contains(HttpHeaderNames.CONNECTION, HttpHeaderValues.KEEP_ALIVE, true);
-//        String hdr = req.headers().get(HttpHeaderNames.CONNECTION);
-//        if (hdr == null) {
-//            return false;
-//        }
-//        return "keep-alive".equalsIgnoreCase(hdr);
+                .contains(CONNECTION, KEEP_ALIVE, true);
         return hasKeepAlive;
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public Optional<Integer> intUrlParameter(String name) {
         String val = urlParameter(name);
         if (val != null) {
@@ -340,6 +340,7 @@ final class EventImpl implements HttpEvent {
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public Optional<Long> longUrlParameter(String name) {
         String val = urlParameter(name);
         if (val != null) {
@@ -348,4 +349,49 @@ final class EventImpl implements HttpEvent {
         }
         return Optional.absent();
     }
+
+    public <T> java.util.Optional<T> httpHeader(HeaderValueType<T> header) {
+        return java.util.Optional.ofNullable(header(notNull("header", header)));
+    }
+
+    @Override
+    public java.util.Optional<CharSequence> httpHeader(CharSequence name) {
+        return java.util.Optional.ofNullable(this.header(name));
+    }
+
+    @Override
+    public java.util.Optional<CharSequence> uriAnchor() {
+        String u = req.uri();
+        int ix = u.indexOf('#');
+        if (ix >= 0) {
+            return java.util.Optional.<CharSequence>of(u.substring(ix + 1));
+        }
+        return java.util.Optional.empty();
+    }
+
+    @Override
+    public java.util.Optional<CharSequence> uriPathElement(int index) {
+        Path p = path();
+        if (p.size() >= nonNegative("index", index)) {
+            return java.util.Optional.empty();
+        }
+        return java.util.Optional.<CharSequence>of(p.getElement(index).toString());
+    }
+
+    @Override
+    public java.util.Optional<CharSequence> uriQueryParameter(CharSequence name, boolean decode) {
+        String val = urlParametersAsMap().get(notNull("name", name).toString());
+        return java.util.Optional.<CharSequence>ofNullable(val);
+    }
+
+    @Override
+    public String httpMethod() {
+        return method().toString();
+    }
+
+    @Override
+    public String requestUri(boolean preferHeaders) {
+        return getRequestURL(preferHeaders);
+    }
+
 }

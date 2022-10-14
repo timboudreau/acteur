@@ -25,7 +25,7 @@ package com.mastfrog.acteur.headers;
 
 import com.mastfrog.util.preconditions.Checks;
 import com.mastfrog.util.strings.Strings;
-import com.mastfrog.util.time.TimeUtil;
+import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -39,6 +39,7 @@ import java.util.Date;
  */
 class DateTimeHeader extends AbstractHeader<ZonedDateTime> {
 
+    private static final ZoneId GMT = ZoneId.of("Z");
     DateTimeHeader(CharSequence name) {
         super(ZonedDateTime.class, name);
     }
@@ -93,7 +94,7 @@ class DateTimeHeader extends AbstractHeader<ZonedDateTime> {
                     try {
                         //Sigh...use java.util.date to handle "GMT", "PST", "EST"
                         val = Date.parse(value.toString());
-                        result = TimeUtil.fromUnixTimestamp(val);
+                        return ZonedDateTime.ofInstant(Instant.ofEpochMilli(val), ZoneId.systemDefault());
                     } catch (IllegalArgumentException e3) {
                         e.addSuppressed(e3);
                         new IllegalArgumentException(value.toString(), e).printStackTrace(System.err);
