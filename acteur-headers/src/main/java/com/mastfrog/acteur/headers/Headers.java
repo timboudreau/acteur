@@ -36,6 +36,7 @@ import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpMessage;
 import io.netty.util.AsciiString;
 import java.net.URI;
+import java.net.URL;
 import java.nio.charset.Charset;
 import java.time.Duration;
 import java.time.ZoneId;
@@ -118,7 +119,7 @@ public final class Headers {
     public static final HeaderValueType<io.netty.handler.codec.http.cookie.Cookie[]> COOKIE_B_STRICT = new CookieHeaderNetty428(true);
     public static final HeaderValueType<CharSequence[]> WEBSOCKET_PROTOCOLS = new WebSocketProtocolsHeader();
     public static final HeaderValueType<String> WEBSOCKET_PROTOCOL = new StringHeader(HttpHeaderNames.WEBSOCKET_PROTOCOL);
-//    public static final HeaderValueType<URL> WEBSOCKET_LOCATION = new WebSocketLocationHeader();
+    public static final HeaderValueType<URL> WEBSOCKET_LOCATION = new WebSocketLocationHeader();
     public static final HeaderValueType<CharSequence> UPGRADE = header(HttpHeaderNames.UPGRADE);
     public static final HeaderValueType<CharSequence> REFERRER = header(HttpHeaderNames.REFERER);
     public static final HeaderValueType<CharSequence> TRANSFER_ENCODING = header(HttpHeaderNames.TRANSFER_ENCODING);
