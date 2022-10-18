@@ -43,6 +43,7 @@ import com.mastfrog.util.collections.CollectionUtils;
 import com.mastfrog.util.preconditions.Checks;
 import static com.mastfrog.util.preconditions.Checks.nonNegative;
 import static com.mastfrog.util.preconditions.Checks.notNull;
+import com.mastfrog.util.strings.Strings;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufHolder;
 import io.netty.buffer.Unpooled;
@@ -62,9 +63,13 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.charset.Charset;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 
 /**
  *
@@ -392,6 +397,16 @@ final class EventImpl implements HttpEvent {
     @Override
     public String requestUri(boolean preferHeaders) {
         return getRequestURL(preferHeaders);
+    }
+
+    @Override
+    public Set<? extends CharSequence> httpHeaderNames() {
+        Set<CharSequence> result = new TreeSet<>(Strings.charSequenceComparator(true));
+        Iterator<Map.Entry<CharSequence, CharSequence>> it = req.headers().iteratorCharSequence();
+        while (it.hasNext()) {
+            result.add(it.next().getKey());
+        }
+        return result;
     }
 
 }

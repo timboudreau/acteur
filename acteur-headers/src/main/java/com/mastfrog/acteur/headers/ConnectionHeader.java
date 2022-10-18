@@ -25,9 +25,7 @@ package com.mastfrog.acteur.headers;
 
 import com.mastfrog.acteur.util.Connection;
 import com.mastfrog.acteur.util.ConnectionHeaderData;
-import com.mastfrog.util.preconditions.Checks;
 import static com.mastfrog.util.preconditions.Checks.notNull;
-import com.mastfrog.util.strings.Strings;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.util.AsciiString;
 

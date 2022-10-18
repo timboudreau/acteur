@@ -51,7 +51,7 @@ final class UnknownConnectionHeaderData implements ConnectionHeaderData {
         } else if (o == null || !(o instanceof ConnectionHeaderData)) {
             return false;
         }
-        return text.equals(o.toString());
+        return text.toString().equals(o.toString());
     }
 
     @Override

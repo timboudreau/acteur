@@ -25,6 +25,7 @@ package com.mastfrog.acteur.util;
 
 import java.nio.charset.Charset;
 import java.util.Base64;
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -32,7 +33,10 @@ import java.util.regex.Pattern;
  *
  * @author Tim Boudreau
  */
-public class BasicCredentials {
+public final class BasicCredentials {
+
+    private static final Pattern HEADER = Pattern.compile("Basic (.*)", Pattern.CASE_INSENSITIVE);
+    private static final Pattern UNPW = Pattern.compile("(.*?):(.*)");
     public final String username;
     public final String password;
     private static final Charset UTF_8 = Charset.forName("UTF-8");
@@ -42,8 +46,6 @@ public class BasicCredentials {
         this.username = username;
         this.password = password;
     }
-    private static final Pattern HEADER = Pattern.compile("Basic (.*)");
-    private static final Pattern UNPW = Pattern.compile("(.*?):(.*)");
 
     public static BasicCredentials parse(CharSequence header) {
         Matcher m = HEADER.matcher(header);
@@ -64,5 +66,31 @@ public class BasicCredentials {
     public String toString() {
         String merged = username + ':' + password;
         return "Basic " + Base64.getEncoder().encodeToString(merged.getBytes(UTF_8));
+    }
+
+    @Override
+    public int hashCode() {
+        int hash = 5;
+        hash = 61 * hash + Objects.hashCode(this.username);
+        hash = 61 * hash + Objects.hashCode(this.password);
+        return hash;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        final BasicCredentials other = (BasicCredentials) obj;
+        if (!Objects.equals(this.username, other.username)) {
+            return false;
+        }
+        return Objects.equals(this.password, other.password);
     }
 }

@@ -28,9 +28,12 @@ import static com.mastfrog.util.preconditions.Checks.notNull;
 import com.mastfrog.util.strings.Strings;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 /**
+ * Provides access to http request headers and URL.
  *
  * @author Tim Boudreau
  */
@@ -47,6 +50,13 @@ public interface HttpProtocolRequest {
         return httpHeader(notNull("header", header).name()).map(
                 val -> header.toValue(val));
     }
+
+    /**
+     * Get the set of all header names in a request.
+     *
+     * @return A set of header names
+     */
+    Set<? extends CharSequence> httpHeaderNames();
 
     /**
      * Get an HTTP header.
@@ -146,12 +156,34 @@ public interface HttpProtocolRequest {
      */
     String httpMethod();
 
+    /**
+     * Determine if the method matches the string value of the passed object
+     * (allowing for anything that resolves case insensitively to an http method
+     * name to match).
+     *
+     * @param o An object
+     * @return True if the method name is a case insensitive match for the
+     * passed object
+     */
     default boolean isMethod(Object o) {
         return notNull("o", o).toString().equalsIgnoreCase(httpMethod());
     }
 
+    /**
+     * Get the request URI.
+     *
+     * @param preferHeaders If true, parse any of the common proxy headers
+     * x-forwarded-for, etc. and use that if present
+     * @return A string
+     */
     String requestUri(boolean preferHeaders);
 
+    /**
+     * Get the request URI preferring that value from the headers if there is
+     * one.
+     *
+     * @return A request uri
+     */
     default String requestUri() {
         return requestUri(true);
     }
