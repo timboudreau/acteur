@@ -23,17 +23,16 @@
  */
 package com.mastfrog.acteur;
 
-import com.mastfrog.acteur.websocket.WebSocketUpgradeActeur;
-import com.google.common.net.MediaType;
 import com.google.inject.name.Named;
 import com.mastfrog.acteur.errors.ResponseException;
+import com.mastfrog.acteur.header.entities.CacheControl;
 import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.acteur.server.ServerModule;
 import static com.mastfrog.acteur.server.ServerModule.DELAY_EXECUTOR;
 import static com.mastfrog.acteur.server.ServerModule.X_INTERNAL_COMPRESS_HEADER;
-import com.mastfrog.acteur.util.CacheControl;
 import com.mastfrog.acteur.util.RequestID;
+import com.mastfrog.acteur.websocket.WebSocketUpgradeActeur;
 import com.mastfrog.acteurbase.ActeurState;
 import com.mastfrog.acteurbase.ArrayChain;
 import com.mastfrog.acteurbase.Chain;
@@ -43,13 +42,15 @@ import com.mastfrog.acteurbase.ChainsRunner;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.giulius.DeploymentMode;
 import com.mastfrog.giulius.scope.ReentrantScope;
+import com.mastfrog.mime.MimeType;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.url.Path;
-import com.mastfrog.util.preconditions.Exceptions;
-import com.mastfrog.util.strings.Strings;
 import com.mastfrog.util.collections.ArrayUtils;
 import com.mastfrog.util.collections.CollectionUtils;
 import com.mastfrog.util.collections.Converter;
+import com.mastfrog.util.preconditions.Exceptions;
+import com.mastfrog.util.strings.Strings;
+import com.mastfrog.util.thread.QuietAutoCloseable;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
 import io.netty.buffer.Unpooled;
@@ -67,6 +68,7 @@ import io.netty.handler.codec.http.websocketx.WebSocketFrame;
 import io.netty.util.AsciiString;
 import io.netty.util.Attribute;
 import static io.netty.util.CharsetUtil.UTF_8;
+import io.netty.util.ReferenceCounted;
 import java.io.PrintStream;
 import java.time.Duration;
 import java.time.ZonedDateTime;
@@ -85,8 +87,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 import javax.inject.Inject;
 import org.netbeans.validation.api.InvalidInputException;
-import com.mastfrog.util.thread.QuietAutoCloseable;
-import io.netty.util.ReferenceCounted;
 
 /**
  *
@@ -471,7 +471,7 @@ class PagesImpl2 {
                             }
                             resp = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.INTERNAL_SERVER_ERROR, buf);
                             ((DefaultFullHttpResponse) resp).touch("uncaught-exception-handling-c");
-                            Headers.write(Headers.CONTENT_TYPE, MediaType.PLAIN_TEXT_UTF_8, resp);
+                            Headers.write(Headers.CONTENT_TYPE, MimeType.PLAIN_TEXT_UTF_8, resp);
                             Headers.write(Headers.CONTENT_LENGTH, (long) buf.writerIndex(), resp);
                             Headers.write(Headers.CONTENT_LANGUAGE, Locale.ENGLISH, resp);
                             Headers.write(Headers.CACHE_CONTROL, CacheControl.PRIVATE_NO_CACHE_NO_STORE, resp);

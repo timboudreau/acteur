@@ -24,23 +24,19 @@
 package com.mastfrog.acteur.server;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.base.Optional;
-import com.google.common.collect.ImmutableSortedMap;
-import com.google.common.net.HostAndPort;
-import com.google.common.net.MediaType;
 import com.google.inject.util.Providers;
 import com.mastfrog.acteur.ContentConverter;
 import com.mastfrog.acteur.HttpEvent;
 import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.acteur.headers.Method;
+import com.mastfrog.mime.MimeType;
 import com.mastfrog.url.Path;
 import com.mastfrog.url.Protocol;
 import com.mastfrog.url.Protocols;
 import com.mastfrog.url.URL;
 import com.mastfrog.util.codec.Codec;
 import com.mastfrog.util.collections.CollectionUtils;
-import com.mastfrog.util.preconditions.Checks;
 import static com.mastfrog.util.preconditions.Checks.nonNegative;
 import static com.mastfrog.util.preconditions.Checks.notNull;
 import com.mastfrog.util.strings.Strings;
@@ -49,27 +45,28 @@ import io.netty.buffer.ByteBufHolder;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.handler.codec.http.HttpHeaderNames;
 import static io.netty.handler.codec.http.HttpHeaderNames.CONNECTION;
-import io.netty.handler.codec.http.HttpHeaderValues;
 import static io.netty.handler.codec.http.HttpHeaderNames.HOST;
 import static io.netty.handler.codec.http.HttpHeaderValues.KEEP_ALIVE;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.QueryStringDecoder;
 import io.netty.util.AsciiString;
-import io.netty.util.CharsetUtil;
 import static io.netty.util.CharsetUtil.UTF_8;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.charset.Charset;
-import java.util.ArrayList;
+import static java.util.Collections.unmodifiableMap;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  *
@@ -77,6 +74,7 @@ import java.util.TreeSet;
  */
 final class EventImpl implements HttpEvent {
 
+    private static final Pattern PORT_PATTERN = Pattern.compile(".*?:(\\d+)");
     private static final AsciiString HTTPS = AsciiString.of("https");
     private final HttpRequest req;
     private final Path path;
@@ -146,8 +144,7 @@ final class EventImpl implements HttpEvent {
         }
         int port = -1;
         if (host != null && host.indexOf(':') > 0) {
-            HostAndPort hp = HostAndPort.fromString(host);
-            port = hp.getPort();
+            port = findPort(host);
             host = host.substring(0, host.indexOf(':'));
             if (port != -1 && Protocols.forName(proto.toString()).getDefaultPort().intValue() == port) {
                 port = -1;
@@ -171,6 +168,14 @@ final class EventImpl implements HttpEvent {
             host += '/';
         }
         return proto + "://" + host + uri;
+    }
+
+    private static int findPort(String what) {
+        Matcher m = PORT_PATTERN.matcher(what);
+        if (m.find()) {
+            return Integer.parseInt(m.group(1));
+        }
+        return -1;
     }
 
     EventImpl early() {
@@ -216,30 +221,25 @@ final class EventImpl implements HttpEvent {
 
     @Override
     public <T> T jsonContent(Class<T> type) throws Exception {
-        MediaType mimeType = header(Headers.CONTENT_TYPE);
+        MimeType mimeType = header(Headers.CONTENT_TYPE);
         if (mimeType == null) {
-            mimeType = MediaType.ANY_TYPE;
+            mimeType = MimeType.ANY_TYPE;
         }
         return converter.toObject(content(), mimeType, type);
     }
 
     @Override
     public String stringContent() throws IOException {
-        MediaType type = header(Headers.CONTENT_TYPE);
-        if (type == null) {
-            type = MediaType.PLAIN_TEXT_UTF_8;
-        }
-        Charset encoding;
-        if (type.charset().isPresent()) {
-            encoding = type.charset().get();
-        } else {
-            encoding = UTF_8;
-        }
         ByteBuf content = content();
         if (content == null) {
             return "";
         }
-        return converter.toString(content, encoding);
+        MimeType type = header(Headers.CONTENT_TYPE);
+        if (type == null) {
+            type = MimeType.PLAIN_TEXT_UTF_8;
+        }
+        return converter.toString(content,
+                type.charset().orElse(UTF_8));
     }
 
     @Override
@@ -305,14 +305,14 @@ final class EventImpl implements HttpEvent {
         if (paramsMap == null) {
             QueryStringDecoder queryStringDecoder = new QueryStringDecoder(req.uri());
             Map<String, List<String>> params = queryStringDecoder.parameters();
-            Map<String, String> result = new HashMap<>();
+            Map<String, String> result = new TreeMap<>();
             for (Map.Entry<String, List<String>> e : params.entrySet()) {
                 if (e.getValue().isEmpty()) {
                     continue;
                 }
                 result.put(e.getKey(), e.getValue().get(0));
             }
-            paramsMap = ImmutableSortedMap.copyOf(result);
+            paramsMap = unmodifiableMap(result);
         }
         return paramsMap;
     }
@@ -341,7 +341,7 @@ final class EventImpl implements HttpEvent {
             int ival = Integer.parseInt(val);
             return Optional.of(ival);
         }
-        return Optional.absent();
+        return Optional.empty();
     }
 
     @Override
@@ -352,7 +352,7 @@ final class EventImpl implements HttpEvent {
             long lval = Long.parseLong(val);
             return Optional.of(lval);
         }
-        return Optional.absent();
+        return Optional.empty();
     }
 
     public <T> java.util.Optional<T> httpHeader(HeaderValueType<T> header) {

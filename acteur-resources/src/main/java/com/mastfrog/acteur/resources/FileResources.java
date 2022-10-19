@@ -23,25 +23,25 @@
  */
 package com.mastfrog.acteur.resources;
 
-import com.google.common.net.MediaType;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.mastfrog.acteur.Event;
 import com.mastfrog.acteur.HttpEvent;
 import com.mastfrog.acteur.Response;
 import com.mastfrog.acteur.ResponseWriter;
+import com.mastfrog.acteur.header.entities.CacheControl;
+import com.mastfrog.acteur.header.entities.CacheControlTypes;
 import com.mastfrog.acteur.headers.HeaderValueType;
-import com.mastfrog.acteur.util.CacheControlTypes;
 import com.mastfrog.acteur.headers.Headers;
-import com.mastfrog.acteur.util.CacheControl;
 import com.mastfrog.giulius.DeploymentMode;
+import com.mastfrog.mime.MimeType;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.url.Path;
 import com.mastfrog.util.preconditions.Checks;
 import com.mastfrog.util.preconditions.Exceptions;
+import com.mastfrog.util.streams.HashingOutputStream;
 import com.mastfrog.util.streams.Streams;
 import com.mastfrog.util.strings.Strings;
-import com.mastfrog.util.streams.HashingOutputStream;
 import com.mastfrog.util.time.TimeUtil;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
@@ -281,7 +281,7 @@ public final class FileResources implements StaticResources {
                     .add(Headers.LAST_MODIFIED, TimeUtil.fromUnixTimestamp(lastModified).with(MILLI_OF_SECOND, 0))
                     .add(Headers.ETAG, hash);
 //            page.getReponseHeaders().setContentLength(getLength());
-            MediaType type = getContentType();
+            MimeType type = getContentType();
             if (type == null && debug) {
                 System.err.println("Null content type for " + name);
             }
@@ -320,8 +320,8 @@ public final class FileResources implements StaticResources {
         }
 
         @Override
-        public MediaType getContentType() {
-            MediaType mt = types.get(name);
+        public MimeType getContentType() {
+            MimeType mt = types.get(name);
             return mt;
         }
 

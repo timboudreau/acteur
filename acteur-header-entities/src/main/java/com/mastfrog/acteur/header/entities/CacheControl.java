@@ -21,9 +21,9 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.mastfrog.acteur.util;
+package com.mastfrog.acteur.header.entities;
 
-import static com.mastfrog.acteur.util.CacheControlTypes.*;
+import static com.mastfrog.acteur.header.entities.CacheControlTypes.*;
 import com.mastfrog.util.strings.Strings;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;

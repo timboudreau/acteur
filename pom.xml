@@ -41,6 +41,7 @@
         <module>acteur-annotation-processors</module>
         <module>acteur-server-sent-events</module>
         <module>mime</module>
+        <module>acteur-header-entities</module>
     </modules>
     <issueManagement>
         <system>Github</system>

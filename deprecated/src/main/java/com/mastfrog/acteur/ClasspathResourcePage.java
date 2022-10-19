@@ -23,20 +23,20 @@
  */
 package com.mastfrog.acteur;
 
-import com.mastfrog.acteur.headers.Headers;
-import com.google.common.net.MediaType;
 import com.google.inject.Inject;
-import com.mastfrog.url.Path;
-import com.mastfrog.util.streams.Streams;
-import com.mastfrog.util.streams.HashingInputStream;
+import com.mastfrog.acteur.header.entities.CacheControl;
 import com.mastfrog.acteur.headers.HeaderValueType;
+import com.mastfrog.acteur.headers.Headers;
 import static com.mastfrog.acteur.headers.Headers.CACHE_CONTROL;
 import static com.mastfrog.acteur.headers.Headers.CONTENT_ENCODING;
 import static com.mastfrog.acteur.headers.Headers.CONTENT_TYPE;
 import static com.mastfrog.acteur.headers.Headers.ETAG;
 import static com.mastfrog.acteur.headers.Headers.LAST_MODIFIED;
 import static com.mastfrog.acteur.headers.Headers.VARY;
-import com.mastfrog.acteur.util.CacheControl;
+import com.mastfrog.mime.MimeType;
+import com.mastfrog.url.Path;
+import com.mastfrog.util.streams.HashingInputStream;
+import com.mastfrog.util.streams.Streams;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.http.HttpResponseStatus;
@@ -116,30 +116,30 @@ public abstract class ClasspathResourcePage extends Page {
             byte[] content = ((ClasspathResourcePage) page).getContent(event.path());
             setState(new RespondWith(HttpResponseStatus.OK));
             setResponseWriter(new BodyWriter(content, event.requestsConnectionStayOpen()));
-            MediaType type = getContentType(event.path());
+            MimeType type = getContentType(event.path());
             if (type != null) {
                 add(CONTENT_TYPE, type);
             }
         }
 
-        protected MediaType getContentType(Path path) {
+        protected MimeType getContentType(Path path) {
             String pth = path.toString();
             if (pth.endsWith("svg")) {
-                return MediaType.SVG_UTF_8;
+                return MimeType.SVG;
             } else if (pth.endsWith("css")) {
-                return MediaType.CSS_UTF_8;
+                return MimeType.CSS_UTF_8;
             } else if (pth.endsWith("html")) {
-                return MediaType.HTML_UTF_8;
+                return MimeType.HTML_UTF_8;
             } else if (pth.endsWith("json")) {
-                return MediaType.JSON_UTF_8;
+                return MimeType.JSON_UTF_8;
             } else if (pth.endsWith("js")) {
-                return MediaType.JAVASCRIPT_UTF_8;
+                return MimeType.TEXT_JAVASCRIPT_UTF_8;
             } else if (pth.endsWith("gif")) {
-                return MediaType.GIF;
+                return MimeType.GIF;
             } else if (pth.endsWith("jpg")) {
-                return MediaType.JPEG;
+                return MimeType.JPEG;
             } else if (pth.endsWith("png")) {
-                return MediaType.PNG;
+                return MimeType.PNG;
             }
             return null;
         }

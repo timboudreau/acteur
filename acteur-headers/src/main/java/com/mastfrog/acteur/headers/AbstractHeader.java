@@ -23,6 +23,7 @@
  */
 package com.mastfrog.acteur.headers;
 
+import static com.mastfrog.util.preconditions.Checks.notNull;
 import com.mastfrog.util.strings.Strings;
 
 /**
@@ -34,8 +35,8 @@ public abstract class AbstractHeader<T> implements HeaderValueType<T> {
     private final CharSequence name;
 
     protected AbstractHeader(Class<T> type, CharSequence name) {
-        this.type = type;
-        this.name = name;
+        this.type = notNull("type", type);
+        this.name = notNull("name", name);
     }
 
     @Override
@@ -61,10 +62,7 @@ public abstract class AbstractHeader<T> implements HeaderValueType<T> {
 
     @Override
     public final int hashCode() {
-        int hash = 7;
-        hash = 79 * hash + this.type().hashCode();
-        hash = 79 * hash + this.name().hashCode();
-        return hash;
+        return type.hashCode() + (79 * name.hashCode());
     }
 
 }

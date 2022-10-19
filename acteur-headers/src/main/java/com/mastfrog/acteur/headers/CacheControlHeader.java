@@ -23,7 +23,7 @@
  */
 package com.mastfrog.acteur.headers;
 
-import com.mastfrog.acteur.util.CacheControl;
+import com.mastfrog.acteur.header.entities.CacheControl;
 import com.mastfrog.util.preconditions.Checks;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.util.AsciiString;

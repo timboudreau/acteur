@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright 2021 Mastfrog Technologies.
+ * Copyright 2022 Mastfrog Technologies.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,29 +21,51 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.mastfrog.acteur.util;
 
-import com.mastfrog.util.strings.Strings;
+package com.mastfrog.acteur.headers;
+
+import io.netty.channel.DefaultFileRegion;
+import io.netty.channel.FileRegion;
+import io.netty.util.AsciiString;
+import java.io.File;
+import java.nio.file.Path;
 
 /**
  *
  * @author Tim Boudreau
  */
-public interface ConnectionHeaderData {
+public final class BoundedRangeNetty extends BoundedRange {
 
-    default boolean isKnownConnectionValue() {
-        return false;
+    public BoundedRangeNetty(long start, long end) {
+        super(start, end);
     }
 
-    static ConnectionHeaderData fromString(CharSequence seq) {
-        if (Strings.charSequencesEqual(seq, "keep-alive", true)) {
-            return Connection.keep_alive;
-        } else if (Strings.charSequencesEqual(seq, "close", true)) {
-            return Connection.close;
-        } else if (Strings.charSequencesEqual(seq, "upgrade", true)) {
-            return Connection.upgrade;
-        } else {
-            return new UnknownConnectionHeaderData(seq);
+    public BoundedRangeNetty(long start, long end, long of) {
+        super(start, end, of);
+    }
+
+    public BoundedRangeNetty(CharSequence value) {
+        super(value);
+    }
+
+    public FileRegion toRegion(File f) {
+        long st = start();
+        return new DefaultFileRegion(f, st, (end() + 1) - st);
+    }
+
+    public FileRegion toRegion(Path f) {
+        long st = start();
+        return new DefaultFileRegion(f.toFile(), st, (end() + 1) - st);
+    }
+
+    public CharSequence toCharSequence() {
+        long start = start();
+        long end = end();
+        long of = of();
+        if (start == -1L && end == -1L) {
+            AsciiString.of("bytes */" + of);
         }
+        return AsciiString.of("bytes " + start + "-" + end + "/" + (of == -1L ? "*" : of));
     }
+
 }

@@ -24,7 +24,6 @@
 package com.mastfrog.acteur;
 
 import com.mastfrog.acteur.headers.Headers;
-import com.google.common.net.MediaType;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import com.mastfrog.acteur.annotations.Early;
@@ -33,8 +32,8 @@ import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.settings.SettingsBuilder;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.giulius.scope.ReentrantScope;
-import com.mastfrog.acteur.util.CacheControl;
-import com.mastfrog.acteur.util.CacheControlTypes;
+import com.mastfrog.acteur.header.entities.CacheControl;
+import com.mastfrog.acteur.header.entities.CacheControlTypes;
 import com.mastfrog.acteur.server.ServerModule;
 import static com.mastfrog.acteur.server.ServerModule.GUICE_BINDING_DEFAULT_CONTEXT_OBJECTS;
 import com.mastfrog.acteur.util.ErrorInterceptor;
@@ -71,6 +70,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import com.mastfrog.graal.annotation.Expose;
+import com.mastfrog.mime.MimeType;
 import io.netty.handler.codec.http.DefaultHttpResponse;
 import io.netty.handler.codec.http.DefaultLastHttpContent;
 import io.netty.handler.codec.http.FullHttpResponse;
@@ -380,7 +380,7 @@ public class Application implements Iterable<Page> {
         buf.writeBytes(msg.getBytes(charset));
         DefaultFullHttpResponse resp = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1,
                 HttpResponseStatus.NOT_FOUND, buf);
-        Headers.write(Headers.CONTENT_TYPE, MediaType.HTML_UTF_8.withCharset(charset), resp);
+        Headers.write(Headers.CONTENT_TYPE, MimeType.HTML_UTF_8.withCharset(charset), resp);
         Headers.write(Headers.CONTENT_LENGTH, buf.writerIndex(), resp);
         Headers.write(Headers.CONTENT_LANGUAGE, Locale.ENGLISH, resp);
         Headers.write(Headers.CACHE_CONTROL, new CacheControl(CacheControlTypes.no_cache), resp);

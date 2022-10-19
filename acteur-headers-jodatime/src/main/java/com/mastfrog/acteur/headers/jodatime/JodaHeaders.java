@@ -23,8 +23,8 @@
  */
 package com.mastfrog.acteur.headers.jodatime;
 
+import com.mastfrog.acteur.header.entities.CacheControl;
 import com.mastfrog.acteur.headers.HeaderValueType;
-import com.mastfrog.acteur.util.CacheControl;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import org.joda.time.DateTime;
 import org.joda.time.Duration;

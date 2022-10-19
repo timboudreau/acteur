@@ -23,7 +23,6 @@
  */
 package com.mastfrog.acteur;
 
-import com.google.common.net.MediaType;
 import com.google.inject.Injector;
 import com.mastfrog.acteur.Acteur.BaseState;
 import com.mastfrog.acteur.errors.Err;
@@ -39,16 +38,18 @@ import com.mastfrog.acteurbase.ActeurResponseFactory;
 import com.mastfrog.acteurbase.Chain;
 import com.mastfrog.acteurbase.Deferral;
 import com.mastfrog.acteurbase.Deferral.Resumer;
+import com.mastfrog.function.throwing.ThrowingConsumer;
 import com.mastfrog.giulius.Dependencies;
+import com.mastfrog.mime.MimeType;
 import com.mastfrog.settings.Settings;
+import com.mastfrog.util.collections.ArrayUtils;
+import com.mastfrog.util.collections.CollectionUtils;
+import com.mastfrog.util.function.EnhCompletableFuture;
 import com.mastfrog.util.preconditions.Checks;
 import static com.mastfrog.util.preconditions.Checks.noNullElements;
 import static com.mastfrog.util.preconditions.Checks.notNull;
 import com.mastfrog.util.preconditions.Exceptions;
-import com.mastfrog.util.collections.ArrayUtils;
-import com.mastfrog.util.collections.CollectionUtils;
-import com.mastfrog.util.function.EnhCompletableFuture;
-import com.mastfrog.function.throwing.ThrowingConsumer;
+import com.mastfrog.util.thread.QuietAutoCloseable;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.handler.codec.http.HttpResponseStatus;
@@ -57,6 +58,7 @@ import static io.netty.handler.codec.http.HttpResponseStatus.INTERNAL_SERVER_ERR
 import static io.netty.handler.codec.http.HttpResponseStatus.NOT_FOUND;
 import static io.netty.handler.codec.http.HttpResponseStatus.NO_CONTENT;
 import static io.netty.handler.codec.http.HttpResponseStatus.OK;
+import static io.netty.util.CharsetUtil.UTF_8;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
@@ -70,7 +72,6 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.inject.Inject;
-import com.mastfrog.util.thread.QuietAutoCloseable;
 
 /**
  * A single piece of logic which can
@@ -928,7 +929,11 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
                 if (!Dependencies.isProductionMode(deps.getInstance(Settings.class))) {
                     ByteArrayOutputStream out = new ByteArrayOutputStream();
                     t.printStackTrace(new PrintStream(out));
-                    add(Headers.CONTENT_TYPE, MediaType.PLAIN_TEXT_UTF_8.withCharset(charset));
+                    if (charset == null || UTF_8.equals(charset)) {
+                        add(Headers.CONTENT_TYPE, MimeType.PLAIN_TEXT_UTF_8);
+                    } else {
+                        add(Headers.CONTENT_TYPE, MimeType.PLAIN_TEXT_UTF_8.withCharset(charset));
+                    }
                     this.setMessage(new String(out.toByteArray(), charset));
                 }
                 this.setResponseCode(HttpResponseStatus.INTERNAL_SERVER_ERROR);

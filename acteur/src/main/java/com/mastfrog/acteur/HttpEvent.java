@@ -23,7 +23,6 @@
  */
 package com.mastfrog.acteur;
 
-import com.google.common.base.Optional;
 import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.acteur.request.HttpProtocolRequest;
 import com.mastfrog.acteur.util.HttpMethod;
@@ -35,6 +34,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  *

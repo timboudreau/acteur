@@ -26,11 +26,12 @@ package com.mastfrog.acteur.resources;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
-import com.google.common.net.MediaType;
 import com.google.inject.Inject;
 import com.mastfrog.acteur.Closables;
 import com.mastfrog.acteur.HttpEvent;
 import com.mastfrog.acteur.Response;
+import com.mastfrog.acteur.header.entities.CacheControl;
+import com.mastfrog.acteur.header.entities.CacheControlTypes;
 import com.mastfrog.acteur.headers.ByteRanges;
 import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.acteur.headers.Headers;
@@ -50,13 +51,12 @@ import com.mastfrog.acteur.headers.Method;
 import static com.mastfrog.acteur.headers.Method.HEAD;
 import com.mastfrog.acteur.headers.Range;
 import com.mastfrog.acteur.spi.ApplicationControl;
-import com.mastfrog.acteur.util.CacheControl;
-import com.mastfrog.acteur.util.CacheControlTypes;
+import com.mastfrog.mime.MimeType;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.util.preconditions.Exceptions;
+import com.mastfrog.util.streams.HashingOutputStream;
 import com.mastfrog.util.streams.Streams;
 import com.mastfrog.util.strings.Strings;
-import com.mastfrog.util.streams.HashingOutputStream;
 import com.mastfrog.util.time.TimeUtil;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
@@ -78,6 +78,7 @@ import io.netty.util.AsciiString;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.channels.ClosedByInterruptException;
 import java.nio.channels.SeekableByteChannel;
@@ -167,7 +168,7 @@ public class DynamicFileResources implements StaticResources {
     private class DynFileResource implements Resource {
 
         final File file;
-        final MediaType contentType;
+        final MimeType contentType;
 
         DynFileResource(File file) {
             this.file = file;
@@ -191,7 +192,7 @@ public class DynamicFileResources implements StaticResources {
                     .add(ETAG, etag())
                     .add(ACCEPT_RANGES, HttpHeaderValues.BYTES);
 
-            MediaType contentType = getContentType();
+            MimeType contentType = getContentType();
             if (contentType != null) {
                 response.add(CONTENT_TYPE, contentType);
             }
@@ -331,7 +332,7 @@ public class DynamicFileResources implements StaticResources {
                         while (read < len) {
                             read += channel.read(buffer);
                         }
-                        buffer.flip();
+                        ((Buffer)buffer).flip();
                         return Unpooled.wrappedBuffer(buffer);
                     }
 
@@ -431,7 +432,10 @@ public class DynamicFileResources implements StaticResources {
                                     ByteBuffer buffer = ByteBuffer.allocate(rangeLength);
                                     channel.position(r.start(length));
                                     channel.read(buffer);
-                                    buffer.flip();
+                                    // Need to cast to Buffer to avoid
+                                    // java.lang.NoSuchMethodError: java.nio.ByteBuffer.flip()Ljava/nio/ByteBuffer
+                                    // because > jdk-8 returns ByteBuffer
+                                    ((Buffer)buffer).flip();
                                     enc.encode(evt.ctx(), Unpooled.wrappedBuffer(buffer), buf);
                                 }
                             }
@@ -481,7 +485,7 @@ public class DynamicFileResources implements StaticResources {
         }
 
         @Override
-        public MediaType getContentType() {
+        public MimeType getContentType() {
             return contentType;
         }
     }

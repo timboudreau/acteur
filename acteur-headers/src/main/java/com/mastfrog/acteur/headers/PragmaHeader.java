@@ -23,8 +23,8 @@
  */
 package com.mastfrog.acteur.headers;
 
-import com.mastfrog.acteur.util.CacheControl;
-import com.mastfrog.acteur.util.CacheControlTypes;
+import com.mastfrog.acteur.header.entities.CacheControl;
+import com.mastfrog.acteur.header.entities.CacheControlTypes;
 import io.netty.util.AsciiString;
 
 /**

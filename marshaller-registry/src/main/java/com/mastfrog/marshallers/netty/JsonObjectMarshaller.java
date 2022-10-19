@@ -26,14 +26,14 @@ package com.mastfrog.marshallers.netty;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.mastfrog.marshallers.Marshaller;
+import static com.mastfrog.marshallers.netty.NettyContentMarshallers.findHint;
 import com.mastfrog.util.preconditions.Checks;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;
 import io.netty.buffer.ByteBufOutputStream;
 import java.io.DataInput;
 import java.io.IOException;
-import com.mastfrog.marshallers.Marshaller;
-import static com.mastfrog.marshallers.netty.NettyContentMarshallers.findHint;
 import java.io.OutputStream;
 import java.util.Arrays;
 import java.util.Collections;
@@ -63,6 +63,7 @@ final class JsonObjectMarshaller implements Marshaller<Object, ByteBuf> {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public Object read(ByteBuf data, Object[] hints) throws IOException {
         Class<?> type = findHint(Class.class, hints, Object.class);
         ObjectMapper m;
@@ -75,7 +76,7 @@ final class JsonObjectMarshaller implements Marshaller<Object, ByteBuf> {
         }
         try (final ByteBufInputStream in = new ByteBufInputStream(data)) {
             if (wrapped) {
-                Map<String,Object> map = mapper.readValue((DataInput) in, Map.class);
+                Map<String, Object> map = mapper.readValue((DataInput) in, Map.class);
                 Object o = map.get(type.getSimpleName());
                 if (o == null) {
                     return null;

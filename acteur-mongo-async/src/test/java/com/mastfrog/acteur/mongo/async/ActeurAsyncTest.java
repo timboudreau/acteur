@@ -26,8 +26,8 @@ package com.mastfrog.acteur.mongo.async;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.net.MediaType;
-import static com.google.common.net.MediaType.JSON_UTF_8;
+import com.mastfrog.mime.MimeType;
+import static com.mastfrog.mime.MimeType.JSON_UTF_8;
 import com.google.inject.AbstractModule;
 import com.google.inject.Scopes;
 import com.google.inject.name.Named;
@@ -152,7 +152,7 @@ public class ActeurAsyncTest {
         List<Thing> more = Arrays.asList(new Thing("skiddoo", 23), new Thing("meaning", 42));
 
         harn.put("manythings")
-                .setBody(more, MediaType.JSON_UTF_8)
+                .setBody(more, MimeType.JSON_UTF_8)
                 .setTimeout(Duration.ofSeconds(20))
                 .go()
                 .await()
@@ -451,7 +451,7 @@ public class ActeurAsyncTest {
     static class Hello extends Acteur {
 
         Hello() {
-            add(Headers.CONTENT_TYPE, MediaType.PLAIN_TEXT_UTF_8);
+            add(Headers.CONTENT_TYPE, MimeType.PLAIN_TEXT_UTF_8);
             ok("Hello world");
         }
     }

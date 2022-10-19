@@ -21,9 +21,9 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.mastfrog.acteur.util;
+package com.mastfrog.acteur.header.entities;
 
-import static com.mastfrog.acteur.util.FrameOptions.FrameOptionType.ALLOW_FROM;
+import static com.mastfrog.acteur.header.entities.FrameOptions.FrameOptionType.ALLOW_FROM;
 import static com.mastfrog.util.preconditions.Checks.notNull;
 import com.mastfrog.util.strings.Strings;
 import java.net.URI;
@@ -43,11 +43,11 @@ public final class FrameOptions {
     public static final FrameOptions DENY = new FrameOptions(FrameOptionType.DENY);
     public static final FrameOptions SAMEORIGIN = new FrameOptions(FrameOptionType.SAMEORIGIN);
 
-    FrameOptions(FrameOptionType type) {
+    public FrameOptions(FrameOptionType type) {
         this(type, null);
     }
 
-    FrameOptions(FrameOptionType type, URI value) {
+    public FrameOptions(FrameOptionType type, URI value) {
         this.type = notNull("type", type);
         if (!type.takesValue && value != null) {
             throw new IllegalArgumentException(type + " does not take a value");

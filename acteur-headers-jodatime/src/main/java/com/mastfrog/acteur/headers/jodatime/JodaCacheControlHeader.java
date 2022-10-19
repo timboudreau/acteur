@@ -24,7 +24,7 @@
 package com.mastfrog.acteur.headers.jodatime;
 
 import com.mastfrog.acteur.headers.AbstractHeader;
-import com.mastfrog.acteur.util.CacheControl;
+import com.mastfrog.acteur.header.entities.CacheControl;
 import io.netty.handler.codec.http.HttpHeaderNames;
 
 /**

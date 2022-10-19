@@ -23,8 +23,8 @@
  */
 package com.mastfrog.acteur.headers;
 
-import com.mastfrog.acteur.util.Connection;
-import com.mastfrog.acteur.util.ConnectionHeaderData;
+import com.mastfrog.acteur.header.entities.Connection;
+import com.mastfrog.acteur.header.entities.ConnectionHeaderData;
 import static com.mastfrog.util.preconditions.Checks.notNull;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.util.AsciiString;

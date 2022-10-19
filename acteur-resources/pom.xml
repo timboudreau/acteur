@@ -26,6 +26,22 @@
             <artifactId>acteur</artifactId>
         </dependency>
         <dependency>
+            <artifactId>netty-buffer</artifactId>
+            <groupId>io.netty</groupId>
+        </dependency>
+        <dependency>
+            <groupId>org.xeustechnologies</groupId>
+            <artifactId>jtar</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.jcraft</groupId>
+            <artifactId>jzlib</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+        </dependency>
+        <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>netty-http-test-harness</artifactId>
             <scope>test</scope>
@@ -45,22 +61,6 @@
             <artifactId>junit</artifactId>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <artifactId>netty-buffer</artifactId>
-            <groupId>io.netty</groupId>
-        </dependency>
-        <dependency>
-            <groupId>org.xeustechnologies</groupId>
-            <artifactId>jtar</artifactId>
-        </dependency>
-
-        <!-- https://mvnrepository.com/artifact/com.jcraft/jzlib -->
-
-        <dependency>
-            <groupId>com.jcraft</groupId>
-            <artifactId>jzlib</artifactId>
-        </dependency>
-
     </dependencies>
     <issueManagement>
         <system>Github</system>

@@ -31,7 +31,7 @@ import com.mastfrog.util.preconditions.Checks;
  * @author Tim Boudreau
  */
 public class HostAndPort {
-    
+
     public final Host host;
     public final Port port;
 
@@ -41,15 +41,20 @@ public class HostAndPort {
         this.host = host;
         this.port = port;
     }
-    
+
+    public HostAndPort(String host, int port) {
+        this.host = Host.parse(host);
+        this.port = new Port(port);
+    }
+
     public boolean isValid() {
         return host.isValid() && port.isValid();
     }
-    
+
     public String toString() {
         return host.toString() + ":" + port.toString();
     }
-    
+
     public boolean equals(Object o) {
         if (o == this) {
             return true;
@@ -62,15 +67,15 @@ public class HostAndPort {
             return false;
         }
     }
-    
+
     public int hashCode() {
         return port.hashCode() + (53 * host.hashCode());
     }
-    
+
     public String host() {
         return host.toString();
     }
-    
+
     public int port() {
         return port.intValue();
     }

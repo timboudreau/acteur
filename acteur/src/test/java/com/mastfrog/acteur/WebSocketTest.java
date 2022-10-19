@@ -23,15 +23,15 @@
  */
 package com.mastfrog.acteur;
 
-import com.mastfrog.acteur.websocket.WebSocketUpgradeActeur;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.inject.AbstractModule;
 import com.mastfrog.acteur.WebSocketTest.WSM;
+import com.mastfrog.acteur.header.entities.Connection;
 import com.mastfrog.acteur.headers.Headers;
 import static com.mastfrog.acteur.headers.Headers.stringHeader;
 import com.mastfrog.acteur.server.PathFactory;
 import com.mastfrog.acteur.server.ServerModule;
-import com.mastfrog.acteur.util.Connection;
+import com.mastfrog.acteur.websocket.WebSocketUpgradeActeur;
 import com.mastfrog.giulius.tests.GuiceRunner;
 import com.mastfrog.giulius.tests.TestWith;
 import com.mastfrog.netty.http.client.ResponseFuture;

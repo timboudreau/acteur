@@ -24,8 +24,8 @@
 package com.mastfrog.acteur.pubsub;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.mastfrog.giulius.ShutdownHookRegistry;
 import com.mastfrog.marshallers.netty.NettyContentMarshallers;
+import com.mastfrog.shutdown.hooks.ShutdownHookRegistry;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelOutboundHandlerAdapter;

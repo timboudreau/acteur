@@ -23,9 +23,9 @@
  */
 package com.mastfrog.acteur.resources;
 
-import com.google.common.net.MediaType;
 import com.google.inject.Inject;
 import com.mastfrog.giulius.DeploymentMode;
+import com.mastfrog.mime.MimeType;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.url.Path;
 import java.time.Duration;
@@ -47,15 +47,15 @@ class DefaultExpiresPolicy implements ExpiresPolicy {
     }
 
     @Override
-    public ZonedDateTime get(MediaType mimeType, Path path) {
+    public ZonedDateTime get(MimeType mimeType, Path path) {
         if (!production) {
             return null;
         }
-        Long expires = settings.getLong("expires." + mimeType.type() + '/' + mimeType.subtype());
+        Long expires = settings.getLong("expires." + mimeType.primaryType()+ '/' + mimeType.secondaryType().orElse(""));
         if (expires != null) {
             return ZonedDateTime.now().plus(Duration.ofMillis(expires));
         }
-        if ("image".equals(mimeType.type())) {
+        if ("image".equals(mimeType.primaryType())) {
             return ZonedDateTime.now().plus(Duration.ofDays(30));
         }
         return null;

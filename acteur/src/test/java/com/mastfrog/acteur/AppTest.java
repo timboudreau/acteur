@@ -1,23 +1,17 @@
 package com.mastfrog.acteur;
 
-import com.mastfrog.acteur.headers.Headers;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.net.MediaType;
-import io.netty.handler.codec.http.HttpMethod;
-import io.netty.handler.codec.http.HttpResponseStatus;
-import io.netty.handler.codec.http.HttpVersion;
+import com.mastfrog.mime.MimeType;
 import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.TypeLiteral;
 import com.google.inject.name.Names;
-import com.mastfrog.giulius.tests.GuiceRunner;
-import com.mastfrog.giulius.tests.TestWith;
-import com.mastfrog.giulius.scope.ReentrantScope;
 import com.mastfrog.acteur.AppTest.M;
-import com.mastfrog.acteur.util.BasicCredentials;
-import com.mastfrog.acteur.util.CacheControl;
-import com.mastfrog.acteur.util.CacheControlTypes;
+import com.mastfrog.acteur.header.entities.BasicCredentials;
+import com.mastfrog.acteur.header.entities.CacheControl;
+import com.mastfrog.acteur.header.entities.CacheControlTypes;
+import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.acteur.headers.Method;
 import com.mastfrog.acteur.server.EventImplFactory;
 import com.mastfrog.acteur.server.PathFactory;
@@ -25,14 +19,20 @@ import com.mastfrog.acteur.server.ServerModule;
 import static com.mastfrog.acteur.server.ServerModule.DELAY_EXECUTOR;
 import com.mastfrog.acteur.util.RequestID;
 import com.mastfrog.giulius.InjectionInfo;
+import com.mastfrog.giulius.scope.ReentrantScope;
+import com.mastfrog.giulius.tests.GuiceRunner;
+import com.mastfrog.giulius.tests.TestWith;
 import com.mastfrog.settings.Settings;
-import com.mastfrog.util.preconditions.Checks;
 import com.mastfrog.util.codec.Codec;
+import com.mastfrog.util.preconditions.Checks;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
 import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.http.DefaultFullHttpRequest;
 import io.netty.handler.codec.http.HttpHeaderNames;
+import io.netty.handler.codec.http.HttpMethod;
+import io.netty.handler.codec.http.HttpResponseStatus;
+import io.netty.handler.codec.http.HttpVersion;
 import io.netty.util.CharsetUtil;
 import java.io.IOException;
 import java.io.InputStream;
@@ -44,10 +44,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
+import static org.junit.Assert.*;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-
-import static org.junit.Assert.*;
 
 @RunWith(GuiceRunner.class)
 @TestWith({M.class, SilentRequestLogger.class})
@@ -192,7 +191,7 @@ public class AppTest {
             Checks.notNull("thing", thing);
             done = true;
             add(Headers.DATE, ZonedDateTime.now());
-            add(Headers.CONTENT_TYPE, MediaType.PLAIN_TEXT_UTF_8);
+            add(Headers.CONTENT_TYPE, MimeType.PLAIN_TEXT_UTF_8);
             add(Headers.ETAG, "1234");
             add(Headers.LAST_MODIFIED, ZonedDateTime.now().minus(Duration.ofHours(1)));
             add(Headers.EXPIRES, ZonedDateTime.now().plus(Duration.ofHours(1)));
@@ -212,7 +211,7 @@ public class AppTest {
         Headers.write(Headers.DATE, ZonedDateTime.now(), req);
         Headers.write(Headers.LAST_MODIFIED, ZonedDateTime.now().minus(Duration.ofHours(1)), req);
 
-        Headers.write(Headers.CONTENT_TYPE, MediaType.JSON_UTF_8, req);
+        Headers.write(Headers.CONTENT_TYPE, MimeType.JSON_UTF_8, req);
         Headers.write(Headers.AUTHORIZATION, new BasicCredentials("joey", "abcdefg"), req);
 
         CacheControl cc = new CacheControl().add(CacheControlTypes.Public, CacheControlTypes.must_revalidate).add(CacheControlTypes.max_age, Duration.ofSeconds(25));

@@ -23,10 +23,10 @@
  */
 package com.mastfrog.acteur.resources;
 
-import com.google.common.net.MediaType;
 import com.mastfrog.acteur.HttpEvent;
 import com.mastfrog.acteur.Page;
 import com.mastfrog.acteur.Response;
+import com.mastfrog.mime.MimeType;
 
 /**
  * A single resource such as a file to be served.
@@ -47,6 +47,6 @@ public interface Resource {
 
     void attachBytes(HttpEvent evt, Response response, boolean chunked) throws Exception;
 
-    MediaType getContentType();
+    MimeType getContentType();
     
 }

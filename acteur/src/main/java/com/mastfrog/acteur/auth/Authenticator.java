@@ -23,8 +23,8 @@
  */
 package com.mastfrog.acteur.auth;
 
-import com.mastfrog.acteur.util.BasicCredentials;
 import com.google.inject.ImplementedBy;
+import com.mastfrog.acteur.header.entities.BasicCredentials;
 import java.io.IOException;
 
 /**

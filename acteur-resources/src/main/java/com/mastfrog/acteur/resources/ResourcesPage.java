@@ -23,7 +23,6 @@
  */
 package com.mastfrog.acteur.resources;
 
-import com.google.common.net.MediaType;
 import com.google.inject.Inject;
 import com.mastfrog.acteur.Acteur;
 import com.mastfrog.acteur.ActeurFactory;
@@ -36,6 +35,7 @@ import com.mastfrog.acteur.Response;
 import com.mastfrog.acteur.headers.Method;
 import com.mastfrog.acteur.preconditions.Description;
 import com.mastfrog.acteur.preconditions.Methods;
+import com.mastfrog.mime.MimeType;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.url.Path;
 import static io.netty.handler.codec.http.HttpResponseStatus.PARTIAL_CONTENT;
@@ -98,7 +98,7 @@ public class ResourcesPage extends Page {
                             return;
                         } else {
                             r.decorateResponse(evt, path, response(), chunked);
-                            MediaType mimeType = r.getContentType();
+                            MimeType mimeType = r.getContentType();
                             if (mimeType != null) {
                                 ZonedDateTime dt = policy.get(mimeType, Path.parse(path));
                                 if (dt != null) {
@@ -114,7 +114,7 @@ public class ResourcesPage extends Page {
                 Resource r = res.get(path);
                 if (r != null) {
                     r.decorateResponse(evt, path, response(), chunked);
-                    MediaType mimeType = r.getContentType();
+                    MimeType mimeType = r.getContentType();
                     if (mimeType != null) {
                         ZonedDateTime dt = policy.get(mimeType, Path.parse(path));
                         if (dt != null) {

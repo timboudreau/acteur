@@ -23,14 +23,15 @@
  */
 package com.mastfrog.acteur.resources;
 
-import com.google.common.net.MediaType;
+import com.mastfrog.mime.MimeType;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import static com.mastfrog.acteur.resources.MimeTypes.CompressionStrategy.COMPRESS;
 import static com.mastfrog.acteur.resources.MimeTypes.CompressionStrategy.IDENTITY;
-import io.netty.util.CharsetUtil;
+import static com.mastfrog.mime.MimeType.*;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -41,108 +42,111 @@ import java.util.Map;
 @Singleton
 public class MimeTypes {
 
-    private final Map<String, MediaType> m = new HashMap<>();
-    private final Map<MediaType, CompressionStrategy> compressionStrategies = new HashMap<>();
+    private final Map<String, MimeType> m = new HashMap<>();
+    private final Map<MimeType, CompressionStrategy> compressionStrategies = new HashMap<>();
     @Inject(optional = true)
-    private Charset charset = StandardCharsets.UTF_8;
+    private Charset charset = UTF_8;
 
     @Inject
     public MimeTypes(Charset defaultCharset) {
         this.charset = defaultCharset == null ? StandardCharsets.UTF_8 : defaultCharset;
-        add("js", MediaType.JAVASCRIPT_UTF_8.withCharset(charset), true, COMPRESS);
-        add("gif", MediaType.GIF, IDENTITY);
-        add("png", MediaType.PNG, IDENTITY);
-        add("jpg", MediaType.JPEG, IDENTITY);
-        add("bmp", MediaType.BMP, false, COMPRESS);
-        add("tif", MediaType.TIFF,false, COMPRESS);
-        add("svg", MediaType.SVG_UTF_8, false, COMPRESS);
-        add("tiff", MediaType.TIFF, COMPRESS);
-        add("ico", MediaType.ICO, COMPRESS);
-        add("xml", MediaType.XML_UTF_8.withCharset(charset), true, COMPRESS);
-        add("txt", MediaType.PLAIN_TEXT_UTF_8.withCharset(charset), true, COMPRESS);
-        add("xhtml", MediaType.XHTML_UTF_8.withCharset(charset), true, COMPRESS);
-        add("jpeg", MediaType.JPEG, IDENTITY);
-        add("json", MediaType.JSON_UTF_8.withCharset(charset), true, COMPRESS);
-        add("txt", MediaType.PLAIN_TEXT_UTF_8.withCharset(charset), true, COMPRESS);
-        add("log", MediaType.PLAIN_TEXT_UTF_8.withCharset(charset), true, COMPRESS);
-        add("template", MediaType.PLAIN_TEXT_UTF_8.withCharset(charset), true, COMPRESS);
-        add("pdf", MediaType.PDF);
-        add("html", MediaType.HTML_UTF_8.withCharset(charset), true, COMPRESS);
-        add("css", MediaType.CSS_UTF_8.withCharset(charset), true, COMPRESS);
-        add("swf", MediaType.SHOCKWAVE_FLASH, COMPRESS);
-        add("md", MediaType.parse("text/x-markdown").withCharset(charset), COMPRESS);
-        add("bz2", MediaType.parse("application/x-bzip2"), IDENTITY);
-        add("gz", MediaType.parse("application/x-gzip"), IDENTITY);
-        add("zip", MediaType.parse("application/zip"), IDENTITY);
+        add("js", MimeType.TEXT_JAVASCRIPT_UTF_8.withCharset(charset), true, COMPRESS);
+        add("gif", GIF, IDENTITY);
+        add("png", PNG, IDENTITY);
+        add("jpg", JPEG, IDENTITY);
+        add("bmp", BMP, false, COMPRESS);
+        add("tif", TIFF, false, COMPRESS);
+        add("svg", SVG, false, COMPRESS);
+        add("tiff", TIFF, COMPRESS);
+        add("ico", ICON, COMPRESS);
+        add("xml", MimeType.XML_UTF_8.withCharset(charset), true, COMPRESS);
+        add("txt", MimeType.PLAIN_TEXT_UTF_8.withCharset(charset), true, COMPRESS);
+        add("xhtml", XHTML_UTF_8.withCharset(charset), true, COMPRESS);
+        add("jpeg", JPEG, IDENTITY);
+        add("json", MimeType.JSON_UTF_8.withCharset(charset), true, COMPRESS);
+        add("txt", MimeType.PLAIN_TEXT_UTF_8.withCharset(charset), true, COMPRESS);
+        add("log", MimeType.PLAIN_TEXT_UTF_8.withCharset(charset), true, COMPRESS);
+        add("template", MimeType.PLAIN_TEXT_UTF_8.withCharset(charset), true, COMPRESS);
+        add("pdf", PDF);
+        add("html", MimeType.HTML_UTF_8.withCharset(charset), true, COMPRESS);
+        add("css", MimeType.CSS_UTF_8.withCharset(charset), true, COMPRESS);
+        add("md", MimeType.create("text", "x-markdown").withCharset(charset), COMPRESS);
+        add("bz2", MimeType.create("application", "x-bzip2"), IDENTITY);
+        add("gz", MimeType.create("application", "x-gzip"), IDENTITY);
+        add("zip", MimeType.create("application", "zip"), IDENTITY);
 
-        // application/x-x509-ca-cert                       der pem crt;
-        add("der", MediaType.parse("application/x-x509-ca-cert"), IDENTITY);
-        add("pem", MediaType.parse("application/x-x509-ca-cert"), IDENTITY);
-        add("crt", MediaType.parse("application/x-x509-ca-cert"), IDENTITY);
-        add("ts", MediaType.parse("video/mp2t"), IDENTITY);
-
-        add("tar", MediaType.parse("application/x-tar"), COMPRESS);
-        add("doc", MediaType.parse("application/msword"), false, COMPRESS);
-        add("pdf", MediaType.parse("application/pdf"), IDENTITY);
-        add("ppt", MediaType.parse("application/powerpoint"), false, COMPRESS);
-        add("nbm", MediaType.parse("application/nbm"), false, IDENTITY);
-        add("xlsx", MediaType.parse("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"), false, COMPRESS);
-        add("pptx", MediaType.parse("application/vnd.openxmlformats-officedocument.presentationml.presentation"), false, COMPRESS);
-        add("docx", MediaType.parse("application/vnd.openxmlformats-officedocument.wordprocessingml.document"), false, COMPRESS);
-        add("rtf", MediaType.parse("text/richtext"), COMPRESS);
-        add("mp4", MediaType.MP4_VIDEO, IDENTITY);
-        add("mp3", MediaType.parse("audio/mp3"), IDENTITY);
-        add("m4a", MediaType.parse("audio/x-m4a"), IDENTITY);
-        add("m4v", MediaType.MP4_VIDEO, IDENTITY);
-        add("flv", MediaType.FLV_VIDEO, IDENTITY);
-        add("webm", MediaType.WEBM_VIDEO, IDENTITY);
-        add("mov", MediaType.QUICKTIME, IDENTITY);
-        add("mid", MediaType.parse("audio/midi"), false, COMPRESS);
-        add("aac", MediaType.AAC_AUDIO, IDENTITY);
-        add("json", MediaType.JSON_UTF_8, COMPRESS);
-        add("mpeg", MediaType.MPEG_VIDEO, IDENTITY);
-        add("avi", MediaType.parse("video/avi"), COMPRESS);
-        add("aiff", MediaType.parse("audio/aiff"), COMPRESS);
-        add("wav", MediaType.parse("audio/wav"), COMPRESS);
-        add("ogg", MediaType.OGG_VIDEO, IDENTITY);
-        add("ogv", MediaType.OGG_VIDEO, IDENTITY);
-        add("oga", MediaType.OGG_AUDIO, IDENTITY);
-        add("woff", MediaType.create("application", "x-font-woff"), COMPRESS);
-        add("m3u8", MediaType.create("application", "x-mpegurl"), COMPRESS);
-        add("m3u", MediaType.create("application", "x-mpegurl"), COMPRESS);
-        add("ts", MediaType.create("video", "MP2T"), IDENTITY);
-        add("m4v", MediaType.MP4_VIDEO, IDENTITY);
-        add("fli", MediaType.create("video", "fli"), COMPRESS);
-        add("flc", MediaType.create("video", "flc"), COMPRESS);
-        add("3gp", MediaType.create("video", "3gpp"), IDENTITY);
-        add("wmv", MediaType.WMV, IDENTITY);
-        add("mpeg", MediaType.MPEG_VIDEO, IDENTITY);
-        add("mp2", MediaType.MPEG_AUDIO, IDENTITY);
-        add("mts", MediaType.create("video", "avchd"), IDENTITY);
-        add("atom", MediaType.parse("application/atom+xml").withCharset(charset), true, COMPRESS);
-        add("rss", MediaType.parse("application/rss+xml").withCharset(charset), true, COMPRESS);
-        add("jar", MediaType.parse("application/java-archive"), false, IDENTITY);
-        add("jng", MediaType.parse("image/x-jng"), false, IDENTITY);
-        add("m3u8", MediaType.parse("application/vnd.apple.mpegurl").withCharset(charset), true, IDENTITY);
+        add("der", MimeType.create("application", "x-x509-ca-cert"), IDENTITY);
+        add("pem", MimeType.create("application", "x-x509-ca-cert"), IDENTITY);
+        add("crt", MimeType.create("application", "x-x509-ca-cert"), IDENTITY);
+        add("ts", MimeType.create("video", "mp2t"), IDENTITY);
+        add("apk", MimeType.create("application", "vnd.android.package-archive"), IDENTITY);
+        add("tar", MimeType.create("application", "x-tar"), COMPRESS);
+        add("doc", MimeType.create("application", "msword"), false, COMPRESS);
+        add("pdf", MimeType.create("application", "pdf"), IDENTITY);
+        add("ppt", MimeType.create("application", "powerpoint"), false, COMPRESS);
+        add("nbm", MimeType.create("application", "nbm"), false, IDENTITY);
+        add("xlsx", MimeType.create("application", "vnd.openxmlformats-officedocument.spreadsheetml.sheet"), false, COMPRESS);
+        add("pptx", MimeType.create("application", "vnd.openxmlformats-officedocument.presentationml.presentation"), false, COMPRESS);
+        add("docx", MimeType.create("application", "vnd.openxmlformats-officedocument.wordprocessingml.document"), false, COMPRESS);
+        add("rtf", MimeType.create("application", "rtf"), COMPRESS);
+        add("rtx", MimeType.create("text", "richtext"), COMPRESS);
+        add("mp4", MimeType.create("video", "mp4"), IDENTITY);
+        add("mkv", MimeType.create("video", "x-matroska"), IDENTITY);
+        add("mp3", MimeType.create("audio", "mp3"), IDENTITY);
+        add("m4a", MimeType.create("audio", "x-m4a"), IDENTITY);
+        add("m4v", MimeType.create("video", "mp4"), IDENTITY);
+        add("flv", MimeType.create("video", "x-flv"), IDENTITY);
+        add("webm", MimeType.create("video", "webm"), IDENTITY);
+        add("mov", MimeType.create("video", "quicktype"), IDENTITY);
+        add("mid", MimeType.create("audio", "midi"), false, COMPRESS);
+        add("aac", MimeType.create("audio", "aac"), IDENTITY);
+        add("json", MimeType.JSON_UTF_8, COMPRESS);
+        add("mpeg", MimeType.create("video", "mpeg"), IDENTITY);
+        add("avi", MimeType.create("video", "x-msvideo"), COMPRESS);
+        add("aiff", MimeType.create("audio", "aiff"), COMPRESS);
+        add("flac", MimeType.create("audio", "flac"), COMPRESS);
+        add("opus", MimeType.create("audio", "opus"), COMPRESS);
+        add("wav", MimeType.create("audio", "wav"), COMPRESS);
+        add("ogg", MimeType.create("video", "ogg"), IDENTITY);
+        add("ogv", MimeType.create("video", "ogg"), IDENTITY);
+        add("oga", MimeType.create("audio", "ogg"), IDENTITY);
+        add("woff", MimeType.create("application", "x-font-woff"), COMPRESS);
+        add("m3u8", MimeType.create("application", "x-mpegurl"), COMPRESS);
+        add("m3u", MimeType.create("application", "x-mpegurl"), COMPRESS);
+        add("ts", MimeType.create("video", "MP2T"), IDENTITY);
+        add("fli", MimeType.create("video", "x-fli"), COMPRESS);
+        add("flc", MimeType.create("video", "x-flc"), COMPRESS);
+        add("3gp", MimeType.create("video", "3gpp"), IDENTITY);
+        add("wmv", MimeType.create("video", "x-ms-wmv"), IDENTITY);
+        add("mpeg", MimeType.create("video", "mpeg"), IDENTITY);
+        add("mp2", MimeType.create("audio", "mpeg"), IDENTITY);
+        add("mts", MimeType.create("video", "avchd"), IDENTITY);
+        add("atom", MimeType.create("application", "atom+xml").withCharset(charset), true, COMPRESS);
+        add("rss", MimeType.create("application", "rss+xml").withCharset(charset), true, COMPRESS);
+        add("jar", MimeType.create("application", "java-archive"), false, IDENTITY);
+        add("java", MimeType.create("text", "x-java"), false, IDENTITY);
+        add("class", MimeType.create("application", "java-vm"), false, IDENTITY);
+        add("jng", MimeType.create("image", "x-jng"), false, IDENTITY);
+        add("m3u8", MimeType.create("application", "vnd.apple.mpegurl").withCharset(charset), true, IDENTITY);
     }
 
     public MimeTypes() {
-        this(CharsetUtil.UTF_8);
+        this(UTF_8);
     }
 
-    public final void add(String ext, MediaType tp) {
+    public final void add(String ext, MimeType tp) {
         add(ext, tp, false, CompressionStrategy.DEFAULT);
     }
 
-    public final void add(String ext, MediaType tp, CompressionStrategy strategy) {
+    public final void add(String ext, MimeType tp, CompressionStrategy strategy) {
         add(ext, tp, false, CompressionStrategy.DEFAULT);
     }
 
-    public final void add(String ext, MediaType tp, boolean charset) {
+    public final void add(String ext, MimeType tp, boolean charset) {
         add(ext, tp, charset, CompressionStrategy.DEFAULT);
     }
 
-    public final void add(String ext, MediaType tp, boolean charset, CompressionStrategy strategy) {
+    public final void add(String ext, MimeType tp, boolean charset, CompressionStrategy strategy) {
         ext = ext.toLowerCase();
 
         if (charset) {
@@ -152,7 +156,7 @@ public class MimeTypes {
         compressionStrategies.put(tp, strategy);
     }
 
-    public boolean shouldCompress(MediaType type) {
+    public boolean shouldCompress(MimeType type) {
         if (type == null) {
             return true;
         }
@@ -165,14 +169,14 @@ public class MimeTypes {
                     return false;
             }
         }
-        if ("text".equals(type.type()) || "javascript".equals(type.subtype()) || "json".equals(type.subtype())) {
+        if ("text".equals(type.primaryType()) || type.isSecondaryType("javascript") || type.isSecondaryType("json")) {
             return true;
         } else {
             return false;
         }
     }
 
-    public MediaType get(String fileName) {
+    public MimeType get(String fileName) {
         String ext;
         int off;
         if ((off = fileName.lastIndexOf('.')) >= 0) {
@@ -180,7 +184,7 @@ public class MimeTypes {
         } else {
             ext = fileName;
         }
-        MediaType result = m.get(ext.toLowerCase());
+        MimeType result = m.get(ext.toLowerCase());
         return result;
     }
 

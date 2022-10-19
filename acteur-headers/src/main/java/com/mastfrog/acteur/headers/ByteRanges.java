@@ -56,14 +56,14 @@ public final class ByteRanges implements Iterable<Range> {
         this.valid = true;
         this.ranges = ranges.toArray(new Range[ranges.size()]);
     }
-    
+
     public ByteRanges(long start, long end) {
-        this.ranges = new Range[] { new RangeImpl(start, end) };
+        this.ranges = new Range[]{new RangeImpl(start, end)};
         this.valid = end > start && end >= 0 && start >= 0;
     }
-    
+
     public ByteRanges(long start) {
-        this.ranges = new Range[] { new StartRange(start) };
+        this.ranges = new Range[]{new StartRange(start)};
         this.valid = start >= 0;
     }
 
@@ -163,7 +163,7 @@ public final class ByteRanges implements Iterable<Range> {
     public Iterator<Range> iterator() {
         return asList(ranges).iterator();
     }
-    
+
     public CharSequence toCharSequence() {
         return new AsciiString(toString());
     }
@@ -268,8 +268,8 @@ public final class ByteRanges implements Iterable<Range> {
         }
 
         @Override
-        public BoundedRange toBoundedRange(long max) {
-            return new BoundedRange(start(max), end(max), max);
+        public BoundedRangeNetty toBoundedRange(long max) {
+            return new BoundedRangeNetty(start(max), end(max), max);
         }
     }
 
@@ -304,8 +304,8 @@ public final class ByteRanges implements Iterable<Range> {
         }
 
         @Override
-        public BoundedRange toBoundedRange(long max) {
-            return new BoundedRange(start(max), end(max), max);
+        public BoundedRangeNetty toBoundedRange(long max) {
+            return new BoundedRangeNetty(start(max), end(max), max);
         }
     }
 
@@ -327,7 +327,7 @@ public final class ByteRanges implements Iterable<Range> {
 
         @Override
         public long end(long max) {
-            return max-1;
+            return max - 1;
         }
 
         @Override
@@ -336,8 +336,8 @@ public final class ByteRanges implements Iterable<Range> {
         }
 
         @Override
-        public BoundedRange toBoundedRange(long max) {
-            return new BoundedRange(start(max), end(max), max);
+        public BoundedRangeNetty toBoundedRange(long max) {
+            return new BoundedRangeNetty(start(max), end(max), max);
         }
     }
 }

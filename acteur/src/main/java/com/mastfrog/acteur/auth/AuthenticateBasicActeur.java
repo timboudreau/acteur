@@ -28,7 +28,7 @@ import com.mastfrog.acteur.HttpEvent;
 import com.mastfrog.acteur.Page;
 import com.mastfrog.acteur.Response;
 import com.mastfrog.acteur.headers.Headers;
-import com.mastfrog.acteur.util.BasicCredentials;
+import com.mastfrog.acteur.header.entities.BasicCredentials;
 import com.mastfrog.acteur.util.Realm;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.util.perf.Benchmark;
@@ -108,6 +108,19 @@ public class AuthenticateBasicActeur extends AuthenticationActeur {
         into.put("Basic Authentication Required", true);
     }
 
+
+    private static class NoOpDecorator implements AuthenticationDecorator {
+
+        @Override
+        public void onAuthenticationSucceeded(HttpEvent evt, Page page, Response response, Object[] stuff) {
+            //do nothing
+        }
+
+        @Override
+        public void onAuthenticationFailed(HttpEvent evt, Page page, Response response) {
+            //do nothing
+        }
+    }
     /**
      * Decorator which can do things to the response on authentication
      * succeess/failure, such as setting/clearing cookies
@@ -135,18 +148,5 @@ public class AuthenticateBasicActeur extends AuthenticationActeur {
          * @param response The response
          */
         void onAuthenticationFailed(HttpEvent evt, Page page, Response response);
-    }
-
-    private static class NoOpDecorator implements AuthenticationDecorator {
-
-        @Override
-        public void onAuthenticationSucceeded(HttpEvent evt, Page page, Response response, Object[] stuff) {
-            //do nothing
-        }
-
-        @Override
-        public void onAuthenticationFailed(HttpEvent evt, Page page, Response response) {
-            //do nothing
-        }
     }
 }

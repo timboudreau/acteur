@@ -23,11 +23,11 @@
  */
 package com.mastfrog.marshallers.netty;
 
+import com.mastfrog.marshallers.Marshaller;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;
 import io.netty.buffer.ByteBufOutputStream;
 import java.io.InputStream;
-import com.mastfrog.marshallers.Marshaller;
 
 /**
  *

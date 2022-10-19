@@ -21,55 +21,32 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.mastfrog.acteur.util;
-
-import com.mastfrog.util.strings.Strings;
+package com.mastfrog.acteur.header.entities;
 
 /**
- * Enum of valid values for cache control
+ * Enum of standard values for the HTTP Connection header.
  *
  * @author Tim Boudreau
  */
-public enum CacheControlTypes {
-    Public, Private, must_revalidate, proxy_revalidate, no_cache, no_store, 
-    max_age(true), max_stale(true), min_fresh(true), 
-    no_transform, only_if_cached, s_maxage(true), immutable;
-    final boolean takesValue;
+public enum Connection implements ConnectionHeaderData {
+    close, keep_alive, upgrade;
 
-    private CacheControlTypes(boolean takesValue) {
-        this.takesValue = takesValue;
-    }
-
-    CacheControlTypes() {
-        this(false);
+    @Override
+    public boolean isKnownConnectionValue() {
+        return true;
     }
 
     @Override
     public String toString() {
-        char[] c = name().toLowerCase().toCharArray();
-        for (int i = 0; i < c.length; i++) {
-            if (c[i] == '_') {
-                c[i] = '-';
-            }
+        switch (this) {
+            case close:
+                return name();
+            case keep_alive:
+                return "keep-alive";
+            case upgrade:
+                return "Upgrade";
+            default:
+                throw new AssertionError(this);
         }
-        return new String(c);
-    }
-
-    public static CacheControlTypes find(String s) {
-        for (CacheControlTypes c : values()) {
-            if (s.startsWith(c.toString())) {
-                return c;
-            }
-        }
-        return null;
-    }
-    
-    public static CacheControlTypes find(CharSequence s) {
-        for (CacheControlTypes c : values()) {
-            if (Strings.startsWith(s, c.toString())) {
-                return c;
-            }
-        }
-        return null;
     }
 }

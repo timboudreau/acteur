@@ -23,7 +23,8 @@
  */
 package com.mastfrog.acteur.util;
 
-import com.mastfrog.acteur.util.FrameOptions.FrameOptionType;
+import com.mastfrog.acteur.header.entities.FrameOptions;
+import com.mastfrog.acteur.header.entities.FrameOptions.FrameOptionType;
 import java.net.URI;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
@@ -69,32 +70,32 @@ public class FrameOptionsTest {
         assertEquals(fo.toString(), fo3.toString());
     }
 
-    @Test(expected=IllegalArgumentException.class)
+    @Test(expected = IllegalArgumentException.class)
     public void testInvalidArgument() {
         new FrameOptions(FrameOptionType.DENY, URI.create("http://mastfrog.com"));
     }
 
-    @Test(expected=IllegalArgumentException.class)
+    @Test(expected = IllegalArgumentException.class)
     public void testMissingArgument() {
         FrameOptions.parse("DENY http://mastfrog.com");
     }
 
-    @Test(expected=IllegalArgumentException.class)
+    @Test(expected = IllegalArgumentException.class)
     public void testMissingArgumen2t() {
         FrameOptions.parse("SAMEORIGIN http://mastfrog.com");
     }
 
-    @Test(expected=IllegalArgumentException.class)
+    @Test(expected = IllegalArgumentException.class)
     public void testInvalidName() {
         FrameOptions.parse("PERCEIVE http://mastfrog.com");
     }
 
-    @Test(expected=IllegalArgumentException.class)
+    @Test(expected = IllegalArgumentException.class)
     public void testInvalidName2() {
         FrameOptions.parse("DENI http://mastfrog.com");
     }
 
-    @Test(expected=IllegalArgumentException.class)
+    @Test(expected = IllegalArgumentException.class)
     public void testInvalidUri() {
         FrameOptions.parse("ALLOW-FROM \\u0000//:////");
     }

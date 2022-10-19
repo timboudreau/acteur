@@ -30,20 +30,20 @@ import com.mastfrog.util.preconditions.Checks;
  *
  * @author Tim Boudreau
  */
-final class ContentRangeHeader extends AbstractHeader<BoundedRange> {
+final class ContentRangeHeader extends AbstractHeader<BoundedRangeNetty> {
     
     ContentRangeHeader(CharSequence name) {
-        super(BoundedRange.class, name);
+        super(BoundedRangeNetty.class, name);
     }
 
     @Override
-    public CharSequence toCharSequence(BoundedRange value) {
+    public CharSequence toCharSequence(BoundedRangeNetty value) {
         Checks.notNull("value", value);
         return value.toCharSequence();
     }
 
     @Override
-    public BoundedRange toValue(CharSequence value) {
-        return new BoundedRange(value);
+    public BoundedRangeNetty toValue(CharSequence value) {
+        return new BoundedRangeNetty(value);
     }
 }

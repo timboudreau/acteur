@@ -24,10 +24,6 @@
 package com.mastfrog.acteur.headers;
 
 import com.mastfrog.util.strings.Strings;
-import io.netty.channel.DefaultFileRegion;
-import io.netty.channel.FileRegion;
-import io.netty.util.AsciiString;
-import java.io.File;
 import java.util.Arrays;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -39,7 +35,7 @@ import java.util.regex.Pattern;
  *
  * @author Tim Boudreau
  */
-public final class BoundedRange {
+public class BoundedRange {
 
     private long start;
     private long end;
@@ -64,7 +60,7 @@ public final class BoundedRange {
         this.end = end;
         this.of = of;
     }
-    
+
     public long length() {
         return (end + 1) - start;
     }
@@ -132,16 +128,14 @@ public final class BoundedRange {
         return of;
     }
 
-    public FileRegion toRegion(File f) {
-        return new DefaultFileRegion(f, start, (end+1)-start);
-    }
-    
     public CharSequence toCharSequence() {
+        long start = start();
+        long end = end();
+        long of = of();
         if (start == -1L && end == -1L) {
-            AsciiString.of("bytes */" + of);
+            return "bytes */" + of;
         }
-        return AsciiString.of("bytes " + start + "-" + end + "/" + (of == -1L ? "*" : of));
-        
+        return "bytes " + start + "-" + end + "/" + (of == -1L ? "*" : of);
     }
 
     @Override

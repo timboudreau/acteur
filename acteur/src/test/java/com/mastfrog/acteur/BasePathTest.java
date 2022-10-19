@@ -23,7 +23,7 @@
  */
 package com.mastfrog.acteur;
 
-import com.google.common.net.MediaType;
+import com.mastfrog.mime.MimeType;
 import com.google.inject.Inject;
 import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.acteur.preconditions.Path;
@@ -160,7 +160,7 @@ public class BasePathTest {
 
         @Inject
         PathA(HttpEvent evt) {
-            add(Headers.CONTENT_TYPE, MediaType.PLAIN_TEXT_UTF_8);
+            add(Headers.CONTENT_TYPE, MimeType.PLAIN_TEXT_UTF_8);
             ok(evt.path().toString());
         }
     }
@@ -169,7 +169,7 @@ public class BasePathTest {
 
         @Inject
         HomeA() {
-            add(Headers.CONTENT_TYPE, MediaType.PLAIN_TEXT_UTF_8);
+            add(Headers.CONTENT_TYPE, MimeType.PLAIN_TEXT_UTF_8);
             ok("This is the home page.\n");
         }
     }

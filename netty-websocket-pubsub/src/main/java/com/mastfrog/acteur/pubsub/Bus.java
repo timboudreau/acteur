@@ -23,8 +23,8 @@
  */
 package com.mastfrog.acteur.pubsub;
 
-import com.mastfrog.giulius.ShutdownHookRegistry;
 import com.mastfrog.marshallers.netty.NettyContentMarshallers;
+import com.mastfrog.shutdown.hooks.ShutdownHookRegistry;
 import com.mastfrog.util.preconditions.Checks;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;

@@ -23,7 +23,6 @@
  */
 package com.mastfrog.acteur;
 
-import com.google.common.net.MediaType;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import com.mastfrog.acteur.errors.Err;
@@ -34,6 +33,7 @@ import com.mastfrog.acteur.server.PathFactory;
 import com.mastfrog.acteur.util.HttpMethod;
 import com.mastfrog.acteurbase.Chain;
 import com.mastfrog.giulius.Dependencies;
+import com.mastfrog.mime.MimeType;
 import com.mastfrog.url.Path;
 import com.mastfrog.util.preconditions.Checks;
 import com.mastfrog.util.preconditions.Exceptions;
@@ -146,7 +146,7 @@ public class ActeurFactory {
             boolean hasMethod = hasMethod(event.method());
             add(Headers.ALLOW, methods);
             if (notSupp && !hasMethod) {
-                add(Headers.CONTENT_TYPE, MediaType.PLAIN_TEXT_UTF_8.withCharset(charset));
+                add(Headers.CONTENT_TYPE, MimeType.PLAIN_TEXT_UTF_8.withCharset(charset));
                 return new Acteur.RespondWith(new Err(HttpResponseStatus.METHOD_NOT_ALLOWED, "405 Method "
                         + event.method() + " not allowed.  Accepted methods are "
                         + Headers.ALLOW.toCharSequence(methods) + "\n"));
@@ -187,7 +187,7 @@ public class ActeurFactory {
             boolean hasMethod = mth == method[0] || method[0].equals(event.method());
             add(Headers.ALLOW, method);
             if (notSupp && !hasMethod) {
-                add(Headers.CONTENT_TYPE, MediaType.PLAIN_TEXT_UTF_8.withCharset(charset));
+                add(Headers.CONTENT_TYPE, MimeType.PLAIN_TEXT_UTF_8.withCharset(charset));
                 return new Acteur.RespondWith(new Err(HttpResponseStatus.METHOD_NOT_ALLOWED, "405 Method "
                         + event.method() + " not allowed.  Accepted methods are "
                         + Headers.ALLOW.toCharSequence(method) + "\n"));
@@ -343,7 +343,7 @@ public class ActeurFactory {
             if (event.request() instanceof WebSocketFrame) {
                 WebSocketFrame frame = (WebSocketFrame) event.request();
                 try {
-                    T obj = converter.readObject(frame.content(), MediaType.JSON_UTF_8, type);
+                    T obj = converter.readObject(frame.content(), MimeType.JSON_UTF_8, type);
                     return new Acteur.ConsumedLockedState(obj);
                 } catch (IOException | InvalidInputException ex) {
                     CharSequence seq = "";
@@ -357,9 +357,9 @@ public class ActeurFactory {
                 }
             } else {
                 HttpEvent evt = deps.getInstance(HttpEvent.class);
-                MediaType mt = evt.header(Headers.CONTENT_TYPE);
+                MimeType mt = evt.header(Headers.CONTENT_TYPE);
                 if (mt == null) {
-                    mt = MediaType.ANY_TYPE;
+                    mt = MimeType.ANY_TYPE;
                 }
                 try {
                     T obj = converter.readObject(evt.content(), mt, type);
@@ -495,7 +495,7 @@ public class ActeurFactory {
             for (String nm : names) {
                 String val = event.urlParameter(nm);
                 if (val == null) {
-                    add(Headers.CONTENT_TYPE, MediaType.PLAIN_TEXT_UTF_8.withCharset(charset));
+                    add(Headers.CONTENT_TYPE, MimeType.PLAIN_TEXT_UTF_8.withCharset(charset));
                     return new Acteur.RespondWith(Err.badRequest("Missing URL parameter '" + nm + "'\n"));
                 }
             }
@@ -527,7 +527,7 @@ public class ActeurFactory {
                         if (first == null) {
                             first = nm;
                         } else {
-                            add(Headers.CONTENT_TYPE, MediaType.PLAIN_TEXT_UTF_8.withCharset(charset));
+                            add(Headers.CONTENT_TYPE, MimeType.PLAIN_TEXT_UTF_8.withCharset(charset));
                             return new Acteur.RespondWith(Err.badRequest(
                                     "Parameters may not contain both '"
                                     + first + "' and '" + nm + "'\n"));

@@ -30,7 +30,7 @@ import com.google.inject.Singleton;
 import com.google.inject.name.Named;
 import com.mastfrog.acteur.server.ServerModule;
 import com.mastfrog.acteur.spi.ApplicationControl;
-import com.mastfrog.giulius.ShutdownHookRegistry;
+import com.mastfrog.shutdown.hooks.ShutdownHookRegistry;
 import com.mastfrog.util.preconditions.Checks;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
@@ -88,7 +88,9 @@ public class EventSink {
      * shut down, cease sending messages and clean up after itself
      */
     @Inject
-    protected EventSink(MessageRenderer ren, @Named(ServerModule.BACKGROUND_THREAD_POOL_NAME) ExecutorService svc, ByteBufAllocator alloc, ApplicationControl ctrl, ShutdownHookRegistry reg) {
+    protected EventSink(MessageRenderer ren, 
+            @Named(ServerModule.BACKGROUND_THREAD_POOL_NAME) ExecutorService svc,
+            ByteBufAllocator alloc, ApplicationControl ctrl, ShutdownHookRegistry reg) {
         this.ren = ren;
         this.alloc = alloc;
         this.ctrl = ctrl;

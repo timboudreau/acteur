@@ -23,7 +23,7 @@
  */
 package com.mastfrog.acteur.headers;
 
-import com.mastfrog.acteur.util.FrameOptions;
+import com.mastfrog.acteur.header.entities.FrameOptions;
 import io.netty.util.AsciiString;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;

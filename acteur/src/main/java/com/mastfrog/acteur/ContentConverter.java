@@ -23,10 +23,10 @@
  */
 package com.mastfrog.acteur;
 
-import com.google.common.net.MediaType;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import com.mastfrog.giulius.Dependencies;
+import com.mastfrog.mime.MimeType;
 import com.mastfrog.util.codec.Codec;
 import com.mastfrog.util.time.TimeUtil;
 import io.netty.buffer.ByteBuf;
@@ -82,7 +82,7 @@ public class ContentConverter {
         return result;
     }
 
-    private Charset findCharset(MediaType mt) {
+    private Charset findCharset(MimeType mt) {
         if (mt == null) {
             return charset.get();
         }
@@ -93,9 +93,9 @@ public class ContentConverter {
     }
 
     @SuppressWarnings("unchecked")
-    public <T> T toObject(ByteBuf content, MediaType mimeType, Class<T> type) throws Exception {
+    public <T> T toObject(ByteBuf content, MimeType mimeType, Class<T> type) throws Exception {
         if (mimeType == null) {
-            mimeType = MediaType.ANY_TYPE;
+            mimeType = MimeType.ANY_TYPE;
         }
         // Special handling for strings
         if (type == String.class || type == CharSequence.class) {
@@ -167,7 +167,7 @@ public class ContentConverter {
          * @param codec
          * @throws Exception
          */
-        protected abstract <T> void validate(ByteBuf buf, MediaType mimeType, Class<T> type, Codec codec) throws Exception;
+        protected abstract <T> void validate(ByteBuf buf, MimeType mimeType, Class<T> type, Codec codec) throws Exception;
 
         /**
          * Validate a map which will be further deserialized into an object of type T.
@@ -182,7 +182,7 @@ public class ContentConverter {
     }
 
 
-    protected <T> T readObject(ByteBuf buf, MediaType mimeType, Class<T> type) throws Exception {
+    protected <T> T readObject(ByteBuf buf, MimeType mimeType, Class<T> type) throws Exception {
         if (type == String.class || type == CharSequence.class) {
             return type.cast(toString(buf, findCharset(mimeType)));
         }

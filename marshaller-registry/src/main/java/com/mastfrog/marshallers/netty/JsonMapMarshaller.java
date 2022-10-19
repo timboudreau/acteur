@@ -24,6 +24,7 @@
 package com.mastfrog.marshallers.netty;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mastfrog.marshallers.Marshaller;
 import com.mastfrog.util.preconditions.Checks;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;
@@ -32,7 +33,6 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 import java.util.Map;
-import com.mastfrog.marshallers.Marshaller;
 
 /**
  *

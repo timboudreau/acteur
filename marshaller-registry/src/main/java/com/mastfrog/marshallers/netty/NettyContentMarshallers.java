@@ -24,8 +24,9 @@
 package com.mastfrog.marshallers.netty;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.net.MediaType;
 import com.mastfrog.marshallers.ContentMarshallers;
+import com.mastfrog.marshallers.Marshaller;
+import com.mastfrog.mime.MimeType;
 import io.netty.buffer.ByteBuf;
 import io.netty.util.CharsetUtil;
 import java.awt.image.RenderedImage;
@@ -34,7 +35,6 @@ import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.List;
 import java.util.Map;
-import com.mastfrog.marshallers.Marshaller;
 
 /**
  * Registry of interpreters that can read and write objects into Netty ByteBuf
@@ -70,10 +70,9 @@ public final class NettyContentMarshallers extends ContentMarshallers<ByteBuf, N
     }
 
     /**
-     * Adds a built-in marshaller for BufferedImage / RenderedImage. A MIME
-     * (guava's MediaType) type or format name (recognized by ImageIO) will be
-     * used if passed as a hint; in the event of an unsupported format, jpeg is
-     * used.
+     * Adds a built-in marshaller for BufferedImage / RenderedImage. A MIME type
+     * or format name (recognized by ImageIO) will be used if passed as a hint;
+     * in the event of an unsupported format, jpeg is used.
      *
      * @return this
      */
@@ -158,7 +157,7 @@ public final class NettyContentMarshallers extends ContentMarshallers<ByteBuf, N
     }
 
     static Charset findCharset(Object[] hints) {
-        MediaType type = findHint(MediaType.class, hints, null);
+        MimeType type = findHint(MimeType.class, hints, null);
         Charset charset = type == null ? null : type.charset().isPresent() ? type.charset().get() : null;
         if (charset == null) {
             charset = findHint(Charset.class, hints, CharsetUtil.UTF_8);

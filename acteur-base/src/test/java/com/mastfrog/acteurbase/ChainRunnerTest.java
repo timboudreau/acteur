@@ -23,16 +23,16 @@
  */
 package com.mastfrog.acteurbase;
 
+import com.google.inject.AbstractModule;
+import com.google.inject.Inject;
+import com.mastfrog.acteur.headers.Headers;
+import com.mastfrog.acteurbase.Deferral.Resumer;
 import com.mastfrog.acteurbase.impl.A2;
 import com.mastfrog.acteurbase.impl.Response;
 import com.mastfrog.acteurbase.impl.ResponseImpl;
-import com.google.inject.AbstractModule;
-import com.google.inject.Inject;
-import com.mastfrog.acteurbase.Deferral.Resumer;
-import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.giulius.Dependencies;
-import com.mastfrog.giulius.ShutdownHookRegistry;
 import com.mastfrog.giulius.scope.ReentrantScope;
+import com.mastfrog.shutdown.hooks.ShutdownHookRegistry;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import java.io.IOException;
 import java.util.HashSet;

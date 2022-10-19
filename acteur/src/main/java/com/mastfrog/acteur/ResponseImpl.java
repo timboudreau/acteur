@@ -23,8 +23,6 @@
  */
 package com.mastfrog.acteur;
 
-import com.google.common.base.Objects;
-import com.google.common.net.MediaType;
 import com.google.inject.Key;
 import com.google.inject.name.Names;
 import com.mastfrog.acteur.ResponseWriter.AbstractOutput;
@@ -40,6 +38,7 @@ import com.mastfrog.acteur.spi.ApplicationControl;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.giulius.scope.ReentrantScope;
 import com.mastfrog.marshallers.netty.NettyContentMarshallers;
+import com.mastfrog.mime.MimeType;
 import com.mastfrog.util.preconditions.Checks;
 import com.mastfrog.util.codec.Codec;
 import com.mastfrog.util.strings.Strings;
@@ -89,6 +88,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
@@ -241,7 +241,7 @@ final class ResponseImpl extends Response {
     }
 
     private boolean compareCookies(Object old, Object nue) {
-        return Objects.equal(cookieName(old), cookieName(nue));
+        return Objects.equals(cookieName(old), cookieName(nue));
     }
 
     @SuppressWarnings("unchecked")
@@ -657,7 +657,7 @@ final class ResponseImpl extends Response {
         }
         // Ensure we pass the correct character set based on the MIME type and failing
         // over to the character set the application was configured with (default UTF-8):
-        MediaType mimeType = get(CONTENT_TYPE);
+        MimeType mimeType = get(CONTENT_TYPE);
         if (mimeType != null && mimeType.charset().isPresent()) {
             defaultCharset = mimeType.charset().get();
         }

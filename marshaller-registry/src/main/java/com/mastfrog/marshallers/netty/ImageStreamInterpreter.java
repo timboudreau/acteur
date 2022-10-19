@@ -23,7 +23,8 @@
  */
 package com.mastfrog.marshallers.netty;
 
-import com.google.common.net.MediaType;
+import com.mastfrog.marshallers.Marshaller;
+import com.mastfrog.mime.MimeType;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufInputStream;
 import io.netty.buffer.ByteBufOutputStream;
@@ -31,7 +32,6 @@ import java.awt.image.RenderedImage;
 import java.util.Arrays;
 import java.util.List;
 import javax.imageio.ImageIO;
-import com.mastfrog.marshallers.Marshaller;
 
 /**
  *
@@ -50,9 +50,9 @@ final class ImageStreamInterpreter implements Marshaller<RenderedImage, ByteBuf>
     public void write(RenderedImage obj, ByteBuf into, Object[] hints) throws Exception {
         String format = NettyContentMarshallers.findHint(String.class, hints, null);
         if (format == null) {
-            MediaType mimeType = NettyContentMarshallers.findHint(MediaType.class, hints, null);
-            if (mimeType != null && mimeType.toString().startsWith("image")) {
-                format = mimeType.subtype();
+            MimeType mimeType = NettyContentMarshallers.findHint(MimeType.class, hints, null);
+            if (mimeType != null && mimeType.toString().startsWith("image") && mimeType.secondaryType().isPresent()) {
+                format = mimeType.secondaryType().map(CharSequence::toString).orElseThrow(Error::new); // won't happen
                 List<String> formats = Arrays.asList(ImageIO.getWriterFormatNames());
                 if ("jpeg".equals(format) || !formats.contains(format)) {
                     format = "jpg";

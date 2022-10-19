@@ -23,13 +23,13 @@
  */
 package com.mastfrog.acteur.headers;
 
-import com.google.common.net.MediaType;
-import com.mastfrog.acteur.util.BasicCredentials;
-import com.mastfrog.acteur.util.CacheControl;
-import com.mastfrog.acteur.util.ConnectionHeaderData;
-import com.mastfrog.acteur.util.FrameOptions;
+import com.mastfrog.acteur.header.entities.BasicCredentials;
+import com.mastfrog.acteur.header.entities.CacheControl;
+import com.mastfrog.acteur.header.entities.ConnectionHeaderData;
+import com.mastfrog.acteur.header.entities.FrameOptions;
+import com.mastfrog.acteur.header.entities.StrictTransportSecurity;
 import com.mastfrog.acteur.util.Realm;
-import com.mastfrog.acteur.util.StrictTransportSecurity;
+import com.mastfrog.mime.MimeType;
 import com.mastfrog.util.preconditions.Checks;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpHeaders;
@@ -73,11 +73,11 @@ public final class Headers {
     public static final HeaderValueType<ZonedDateTime> RETRY_AFTER_DATE = new DateTimeHeader(HttpHeaderNames.RETRY_AFTER);
     public static final HeaderValueType<Duration> RETRY_AFTER_DURATION = new DurationHeader(HttpHeaderNames.RETRY_AFTER);
     public static final HeaderValueType<CharSequence> HOST = header(HttpHeaderNames.HOST);
-    public static final HeaderValueType<MediaType> CONTENT_TYPE = new MediaTypeHeader();
+    public static final HeaderValueType<MimeType> CONTENT_TYPE = new MimeTypeHeader();
     public static final HeaderValueType<CharSequence> SERVER = header(HttpHeaderNames.SERVER);
     public static final HeaderValueType<HeaderValueType[]> VARY = new VaryHeader();
     public static final HeaderValueType<ByteRanges> RANGE = new ByteRangeHeader(HttpHeaderNames.RANGE);
-    public static final HeaderValueType<BoundedRange> CONTENT_RANGE = new ContentRangeHeader(HttpHeaderNames.CONTENT_RANGE);
+    public static final HeaderValueType<BoundedRangeNetty> CONTENT_RANGE = new ContentRangeHeader(HttpHeaderNames.CONTENT_RANGE);
     public static final HeaderValueType<CharSequence> ACCEPT = header(HttpHeaderNames.ACCEPT);
     public static final HeaderValueType<CharSequence> ACCEPT_ENCODING = header(HttpHeaderNames.ACCEPT_ENCODING);
     public static final HeaderValueType<CharSequence> ACCEPT_RANGES = header(HttpHeaderNames.ACCEPT_RANGES);
@@ -121,6 +121,7 @@ public final class Headers {
     public static final HeaderValueType<String> WEBSOCKET_PROTOCOL = new StringHeader(HttpHeaderNames.WEBSOCKET_PROTOCOL);
     public static final HeaderValueType<URL> WEBSOCKET_LOCATION = new WebSocketLocationHeader();
     public static final HeaderValueType<CharSequence> UPGRADE = header(HttpHeaderNames.UPGRADE);
+    public static final HeaderValueType<CharSequence> CONTENT_MD5 = header(HttpHeaderNames.CONTENT_MD5);
     public static final HeaderValueType<CharSequence> REFERRER = header(HttpHeaderNames.REFERER);
     public static final HeaderValueType<CharSequence> TRANSFER_ENCODING = header(HttpHeaderNames.TRANSFER_ENCODING);
     public static final HeaderValueType<CharSequence> ACCESS_CONTROL_ALLOW_METHODS = header(HttpHeaderNames.ACCESS_CONTROL_ALLOW_METHODS);

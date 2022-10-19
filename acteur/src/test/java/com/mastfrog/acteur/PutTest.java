@@ -1,20 +1,20 @@
 package com.mastfrog.acteur;
 
-import com.google.common.net.MediaType;
+import com.mastfrog.mime.MimeType;
 import com.google.inject.Inject;
 import com.mastfrog.acteur.PutTest.SM;
+import com.mastfrog.acteur.header.entities.CacheControl;
+import com.mastfrog.acteur.header.entities.CacheControlTypes;
 import com.mastfrog.acteur.headers.Headers;
-import com.mastfrog.giulius.tests.TestWith;
-import com.mastfrog.acteur.util.CacheControlTypes;
 import com.mastfrog.acteur.headers.Method;
 import static com.mastfrog.acteur.headers.Method.GET;
 import static com.mastfrog.acteur.headers.Method.PUT;
 import com.mastfrog.acteur.preconditions.Methods;
 import com.mastfrog.acteur.server.ServerBuilder;
 import com.mastfrog.acteur.server.ServerModule;
-import com.mastfrog.acteur.util.CacheControl;
 import com.mastfrog.acteur.util.RequestID;
 import com.mastfrog.giulius.tests.GuiceRunner;
+import com.mastfrog.giulius.tests.TestWith;
 import com.mastfrog.netty.http.test.harness.TestHarness;
 import com.mastfrog.netty.http.test.harness.TestHarnessModule;
 import com.mastfrog.settings.Settings;
@@ -87,7 +87,7 @@ public class PutTest {
                             }
                         }
                     })
-                    .setBody("Test " + i + " iter", MediaType.PLAIN_TEXT_UTF_8).go()
+                    .setBody("Test " + i + " iter", MimeType.PLAIN_TEXT_UTF_8).go()
                     .await()
                     .assertStatus(OK)
                     //                    .assertStateSeen(com.mastfrog.netty.http.client.StateType.FullContentReceived)

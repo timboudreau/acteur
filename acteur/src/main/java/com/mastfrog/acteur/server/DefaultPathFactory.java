@@ -23,19 +23,16 @@
  */
 package com.mastfrog.acteur.server;
 
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.mastfrog.acteur.HttpEvent;
 import com.mastfrog.acteur.headers.Headers;
 import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_BASE_PATH;
 import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_GENERATE_SECURE_URLS;
+import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_GENERATE_URLS_WITH_INET_ADDRESS_GET_LOCALHOST;
 import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_URLS_EXTERNAL_PORT;
 import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_URLS_EXTERNAL_SECURE_PORT;
 import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_URLS_HOST_NAME;
-import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_GENERATE_URLS_WITH_INET_ADDRESS_GET_LOCALHOST;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.url.*;
 import com.mastfrog.util.preconditions.Checks;
@@ -44,9 +41,12 @@ import com.mastfrog.util.preconditions.ConfigurationError;
 import com.mastfrog.util.preconditions.Exceptions;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.util.AsciiString;
+import static java.lang.System.currentTimeMillis;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.util.concurrent.TimeUnit;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -57,11 +57,19 @@ import java.util.regex.Pattern;
 @Singleton
 class DefaultPathFactory implements PathFactory {
 
-    static final AsciiString X_URL_SCHEME = new AsciiString("X-Url-Scheme");
-    static final AsciiString X_FORWARDED_SSL = new AsciiString("X-Forwarded-Ssl");
-    static final AsciiString FRONT_END_HTTPS = new AsciiString("Front-End-Https");
-    static final AsciiString FORWARDED = new AsciiString("Forwarded");
+    private static final AsciiString X_URL_SCHEME = new AsciiString("X-Url-Scheme");
+    private static final AsciiString X_FORWARDED_SSL = new AsciiString("X-Forwarded-Ssl");
+    private static final AsciiString FRONT_END_HTTPS = new AsciiString("Front-End-Https");
+    private static final AsciiString FORWARDED = new AsciiString("Forwarded");
+    private static final Pattern FORWARDED_SUB_PATTERN = Pattern.compile("proto=(\\S+)[;$]");
+    private static final Pattern STRIP_QUERY = Pattern.compile("(.*?)\\?(.*)");
+    private static final int URI_TO_PATH_CACHE_PRUNE_INTERVAL = 64;
+    private static final int URI_TO_PATH_CACHE_EXPIRY_MILLIS = 60_000 * 5;
 
+    // Cache common URI->Path mappings
+    private final Map<String, PathCacheEntry> cache = new ConcurrentHashMap<>(256, 0.9F);
+    // Used to prune cache entries every URI_TO_PATH_CACHE_PRUNE_INTERVAL requests
+    private int hits = Integer.MIN_VALUE;
     private final int port;
     private final int securePort;
     private final String hostname;
@@ -121,7 +129,6 @@ class DefaultPathFactory implements PathFactory {
     private Path basePath() {
         return pth;
     }
-    private static final Pattern STRIP_QUERY = Pattern.compile("(.*?)\\?(.*)");
 
     @Override
     public Path toExternalPath(String path) {
@@ -138,41 +145,43 @@ class DefaultPathFactory implements PathFactory {
         return constructURL(path, secure);
     }
 
-    private class LDR extends CacheLoader<String, Path> {
+    private PathCacheEntry load(String uri) {
+        Path result;
+        if (uri.startsWith("/")) {
+            uri = uri.substring(1);
+        }
+        Matcher m = STRIP_QUERY.matcher(uri);
+        if (m.matches()) {
+            uri = m.group(1);
+        }
+        if (uri.startsWith(basePath().toString())) {
+            uri = uri.substring(basePath().toString().length());
+        }
+        if (uri.length() > 1 && uri.endsWith("/")) {
+            uri = uri.substring(0, uri.length() - 1);
+        }
+        result = Path.parse(uri, true);
+        return new PathCacheEntry(result);
+    }
 
-        @Override
-        public Path load(String uri) throws Exception {
-            Path result;
-            if (uri.startsWith("/")) {
-                uri = uri.substring(1);
+    private void pruneCache() {
+        // Ensure that we don't pile up cache entries by pruning those
+        // unused for > five minutes
+        for (Iterator<Map.Entry<String, PathCacheEntry>> it = cache.entrySet().iterator(); it.hasNext();) {
+            Map.Entry<String, PathCacheEntry> e = it.next();
+            if (e.getValue().isExpired()) {
+                it.remove();
             }
-            Matcher m = STRIP_QUERY.matcher(uri);
-            if (m.matches()) {
-                uri = m.group(1);
-            }
-            if (uri.startsWith(basePath().toString())) {
-                uri = uri.substring(basePath().toString().length());
-            }
-            if (uri.length() > 1 && uri.endsWith("/")) {
-                uri = uri.substring(0, uri.length() - 1);
-            }
-            result = Path.parse(uri, true);
-            return result;
         }
     }
-    private final LoadingCache<String, Path> cache = CacheBuilder.newBuilder()
-            .expireAfterAccess(5, TimeUnit.MINUTES)
-            .concurrencyLevel(5)
-            .initialCapacity(20)
-            .build(new LDR());
 
     @Override
     public Path toPath(String uri) {
-        try {
-            return cache.get(uri);
-        } catch (Exception e) {
-            return Exceptions.chuck(e);
+        if (hits++ % URI_TO_PATH_CACHE_PRUNE_INTERVAL == 0) {
+            pruneCache();
         }
+        PathCacheEntry pce = cache.computeIfAbsent(uri, this::load);
+        return pce.path();
     }
 
     @Override
@@ -203,14 +212,15 @@ class DefaultPathFactory implements PathFactory {
         }
         Protocol protocol = secure ? Protocols.HTTPS : Protocols.HTTP;
 
-        URLBuilder b = URL.builder(secure ? Protocols.HTTPS : Protocols.HTTP).setPath(path).setHost(hostname);
+        URLBuilder b = URL.builder(secure ? Protocols.HTTPS : Protocols.HTTP)
+                .setPath(path)
+                .setHost(hostname);
         if (port > 0 && port != protocol.getDefaultPort().intValue()) {
             b.setPort(secure ? securePort : port);
         }
         return b.create();
     }
 
-    private static final Pattern FORWARDED_SUB_PATTERN = Pattern.compile("proto=(\\S+)[;$]");
     static CharSequence findProtocol(HttpEvent evt) {
         CharSequence proto = evt == null ? null : evt.header(Headers.X_FORWARDED_PROTO);
         if (proto == null && evt != null) {
@@ -316,5 +326,24 @@ class DefaultPathFactory implements PathFactory {
             }
         }
         return result;
+    }
+
+    private static final class PathCacheEntry {
+
+        private long touched = currentTimeMillis();
+        private final Path path;
+
+        public PathCacheEntry(Path path) {
+            this.path = path;
+        }
+
+        boolean isExpired() {
+            return currentTimeMillis() - touched > URI_TO_PATH_CACHE_EXPIRY_MILLIS;
+        }
+
+        Path path() {
+            touched = currentTimeMillis();
+            return path;
+        }
     }
 }

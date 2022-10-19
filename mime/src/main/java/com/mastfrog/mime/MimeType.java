@@ -35,6 +35,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
 
 /**
  * A mime type, which can be built explicitly or parsed. Originally Acteur used
@@ -43,14 +44,37 @@ import java.util.concurrent.ConcurrentHashMap;
  *
  * @author Tim Boudreau
  */
-public abstract class MimeType implements Comparable<MimeType> {
+public abstract class MimeType implements Comparable<MimeType>, Supplier<Charset> {
 
-    public static final MimeType PLAIN_TEXT_UTF_8 = new SimpleMimeTypeWithCharset("text", "plain", null, UTF_8);
-    public static final MimeType HTML_UTF_8 = new SimpleMimeTypeWithCharset("text", "html", null, UTF_8);
-    public static final MimeType TEXT_JAVASCRIPT_UTF_8 = new SimpleMimeTypeWithCharset("application", "javascript", null, UTF_8);
-    public static final MimeType CSS_UTF_8 = new SimpleMimeTypeWithCharset("text", "css", null, UTF_8);
-    public static final MimeType CSV_UTF_8 = new SimpleMimeTypeWithCharset("text", "csv", null, UTF_8);
-    public static final MimeType XML_UTF_8 = new SimpleMimeTypeWithCharset("text", "xml", null, UTF_8);
+    private static final String IMAGE = "image";
+    private static final String TEXT = "text";
+    private static final String APPLICATION = "application";
+    public static final MimeType ANY_TYPE = new SimpleMimeTypeWithCharset("*", "*", null, null);
+    public static final MimeType PLAIN_TEXT_UTF_8 = new SimpleMimeTypeWithCharset(TEXT, "plain", null, UTF_8);
+    public static final MimeType JSON_UTF_8 = new SimpleMimeTypeWithCharset(APPLICATION, "json ", null, UTF_8);
+    public static final MimeType HTML_UTF_8 = new SimpleMimeTypeWithCharset(TEXT, "html", null, UTF_8);
+    public static final MimeType TEXT_JAVASCRIPT_UTF_8 = new SimpleMimeTypeWithCharset(TEXT, "javascript", null, UTF_8);
+    public static final MimeType CSS_UTF_8 = new SimpleMimeTypeWithCharset(TEXT, "css", null, UTF_8);
+    public static final MimeType CSV_UTF_8 = new SimpleMimeTypeWithCharset(TEXT, "csv", null, UTF_8);
+    public static final MimeType XML_UTF_8 = new SimpleMimeTypeWithCharset(TEXT, "xml", null, UTF_8);
+    public static final MimeType FORM_DATA = create(APPLICATION, "x-www-form-urlencoded");
+    public static final MimeType UNKNOWN = new SimpleMimeTypeWithCharset(APPLICATION, "unknown", null, null);
+    public static final MimeType OCTET_STREAM = new SimpleMimeTypeWithCharset(APPLICATION, "octet-stream", null, null);
+    public static final MimeType PNG = MimeType.builder(IMAGE).withSecondaryType("png").build();
+    public static final MimeType GIF = MimeType.builder(IMAGE).withSecondaryType("gif").build();
+    public static final MimeType JPEG = MimeType.builder(IMAGE).withSecondaryType("jpeg").build();
+    public static final MimeType TIFF = MimeType.builder(IMAGE).withSecondaryType("tiff").build();
+    public static final MimeType BMP = MimeType.builder(IMAGE).withSecondaryType("bmp").build();
+    public static final MimeType ICON = MimeType.builder(IMAGE).withSecondaryType("vnd.microsoft.icon").build();
+    public static final MimeType PDF = MimeType.builder(APPLICATION).withSecondaryType("pdf").build();
+    public static final MimeType SVG = MimeType.builder(IMAGE).withSecondaryType("xml").withVariant("svg")
+            .withCharset(UTF_8).build();
+    public static final MimeType XHTML_UTF_8 = MimeType.builder(APPLICATION).withSecondaryType("xhtml+xml")
+            .withCharset(UTF_8).build();
+    public static final MimeType JAVA_PROPERTIES = MimeType.create(TEXT, "x-java-properties");
+    public static final MimeType GZIP = MimeType.create(APPLICATION, "x-gzip");
+    public static final MimeType EVENT_STREAM = new SimpleMimeTypeWithCharset("text", "event-stream", null, UTF_8);
+
     private static final Map<String, Charset> CHARSETS
             = new ConcurrentHashMap<>(8);
 
@@ -67,6 +91,10 @@ public abstract class MimeType implements Comparable<MimeType> {
                 return UTF_8;
             }
         });
+    }
+
+    public static MimeType create(String primary, String secondary) {
+        return new SimpleMimeTypeWithCharset(primary, secondary, null, null);
     }
 
     public static MimeType parse(CharSequence seq) {
@@ -87,6 +115,21 @@ public abstract class MimeType implements Comparable<MimeType> {
      * @return The secondary type
      */
     public abstract Optional<CharSequence> secondaryType();
+
+    public boolean isPrimaryType(String primary) {
+        return charSequencesEqual(primary, this.primaryType());
+    }
+
+    public boolean isSecondaryType(String secondary) {
+        Optional<CharSequence> sec = secondaryType();
+        if (secondary == null || secondary.isEmpty()) {
+            return !sec.isPresent();
+        }
+        if (sec.isPresent()) {
+            return charSequencesEqual(secondary, sec.get());
+        }
+        return false;
+    }
 
     /**
      * Get the variant - the part of the secondary type after the "+" - e.g. for
@@ -238,6 +281,25 @@ public abstract class MimeType implements Comparable<MimeType> {
                 + (71 * hc(secondaryType()))
                 + (3 * hc(variant()))
                 + parameters().hashCode();
+    }
+
+    /**
+     * Convert to a character sequence; depending on the internal implementation
+     * used, the returned object may not be a string.
+     *
+     * @return A parsable representation of this mime type
+     */
+    public CharSequence toCharSequence() {
+        return toString();
+    }
+
+    /**
+     * For API compatibility with Guava's MediaType.
+     *
+     * @return A character set or null
+     */
+    public Charset get() {
+        return charset().orElse(null);
     }
 
     private static <T> int hc(Optional<T> opt) {

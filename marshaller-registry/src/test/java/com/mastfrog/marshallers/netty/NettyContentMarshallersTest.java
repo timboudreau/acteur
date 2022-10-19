@@ -55,6 +55,7 @@ public class NettyContentMarshallersTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     public void ensureOnlyPrimitivesAreWrapped() throws Exception {
         ByteBuf buf = buf();
         Thing thing = new Thing("Hey", 23, 3.57D);

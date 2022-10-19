@@ -23,7 +23,7 @@
  */
 package com.mastfrog.acteur.headers;
 
-import com.mastfrog.acteur.util.StrictTransportSecurity;
+import com.mastfrog.acteur.header.entities.StrictTransportSecurity;
 import static org.junit.Assert.assertEquals;
 import org.junit.Test;
 

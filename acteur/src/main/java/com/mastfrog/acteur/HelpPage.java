@@ -23,21 +23,21 @@
  */
 package com.mastfrog.acteur;
 
-import com.google.common.net.MediaType;
 import static com.mastfrog.acteur.Help.HELP_HTML_URL_PATTERN_SETTINGS_KEY;
 import static com.mastfrog.acteur.Help.HELP_URL_PATTERN_SETTINGS_KEY;
+import com.mastfrog.acteur.header.entities.CacheControl;
+import com.mastfrog.acteur.header.entities.Connection;
 import com.mastfrog.acteur.headers.Headers;
 import static com.mastfrog.acteur.headers.Method.GET;
 import com.mastfrog.acteur.preconditions.Description;
 import com.mastfrog.acteur.preconditions.Methods;
-import com.mastfrog.acteur.util.CacheControl;
-import com.mastfrog.acteur.util.Connection;
+import com.mastfrog.mime.MimeType;
 import com.mastfrog.settings.Settings;
-import com.mastfrog.util.strings.Strings;
 import com.mastfrog.util.collections.CollectionUtils;
 import static com.mastfrog.util.collections.CollectionUtils.supplierMap;
 import static com.mastfrog.util.collections.CollectionUtils.toList;
 import static com.mastfrog.util.collections.CollectionUtils.transform;
+import com.mastfrog.util.strings.Strings;
 import java.lang.reflect.Array;
 import java.nio.charset.Charset;
 import java.time.ZonedDateTime;
@@ -79,9 +79,9 @@ final class HelpPage extends Page {
         HelpActeur(Application app, HttpEvent evt, Charset charset, ZonedDateTime serverStartTime) {
             this.html = "true".equals(evt.urlParameter("html")) || evt.path().lastElement().extensionEquals("html");
             if (html) {
-                add(Headers.CONTENT_TYPE, MediaType.HTML_UTF_8.withCharset(charset));
+                add(Headers.CONTENT_TYPE, MimeType.HTML_UTF_8.withCharset(charset));
             } else {
-                add(Headers.CONTENT_TYPE, MediaType.JSON_UTF_8);
+                add(Headers.CONTENT_TYPE, MimeType.JSON_UTF_8);
             }
             setChunked(true);
             setResponseWriter(new HelpWriter(html, app));

@@ -23,7 +23,7 @@
  */
 package com.mastfrog.acteur;
 
-import com.google.common.net.MediaType;
+import com.mastfrog.mime.MimeType;
 import com.google.inject.AbstractModule;
 import com.mastfrog.acteur.EarlyInterceptionTest.IceptModule;
 import com.mastfrog.acteur.annotations.Early;
@@ -96,7 +96,7 @@ public class EarlyInterceptionTest {
         String expect = "Received: hello";
         harn.post("/intercept")
                 .setTimeout(TIMEOUT)
-                .setBody(msg, MediaType.PLAIN_TEXT_UTF_8)
+                .setBody(msg, MimeType.PLAIN_TEXT_UTF_8)
                 .go()
                 .await()
                 .assertContent(expect);

@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright 2018 Tim Boudreau.
+ * Copyright 2021 Mastfrog Technologies.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,31 +21,29 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
+package com.mastfrog.acteur.header.entities;
 
-package com.mastfrog.acteur.headers;
-
-import com.mastfrog.acteur.header.entities.StrictTransportSecurity;
-import io.netty.util.AsciiString;
+import com.mastfrog.util.strings.Strings;
 
 /**
  *
  * @author Tim Boudreau
  */
-final class StrictTransportSecurityHeader extends AbstractHeader<StrictTransportSecurity> {
+public interface ConnectionHeaderData {
 
-    private static final AsciiString STRICT_TRANSPORT_SECURITY = AsciiString.of("strict-transport-securty");
-
-    StrictTransportSecurityHeader() {
-        super(StrictTransportSecurity.class, STRICT_TRANSPORT_SECURITY);
+    default boolean isKnownConnectionValue() {
+        return false;
     }
 
-    @Override
-    public StrictTransportSecurity toValue(CharSequence value) {
-        return StrictTransportSecurity.parse(value);
-    }
-
-    @Override
-    public CharSequence toCharSequence(StrictTransportSecurity value) {
-        return AsciiString.of(value.toString());
+    static ConnectionHeaderData fromString(CharSequence seq) {
+        if (Strings.charSequencesEqual(seq, "keep-alive", true)) {
+            return Connection.keep_alive;
+        } else if (Strings.charSequencesEqual(seq, "close", true)) {
+            return Connection.close;
+        } else if (Strings.charSequencesEqual(seq, "upgrade", true)) {
+            return Connection.upgrade;
+        } else {
+            return new UnknownConnectionHeaderData(seq);
+        }
     }
 }

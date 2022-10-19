@@ -24,7 +24,6 @@
 package com.mastfrog.mime;
 
 import java.nio.charset.Charset;
-import static java.nio.charset.StandardCharsets.UTF_8;
 import java.util.ArrayList;
 import static java.util.Collections.emptyList;
 import java.util.List;
@@ -146,6 +145,10 @@ final class ParsedMimeType extends MimeType {
             result.add(new Pair(currStart, len));
         }
         return result;
+    }
+
+    public CharSequence toCharSequence() {
+        return seq;
     }
 
     private final class Pair implements Map.Entry<CharSequence, CharSequence> {

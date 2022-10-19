@@ -24,15 +24,16 @@
 
 package com.mastfrog.acteur.sse;
 
-import com.google.common.net.MediaType;
 import com.google.inject.Provider;
 import com.mastfrog.acteur.Acteur;
 import com.mastfrog.acteur.headers.Headers;
-import com.mastfrog.acteur.util.CacheControl;
-import com.mastfrog.acteur.util.Connection;
+import com.mastfrog.acteur.header.entities.CacheControl;
+import com.mastfrog.acteur.header.entities.Connection;
+import com.mastfrog.mime.MimeType;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import static io.netty.handler.codec.http.HttpResponseStatus.OK;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import javax.inject.Inject;
 
 /**
@@ -56,11 +57,9 @@ import javax.inject.Inject;
  */
 public final class SseActeur extends Acteur {
 
-    private static final MediaType TYPE = MediaType.parse("text/event-stream; charset=UTF-8");
-
     @Inject
     public SseActeur(EventSink sink, Provider<EventChannelName> name) {
-        add(Headers.CONTENT_TYPE, TYPE);
+        add(Headers.CONTENT_TYPE, MimeType.EVENT_STREAM);
         add(Headers.CACHE_CONTROL, CacheControl.PRIVATE_NO_CACHE_NO_STORE);
         add(Headers.CONNECTION, Connection.keep_alive);
         setState(new RespondWith(OK));

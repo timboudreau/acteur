@@ -54,7 +54,7 @@ public interface Range {
      * @param max The number of bytes that could be served
      * @return A bounded range
      */
-    BoundedRange toBoundedRange(long max);
+    BoundedRangeNetty toBoundedRange(long max);
     
     default long length(long max) {
         return (end(max) + 1) - start(max);

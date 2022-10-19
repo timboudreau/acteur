@@ -21,10 +21,10 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.mastfrog.acteur.util;
+package com.mastfrog.acteur.header.entities;
 
-import static com.mastfrog.acteur.util.StrictTransportSecurity.SecurityElements.INCLUDE_SUBDOMAINS;
-import static com.mastfrog.acteur.util.StrictTransportSecurity.SecurityElements.PRELOAD;
+import static com.mastfrog.acteur.header.entities.StrictTransportSecurity.SecurityElements.INCLUDE_SUBDOMAINS;
+import static com.mastfrog.acteur.header.entities.StrictTransportSecurity.SecurityElements.PRELOAD;
 import static com.mastfrog.util.preconditions.Checks.notNull;
 import com.mastfrog.util.strings.Strings;
 import java.time.Duration;
@@ -40,7 +40,7 @@ import java.util.Set;
 public final class StrictTransportSecurity implements Comparable<StrictTransportSecurity> {
 
     private final Duration maxAge;
-    private final EnumSet<SecurityElements> elements;
+    private final Set<SecurityElements> elements;
     public static final StrictTransportSecurity ONE_YEAR = new StrictTransportSecurity(Duration.ofDays(365));
     public static final StrictTransportSecurity ONE_YEAR_INCLUDE_SUBDOMAINS
             = new StrictTransportSecurity(Duration.ofDays(365), INCLUDE_SUBDOMAINS);
@@ -54,7 +54,7 @@ public final class StrictTransportSecurity implements Comparable<StrictTransport
     public static final StrictTransportSecurity FIVE_YEARS_INCLUDE_SUBDOMAINS_PRELOAD
             = new StrictTransportSecurity(Duration.ofDays(365 * 5), INCLUDE_SUBDOMAINS, PRELOAD);
 
-    StrictTransportSecurity(Duration maxAge, SecurityElements... elements) {
+    public StrictTransportSecurity(Duration maxAge, SecurityElements... elements) {
         this.maxAge = notNull("maxAge", maxAge).withNanos(0);
         this.elements = EnumSet.noneOf(SecurityElements.class);
         for (SecurityElements e : notNull("elements", elements)) {
@@ -62,7 +62,7 @@ public final class StrictTransportSecurity implements Comparable<StrictTransport
         }
     }
 
-    StrictTransportSecurity(Duration maxAge, EnumSet<SecurityElements> elements) {
+    public StrictTransportSecurity(Duration maxAge, Set<SecurityElements> elements) {
         this.maxAge = maxAge;
         this.elements = elements;
     }

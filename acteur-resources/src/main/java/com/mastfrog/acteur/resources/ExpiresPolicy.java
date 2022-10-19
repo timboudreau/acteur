@@ -23,8 +23,8 @@
  */
 package com.mastfrog.acteur.resources;
 
-import com.google.common.net.MediaType;
 import com.google.inject.ImplementedBy;
+import com.mastfrog.mime.MimeType;
 import com.mastfrog.url.Path;
 import java.time.ZonedDateTime;
 
@@ -44,5 +44,5 @@ public interface ExpiresPolicy {
      * @param path The url path
      * @return A DateTime, or null if none should be used
      */
-    public ZonedDateTime get(MediaType mimeType, Path path);
+    public ZonedDateTime get(MimeType mimeType, Path path);
 }

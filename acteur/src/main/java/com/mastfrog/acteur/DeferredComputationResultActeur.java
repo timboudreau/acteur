@@ -23,12 +23,12 @@
  */
 package com.mastfrog.acteur;
 
-import static com.google.common.net.MediaType.JSON_UTF_8;
 import com.mastfrog.acteur.errors.Err;
 import com.mastfrog.acteur.errors.ErrorResponse;
 import com.mastfrog.acteur.errors.ExceptionEvaluatorRegistry;
 import com.mastfrog.acteur.errors.ResponseException;
 import static com.mastfrog.acteur.headers.Headers.CONTENT_TYPE;
+import static com.mastfrog.mime.MimeType.JSON_UTF_8;
 import static io.netty.handler.codec.http.HttpResponseStatus.INTERNAL_SERVER_ERROR;
 import javax.inject.Inject;
 
