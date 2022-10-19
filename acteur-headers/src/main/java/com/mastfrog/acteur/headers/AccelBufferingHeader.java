@@ -21,7 +21,6 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-
 package com.mastfrog.acteur.headers;
 
 import static com.mastfrog.util.strings.Strings.charSequencesEqual;
@@ -31,8 +30,8 @@ import io.netty.util.AsciiString;
  *
  * @author Tim Boudreau
  */
-public class AccelBufferingHeader extends AbstractHeader<Boolean> {
-    
+final class AccelBufferingHeader extends AbstractHeader<Boolean> {
+
     private static final AsciiString OFF = new AsciiString("off");
     private static final AsciiString ON = new AsciiString("on");
 
@@ -44,7 +43,7 @@ public class AccelBufferingHeader extends AbstractHeader<Boolean> {
     public CharSequence toCharSequence(Boolean value) {
         return value ? ON : OFF;
     }
-    
+
     @Override
     public Boolean toValue(CharSequence value) {
         return charSequencesEqual(ON, value);

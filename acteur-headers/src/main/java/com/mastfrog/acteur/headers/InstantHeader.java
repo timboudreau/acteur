@@ -1,7 +1,7 @@
-/* 
+/*
  * The MIT License
  *
- * Copyright 2013 Tim Boudreau.
+ * Copyright 2022 Mastfrog Technologies.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,37 +23,52 @@
  */
 package com.mastfrog.acteur.headers;
 
-import com.mastfrog.util.preconditions.Checks;
-import static com.mastfrog.util.preconditions.Checks.notNull;
-import static io.netty.util.CharsetUtil.UTF_8;
-import java.nio.charset.Charset;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import static com.mastfrog.acteur.headers.DateTimeHeader.GMT;
+import static com.mastfrog.acteur.headers.Headers.ISO2822DateFormat;
+import java.time.Instant;
+import java.time.ZonedDateTime;
 
 /**
  *
  * @author Tim Boudreau
  */
-final class CharsetHeader extends AbstractHeader<Charset> {
+final class InstantHeader implements TimestampHeader<Instant> {
 
-    CharsetHeader(CharSequence name) {
-        super(Charset.class, name);
+    private final DateTimeHeader delegate;
+
+    InstantHeader(DateTimeHeader delegate) {
+        this.delegate = delegate;
+    }
+
+    @Override
+    public Class<Instant> type() {
+        return Instant.class;
+    }
+
+    @Override
+    public CharSequence name() {
+        return delegate.name();
+    }
+
+    @Override
+    public Instant toValue(CharSequence value) {
+        return delegate.toValue(value).toInstant();
     }
 
     @Override
     @SuppressWarnings("deprecation")
-    public String toString(Charset value) {
-        return value.name().toLowerCase();
+    public String toString(Instant value) {
+        return delegate.toString(ZonedDateTime.ofInstant(value, GMT));
     }
 
     @Override
-    public Charset toValue(CharSequence value) {
-        try {
-            return Charset.forName(notNull("value", value).toString());
-        } catch (Exception ex) {
-            Logger.getLogger(CharsetHeader.class.getName()).log(Level.INFO,
-                    "invalid charset header '" + value + "' for " + name(), ex);
-            return UTF_8;
-        }
+    public CharSequence toCharSequence(Instant value) {
+        return delegate.toCharSequence(ZonedDateTime.ofInstant(value, GMT));
     }
+
+    @Override
+    public TimestampHeader<Instant> toInstantHeader() {
+        return this;
+    }
+
 }

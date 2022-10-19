@@ -37,9 +37,10 @@ import java.util.Date;
  *
  * @author Tim Boudreau
  */
-class DateTimeHeader extends AbstractHeader<ZonedDateTime> {
+class DateTimeHeader extends AbstractHeader<ZonedDateTime> implements TimestampHeader<ZonedDateTime> {
 
-    private static final ZoneId GMT = ZoneId.of("Z");
+    static final ZoneId GMT = ZoneId.of("Z");
+
     DateTimeHeader(CharSequence name) {
         super(ZonedDateTime.class, name);
     }
@@ -118,6 +119,11 @@ class DateTimeHeader extends AbstractHeader<ZonedDateTime> {
             res = res.withZoneSameInstant(ZoneId.of("GMT"));
         }
         return res;
+    }
+
+    @Override
+    public TimestampHeader<Instant> toInstantHeader() {
+        return new InstantHeader(this);
     }
 
 }

@@ -1,7 +1,7 @@
-/* 
+/*
  * The MIT License
  *
- * Copyright 2013 Tim Boudreau.
+ * Copyright 2022 Mastfrog Technologies.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,37 +23,28 @@
  */
 package com.mastfrog.acteur.headers;
 
-import com.mastfrog.util.preconditions.Checks;
-import static com.mastfrog.util.preconditions.Checks.notNull;
-import static io.netty.util.CharsetUtil.UTF_8;
-import java.nio.charset.Charset;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import java.time.Instant;
+import java.time.ZonedDateTime;
+import java.time.temporal.ChronoField;
+import static org.junit.Assert.*;
+import org.junit.Test;
 
 /**
  *
  * @author Tim Boudreau
  */
-final class CharsetHeader extends AbstractHeader<Charset> {
+public class TimestampHeaderTest {
 
-    CharsetHeader(CharSequence name) {
-        super(Charset.class, name);
+    @Test
+    public void testInstantConversion() {
+        ZonedDateTime when = ZonedDateTime.now().with(ChronoField.NANO_OF_SECOND, 0).with(ChronoField.MILLI_OF_SECOND, 0);
+        TimestampHeader<ZonedDateTime> raw = Headers.LAST_MODIFIED;
+        String origFmt = raw.toCharSequence(when).toString();
+        TimestampHeader<Instant> inst = raw.toInstantHeader();
+        String fromInstant = inst.toCharSequence(when.toInstant()).toString();
+        assertEquals(origFmt, fromInstant);
+        Instant in = inst.convert(origFmt);
+        assertEquals(when.toInstant(), in);
     }
 
-    @Override
-    @SuppressWarnings("deprecation")
-    public String toString(Charset value) {
-        return value.name().toLowerCase();
-    }
-
-    @Override
-    public Charset toValue(CharSequence value) {
-        try {
-            return Charset.forName(notNull("value", value).toString());
-        } catch (Exception ex) {
-            Logger.getLogger(CharsetHeader.class.getName()).log(Level.INFO,
-                    "invalid charset header '" + value + "' for " + name(), ex);
-            return UTF_8;
-        }
-    }
 }

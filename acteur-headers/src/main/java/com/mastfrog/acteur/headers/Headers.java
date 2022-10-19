@@ -65,12 +65,12 @@ public final class Headers {
     private Headers() {
     }
     public static final HeaderValueType<CharSequence> EXPECT = header(HttpHeaderNames.EXPECT);
-    public static final HeaderValueType<ZonedDateTime> DATE = new DateTimeHeader(HttpHeaderNames.DATE);
-    public static final HeaderValueType<ZonedDateTime> LAST_MODIFIED = new DateTimeHeader(HttpHeaderNames.LAST_MODIFIED);
-    public static final HeaderValueType<ZonedDateTime> EXPIRES = new DateTimeHeader(HttpHeaderNames.EXPIRES);
-    public static final HeaderValueType<ZonedDateTime> IF_MODIFIED_SINCE = new DateTimeHeader(HttpHeaderNames.IF_MODIFIED_SINCE);
-    public static final HeaderValueType<ZonedDateTime> IF_UNMODIFIED_SINCE = new DateTimeHeader(HttpHeaderNames.IF_UNMODIFIED_SINCE);
-    public static final HeaderValueType<ZonedDateTime> RETRY_AFTER_DATE = new DateTimeHeader(HttpHeaderNames.RETRY_AFTER);
+    public static final TimestampHeader<ZonedDateTime> DATE = new DateTimeHeader(HttpHeaderNames.DATE);
+    public static final TimestampHeader<ZonedDateTime> LAST_MODIFIED = new DateTimeHeader(HttpHeaderNames.LAST_MODIFIED);
+    public static final TimestampHeader<ZonedDateTime> EXPIRES = new DateTimeHeader(HttpHeaderNames.EXPIRES);
+    public static final TimestampHeader<ZonedDateTime> IF_MODIFIED_SINCE = new DateTimeHeader(HttpHeaderNames.IF_MODIFIED_SINCE);
+    public static final TimestampHeader<ZonedDateTime> IF_UNMODIFIED_SINCE = new DateTimeHeader(HttpHeaderNames.IF_UNMODIFIED_SINCE);
+    public static final TimestampHeader<ZonedDateTime> RETRY_AFTER_DATE = new DateTimeHeader(HttpHeaderNames.RETRY_AFTER);
     public static final HeaderValueType<Duration> RETRY_AFTER_DURATION = new DurationHeader(HttpHeaderNames.RETRY_AFTER);
     public static final HeaderValueType<CharSequence> HOST = header(HttpHeaderNames.HOST);
     public static final HeaderValueType<MimeType> CONTENT_TYPE = new MimeTypeHeader();

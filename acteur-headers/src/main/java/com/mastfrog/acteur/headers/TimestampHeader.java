@@ -1,7 +1,7 @@
-/* 
+/*
  * The MIT License
  *
- * Copyright 2013 Tim Boudreau.
+ * Copyright 2022 Mastfrog Technologies.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,37 +23,20 @@
  */
 package com.mastfrog.acteur.headers;
 
-import com.mastfrog.util.preconditions.Checks;
-import static com.mastfrog.util.preconditions.Checks.notNull;
-import static io.netty.util.CharsetUtil.UTF_8;
-import java.nio.charset.Charset;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import java.time.Instant;
+import java.time.temporal.Temporal;
 
 /**
+ * Subtype of HeaderValueType instances which are convertible into an Instant.
  *
  * @author Tim Boudreau
  */
-final class CharsetHeader extends AbstractHeader<Charset> {
+public interface TimestampHeader<T extends Temporal> extends HeaderValueType<T> {
 
-    CharsetHeader(CharSequence name) {
-        super(Charset.class, name);
-    }
-
-    @Override
-    @SuppressWarnings("deprecation")
-    public String toString(Charset value) {
-        return value.name().toLowerCase();
-    }
-
-    @Override
-    public Charset toValue(CharSequence value) {
-        try {
-            return Charset.forName(notNull("value", value).toString());
-        } catch (Exception ex) {
-            Logger.getLogger(CharsetHeader.class.getName()).log(Level.INFO,
-                    "invalid charset header '" + value + "' for " + name(), ex);
-            return UTF_8;
-        }
-    }
+    /**
+     * Convert this header into one which accepts and returns Instant.
+     *
+     * @return An instant
+     */
+    TimestampHeader<Instant> toInstantHeader();
 }

@@ -309,11 +309,11 @@ public final class ByteRanges implements Iterable<Range> {
         }
     }
 
-    public static final class StartRange implements Range {
+    static final class StartRange implements Range {
 
         final long startpoint;
 
-        public StartRange(long startpoint) {
+        StartRange(long startpoint) {
             this.startpoint = startpoint;
         }
 
