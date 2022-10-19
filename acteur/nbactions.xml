@@ -43,4 +43,16 @@
                 <exec.executable>java</exec.executable>
             </properties>
         </action>
+        <action>
+            <actionName>CUSTOM-notests</actionName>
+            <displayName>notests</displayName>
+            <recursive>false</recursive>
+            <goals>
+                <goal>clean</goal>
+                <goal>install</goal>
+            </goals>
+            <properties>
+                <maven.test.skip.exec>true</maven.test.skip.exec>
+            </properties>
+        </action>
     </actions>
