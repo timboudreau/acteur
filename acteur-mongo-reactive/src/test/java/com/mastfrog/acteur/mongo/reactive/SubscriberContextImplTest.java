@@ -23,6 +23,7 @@
  */
 package com.mastfrog.acteur.mongo.reactive;
 
+import com.mastfrog.function.misc.QuietAutoClosable;
 import com.mastfrog.giulius.mongodb.reactive.MongoHarness;
 import com.mastfrog.giulius.mongodb.reactive.util.AbstractSubscriberContextTest;
 import com.mastfrog.giulius.mongodb.reactive.util.SubscriberContext;
@@ -31,7 +32,6 @@ import com.mastfrog.giulius.tests.GuiceRunner;
 import com.mastfrog.giulius.tests.IfBinaryAvailable;
 import com.mastfrog.giulius.tests.TestWith;
 import com.mastfrog.netty.http.test.harness.TestHarnessModule;
-import com.mastfrog.util.thread.QuietAutoCloseable;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import org.junit.Test;
@@ -55,7 +55,7 @@ public class SubscriberContextImplTest extends AbstractSubscriberContextTest {
         ReentrantScope oldScope = SCOPE.get();
         SCOPE.set(scope);
         CTX.set(ctx);
-        try ( QuietAutoCloseable qac = scope.enter("Hello")) {
+        try ( QuietAutoClosable qac = scope.enter("Hello")) {
             try {
                 r.run();
             } finally {

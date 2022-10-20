@@ -23,32 +23,38 @@
  */
 package com.mastfrog.acteur;
 
-import com.mastfrog.acteur.headers.Headers;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
 import com.mastfrog.acteur.annotations.Early;
 import com.mastfrog.acteur.debug.Probe;
-import com.mastfrog.acteur.headers.HeaderValueType;
-import com.mastfrog.settings.SettingsBuilder;
-import com.mastfrog.giulius.Dependencies;
-import com.mastfrog.giulius.scope.ReentrantScope;
 import com.mastfrog.acteur.header.entities.CacheControl;
 import com.mastfrog.acteur.header.entities.CacheControlTypes;
+import com.mastfrog.acteur.headers.HeaderValueType;
+import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.acteur.server.ServerModule;
 import static com.mastfrog.acteur.server.ServerModule.GUICE_BINDING_DEFAULT_CONTEXT_OBJECTS;
-import com.mastfrog.acteur.util.ErrorInterceptor;
 import com.mastfrog.acteur.spi.ApplicationControl;
 import com.mastfrog.acteur.util.ErrorHandlers;
+import com.mastfrog.acteur.util.ErrorInterceptor;
 import com.mastfrog.acteur.util.RequestID;
 import com.mastfrog.acteurbase.InstantiatingIterators;
+import com.mastfrog.function.misc.QuietAutoClosable;
+import com.mastfrog.giulius.Dependencies;
+import com.mastfrog.giulius.scope.ReentrantScope;
+import com.mastfrog.graal.annotation.Expose;
+import com.mastfrog.mime.MimeType;
 import com.mastfrog.settings.Settings;
-import com.mastfrog.util.preconditions.ConfigurationError;
+import com.mastfrog.settings.SettingsBuilder;
 import com.mastfrog.util.preconditions.Checks;
+import com.mastfrog.util.preconditions.ConfigurationError;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
+import io.netty.handler.codec.http.DefaultHttpResponse;
+import io.netty.handler.codec.http.DefaultLastHttpContent;
+import io.netty.handler.codec.http.FullHttpResponse;
 import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
@@ -69,12 +75,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
-import com.mastfrog.graal.annotation.Expose;
-import com.mastfrog.mime.MimeType;
-import io.netty.handler.codec.http.DefaultHttpResponse;
-import io.netty.handler.codec.http.DefaultLastHttpContent;
-import io.netty.handler.codec.http.FullHttpResponse;
-import com.mastfrog.util.thread.QuietAutoCloseable;
 
 /**
  * A web application. Principally, the application is a collection of Page
@@ -466,7 +466,7 @@ public class Application implements Iterable<Page> {
         final RequestID id = ids.next();
         probe.onBeforeProcessRequest(id, event);
         // Enter request scope with the id and the event
-        try (QuietAutoCloseable cl = scope.enter(event, id)) {
+        try (QuietAutoClosable cl = scope.enter(event, id)) {
             onBeforeEvent(id, event);
             return runner.onEvent(id, event, channel, defaultContextObjects);
         } catch (Exception e) {

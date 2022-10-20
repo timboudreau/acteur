@@ -38,6 +38,7 @@ import com.mastfrog.acteurbase.ActeurResponseFactory;
 import com.mastfrog.acteurbase.Chain;
 import com.mastfrog.acteurbase.Deferral;
 import com.mastfrog.acteurbase.Deferral.Resumer;
+import com.mastfrog.function.misc.QuietAutoClosable;
 import com.mastfrog.function.throwing.ThrowingConsumer;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.mime.MimeType;
@@ -49,7 +50,6 @@ import com.mastfrog.util.preconditions.Checks;
 import static com.mastfrog.util.preconditions.Checks.noNullElements;
 import static com.mastfrog.util.preconditions.Checks.notNull;
 import com.mastfrog.util.preconditions.Exceptions;
-import com.mastfrog.util.thread.QuietAutoCloseable;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.handler.codec.http.HttpResponseStatus;
@@ -184,10 +184,10 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
     }
 
     /**
-     * Create an acteur; subclasses should simply list objects they need for processing
-     * the request as arguments, and they will be injected by Guice, either from bindings
-     * the application was set up with, or objects provided by other Acteurs which have
-     * already been run for this request.
+     * Create an acteur; subclasses should simply list objects they need for
+     * processing the request as arguments, and they will be injected by Guice,
+     * either from bindings the application was set up with, or objects provided
+     * by other Acteurs which have already been run for this request.
      *
      * @param async If true, the framework should prefer to run the <i>next</i>
      * action asynchronously
@@ -804,7 +804,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
         public void operationComplete(ChannelFuture future) throws Exception {
             // Do our prerequesites - set the page, and reenter request
             // scope with the same contents as when we were instantiated
-            try (QuietAutoCloseable cl = Page.set(page)) {
+            try ( QuietAutoClosable cl = Page.set(page)) {
                 this.future = future;
                 delegate.call();
             }
@@ -845,7 +845,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
         @Override
         public void operationComplete(ChannelFuture future) throws Exception {
             this.future = future;
-            try (QuietAutoCloseable cl = Page.set(page)) {
+            try ( QuietAutoClosable cl = Page.set(page)) {
                 wrapper.call();
             }
         }

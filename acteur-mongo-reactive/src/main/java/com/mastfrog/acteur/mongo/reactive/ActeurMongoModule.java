@@ -31,6 +31,7 @@ import com.google.inject.name.Names;
 import com.mastfrog.acteur.mongo.reactive.MongoUpdater.MongoResult;
 import com.mastfrog.acteur.mongo.reactive.WriteCursorContentsAsJSON.CursorResult;
 import com.mastfrog.acteur.mongo.reactive.WriteCursorContentsAsJSON.SingleResult;
+import com.mastfrog.function.misc.QuietAutoClosable;
 import com.mastfrog.giulius.mongodb.reactive.DynamicCodecs;
 import com.mastfrog.giulius.mongodb.reactive.GiuliusMongoReactiveStreamsModule;
 import com.mastfrog.giulius.mongodb.reactive.Java8DateTimeCodecProvider;
@@ -43,7 +44,6 @@ import com.mastfrog.jackson.JacksonModule;
 import com.mastfrog.jackson.configuration.JacksonConfigurer;
 import static com.mastfrog.util.preconditions.Checks.notNull;
 import com.mastfrog.util.preconditions.Exceptions;
-import com.mastfrog.util.thread.QuietAutoCloseable;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.reactivestreams.client.AggregatePublisher;
 import com.mongodb.reactivestreams.client.FindPublisher;
@@ -385,7 +385,7 @@ public final class ActeurMongoModule extends AbstractModule implements MongoAsyn
         }
 
         @Override
-        protected QuietAutoCloseable beforeAfter() {
+        protected QuietAutoClosable beforeAfter() {
             try {
                 Thread t = Thread.currentThread();
                 UncaughtExceptionHandler old = t.getUncaughtExceptionHandler();

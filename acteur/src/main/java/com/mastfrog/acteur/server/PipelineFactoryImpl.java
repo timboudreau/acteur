@@ -43,9 +43,10 @@ import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_SSL_ENABLED;
 import static com.mastfrog.acteur.server.ServerModule.SSL_ATTRIBUTE_KEY;
 import static com.mastfrog.acteur.server.ServerModule.X_INTERNAL_COMPRESS;
 import com.mastfrog.acteur.spi.ApplicationControl;
+import com.mastfrog.function.misc.QuietAutoClosable;
+import com.mastfrog.function.threadlocal.ThreadLocalValue;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.util.preconditions.ConfigurationError;
-import com.mastfrog.util.thread.AutoCloseThreadLocal;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
@@ -53,10 +54,13 @@ import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.codec.compression.ZlibWrapper;
+import io.netty.handler.codec.http.FullHttpMessage;
+import io.netty.handler.codec.http.HttpContent;
 import io.netty.handler.codec.http.HttpContentCompressor;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import static io.netty.handler.codec.http.HttpHeaderNames.CONTENT_LENGTH;
 import io.netty.handler.codec.http.HttpHeaders;
+import io.netty.handler.codec.http.HttpMessage;
 import io.netty.handler.codec.http.HttpObject;
 import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpRequest;
@@ -65,14 +69,10 @@ import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseEncoder;
 import io.netty.util.AsciiString;
 import io.netty.util.AttributeKey;
+import io.netty.util.ReferenceCounted;
 import java.util.List;
 import javax.inject.Inject;
 import javax.inject.Singleton;
-import com.mastfrog.util.thread.QuietAutoCloseable;
-import io.netty.handler.codec.http.FullHttpMessage;
-import io.netty.handler.codec.http.HttpContent;
-import io.netty.handler.codec.http.HttpMessage;
-import io.netty.util.ReferenceCounted;
 
 @Singleton
 class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
@@ -344,7 +344,7 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
 
     static final class SelectiveAggregator extends HttpObjectAggregator {
 
-        static final AutoCloseThreadLocal<ChannelHandlerContext> localCtx = new AutoCloseThreadLocal<>();
+        static final ThreadLocalValue<ChannelHandlerContext> localCtx = ThreadLocalValue.create();
         private final Application app;
         private final boolean hasEarlyPages;
 
@@ -360,7 +360,7 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
                 super.channelRead(ctx, msg);
                 return;
             }
-            try (QuietAutoCloseable cl = localCtx.set(ctx)) {
+            try (QuietAutoClosable cl = localCtx.setTo(ctx)) {
                 super.channelRead(ctx, msg);
             }
         }

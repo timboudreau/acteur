@@ -39,6 +39,7 @@ import com.mastfrog.acteurbase.Chain;
 import com.mastfrog.acteurbase.ChainCallback;
 import com.mastfrog.acteurbase.ChainRunner;
 import com.mastfrog.acteurbase.ChainsRunner;
+import com.mastfrog.function.misc.QuietAutoClosable;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.giulius.DeploymentMode;
 import com.mastfrog.giulius.scope.ReentrantScope;
@@ -50,7 +51,6 @@ import com.mastfrog.util.collections.CollectionUtils;
 import com.mastfrog.util.collections.Converter;
 import com.mastfrog.util.preconditions.Exceptions;
 import com.mastfrog.util.strings.Strings;
-import com.mastfrog.util.thread.QuietAutoCloseable;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
 import io.netty.buffer.Unpooled;
@@ -326,7 +326,7 @@ class PagesImpl2 {
 
         private void handleHttpResponse(final ResponseImpl response, final State state, final Acteur acteur) {
             // Actually send the response
-            try (QuietAutoCloseable clos = Page.set(application.getDependencies().getInstance(Page.class))) {
+            try ( QuietAutoClosable clos = Page.set(application.getDependencies().getInstance(Page.class))) {
                 // Abort if the client disconnected
                 if (!channel.isOpen()) {
                     latch.countDown();
@@ -393,7 +393,7 @@ class PagesImpl2 {
             // XXX consider response.getDelay()?
             // This is ugly - we create an HttpResponse just to extract a wad of binary
             // data and send that as a WebSocketFrame.
-            try (QuietAutoCloseable cl = Page.set(state.getLockedPage())) {
+            try ( QuietAutoClosable cl = Page.set(state.getLockedPage())) {
                 HttpResponse resp = response.toResponse(event, application.charset);
                 if (resp instanceof FullHttpResponse) {
                     BinaryWebSocketFrame frame = new BinaryWebSocketFrame(((FullHttpResponse) resp).content());
@@ -431,9 +431,9 @@ class PagesImpl2 {
                 ErrorPage pg = new ErrorPage();
                 pg.setApplication(application);
                 // Build up a fake context for ErrorActeur to operate in
-                try (QuietAutoCloseable ac = Page.set(pg)) {
+                try ( QuietAutoClosable ac = Page.set(pg)) {
                     inUncaughtException = true;
-                    try (AutoCloseable ac2 = application.getRequestScope().enter(id, event, channel)) {
+                    try ( AutoCloseable ac2 = application.getRequestScope().enter(id, event, channel)) {
                         Acteur err = Acteur.error(null, pg, thrwbl,
                                 application.getDependencies().getInstance(Event.class), renderStackTraces);
 
@@ -457,7 +457,7 @@ class PagesImpl2 {
                             if (renderStackTraces) {
                                 buf = channel.alloc().ioBuffer();
                                 buf.touch("uncaught-exception-handling-a");
-                                try (PrintStream ps = new PrintStream(new ByteBufOutputStream(buf))) {
+                                try ( PrintStream ps = new PrintStream(new ByteBufOutputStream(buf))) {
                                     thrwbl.printStackTrace(ps);
                                 }
                             } else {
@@ -644,8 +644,8 @@ class PagesImpl2 {
                     @Override
                     public Acteur next() {
                         // XXX why are we not getting the context here?
-                        try (QuietAutoCloseable cl1 = scope.enter(ctx)) {
-                            try (QuietAutoCloseable cl = Page.set(page)) {
+                        try ( QuietAutoClosable cl1 = scope.enter(ctx)) {
+                            try ( QuietAutoClosable cl = Page.set(page)) {
                                 return orig.next();
                             }
                         }
@@ -714,7 +714,7 @@ class PagesImpl2 {
 
         @Override
         public T next() {
-            try (QuietAutoCloseable clos = scope.enter(ctx)) {
+            try ( QuietAutoClosable clos = scope.enter(ctx)) {
                 return delegate.next();
             }
         }

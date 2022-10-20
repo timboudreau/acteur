@@ -24,10 +24,10 @@
 package com.mastfrog.acteur.mongo.reactive;
 
 import com.mastfrog.acteurbase.Deferral;
+import com.mastfrog.function.misc.QuietAutoClosable;
 import com.mastfrog.giulius.mongodb.reactive.util.SubscriberContext;
 import com.mastfrog.util.preconditions.Exceptions;
 import com.mastfrog.util.strings.Strings;
-import com.mastfrog.util.thread.QuietAutoCloseable;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.List;
@@ -45,7 +45,7 @@ import org.reactivestreams.Subscription;
  *
  * @author Tim Boudreau
  */
-final class EtagEvaluator implements Subscriber<Document>, QuietAutoCloseable {
+final class EtagEvaluator implements Subscriber<Document>, QuietAutoClosable {
 
     private static final byte[] NO_VALUE = new byte[]{0};
     private static final byte[] ZERO = new byte[]{127};

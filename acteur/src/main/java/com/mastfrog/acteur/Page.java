@@ -28,10 +28,11 @@ import com.google.inject.ImplementedBy;
 import com.mastfrog.acteur.headers.Method;
 import com.mastfrog.acteur.preconditions.Description;
 import com.mastfrog.acteur.preconditions.PageAnnotationHandler;
+import com.mastfrog.function.misc.QuietAutoClosable;
+import com.mastfrog.function.threadlocal.ThreadLocalValue;
+import static com.mastfrog.util.collections.CollectionUtils.setOf;
 import com.mastfrog.util.preconditions.Checks;
 import static com.mastfrog.util.preconditions.Checks.notNull;
-import static com.mastfrog.util.collections.CollectionUtils.setOf;
-import com.mastfrog.util.thread.AutoCloseThreadLocal;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import static java.util.Collections.singleton;
@@ -41,7 +42,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import com.mastfrog.util.thread.QuietAutoCloseable;
 
 /**
  * Really an aggregation of Acteurs and a place to set header values; in recent
@@ -78,7 +78,7 @@ import com.mastfrog.util.thread.QuietAutoCloseable;
  */
 public abstract class Page {
 
-    private static final AutoCloseThreadLocal<Page> CURRENT_PAGE = new AutoCloseThreadLocal<>();
+    private static final ThreadLocalValue<Page> CURRENT_PAGE = ThreadLocalValue.create();
     private final List<Object> acteurs = new ArrayList<>(10);
     volatile Application application;
 
@@ -172,9 +172,9 @@ public abstract class Page {
         }
     }
 
-    static QuietAutoCloseable set(Page page) {
+    static QuietAutoClosable set(Page page) {
         Checks.notNull("page", page);
-        QuietAutoCloseable result = CURRENT_PAGE.set(page);
+        QuietAutoClosable result = CURRENT_PAGE.setTo(page);
         assert CURRENT_PAGE.get() != null;
         return result;
     }

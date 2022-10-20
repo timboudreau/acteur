@@ -27,6 +27,7 @@ import com.google.inject.ProvisionException;
 import static com.mastfrog.acteurbase.AbstractActeur.DEBUG;
 import com.mastfrog.acteurbase.Deferral.DeferredCode;
 import com.mastfrog.acteurbase.Deferral.Resumer;
+import com.mastfrog.function.misc.QuietAutoClosable;
 import com.mastfrog.giulius.scope.ReentrantScope;
 import com.mastfrog.util.preconditions.Checks;
 import com.mastfrog.util.preconditions.Exceptions;
@@ -38,7 +39,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import javax.inject.Inject;
-import com.mastfrog.util.thread.QuietAutoCloseable;
 
 /**
  * Runs a chain of AbstractActeurs, invoking the callback when the chain has
@@ -87,7 +87,7 @@ public final class ChainRunner {
         ActeurInvoker<A, S, P, T, R> cc = new ActeurInvoker<>(svc, scope, chain, onDone, cancelled);
         // Enter the scope, with the Chain (so it can be dynamically added to)
         // and the deferral, which can be used to pause the chain
-        try (QuietAutoCloseable ac = scope.enter(chain, cc.deferral)) {
+        try ( QuietAutoClosable ac = scope.enter(chain, cc.deferral)) {
             // Non-default:  Eliminates the possibility that payload bytes will be processed before
             // the headers, *if* the first acteur in the first chain fully processes the request
             // - useful for some applications that use @Early, and may provide
@@ -193,7 +193,7 @@ public final class ChainRunner {
             if (cancelled.get()) {
                 return null;
             }
-            try (AutoCloseable ctx = scope.enter(chain.getContextContribution())) {
+            try ( AutoCloseable ctx = scope.enter(chain.getContextContribution())) {
                 AutoCloseable ac = null;
                 // Optimization - only reenter the scope if we have some state
                 // from previous acteurs to incorporate into it
@@ -266,7 +266,7 @@ public final class ChainRunner {
                 } else {
                     // Ensure any ResponseDecorators are run with full
                     // scope contents
-                    try (QuietAutoCloseable cl = scope.enter(state)) {
+                    try ( QuietAutoClosable cl = scope.enter(state)) {
                         onDone.onDone(newState, responses);
                     }
                 }
