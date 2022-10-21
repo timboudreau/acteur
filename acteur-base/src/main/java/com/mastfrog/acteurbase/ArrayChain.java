@@ -23,7 +23,7 @@
  */
 package com.mastfrog.acteurbase;
 
-import com.mastfrog.abstractions.Instantiator;
+import com.mastfrog.abstractions.instantiate.Instantiator;
 import com.mastfrog.util.preconditions.Checks;
 import com.mastfrog.util.preconditions.ConfigurationError;
 import java.lang.reflect.Modifier;

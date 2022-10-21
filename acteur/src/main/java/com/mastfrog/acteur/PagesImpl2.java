@@ -24,7 +24,7 @@
 package com.mastfrog.acteur;
 
 import com.google.inject.name.Named;
-import com.mastfrog.abstractions.Instantiator;
+import com.mastfrog.abstractions.instantiate.Instantiator;
 import com.mastfrog.acteur.errors.ResponseException;
 import com.mastfrog.acteur.header.entities.CacheControl;
 import com.mastfrog.acteur.headers.HeaderValueType;
