@@ -191,7 +191,6 @@ public class ChainRunnerTest {
             assertTrue(chain instanceof NamedChain);
             NamedChain nc = (NamedChain) chain;
             if ("Remnant".equals(chain.toString())) {
-                System.out.println("On remnant chain");
                 Supplier<Chain> supp = chain.remnantSupplier();
                 Chain nue = supp.get();
                 Set<Class<?>> s = new HashSet<>();
@@ -202,7 +201,6 @@ public class ChainRunnerTest {
                 assertTrue(s.contains(XA2.class));
                 assertEquals(2, s.size());
             }
-            System.out.println("firstA " + Thread.currentThread());
             setState(new ActeurState<Response, ResponseImpl>("hello"));
         }
     }
@@ -210,17 +208,15 @@ public class ChainRunnerTest {
     static class SecondA extends A2 {
 
         @Inject
+        @SuppressWarnings("deprecation")
         SecondA(String msg, Timer timer, Deferral defer) {
-            System.out.println("secondA " + msg + " " + Thread.currentThread());
             response().add(Headers.CONTENT_ENCODING, "foo " + msg);
             setState(new ActeurState<Response, ResponseImpl>(23));
-            System.out.println("defer");
             final Resumer resume = defer.defer();
             timer.schedule(new TimerTask() {
 
                 @Override
                 public void run() {
-                    System.out.println("timer task run");
                     resume.resume();
                 }
             }, 1000);
@@ -231,7 +227,6 @@ public class ChainRunnerTest {
 
         @Inject
         SecondWithoutTimeoutA(String msg) {
-            System.out.println("secondA " + msg + " " + Thread.currentThread());
             response().add(Headers.CONTENT_ENCODING, "foo " + msg);
             setState(new ActeurState<Response, ResponseImpl>(23));
         }
@@ -242,7 +237,6 @@ public class ChainRunnerTest {
         @Inject
         @SuppressWarnings("unchecked")
         FinalA(String msg, Integer val, Chain chain) {
-            System.out.println("finalA " + val + " " + Thread.currentThread());
             response().add(Headers.ACCEPT, "3 ");
             setState(new ActeurState<Response, ResponseImpl>(0.5F));
             chain.add(AddedA.class);
@@ -254,7 +248,6 @@ public class ChainRunnerTest {
 
         @Inject
         AddedA(Float f) {
-            System.out.println("AddedA " + f + " " + Thread.currentThread());
             response().setStatus(HttpResponseStatus.CREATED);
             setState(new ActeurState<Response, ResponseImpl>(false));
         }

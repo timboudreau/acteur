@@ -136,6 +136,7 @@ public final class ChainRunner {
             Throwable stack;
 
             @Override
+            @SuppressWarnings("deprecation")
             public Resumer defer() {
                 if (deferred.compareAndSet(false, true)) {
                     if (DEBUG) {

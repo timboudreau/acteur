@@ -23,7 +23,7 @@
  */
 package com.mastfrog.acteurbase;
 
-import com.mastfrog.giulius.Dependencies;
+import com.mastfrog.abstractions.Instantiator;
 import com.mastfrog.util.strings.Strings;
 import com.mastfrog.util.collections.CollectionUtils;
 import com.mastfrog.util.collections.Converter;
@@ -41,16 +41,16 @@ import javax.inject.Inject;
  */
 public final class InstantiatingIterators {
 
-    private final Dependencies deps;
+    private final Instantiator deps;
     private final AtomicInteger position;
 
     @Inject
-    InstantiatingIterators(Dependencies deps) {
+    InstantiatingIterators(Instantiator deps) {
         this.deps = deps;
         this.position = null;
     }
 
-    InstantiatingIterators(Dependencies deps, AtomicInteger position) {
+    InstantiatingIterators(Instantiator deps, AtomicInteger position) {
         this.deps = deps;
         this.position = position;
     }
@@ -80,8 +80,8 @@ public final class InstantiatingIterators {
     }
 
     /**
-     * Iterator which, intentionally, allows items to be added
-     * while iterating.
+     * Iterator which, intentionally, allows items to be added while iterating.
+     *
      * @param <T> The type
      */
     static class PermissiveIterator<T> implements Iterator<T> {

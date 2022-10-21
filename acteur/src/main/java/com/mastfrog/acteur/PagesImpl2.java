@@ -24,6 +24,7 @@
 package com.mastfrog.acteur;
 
 import com.google.inject.name.Named;
+import com.mastfrog.abstractions.Instantiator;
 import com.mastfrog.acteur.errors.ResponseException;
 import com.mastfrog.acteur.header.entities.CacheControl;
 import com.mastfrog.acteur.headers.HeaderValueType;
@@ -40,7 +41,6 @@ import com.mastfrog.acteurbase.ChainCallback;
 import com.mastfrog.acteurbase.ChainRunner;
 import com.mastfrog.acteurbase.ChainsRunner;
 import com.mastfrog.function.misc.QuietAutoClosable;
-import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.giulius.DeploymentMode;
 import com.mastfrog.giulius.scope.ReentrantScope;
 import com.mastfrog.mime.MimeType;
@@ -602,7 +602,7 @@ class PagesImpl2 {
         boolean isReconstituted;
         private Application app;
 
-        PageChain(Application app, Dependencies deps, ReentrantScope scope, Class<? super Acteur> type, Page page, Object... ctx) {
+        PageChain(Application app, Instantiator deps, ReentrantScope scope, Class<? super Acteur> type, Page page, Object... ctx) {
             super(deps, type, page.acteurs(app.isDefaultCorsHandlingEnabled()));
             this.page = page;
             this.ctx = ctx;
@@ -610,7 +610,7 @@ class PagesImpl2 {
             this.app = app;
         }
 
-        PageChain(Application app, Dependencies deps, ReentrantScope scope, Class<? super Acteur> type, List<Object> pages, Object[] ctx) {
+        PageChain(Application app, Instantiator deps, ReentrantScope scope, Class<? super Acteur> type, List<Object> pages, Object[] ctx) {
             super(deps, type, pages);
             isReconstituted = true;
             this.scope = scope;

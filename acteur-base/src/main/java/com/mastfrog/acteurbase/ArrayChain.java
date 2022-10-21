@@ -23,7 +23,7 @@
  */
 package com.mastfrog.acteurbase;
 
-import com.mastfrog.giulius.Dependencies;
+import com.mastfrog.abstractions.Instantiator;
 import com.mastfrog.util.preconditions.Checks;
 import com.mastfrog.util.preconditions.ConfigurationError;
 import java.lang.reflect.Modifier;
@@ -44,12 +44,12 @@ import java.util.function.Supplier;
 public class ArrayChain<T, C extends ArrayChain<T, C>> implements Chain<T, C> {
 
     protected final List<Object> types = new LinkedList<>();
-    protected final Dependencies deps;
+    protected final Instantiator deps;
     protected final Class<? super T> type;
     protected AtomicInteger chainPosition;
 
     @SuppressWarnings("unchecked")
-    public ArrayChain(Dependencies deps, Class<? super T> type, List<Object> objs) {
+    public ArrayChain(Instantiator deps, Class<? super T> type, List<Object> objs) {
         this(deps, type);
         for (Object o : objs) {
             if (o == null) {
@@ -68,7 +68,7 @@ public class ArrayChain<T, C extends ArrayChain<T, C>> implements Chain<T, C> {
         }
     }
 
-    public ArrayChain(Dependencies deps, Class<? super T> type) {
+    public ArrayChain(Instantiator deps, Class<? super T> type) {
         Checks.notNull("deps", deps);
         Checks.notNull("type", type);
         this.deps = deps;

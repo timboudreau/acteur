@@ -21,12 +21,12 @@
     <dependencies>
         <dependency>
             <groupId>${project.groupId}</groupId>
-            <artifactId>acteur-headers</artifactId>
-            <scope>test</scope>
+            <artifactId>scopes</artifactId>
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
-            <artifactId>scopes</artifactId>
+            <artifactId>acteur-headers</artifactId>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>junit</groupId>
@@ -36,6 +36,7 @@
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>giulius</artifactId>
+            <scope>test</scope>
         </dependency>
     </dependencies>
     <name>acteur-base</name>
