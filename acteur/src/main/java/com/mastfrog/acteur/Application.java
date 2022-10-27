@@ -70,6 +70,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -248,7 +249,7 @@ public class Application implements Iterable<Page> {
     private HelpGenerator helpGenerator;
 
     Map<String, Object> describeYourself() {
-        Map<String, Object> m = new HashMap<>();
+        Map<String, Object> m = new LinkedHashMap<>();
         List<Object> allPagesAndPageTypes = new ArrayList<>(this.earlyPages);
         allPagesAndPageTypes.addAll(this.pages);
         helpGenerator.generate(this, allPagesAndPageTypes, m);

@@ -330,10 +330,10 @@ public class ActeurFactory {
             this.deps = deps;
             this.type = type;
         }
-        
+
         @Override
         public String toString() {
-            return "Deserialize and inject the request body as " + type.getName();
+            return "Deserialize and inject the request body as a " + type.getSimpleName();
         }
 
         @Override
@@ -557,8 +557,16 @@ public class ActeurFactory {
 
             @Override
             public void describeYourself(Map<String, Object> into) {
-                into.put("URL parameters must be numbers if present" + (allowNegative ? "(negative allowed) " : ("(must be non-negative) "))
-                        + (allowDecimal ? "(decimal-allowed)" : "(must be integers)") + (""), names);
+                String qualifier = allowDecimal ? "decimal or integral numbers"
+                        : "integral numbers";
+                if (!allowDecimal) {
+                    qualifier = "positive " + qualifier;
+                }
+                into.put("These URL parameters must be " + qualifier + " if present", names);
+            }
+
+            public String toString() {
+                return "Query Param Number Constraints";
             }
 
             @Override

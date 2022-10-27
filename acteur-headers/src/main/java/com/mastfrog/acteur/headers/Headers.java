@@ -183,9 +183,20 @@ public final class Headers {
                     .appendValue(ChronoField.SECOND_OF_MINUTE, 2).appendLiteral(" ")
                     .appendZoneOrOffsetId().toFormatter();
 
+    public static final DateTimeFormatter ISO2822DateFormatForOutput
+            = new DateTimeFormatterBuilder()
+                    .appendText(ChronoField.DAY_OF_WEEK, TextStyle.SHORT_STANDALONE).appendLiteral(", ")
+                    .appendText(ChronoField.DAY_OF_MONTH, TextStyle.FULL).appendLiteral(" ")
+                    .appendText(ChronoField.MONTH_OF_YEAR, TextStyle.SHORT).appendLiteral(" ")
+                    .appendText(ChronoField.YEAR, TextStyle.FULL).appendLiteral(" ")
+                    .appendValue(ChronoField.HOUR_OF_DAY, 2).appendLiteral(":")
+                    .appendValue(ChronoField.MINUTE_OF_HOUR, 2).appendLiteral(":")
+                    .appendValue(ChronoField.SECOND_OF_MINUTE, 2).appendLiteral(" ")
+                    .appendOffsetId().toFormatter();
+
     static final DateTimeFormatter TWO_DIGIT_YEAR
             = new DateTimeFormatterBuilder()
-//                    .appendText(ChronoField.DAY_OF_WEEK, TextStyle.SHORT_STANDALONE).appendLiteral(", ")
+                    //                    .appendText(ChronoField.DAY_OF_WEEK, TextStyle.SHORT_STANDALONE).appendLiteral(", ")
                     .appendText(ChronoField.DAY_OF_MONTH, TextStyle.FULL).appendLiteral(" ")
                     .appendText(ChronoField.MONTH_OF_YEAR, TextStyle.SHORT).appendLiteral(" ")
                     .appendValue(ChronoField.YEAR, 2, 4, SignStyle.NEVER).appendLiteral(" ")
@@ -195,9 +206,10 @@ public final class Headers {
                     .appendZoneOrOffsetId().toFormatter();
 
     static final ZoneId UTC = ZoneId.of("GMT");
+
     public static String toISO2822Date(ZonedDateTime dt) {
-//        dt = dt.withZoneSameInstant(UTC);
-        return dt.format(ISO2822DateFormat);
+        dt = dt.withZoneSameInstant(UTC);
+        return dt.format(ISO2822DateFormatForOutput);
 //        return dt.toDateTime(DateTimeZone.UTC).toDateTimeISO().toString(
 //                ISO2822DateFormat);
     }

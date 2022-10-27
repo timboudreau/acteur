@@ -43,6 +43,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -50,7 +51,7 @@ import java.util.TreeMap;
 import javax.inject.Inject;
 
 /**
- * Generates JSON help for the application;  HelpPage converts this into HTML.
+ * Generates JSON help for the application; HelpPage converts this into HTML.
  *
  * @author Tim Boudreau
  */
@@ -83,7 +84,7 @@ public final class HelpGenerator {
         for (Object o : pagesAndPageTypes) {
             if (o instanceof Class<?>) {
                 Class<?> type = (Class<?>) o;
-                Map<String, Object> pageDescription = new HashMap<>();
+                Map<String, Object> pageDescription = new LinkedHashMap<>();
                 String typeName = type.getName();
                 if (typeName.endsWith(HttpCall.GENERATED_SOURCE_SUFFIX)) {
                     typeName = typeName.substring(0, typeName.length() - HttpCall.GENERATED_SOURCE_SUFFIX.length());
@@ -112,7 +113,7 @@ public final class HelpGenerator {
                         }
                         continue;
                     }
-                    Map<String, Object> annoDescription = new HashMap<>();
+                    Map<String, Object> annoDescription = new LinkedHashMap<>();
                     pageDescription.put(a.annotationType().getSimpleName(), annoDescription);
                     try {
                         introspectAnnotation(application, a, annoDescription);
@@ -139,9 +140,12 @@ public final class HelpGenerator {
                                 introspectAnnotation(application, a1, callFlow);
                             }
                             if (!className.equals(at.getSimpleName())) {
-                                if (!callFlow.isEmpty()) {
-                                    pageDescription.put(at.getSimpleName(), callFlow);
+                                for (Annotation a2 : at.getAnnotations()) {
+                                    introspectAnnotation(application, a2, callFlow);
                                 }
+                            }
+                            if (!callFlow.isEmpty()) {
+                                pageDescription.put(at.getSimpleName(), callFlow);
                             }
                         } else if (acteur instanceof Acteur) {
                             Map<String, Object> callFlow = new HashMap<>();
@@ -156,6 +160,7 @@ public final class HelpGenerator {
                     }
                 } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
                     // A page may legitimately be uninstantiable
+                    e.printStackTrace();
                 }
             } else if (o instanceof Page) {
                 ((Page) o).describeYourself(m);
@@ -227,13 +232,13 @@ public final class HelpGenerator {
                 into.put("example-" + ix++, m);
             }
         } else if (a instanceof GeneratedFrom) {
-                GeneratedFrom gf = (GeneratedFrom) a;
-                Class<?> from = gf.value();
-                into.put("name", from.getName());
-                Description desc = from.getAnnotation(Description.class);
-                if (desc != null) {
-                    into.put("description", desc.value());
-                }
+            GeneratedFrom gf = (GeneratedFrom) a;
+            Class<?> from = gf.value();
+            into.put("name", from.getName());
+            Description desc = from.getAnnotation(Description.class);
+            if (desc != null) {
+                into.put("description", desc.value());
+            }
         } else if (a != null) {
             Class<? extends Annotation> type = a.annotationType();
             for (java.lang.reflect.Method m : type.getMethods()) {

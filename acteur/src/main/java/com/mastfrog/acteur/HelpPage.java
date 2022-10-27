@@ -455,7 +455,7 @@ final class HelpPage extends Page {
                                     m.remove("Sample Output");
                                 }
                             }
-                            sb.append("<h4>Code Elements:</h4>\n");
+                            sb.append("<h4>Request Processing Steps</h4>\n");
                             writeOut(null, e.getValue(), sb, null, 1);
                             if (it.hasNext()) {
                                 sb.append("\n<hr/>\n");
