@@ -42,6 +42,7 @@
         <module>acteur-server-sent-events</module>
         <module>mime</module>
         <module>acteur-header-entities</module>
+        <module>simple-webserver</module>
     </modules>
     <issueManagement>
         <system>Github</system>

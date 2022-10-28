@@ -83,7 +83,7 @@ public class DynamicCodecsTest {
 
     private static final ZonedDateTime ZDT = TimeUtil.fromUnixTimestamp(0);
 
-    @Test
+    @Test(timeout=20000L)
     public void testZonedDateTime(@Named("stuff") MongoCollection<Document> stuff) throws Throwable {
         ObjectId id = new ObjectId();
         Document a = new Document("one", "hello").append("zdt", ZDT).append("thing", id);

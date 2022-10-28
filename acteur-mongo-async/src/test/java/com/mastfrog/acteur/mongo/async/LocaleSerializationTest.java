@@ -75,7 +75,7 @@ public class LocaleSerializationTest {
         });
     }
 
-    @Test
+    @Test(timeout=20000L)
     @SuppressWarnings("unchecked")
     public void testLocaleSerialization(@Named("locs") MongoCollection<LocThing> c) throws IOException, Throwable {
         // First, test that plain Jackson serialization works with JacksonModule. By default,

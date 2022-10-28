@@ -118,9 +118,11 @@
                     <parallel/>
                     <parallelMavenExecution>false</parallelMavenExecution>
                     <perCoreThreadCount>1</perCoreThreadCount>
+                    <forkMode>none</forkMode>
                     <threadCount>1</threadCount>
                     <reuseForks>false</reuseForks>
                     <useFile>false</useFile>
+                    <trimStackTrace>false</trimStackTrace>
 
                     <systemPropertyVariables>
                         <acteur.debug>false</acteur.debug>

@@ -79,7 +79,7 @@ public class Java8TimeSerializationTest {
         });
     }
 
-    @Test
+    @Test(timeout=20000L)
     @SuppressWarnings("deprecation")
     public void testJava8ElementsInDocument(@Named("more") MongoCollection<Document> c) throws IOException, Throwable {
         Document d = new Document("now", ZonedDateTime.now()).append("offset", OffsetDateTime.now())
@@ -99,7 +99,7 @@ public class Java8TimeSerializationTest {
         assertTrue(g.get("local") instanceof Date);
     }
 
-    @Test
+    @Test(timeout=20000L)
     public void testTimeSerialization(@Named("times") MongoCollection<TimeThing> c) throws IOException, Throwable {
         TimeThing tt = new TimeThing();
         Map<String, Object> m = toMap(tt);
