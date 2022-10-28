@@ -69,7 +69,7 @@ public class TestBsonArrays {
     static final ArrayPayloadThing AP3 = new ArrayPayloadThing("three",
             new Inner("threeA", currentTimeMillis()), new Inner("threeB", currentTimeMillis()), new Inner("threeC", currentTimeMillis()));
 
-    @Test
+    @Test(timeout=20000L)
     public void test(@Named("aps") MongoCollection<ArrayPayloadThing> coll) {
         TestSupport.await(ts -> {
             coll.insertMany(Arrays.asList(AP1, AP2), ts.callback(ur -> {

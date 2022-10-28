@@ -73,7 +73,7 @@ public class ByteBufCodecTest {
                     new DocumentCodecProvider(),
                     new BsonValueCodecProvider()));
 
-    @Test
+    @Test(timeout=20000L)
     public void test(@Named("stuff") MongoCollection<Document> stuff) throws InterruptedException, IOException {
         byte[] bytes = new byte[120];
         for (int i = 0; i < bytes.length; i++) {
