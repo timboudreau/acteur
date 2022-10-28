@@ -26,10 +26,6 @@
             <artifactId>acteur</artifactId>
         </dependency>
         <dependency>
-            <artifactId>netty-buffer</artifactId>
-            <groupId>io.netty</groupId>
-        </dependency>
-        <dependency>
             <groupId>org.xeustechnologies</groupId>
             <artifactId>jtar</artifactId>
         </dependency>

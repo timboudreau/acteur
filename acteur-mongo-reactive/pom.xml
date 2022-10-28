@@ -24,17 +24,6 @@
 
     <dependencies>
         <dependency>
-            <groupId>org.mongodb</groupId>
-            <artifactId>mongodb-driver-reactivestreams</artifactId>
-            <version>4.7.1</version>
-        </dependency>
-        <dependency>
-            <groupId>org.mongodb</groupId>
-            <artifactId>bson</artifactId>
-            <version>4.7.1</version>
-        </dependency>        
-
-        <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>annotation-processors</artifactId>
             <scope>provided</scope>
@@ -47,10 +36,6 @@
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>acteur</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>${project.groupId}</groupId>
-            <artifactId>function</artifactId>
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
