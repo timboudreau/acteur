@@ -25,6 +25,9 @@ package com.mastfrog.simple.webserver;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
+import com.google.inject.Module;
+import com.google.inject.name.Named;
+import com.google.inject.name.Names;
 import com.mastfrog.acteur.Acteur;
 import com.mastfrog.acteur.ActeurFactory;
 import com.mastfrog.acteur.Application;
@@ -42,6 +45,7 @@ import com.mastfrog.acteur.resources.ResourcesPage;
 import com.mastfrog.acteur.resources.StaticResources;
 import static com.mastfrog.acteur.resources.StaticResources.RESOURCE_FOLDERS_KEY;
 import com.mastfrog.acteur.server.PathFactory;
+import com.mastfrog.acteur.server.ServerLifecycleHook;
 import com.mastfrog.acteur.server.ServerModule;
 import static com.mastfrog.acteur.server.ServerModule.PORT;
 import com.mastfrog.acteur.util.ServerControl;
@@ -57,6 +61,7 @@ import com.mastfrog.settings.SettingsBuilder;
 import static com.mastfrog.util.preconditions.Checks.notNull;
 import com.mastfrog.util.time.TimeUtil;
 import static com.mastfrog.util.time.TimeUtil.GMT;
+import io.netty.channel.Channel;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import static io.netty.handler.codec.http.HttpResponseStatus.FOUND;
 import static io.netty.handler.codec.http.HttpResponseStatus.NOT_MODIFIED;
@@ -65,8 +70,12 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
 
 /**
  * A simple acteur-based file server.
@@ -80,6 +89,29 @@ public final class FileServer extends AbstractModule {
     // servers to proxy, so we need to run things in isolation.
     private final File dir;
     private final ReentrantScope scope = new ReentrantScope();
+    private final CountDownLatch latch = new CountDownLatch(1);
+    private final List<Module> modules = new ArrayList<>(3);
+
+    /**
+     * Add a module to be installed with this one.
+     *
+     * @param module A module
+     * @return this
+     */
+    public FileServer withModule(Module module) {
+        modules.add(module);
+        return this;
+    }
+
+    /**
+     * If tests need to await the server being fully up and running, wait on
+     * this latch.
+     *
+     * @return A count down latch
+     */
+    public CountDownLatch latch() {
+        return latch;
+    }
 
     /**
      * Create a new file server.
@@ -153,7 +185,7 @@ public final class FileServer extends AbstractModule {
 
     /**
      * Start a file server with the passed settings over the passed directory.
-     * 
+     *
      * @param settings A settings
      * @param f A file
      * @return A ServerControl
@@ -181,12 +213,38 @@ public final class FileServer extends AbstractModule {
 
     @Override
     protected void configure() {
+        for (Module m : modules) {
+            install(m);
+        }
+        bind(CountDownLatch.class)
+                .annotatedWith(Names.named("_fsLatch"))
+                .toInstance(latch);
+        bind(Hooks.class).asEagerSingleton();
         // Bind File.class to the folder we want to serve, from command line args / settings
         bind(File.class).toInstance(dir);
         // DynamicFileResources is a simple implementation of StaticResources that doesn't
         // cache data in memory or do anything exciting (others do).
         bind(StaticResources.class).to(DynamicFileResources.class).asEagerSingleton();
         scope.bindTypes(binder(), Resource.class);
+    }
+
+    static class Hooks extends ServerLifecycleHook {
+
+        private final CountDownLatch latch;
+        private final ExecutorService bgPool;
+
+        @Inject
+        Hooks(Registry reg, @Named("_fsLatch") CountDownLatch latch,
+                @Named(ServerModule.BACKGROUND_THREAD_POOL_NAME) ExecutorService bgPool) {
+            super(reg);
+            this.latch = latch;
+            this.bgPool = bgPool;
+        }
+
+        @Override
+        protected void onStartup(Application application, Channel channel) throws Exception {
+            bgPool.submit(latch::countDown);
+        }
     }
 
     @Help
