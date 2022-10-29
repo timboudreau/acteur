@@ -125,6 +125,7 @@ public class MimeTypes {
         add("rss", MimeType.create("application", "rss+xml").withCharset(charset), true, COMPRESS);
         add("jar", MimeType.create("application", "java-archive"), false, IDENTITY);
         add("java", MimeType.create("text", "x-java"), false, IDENTITY);
+        add("jar", MimeType.create("application", "java-archive"), false, IDENTITY);
         add("class", MimeType.create("application", "java-vm"), false, IDENTITY);
         add("jng", MimeType.create("image", "x-jng"), false, IDENTITY);
         add("m3u8", MimeType.create("application", "vnd.apple.mpegurl").withCharset(charset), true, IDENTITY);

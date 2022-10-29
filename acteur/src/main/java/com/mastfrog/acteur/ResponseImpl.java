@@ -105,6 +105,7 @@ import java.util.concurrent.atomic.AtomicReference;
  */
 final class ResponseImpl extends Response {
 
+    static boolean DEBUG_BAD_LISTENER_STRINGS = Boolean.getBoolean("acteur.debug.listeners.strings");
     private volatile boolean modified;
     HttpResponseStatus status;
     private final List<Entry<?>> headers = new ArrayList<>(3);
@@ -423,14 +424,31 @@ final class ResponseImpl extends Response {
     String listenerString() {
         if (listener != null) {
             if (listener instanceof ResponseWriterListener) {
-                return ((ResponseWriterListener) listener).writer.getClass().getName();
+                return checkValidCharacters(((ResponseWriterListener) listener).writer.getClass().getName());
             }
             if (listener instanceof Acteur.ScopeWrapper || listener instanceof Acteur.IWrapper) {
-                return listener.toString();
+                return checkValidCharacters(listener.toString());
             }
-            return listener.getClass().getName();
+            return checkValidCharacters(listener.getClass().getName());
         }
-        return "<no listener>";
+        return "no-listener";
+    }
+
+    static String checkValidCharacters(String ls) {
+         // Comment this if we have acteurs returning garbage strings from
+        // toString() which contain 0x0 - these will cause an exception from
+        // netty
+        if (!DEBUG_BAD_LISTENER_STRINGS) {
+            return ls;
+        }
+        for (int i = 0; i < ls.length(); i++) {
+            char c = ls.charAt(i);
+            if (c == 0) {
+                new IllegalArgumentException("Bad string '" + ls + "'").printStackTrace();
+                return "bad-listener-string";
+            }
+        }
+        return ls;
     }
 
     private static final class ResponseWriterListener extends AbstractOutput implements ChannelFutureListener {
