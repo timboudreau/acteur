@@ -53,19 +53,30 @@ final class AsyncAuthenticationActeur extends AuthenticationActeur {
     @SuppressWarnings("unchecked")
     AsyncAuthenticationActeur(AsyncAuthenticator<?> auth, Chain chain, HttpEvent evt, RequestID rid, Page page) {
         String authHeader = evt.header(HttpHeaderNames.AUTHORIZATION);
+        String scheme = "bearer ";
         if (authHeader == null) {
             Authenticated anno = page.getClass().getAnnotation(Authenticated.class);
-            if (anno == null || !OPTIONAL.equals(anno.value())) {
+            if (anno != null) {
+                switch(anno.value()) {
+                    case "default":
+                    case "optional":
+                        break;
+                    default :
+                        scheme = anno.value() + " ";
+                }
+            }
+            if (anno == null || !OPTIONAL.equals(anno.value()) || !anno.optional()) {
                 reply(UNAUTHORIZED, "No auth header present");
                 return;
-            } else if (OPTIONAL.equals(anno.value())) {
+            } else if (OPTIONAL.equals(anno.value()) || anno.optional()) {
                 next();
                 return;
             }
         }
+
         String token;
-        if (Strings.startsWithIgnoreCase(authHeader, "bearer ")) {
-            token = Strings.urlDecode(authHeader.substring("bearer ".length()));
+        if (Strings.startsWithIgnoreCase(authHeader, scheme)) {
+            token = Strings.urlDecode(authHeader.substring(scheme.length()));
         } else {
             reply(UNAUTHORIZED, "Invalid auth header prefix in '" + authHeader + "'");
             return;
@@ -73,7 +84,7 @@ final class AsyncAuthenticationActeur extends AuthenticationActeur {
         String invalidMessage = auth.validate(evt, token);
         if (invalidMessage != null) {
             reply(UNAUTHORIZED, invalidMessage);
-            add(VT, BEARER);
+            add(VT, scheme.trim());
             return;
         }
         chain.insert(CheckAuth.class);

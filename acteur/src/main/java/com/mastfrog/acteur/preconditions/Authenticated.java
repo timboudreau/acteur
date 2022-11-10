@@ -48,4 +48,6 @@ public @interface Authenticated {
      * other information usefully passed to the authentication code
      */
     String value() default "default";
+
+    boolean optional() default true;
 }

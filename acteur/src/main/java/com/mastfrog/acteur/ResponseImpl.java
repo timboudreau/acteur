@@ -784,9 +784,6 @@ final class ResponseImpl extends Response {
         DefaultHttpResponse result;
         if (buf != null) {
 //            return new DefaultFullHttpResponse(HTTP_1_1, status, buf, hdrs, EmptyHttpHeaders.INSTANCE);
-            if (debug) {
-                System.out.println("  has a buffer, send it as a chunk");
-            }
             listener = new SendOneBuffer(buf);
             result = new DefaultHttpResponse(version, status, hdrs);
         } else {
