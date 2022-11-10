@@ -50,4 +50,8 @@ public interface CORSResponseDecorator {
     default void decorateApplicationResponse(HttpResponse response) {
         // do nothing
     }
+    
+    default void decorateApplicationResponse(HttpResponse response, Page page) {
+        decorateApplicationResponse(response);
+    }
 }

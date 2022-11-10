@@ -49,7 +49,32 @@ public @interface CORS {
      */
     boolean value() default true;
 
+    /**
+     * Set the methods cors responses are valid for. If unset or empty, the
+     * value will be derived from the registered paths in the application.
+     *
+     * @return A set of methods
+     */
     Method[] methods() default {};
 
+    /**
+     * The added access control allowed headers.
+     *
+     * @return A list of header names.
+     */
     String[] headers() default {};
+
+    /**
+     * The set of origins cors responses apply to.
+     *
+     * @return Origins
+     */
+    String[] origins() default {};
+
+    /**
+     * The maximum age in seconds for cors responses.
+     *
+     * @return
+     */
+    int maxAgeSeconds() default 0;
 }

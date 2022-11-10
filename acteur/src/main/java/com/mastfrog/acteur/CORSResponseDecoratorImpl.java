@@ -111,6 +111,8 @@ final class CORSResponseDecoratorImpl implements CORSResponseDecorator {
         Method[] methods = CORSResponseDecoratorImpl.methods;
         CORS cors = page.getClass().getAnnotation(CORS.class);
         CharSequence headers = this.hdrs;
+        Duration maxAge;
+        String ao;
         if (cors != null) {
             if (!cors.value()) {
                 return;
@@ -121,12 +123,36 @@ final class CORSResponseDecoratorImpl implements CORSResponseDecorator {
             if (cors.headers().length > 0) {
                 headers = Strings.join(',', cors.headers());
             }
+            ao = corsOrigin(cors);
+            if (cors.maxAgeSeconds() > 0) {
+                maxAge = Duration.ofSeconds(cors.maxAgeSeconds());
+            } else {
+                maxAge = corsMaxAge;
+            }
+        } else {
+            ao = allowOrigin;
+            maxAge = corsMaxAge;
         }
-        resp.addIfUnset(ALLOW_ORIGIN_STRING, allowOrigin);
+        resp.addIfUnset(ALLOW_ORIGIN_STRING, ao);
         resp.addIfUnset(ALLOW_CREDENTIALS_STRING, allowCredentials ? TRUE : FALSE);
         resp.addIfUnset(ALLOW_HEADERS_STRING, headers);
         resp.addIfUnset(ACCESS_CONTROL_ALLOW, methods);
-        resp.addIfUnset(ACCESS_CONTROL_MAX_AGE, corsMaxAge);
+        resp.addIfUnset(ACCESS_CONTROL_MAX_AGE, maxAge);
+    }
+
+    private String corsOrigin(CORS cors) {
+        String ao;
+        switch (cors.origins().length) {
+            case 0:
+                ao = allowOrigin;
+                break;
+            case 1:
+                ao = cors.origins()[0];
+                break;
+            default:
+                ao = Strings.join(',', cors.origins());
+        }
+        return ao;
     }
 
     @Override
@@ -138,4 +164,27 @@ final class CORSResponseDecoratorImpl implements CORSResponseDecorator {
             write(Headers.ACCESS_CONTROL_MAX_AGE, corsMaxAge, response);
         }
     }
+
+    @Override
+    public void decorateApplicationResponse(HttpResponse response, Page page) {
+        CORS cors = page.getClass().getAnnotation(CORS.class);
+        if (cors != null) {
+            if (!response.headers().contains(HttpHeaderNames.ACCESS_CONTROL_ALLOW_ORIGIN)) {
+                write(Headers.ACCESS_CONTROL_ALLOW_ORIGIN.toStringHeader(), corsOrigin(cors), response);
+            }
+            int ma = cors.maxAgeSeconds();
+            Duration maxAge;
+            if (ma > 0) {
+                maxAge = Duration.ofSeconds(ma);
+            } else {
+                maxAge = corsMaxAge;
+            }
+            if (!response.headers().contains(HttpHeaderNames.ACCESS_CONTROL_MAX_AGE)) {
+                write(Headers.ACCESS_CONTROL_MAX_AGE, maxAge, response);
+            }
+        } else {
+            decorateApplicationResponse(response);
+        }
+    }
+
 }

@@ -31,6 +31,7 @@ import com.mastfrog.acteur.header.entities.CacheControl;
 import com.mastfrog.acteur.header.entities.CacheControlTypes;
 import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.acteur.headers.Headers;
+import com.mastfrog.acteur.preconditions.CORS;
 import com.mastfrog.acteur.server.ServerModule;
 import static com.mastfrog.acteur.server.ServerModule.GUICE_BINDING_DEFAULT_CONTEXT_OBJECTS;
 import com.mastfrog.acteur.spi.ApplicationControl;
@@ -67,7 +68,6 @@ import java.nio.charset.Charset;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -355,7 +355,7 @@ public class Application implements Iterable<Page> {
         }
         Headers.write(X_REQ_ID, id.stringValue(), response);
         if (corsEnabled) {
-            corsDecorator.decorateApplicationResponse(response);
+            corsDecorator.decorateApplicationResponse(response, page);
         }
         return decorateResponse(event, page, action, response);
     }
