@@ -52,6 +52,7 @@ import static com.mastfrog.acteur.headers.Headers.X_FORWARDED_PROTO;
 import com.mastfrog.acteur.headers.Method;
 import com.mastfrog.acteur.request.HttpProtocolRequest;
 import com.mastfrog.acteur.spi.ApplicationControl;
+import com.mastfrog.acteur.util.ErrorHandler;
 import com.mastfrog.acteur.util.HttpMethod;
 import com.mastfrog.acteur.util.RequestID;
 import com.mastfrog.acteur.util.Server;
@@ -101,6 +102,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.Thread.UncaughtExceptionHandler;
 import java.lang.reflect.InvocationTargetException;
+import java.net.SocketException;
 import java.nio.charset.Charset;
 import java.time.Duration;
 import java.time.ZonedDateTime;
@@ -794,6 +796,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
         bind(Protocol.class).toProvider(ProtocolProvider.class);
         bind(WebSocketFrame.class).toProvider(WebSocketFrameProvider.class);
         bind(HttpProtocolRequest.class).toProvider(HttpProtocolRequestProvider.class);
+        bind(ClientDisconnectErrors.class).asEagerSingleton();
     }
 
     private static final class WebSocketFrameProvider implements Provider<WebSocketFrame> {
@@ -1332,4 +1335,34 @@ public class ServerModule<A extends Application> extends AbstractModule {
     @SuppressWarnings("deprecation")
     private static class CKTL extends TypeLiteral<Set<io.netty.handler.codec.http.Cookie>> {
     }
+
+    private static class ClientDisconnectErrors extends ErrorHandler.Typed<SocketException> {
+
+        private final boolean inTest = Boolean.getBoolean("unit.test");
+
+        @Inject
+        ClientDisconnectErrors(ErrorHandler.Registry handlers) {
+            super(handlers, SocketException.class, true);
+        }
+
+        @Override
+        protected boolean doHandle(SocketException t) {
+            if (inTest) {
+                return false;
+            }
+            // Avoid logging every connection reset - it generates a lot of
+            // logging noise in normal use
+            if ("Connection reset".equals(t.getMessage())) {
+                return true;
+            }
+            return false;
+        }
+
+        @Override
+        protected int ordinal() {
+            return Integer.MAX_VALUE - 1;
+        }
+
+    }
+
 }
