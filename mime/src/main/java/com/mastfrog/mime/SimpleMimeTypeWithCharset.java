@@ -43,9 +43,9 @@ final class SimpleMimeTypeWithCharset extends MimeType {
         if (primaryType == null) {
             throw new IllegalArgumentException(primaryType);
         }
-        this.primaryType = primaryType;
-        this.subtype = subtype;
-        this.variant = variant;
+        this.primaryType = primaryType.trim();
+        this.subtype = subtype == null ? null : subtype.trim();
+        this.variant = variant == null ? null : variant.trim();
         this.charset = charset;
     }
 

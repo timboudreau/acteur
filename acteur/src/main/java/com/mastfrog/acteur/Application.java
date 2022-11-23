@@ -31,7 +31,6 @@ import com.mastfrog.acteur.header.entities.CacheControl;
 import com.mastfrog.acteur.header.entities.CacheControlTypes;
 import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.acteur.headers.Headers;
-import com.mastfrog.acteur.preconditions.CORS;
 import com.mastfrog.acteur.server.ServerModule;
 import static com.mastfrog.acteur.server.ServerModule.GUICE_BINDING_DEFAULT_CONTEXT_OBJECTS;
 import com.mastfrog.acteur.spi.ApplicationControl;

@@ -181,7 +181,7 @@ public abstract class MimeType implements Comparable<MimeType>, Supplier<Charset
      * @return A mime type
      */
     public MimeType withVariant(String variant) {
-        if (variant != null) {
+        if (variant == null) {
             throw new IllegalArgumentException("Variant may not be null");
         }
         return toBuilder().withVariant(variant).build();
@@ -486,7 +486,7 @@ public abstract class MimeType implements Comparable<MimeType>, Supplier<Charset
         }
 
         public Builder withSecondaryType(String sec) {
-            this.secondary = secondary;
+            this.secondary = sec;
             return this;
         }
 

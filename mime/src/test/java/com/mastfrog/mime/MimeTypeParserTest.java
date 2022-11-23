@@ -24,6 +24,7 @@
 package com.mastfrog.mime;
 
 import java.nio.charset.StandardCharsets;
+import static java.nio.charset.StandardCharsets.UTF_16;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import java.util.Map;
 import java.util.Objects;
@@ -122,6 +123,14 @@ public class MimeTypeParserTest {
         assertEquals("text/x-java+jdk9;foodbar=blee;snorks=portles;charset=iso-8859-1", wc.toString());
         assertEquals(StandardCharsets.ISO_8859_1, wc.charset().get());
         assertEquals(wc, MimeTypeParser.parse(wc.toString()));
+    }
+
+    @Test
+    public void testNoSpaces() {
+        assertEquals("application/json;charset=utf-8", MimeType.JSON_UTF_8.toString(), () -> "Wrong string form for " + MimeType.JSON_UTF_8.getClass().getSimpleName());
+        assertEquals("application/json;charset=utf-16", MimeType.JSON_UTF_8.withCharset(UTF_16).toString());
+        assertEquals("application/json;charset=utf-8", MimeType.JSON_UTF_8.withCharset(UTF_8).toString());
+        assertEquals("application/json+thing;charset=utf-8", MimeType.JSON_UTF_8.withVariant("thing").toString(), () -> "Wrong string form for " + MimeType.JSON_UTF_8.withVariant("thing").getClass().getSimpleName());
     }
 
     private static void assertCs(Optional<CharSequence> seq, String what) {

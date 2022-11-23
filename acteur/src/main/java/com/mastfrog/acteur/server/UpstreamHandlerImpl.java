@@ -86,6 +86,7 @@ final class UpstreamHandlerImpl extends ChannelInboundHandlerAdapter {
 
     private static final AsciiString X_REAL_IP = new AsciiString("X-Real-IP");
     private static final AsciiString X_FORWARDED_FOR = new AsciiString("X-Forwarded-For");
+    private static final AsciiString FORWARDED = new AsciiString("Forwarded");
 
     public void handleHttpRequest(ChannelHandlerContext ctx, HttpRequest request, boolean early) {
         SocketAddress addr = ctx.channel().remoteAddress();
@@ -93,6 +94,9 @@ final class UpstreamHandlerImpl extends ChannelInboundHandlerAdapter {
             String hdr = request.headers().get(X_REAL_IP);
             if (hdr == null) {
                 hdr = request.headers().get(X_FORWARDED_FOR);
+            }
+            if (hdr == null) {
+                hdr = request.headers().get(FORWARDED);
             }
             if (hdr != null) {
                 addr = InetSocketAddress.createUnresolved(hdr, addr instanceof InetSocketAddress ? ((InetSocketAddress) addr).getPort() : 80);
