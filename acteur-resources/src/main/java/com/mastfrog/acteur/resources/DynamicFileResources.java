@@ -32,6 +32,7 @@ import com.mastfrog.acteur.HttpEvent;
 import com.mastfrog.acteur.Response;
 import com.mastfrog.acteur.header.entities.CacheControl;
 import com.mastfrog.acteur.header.entities.CacheControlTypes;
+import com.mastfrog.acteur.headers.BoundedRangeNetty;
 import com.mastfrog.acteur.headers.ByteRanges;
 import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.acteur.headers.Headers;
@@ -78,6 +79,7 @@ import io.netty.util.AsciiString;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import static java.lang.Math.max;
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.channels.ClosedByInterruptException;
@@ -87,8 +89,10 @@ import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.time.Duration;
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
 import java.util.Date;
-import java.util.Iterator;
+import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -102,6 +106,8 @@ import javax.inject.Provider;
  */
 public class DynamicFileResources implements StaticResources {
 
+    public static final String SETTINGS_KEY_MAX_RANGE_BUFFER_SIZE = "dynresources.range.buffer.size";
+    private static final int DEFAULT_RANGE_BUFFER_SIZE = 2048;
     private final File dir;
     private final ExpiresPolicy policy;
     private final MimeTypes types;
@@ -127,12 +133,14 @@ public class DynamicFileResources implements StaticResources {
     private final boolean hashEtags;
     private final LoadingCache<File, EtagCacheEntry> etagCache;
     private final boolean neverKeepAlive;
+    private final int rangeBufferSize;
 
     @Inject
     public DynamicFileResources(File dir, MimeTypes types, ExpiresPolicy policy, ApplicationControl ctrl, ByteBufAllocator alloc, Settings settings,
             Provider<Closables> onChannelClose) {
         this.hashEtags = settings.getBoolean(SETTINGS_KEY_USE_HASH_ETAG, false);
         neverKeepAlive = settings.getBoolean("neverKeepAlive", false);
+        rangeBufferSize = max(64, settings.getInt(SETTINGS_KEY_MAX_RANGE_BUFFER_SIZE, DEFAULT_RANGE_BUFFER_SIZE));
         this.dir = dir;
         this.policy = policy;
         this.types = types;
@@ -317,12 +325,15 @@ public class DynamicFileResources implements StaticResources {
 
                 response.contentWriter(new ChannelFutureListener() {
 
-                    Iterator<Range> it = ranges == null ? null : ranges.iterator();
+                    ReplaceRangeIterator it = ranges == null ? null : new ReplaceRangeIterator(ranges, length);
                     boolean done = false;
 
                     SeekableByteChannel channel;
 
                     private ByteBuf readBytes(Range range) throws IOException {
+                        // XXX for streaming large audio video files, this fails with
+//OutOfMemoryError: Cannot reserve 38496007 bytes of direct buffer
+// memory (allocated: 4375169, limit: 25165824                        
                         int len = (int) (range == null ? length : range.length(length));
                         ByteBuffer buffer = ByteBuffer.allocateDirect(len);
                         if (range != null) {
@@ -332,7 +343,7 @@ public class DynamicFileResources implements StaticResources {
                         while (read < len) {
                             read += channel.read(buffer);
                         }
-                        ((Buffer)buffer).flip();
+                        ((Buffer) buffer).flip();
                         return Unpooled.wrappedBuffer(buffer);
                     }
 
@@ -369,7 +380,7 @@ public class DynamicFileResources implements StaticResources {
                                 channel.close();
                             } else {
                                 if (it.hasNext()) {
-                                    Range range = it.next();
+                                    Range range = it.take(rangeBufferSize);
 //                                long count = range.length(length);
 //                                FileRegion reg = new DefaultFileRegion(file, range.start(length), count);
 //                                f = f.channel().writeAndFlush(reg);
@@ -435,7 +446,7 @@ public class DynamicFileResources implements StaticResources {
                                     // Need to cast to Buffer to avoid
                                     // java.lang.NoSuchMethodError: java.nio.ByteBuffer.flip()Ljava/nio/ByteBuffer
                                     // because > jdk-8 returns ByteBuffer
-                                    ((Buffer)buffer).flip();
+                                    ((Buffer) buffer).flip();
                                     enc.encode(evt.ctx(), Unpooled.wrappedBuffer(buffer), buf);
                                 }
                             }
@@ -583,8 +594,7 @@ public class DynamicFileResources implements StaticResources {
             throw new UnsupportedOperationException("Not supported");
         }
     }
-    */
-
+     */
     static final class EtagCacheLoader extends CacheLoader<File, EtagCacheEntry> {
 
         @Override
@@ -646,8 +656,89 @@ public class DynamicFileResources implements StaticResources {
             return true;
         }
 
+        @Override
         public String toString() {
             return hash + ":" + TimeUtil.toIsoFormat(new Date(lastModified));
         }
+    }
+    
+    static class ReplaceRangeIterator {
+        private final List<Range> ranges = new ArrayList<>();
+        private int cursor = 0;
+        private final long totalBytes;
+        ReplaceRangeIterator(ByteRanges ranges, long totalBytes) {
+            for (Range r : ranges) {
+                this.ranges.add(r);
+            }
+            this.totalBytes = totalBytes;
+        }
+        
+        public boolean hasNext() {
+            return cursor < ranges.size();
+        }
+        
+        public Range take(int maxLength) {
+            if (!hasNext()) {
+                throw new NoSuchElementException();
+            }
+            Range r = ranges.get(cursor);
+            long len = r.length(totalBytes);
+            if (len >= maxLength) {
+                long st = r.start(totalBytes);
+                long en = r.end(totalBytes);
+//                System.out.println("HAVE OUT OF RANGE " + st + " - " + en + " for max " + maxLength);
+                FakeRange result = new FakeRange(st, st + len);
+//                System.out.println("  RETURN A " + result);
+                if (st + len < en) {
+                    FakeRange substitute = new FakeRange(st + len, en);
+//                    System.out.println("  PUT BACK A " + substitute);
+                    ranges.set(cursor, substitute);
+                } else {
+//                    System.out.println("  done, increment cursor");
+                    cursor++;
+                }
+                return result;
+            } else {
+//                System.out.println("  normal done, increment cursor");
+                cursor++;
+            }
+            return r;
+        }
+        
+        static class FakeRange implements Range {
+            
+            private final long start;
+            private final long end;
+            FakeRange(long start, long end) {
+                this.start = start;
+                this.end = end;
+            }
+            
+            @Override
+            public long start(long max) {
+                return start;
+            }
+
+            @Override
+            public long end(long max) {
+                return end;
+            }
+
+            @Override
+            public long length(long max) {
+                return end - start;
+            }
+            
+            @Override
+            public BoundedRangeNetty toBoundedRange(long max) {
+                return new BoundedRangeNetty(start(max), end(max), max);
+            }
+            
+            public String toString() {
+                return "FakeRange(" + start + ":" + end  + ")";
+            }
+            
+        }
+        
     }
 }
