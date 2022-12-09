@@ -107,7 +107,7 @@ import javax.inject.Provider;
 public class DynamicFileResources implements StaticResources {
 
     public static final String SETTINGS_KEY_MAX_RANGE_BUFFER_SIZE = "dynresources.range.buffer.size";
-    private static final int DEFAULT_RANGE_BUFFER_SIZE = 2048;
+    private static final int DEFAULT_RANGE_BUFFER_SIZE = 4096;
     private final File dir;
     private final ExpiresPolicy policy;
     private final MimeTypes types;
