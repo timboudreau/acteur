@@ -24,6 +24,8 @@
 package com.mastfrog.acteur.errors;
 
 import io.netty.handler.codec.http.HttpResponseStatus;
+import static java.util.Collections.emptyMap;
+import java.util.Map;
 
 /**
  * Information needed to generate an http response for an error.  The
@@ -34,13 +36,17 @@ import io.netty.handler.codec.http.HttpResponseStatus;
  */
 public interface ErrorResponse {
 
-    public HttpResponseStatus status();
+    HttpResponseStatus status();
 
-    public Object message();
+    Object message();
 
     @SuppressWarnings("deprecation")
     public static <T> ErrorResponse create(HttpResponseStatus status, T message) {
         return new Simple<T>(status, message);
+    }
+    
+    default Map<CharSequence, CharSequence> headers() {
+        return emptyMap();
     }
 
     /**

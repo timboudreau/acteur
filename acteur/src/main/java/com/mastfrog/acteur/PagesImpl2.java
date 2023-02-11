@@ -423,7 +423,6 @@ class PagesImpl2 {
                 }
                 // These should not be logged - they can be thrown when validating input
                 if (!(thrwbl instanceof ResponseException && !(thrwbl instanceof InvalidInputException))) {
-                    thrwbl.printStackTrace();
                     application.internalOnError(thrwbl);
                 }
                 // V1.6 - we no longer have access to the page where the exception was

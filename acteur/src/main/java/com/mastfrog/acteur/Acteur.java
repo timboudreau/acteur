@@ -32,7 +32,6 @@ import com.mastfrog.acteur.errors.ExceptionEvaluatorRegistry;
 import com.mastfrog.acteur.errors.ResponseException;
 import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.acteur.headers.Headers;
-import com.mastfrog.acteur.preconditions.Description;
 import com.mastfrog.acteur.spi.ApplicationControl;
 import com.mastfrog.acteurbase.AbstractActeur;
 import com.mastfrog.acteurbase.ActeurResponseFactory;
@@ -302,10 +301,9 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
     }
 
     /**
-     * Provide a description used in help-page generation.  Acteurs which
-     * are instantiated declaratively need not override this, as information
-     * will be generated from the annotations on the acteur and any description
-     * provided
+     * Provide a description used in help-page generation. Acteurs which are
+     * instantiated declaratively need not override this, as information will be
+     * generated from the annotations on the acteur and any description provided
      *
      * @param into A map to put key/value pairs into
      */
@@ -363,6 +361,11 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
 
     protected final Acteur reply(Err err) {
         setState(new RespondWith(err));
+        if (!err.headers().isEmpty()) {
+            for (Map.Entry<? extends CharSequence, ? extends CharSequence> e : err.headers().entrySet()) {
+                add(Headers.header(e.getKey()), e.getValue());
+            }
+        }
         return this;
     }
 
@@ -617,6 +620,13 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
         CheckThrownActeur(DeferredComputationResult res, ExceptionEvaluatorRegistry evals, HttpEvent evt) throws Throwable {
             if (res.thrown != null) {
                 if (res.thrown instanceof ResponseException) {
+                    ResponseException rex = (ResponseException) res.thrown;
+                    Map<CharSequence, CharSequence> hdrs = rex.headers();
+                    if (!hdrs.isEmpty()) {
+                        for (Map.Entry<CharSequence, CharSequence> e : hdrs.entrySet()) {
+                            add(Headers.header(e.getKey()), e.getValue());
+                        }
+                    }
                     // Let the normal exception response generation code handle it
                     throw res.thrown;
                 } else {
@@ -817,7 +827,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
         public void operationComplete(ChannelFuture future) throws Exception {
             // Do our prerequesites - set the page, and reenter request
             // scope with the same contents as when we were instantiated
-            try ( QuietAutoClosable cl = Page.set(page)) {
+            try (QuietAutoClosable cl = Page.set(page)) {
                 this.future = future;
                 delegate.call();
             }
@@ -858,7 +868,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
         @Override
         public void operationComplete(ChannelFuture future) throws Exception {
             this.future = future;
-            try ( QuietAutoClosable cl = Page.set(page)) {
+            try (QuietAutoClosable cl = Page.set(page)) {
                 wrapper.call();
             }
         }
