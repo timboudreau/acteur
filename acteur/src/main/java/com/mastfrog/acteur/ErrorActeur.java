@@ -30,11 +30,13 @@ import com.mastfrog.acteur.errors.ErrorRenderer;
 import com.mastfrog.acteur.errors.ErrorResponse;
 import com.mastfrog.acteur.errors.ExceptionEvaluatorRegistry;
 import com.mastfrog.acteur.errors.ResponseException;
+import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.giulius.Dependencies;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.util.Map;
 
 /**
  *
@@ -50,6 +52,11 @@ final class ErrorActeur extends Acteur {
         if (t instanceof ResponseException) {
             ResponseException rt = (ResponseException) t;
             setState(new RespondWith(new Err(rt.status(), rt.getMessage())));
+            if (!rt.headers().isEmpty()) {
+                for (Map.Entry<CharSequence, CharSequence> e : rt.headers().entrySet()) {
+                    add(Headers.header(e.getKey()), e.getValue());
+                }
+            }
             return;
         }
         if (tryErrResponse) {
@@ -68,11 +75,16 @@ final class ErrorActeur extends Acteur {
             if (resp != null) {
                 ErrorRenderer ren = deps.getInstance(ErrorRenderer.class);
                 ren.render(resp, response(), evt);
+                if (!resp.headers().isEmpty()) {
+                    for (Map.Entry<CharSequence, CharSequence> e : resp.headers().entrySet()) {
+                        add(Headers.header(e.getKey()), e.getValue());
+                    }
+                }
                 setState(new RespondWith(resp.status()));
                 return;
             }
         }
-        StringBuilder sb = new StringBuilder("Page " + page + " (" + page.getClass().getName() + " threw " + t.getMessage() + '\n');
+        StringBuilder sb = new StringBuilder("Page " + page + " (" + page.getClass().getName() + ") threw " + t.getMessage() + '\n');
         try (final ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             t.printStackTrace(new PrintStream(out));
             sb.append(new String(out.toByteArray()));

@@ -24,7 +24,10 @@
 package com.mastfrog.acteur.errors;
 
 import com.google.common.collect.ImmutableMap;
+import static com.mastfrog.util.preconditions.Checks.notNull;
 import io.netty.handler.codec.http.HttpResponseStatus;
+import static java.util.Collections.emptyMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -37,41 +40,66 @@ public final class Err implements ErrorResponse {
 
     public final HttpResponseStatus status;
     public final Map<String, Object> message;
+    private Map<CharSequence, CharSequence> headers;
     public boolean unhandled;
 
     public Err(Throwable t, boolean unhandled) {
         this(t);
         this.unhandled = unhandled;
     }
-    
+
     public Err(Throwable t) {
         this(unwind(t, true));
     }
 
-    public Err putAll(Map<String, Object> m) {
+    @Override
+    public Map<CharSequence, CharSequence> headers() {
+        return headers == null ? emptyMap() : headers;
+    }
+
+    public synchronized Err withHeader(CharSequence name, CharSequence value) {
+        if (headers == null) {
+            headers = new LinkedHashMap<>();
+        }
+        headers.put(notNull("name", name), notNull("value", value));
+        return this;
+    }
+
+    public synchronized Err withHeaders(Map<? extends CharSequence, ? extends CharSequence> headers) {
+        if (this.headers == null) {
+            this.headers = new LinkedHashMap<>();
+        }
+        headers.forEach((k, v) -> {
+            this.headers.put(k, v);
+        });
+        return this;
+    }
+
+    public synchronized Err putAll(Map<String, Object> m) {
         message.putAll(m);
         return this;
     }
-    
+
     public static Err of(Throwable t) {
-        while (t.getCause() != null) {
+        while (t.getCause() != null && !(t instanceof ResponseException)) {
             t = t.getCause();
         }
         if (t instanceof ResponseException) {
             ResponseException ex = (ResponseException) t;
-            return new Err(ex.status(), ex.getMessage());
+            return new Err(ex.status(), ex.getMessage())
+                    .withHeaders(ex.headers());
         }
         return new Err(t);
     }
-    
+
     public static Err badRequest(String msg) {
         return new Err(HttpResponseStatus.BAD_REQUEST, msg);
     }
-    
+
     public static Err gone(String msg) {
         return new Err(HttpResponseStatus.GONE, msg);
     }
-    
+
     public static Err conflict(String msg) {
         return new Err(HttpResponseStatus.CONFLICT, msg);
     }
@@ -79,7 +107,7 @@ public final class Err implements ErrorResponse {
     public static Err forbidden(String msg) {
         return new Err(HttpResponseStatus.FORBIDDEN, msg);
     }
-    
+
     static String unwind(Throwable t, boolean returnClassName) {
         if (t == null) {
             return "Unknown";
@@ -131,11 +159,27 @@ public final class Err implements ErrorResponse {
 
     public Err put(String key, Object value) {
         Map<String, Object> m = ImmutableMap.<String, Object>builder().putAll(message).put(key, value).build();
-        return new Err(status, m);
+        Err result = new Err(status, m);
+        if (headers != null) {
+            result.headers = headers;
+        }
+        return result;
     }
 
     public Err withCode(HttpResponseStatus code) {
-        return new Err(code, message);
+        Err result = new Err(code, message);
+        if (headers != null) {
+            result.headers = headers;
+        }
+        return result;
+    }
+
+    public static Err withCode(int code) {
+        return new Err(HttpResponseStatus.valueOf(code), "");
+    }
+
+    public static Err withCode(int code, String msg) {
+        return new Err(HttpResponseStatus.valueOf(code), msg);
     }
 
     @Override

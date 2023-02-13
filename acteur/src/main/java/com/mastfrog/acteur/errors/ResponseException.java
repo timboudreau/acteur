@@ -24,18 +24,23 @@
 package com.mastfrog.acteur.errors;
 
 import io.netty.handler.codec.http.HttpResponseStatus;
+import static java.util.Collections.emptyMap;
+import static java.util.Collections.unmodifiableMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
- * Exception that can be thrown from a Provider and result in a
- * specific HTTP error response.  Please do not use where you can manage
- * this without exceptions - this is a last resort for when you don't have
- * access to the Acteur to set its state.
+ * Exception that can be thrown from a Provider and result in a specific HTTP
+ * error response. Please do not use where you can manage this without
+ * exceptions - this is a last resort for when you don't have access to the
+ * Acteur to set its state.
  *
  * @author Tim Boudreau
  */
 public class ResponseException extends RuntimeException {
 
     private final HttpResponseStatus status;
+    private Map<CharSequence, CharSequence> headers;
 
     public ResponseException(HttpResponseStatus status, String msg) {
         super(msg);
@@ -45,4 +50,20 @@ public class ResponseException extends RuntimeException {
     public HttpResponseStatus status() {
         return status;
     }
+
+    public synchronized ResponseException withHeader(CharSequence name, CharSequence value) {
+        if (headers == null) {
+            headers = new LinkedHashMap<>();
+        }
+        headers.put(name, value);
+        return this;
+    }
+
+    public Map<CharSequence, CharSequence> headers() {
+        if (headers == null) {
+            return emptyMap();
+        }
+        return unmodifiableMap(headers);
+    }
+
 }
