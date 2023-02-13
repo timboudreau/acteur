@@ -36,7 +36,6 @@ import com.mastfrog.netty.http.test.harness.TestHarnessModule;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -81,10 +80,10 @@ public class ErrTest {
     static class ErrPage extends Page {
 
         @Inject
+        @SuppressWarnings("deprecation")
         ErrPage(ActeurFactory f) {
             add(f.matchMethods(GET));
             add(f.matchPath("^errant$"));
-//            add(f.exactPathLength(1));
             add(ErrActeur.class);
         }
     }
@@ -92,10 +91,10 @@ public class ErrTest {
     static class ErrPage2 extends Page {
 
         @Inject
+        @SuppressWarnings("deprecation")
         ErrPage2(ActeurFactory f) {
             add(f.matchMethods(GET));
             add(f.matchPath("^throw$"));
-//            add(f.exactPathLength(1));
             add(ErrActeur2.class);
         }
     }
@@ -121,11 +120,5 @@ public class ErrTest {
         public M() {
             super(ErrApp.class);
         }
-
-    }
-
-    @Before
-    public void setup() {
-
     }
 }

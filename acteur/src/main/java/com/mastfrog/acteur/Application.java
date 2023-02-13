@@ -64,6 +64,7 @@ import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
 import java.nio.charset.Charset;
+import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -121,6 +122,13 @@ public class Application implements Iterable<Page> {
 
     @Inject
     Probe probe;
+
+    @Inject(optional = true)
+    OnBeforeEvent onBeforeEvent;
+
+    @Inject
+    private InstantiatingIterators iterators;
+    private boolean checkedEarlyHelp;
 
     private List<Object> earlyPages = new ArrayList<>(10);
 
@@ -465,8 +473,12 @@ public class Application implements Iterable<Page> {
         // Create a new incremented id for this request
         final RequestID id = ids.next();
         probe.onBeforeProcessRequest(id, event);
+
+        Object[] scopeContents = onBeforeEvent == null ? new Object[]{event, id}
+                : onBeforeEvent.onBeforeEvent(event, channel, id);
+
         // Enter request scope with the id and the event
-        try (QuietAutoClosable cl = scope.enter(event, id)) {
+        try (QuietAutoClosable cl = scope.enter(scopeContents)) {
             onBeforeEvent(id, event);
             return runner.onEvent(id, event, channel, defaultContextObjects);
         } catch (Exception e) {
@@ -531,8 +543,6 @@ public class Application implements Iterable<Page> {
         return iterators.iterable(pages, Page.class).iterator();
     }
 
-    private boolean checkedEarlyHelp;
-
     Iterator<Page> earlyPagesIterator() {
         // This is a hack
         if (!checkedEarlyHelp && deps.getInstance(Settings.class).getBoolean("help.early", false)) {
@@ -546,12 +556,21 @@ public class Application implements Iterable<Page> {
         return iterators.iterable(earlyPages, Page.class).iterator();
     }
 
-    @Inject
-    private InstantiatingIterators iterators;
-
     protected void send404(RequestID id, Event<?> event, Channel channel) {
         HttpResponse response = createNotFoundResponse(event);
+
         onBeforeRespond(id, event, response.status());
+        if (responseDecorator != null) {
+            try {
+                try (QuietAutoClosable cl = Page.set(DummyNotFoundPage.INSTANCE)) {
+                    _onBeforeSendResponse(HttpResponseStatus.NOT_FOUND, event,
+                            new NotFoundResponseWrapper(response),
+                            DummyNotFoundActeur.INSTANCE, DummyNotFoundPage.INSTANCE);
+                }
+            } catch (Throwable tt) {
+                tt.printStackTrace();
+            }
+        }
         probe.onFallthrough(id, event);
         ChannelFuture fut = channel.write(new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.NOT_FOUND, response.headers()));
         if (response instanceof FullHttpResponse) {
@@ -571,12 +590,86 @@ public class Application implements Iterable<Page> {
                 responseDecorator.onBeforeSendResponse(this, status, event, response, acteur, page);
             }
             onBeforeSendResponse(status, event, response, acteur, page);
-        } catch (Exception e) {
+        } catch (Throwable e) {
             this.internalOnError(e);
         }
     }
 
     protected void onBeforeSendResponse(HttpResponseStatus status, Event<?> event, Response response, Acteur acteur, Page page) {
         // do nothing
+    }
+
+    private static final class DummyNotFoundPage extends Page {
+
+        private static final DummyNotFoundPage INSTANCE = new DummyNotFoundPage();
+
+        DummyNotFoundPage() {
+            add(DummyNotFoundActeur.class);
+        }
+    }
+
+    private static final class DummyNotFoundActeur extends Acteur {
+
+        private static final DummyNotFoundActeur INSTANCE = new DummyNotFoundActeur();
+
+        DummyNotFoundActeur() {
+            notFound();
+        }
+    }
+
+    private static final class NotFoundResponseWrapper extends Response {
+
+        private final HttpResponse resp;
+
+        public NotFoundResponseWrapper(HttpResponse resp) {
+            this.resp = resp;
+        }
+
+        @Override
+        public <T> Response add(HeaderValueType<T> headerType, T value) {
+            resp.headers().add(headerType.name(), headerType.toCharSequence(value));
+            return this;
+        }
+
+        @Override
+        public Response content(Object message) {
+            throw new UnsupportedOperationException("Decorator cannot set content on not found response.");
+        }
+
+        @Override
+        public Response status(HttpResponseStatus status) {
+            resp.setStatus(status);
+            return this;
+        }
+
+        @Override
+        public Response contentWriter(ChannelFutureListener listener) {
+            throw new UnsupportedOperationException("Decorator cannot set content on not found response.");
+        }
+
+        @Override
+        public Response contentWriter(ResponseWriter writer) {
+            throw new UnsupportedOperationException("Decorator cannot set content on not found response.");
+        }
+
+        @Override
+        public Response chunked(boolean chunked) {
+            throw new UnsupportedOperationException("Decorator cannot set chunked on not found response.");
+        }
+
+        @Override
+        public Response delayedBy(Duration delay) {
+            throw new UnsupportedOperationException("Decorator cannot set delay on not found response.");
+        }
+
+        @Override
+        protected <T> T get(HeaderValueType<T> header) {
+            String s = resp.headers().get(header.name());
+            if (s != null) {
+                return header.convert(s);
+            }
+            return null;
+        }
+
     }
 }
