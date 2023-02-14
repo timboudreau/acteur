@@ -83,6 +83,9 @@ public class DecoratorWithOnBeforeEventTest {
         int nf;
 
         DWOBEApp() {
+            
+            add(NothingPageOne.class);
+            add(NothingPageTwo.class);
             add(DecoPage.class);
         }
 
@@ -109,6 +112,7 @@ public class DecoratorWithOnBeforeEventTest {
     static class DecoPage extends Page {
 
         @Inject
+        @SuppressWarnings("deprecation")
         DecoPage(ActeurFactory f) {
             f.matchMethods(GET);
             f.matchPath("^deco$");
@@ -152,6 +156,46 @@ public class DecoratorWithOnBeforeEventTest {
         }
     }
 
+    @Methods(GET)
+    @PathRegex("^aot1$")
+    static class NothingPageOne extends Page {
+
+        @Inject
+        @SuppressWarnings("deprecation")
+        NothingPageOne(ActeurFactory f) {
+            f.matchMethods(GET);
+            f.matchPath("^aot1$");
+            add(DecoActeur.class);
+        }
+
+        static class NothingActeur extends Acteur {
+
+            NothingActeur() {
+                ok("nothing-one");
+            }
+        }
+    }
+
+    @Methods(GET)
+    @PathRegex("^aot1$")
+    static class NothingPageTwo extends Page {
+
+        @Inject
+        @SuppressWarnings("deprecation")
+        NothingPageTwo(ActeurFactory f) {
+            f.matchMethods(GET);
+            f.matchPath("^aot2$");
+            add(DecoActeur.class);
+        }
+
+        static class NothingActeurTwo extends Acteur {
+
+            NothingActeurTwo() {
+                ok("nothing-two");
+            }
+        }
+    }
+    
     static class M extends ServerModule<DWOBEApp> {
 
         public M() {
