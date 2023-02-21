@@ -52,6 +52,7 @@ import com.mastfrog.acteur.headers.Method;
 import static com.mastfrog.acteur.headers.Method.HEAD;
 import com.mastfrog.acteur.headers.Range;
 import com.mastfrog.acteur.spi.ApplicationControl;
+import com.mastfrog.giulius.annotations.Setting;
 import com.mastfrog.mime.MimeType;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.util.preconditions.Exceptions;
@@ -106,6 +107,8 @@ import javax.inject.Provider;
  */
 public class DynamicFileResources implements StaticResources {
 
+    @Setting(value = "The maximum buffer size for HTTP range responses when using DynamicFileResources",
+            type = Setting.ValueType.INTEGER, defaultValue = "4096")
     public static final String SETTINGS_KEY_MAX_RANGE_BUFFER_SIZE = "dynresources.range.buffer.size";
     private static final int DEFAULT_RANGE_BUFFER_SIZE = 4096;
     private final File dir;
@@ -124,11 +127,15 @@ public class DynamicFileResources implements StaticResources {
      * hash is computed (after which the hash will be cached for some length of
      * time, assuming the file is not modified).
      */
+    @Setting(value = "When using DynamicFileResources, compute a hash of the file bytes for ETag headers.",
+            type = Setting.ValueType.BOOLEAN, defaultValue = "true")
     public static final String SETTINGS_KEY_USE_HASH_ETAG = "dyn.resources.use.hash.etag";
     /**
      * Set the length of time hashed etags are kept for - only relevant if using
      * sha-1 hash etags instead of inodes.
      */
+    @Setting(value = "Max age for cachc-control headers in file resource responses when using DynamicFileResources",
+            type = Setting.ValueType.INTEGER, defaultValue = "480")
     public static final String SETTINGS_KEY_HASH_ETAG_CACHE_EXPIRY_MINUTES = "dyn.resources.hash.etag.cache.expiry.minutes";
     private final boolean hashEtags;
     private final LoadingCache<File, EtagCacheEntry> etagCache;
@@ -661,22 +668,24 @@ public class DynamicFileResources implements StaticResources {
             return hash + ":" + TimeUtil.toIsoFormat(new Date(lastModified));
         }
     }
-    
+
     static class ReplaceRangeIterator {
+
         private final List<Range> ranges = new ArrayList<>();
         private int cursor = 0;
         private final long totalBytes;
+
         ReplaceRangeIterator(ByteRanges ranges, long totalBytes) {
             for (Range r : ranges) {
                 this.ranges.add(r);
             }
             this.totalBytes = totalBytes;
         }
-        
+
         public boolean hasNext() {
             return cursor < ranges.size();
         }
-        
+
         public Range take(int maxLength) {
             if (!hasNext()) {
                 throw new NoSuchElementException();
@@ -704,16 +713,17 @@ public class DynamicFileResources implements StaticResources {
             }
             return r;
         }
-        
+
         static class FakeRange implements Range {
-            
+
             private final long start;
             private final long end;
+
             FakeRange(long start, long end) {
                 this.start = start;
                 this.end = end;
             }
-            
+
             @Override
             public long start(long max) {
                 return start;
@@ -728,17 +738,17 @@ public class DynamicFileResources implements StaticResources {
             public long length(long max) {
                 return end - start;
             }
-            
+
             @Override
             public BoundedRangeNetty toBoundedRange(long max) {
                 return new BoundedRangeNetty(start(max), end(max), max);
             }
-            
+
             public String toString() {
-                return "FakeRange(" + start + ":" + end  + ")";
+                return "FakeRange(" + start + ":" + end + ")";
             }
-            
+
         }
-        
+
     }
 }

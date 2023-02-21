@@ -32,6 +32,7 @@ import com.mastfrog.acteur.spi.ApplicationControl;
 import com.mastfrog.acteurbase.Chain;
 import com.mastfrog.acteurbase.Deferral;
 import com.mastfrog.acteurbase.Deferral.Resumer;
+import com.mastfrog.giulius.annotations.Setting;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.url.Path;
 import com.mastfrog.url.Protocols;
@@ -60,29 +61,35 @@ import javax.inject.Inject;
  * on the websocket instead of as an http response. Header methods do nothing,
  * for obvious reasons, in acteurs that process websocket events.
  * <p>
- * As with any acteur, all objects provided by preceding acteurs in the chain may
- * be injected into acteurs that process a websocket connection.  So the pattern
- * looks more like:
+ * As with any acteur, all objects provided by preceding acteurs in the chain
+ * may be injected into acteurs that process a websocket connection. So the
+ * pattern looks more like:
  * <ul>
  * <li>Check url path (e.g. &#064;Path annotation handler as normal)</li>
  * <li>Check method (e.g. &#064;Methods annotation handler as normal)</li>
- * <li>Authenticate (e.g. &#064;Authenticated triggers whatever acteur subclass you bound to AuthenticationActeur)</li>
+ * <li>Authenticate (e.g. &#064;Authenticated triggers whatever acteur subclass
+ * you bound to AuthenticationActeur)</li>
  * <li>WebSocketUpgradeActeur
- *      <ul>
- *      <li>Event validity checker acteur
- *      <li>Event processor acteur</li>
- *      </ul>
+ * <ul>
+ * <li>Event validity checker acteur
+ * <li>Event processor acteur</li>
  * </ul>
- * where the indented elements are constructed/called repeantedly for each WebSocketFrame.
+ * </ul>
+ * where the indented elements are constructed/called repeantedly for each
+ * WebSocketFrame.
  *
  * @author Tim Boudreau
  */
 public class WebSocketUpgradeActeur extends Acteur {
 
+    @Setting(value = "Websockets: Generate HTTPS URLs", type = Setting.ValueType.BOOLEAN)
     public static final String SETTINGS_KEY_WEBSOCKET_SECURE_PROTOCOL = "websocket.secure.urls";
     public static final boolean DEFAULT_WEBSOCKET_SECURE_PROTOCOL = false;
+
+    @Setting(value = "Max bytes per websocket frame", type = Setting.ValueType.INTEGER, defaultValue = "5242880")
     public static final String SETTINGS_KEY_WEBSOCKET_FRAME_MAX_LENGTH = "websocket.frame.max.bytes";
     public static final int DEFAULT_WEBSOCKET_FRAME_MAX_LENGTH = 5 * 1024 * 1024;
+
     public static final AttributeKey<Supplier<? extends Chain<? extends Acteur, ?>>> CHAIN_KEY
             = AttributeKey.valueOf(WebSocketUpgradeActeur.class, "websocket");
     public static final AttributeKey<Page> PAGE_KEY

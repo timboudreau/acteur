@@ -35,6 +35,8 @@ import com.mastfrog.acteur.Response;
 import com.mastfrog.acteur.headers.Method;
 import com.mastfrog.acteur.preconditions.Description;
 import com.mastfrog.acteur.preconditions.Methods;
+import com.mastfrog.giulius.annotations.Setting;
+import static com.mastfrog.giulius.annotations.Setting.Tier.SECONDARY;
 import com.mastfrog.mime.MimeType;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.url.Path;
@@ -57,6 +59,7 @@ public class ResourcesPage extends Page {
      * <b>Important</b>: This is a regex, and it needs to end in a capture group
      * - for example, <code>static/(.*)</code>.
      */
+    @Setting("Base URL path for serving files handled by acteur-resources")
     public static final String SETTINGS_KEY_STATIC_RESOURCES_BASE_URL_PATH = "static.base.url.path";
 
     @Inject

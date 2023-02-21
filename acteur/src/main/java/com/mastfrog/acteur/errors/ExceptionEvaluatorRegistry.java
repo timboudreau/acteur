@@ -27,6 +27,9 @@ import com.google.common.collect.Lists;
 import com.mastfrog.acteur.Acteur;
 import com.mastfrog.acteur.Event;
 import com.mastfrog.acteur.Page;
+import com.mastfrog.giulius.annotations.Setting;
+import static com.mastfrog.giulius.annotations.Setting.Tier.TERTIARY;
+import static com.mastfrog.giulius.annotations.Setting.ValueType.BOOLEAN;
 import com.mastfrog.settings.Settings;
 import java.util.Collections;
 import java.util.List;
@@ -40,9 +43,15 @@ import javax.inject.Singleton;
  */
 @Singleton
 public final class ExceptionEvaluatorRegistry {
+
     private final List<ExceptionEvaluator> evaluators = Lists.newCopyOnWriteArrayList();
+    @Setting(type = BOOLEAN, value = "Enable the default conversion of exceptions into error "
+            + "HTTP responses (if set to false, you should install an ExceptionEvaluator to do "
+            + "something reasonable).", defaultValue = "true", tier = TERTIARY)
     public static final String SETTINGS_KEY_DEFAULT_EXCEPTION_HANDLING = "default.exception.handling";
+
     @Inject
+    @SuppressWarnings("ResultOfObjectAllocationIgnored")
     ExceptionEvaluatorRegistry(Settings settings) {
         boolean prettyErrors = settings.getBoolean(SETTINGS_KEY_DEFAULT_EXCEPTION_HANDLING, true);
         if (prettyErrors) {
@@ -51,6 +60,7 @@ public final class ExceptionEvaluatorRegistry {
     }
 
     private static final class SimpleErrors extends ExceptionEvaluator {
+
         SimpleErrors(ExceptionEvaluatorRegistry registry) {
             super(registry);
         }
@@ -59,7 +69,7 @@ public final class ExceptionEvaluatorRegistry {
         protected int ordinal() {
             return Integer.MIN_VALUE; // fallback position
         }
-        
+
         @Override
         public ErrorResponse evaluate(Throwable t, Acteur acteur, Page page, Event<?> evt) {
             return new Err(t, true);

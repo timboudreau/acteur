@@ -9,6 +9,8 @@ import com.mastfrog.acteur.resources.MimeTypes;
 import com.mastfrog.acteur.resources.StaticResources;
 import com.mastfrog.acteur.spi.ApplicationControl;
 import com.mastfrog.giulius.DeploymentMode;
+import com.mastfrog.giulius.annotations.Setting;
+import static com.mastfrog.giulius.annotations.Setting.Tier.SECONDARY;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.shutdown.hooks.ShutdownHookRegistry;
 import com.mastfrog.util.streams.Streams;
@@ -78,17 +80,21 @@ public class MarkupFiles implements Provider<StaticResources> {
     /**
      * Settings key for an explicit path to a directory containing markup files.
      */
+    @Setting("MarkupFiles: Path to the directory where bundled markup "
+            + "should be unpacked and served from.")
     public static final String SETTINGS_KEY_HTML_PATH = "html.path";
     /**
      * Settings key for the path relative to location of the project or jar file
      * shich, if it exists, should be used for markup.
      */
+    @Setting("MarkupFiles: Path on the classpath to look for an archive of markup to server.")
     public static final String SETTINGS_KEY_JAR_RELATIVE_FOLDER_NAME = "html.jar.relative.path";
     public static final String DEFAULT_JAR_RELATIVE_FOLDER_NAME = "html";
     /**
      * Name of an archive of markup files which should be used if no folder can
      * be found relative to the project.
      */
+    @Setting("MarkupFiles: Name of the archive of markup to serve (should be in tar.gz format).")
     public static final String SETTINGS_KEY_HTML_ARCHIVE_TAR_GZ_NAME = "archive.tar.gz.name";
     public static final String DEFAULT_HTML_ARCHIVE_TAR_GZ_NAME = "html-files";
     /**
@@ -103,6 +109,8 @@ public class MarkupFiles implements Provider<StaticResources> {
      * are not copied into JVM memory for serving - slightly slower performance,
      * but able to serve files that did not exist on VM startup.
      */
+    @Setting("MarkupFiles: Use DynamicResources instead of FileResources, "
+            + "which will not cache content in memory.")
     public static final String SETTINGS_KEY_USE_DYN_FILE_RESOURCES = "markup.files.dynamic";
     public static final boolean DEFAULT_USE_DYN_FILE_RESOURCES = true;
 

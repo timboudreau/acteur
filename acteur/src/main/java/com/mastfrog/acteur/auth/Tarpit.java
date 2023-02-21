@@ -2,10 +2,11 @@ package com.mastfrog.acteur.auth;
 
 import com.google.inject.ImplementedBy;
 import com.mastfrog.acteur.HttpEvent;
+import com.mastfrog.giulius.annotations.Setting;
 
 /**
- * Used by AuthenticateBasicActeur.  Too many failed password attempts and
- * you go in the tar pit - first responses are delayed, then blocked altogether.
+ * Used by AuthenticateBasicActeur. Too many failed password attempts and you go
+ * in the tar pit - first responses are delayed, then blocked altogether.
  * <p/>
  * Callers are identified by default by their IP address, but you can inject a
  * TarpitCacheKeyFactory to look at cookies or whatever you want.
@@ -14,20 +15,24 @@ import com.mastfrog.acteur.HttpEvent;
  */
 @ImplementedBy(TarpitImpl.class)
 public interface Tarpit {
+
+    @Setting(value = "BasicAuth: Number of minutes a host should be banned", type = Setting.ValueType.INTEGER, defaultValue = "5")
     public static final String SETTINGS_KEY_TARPIT_EXPIRATION_TIME_MINUTES
             = "tarpit.default.expiration.minutes";
     public static final int DEFAULT_TARPIT_EXPIRATION_TIME_MINUTES = 5;
 
     /**
-     * Add an entry to the tarpit for failing to authenticate, incrementing
-     * the count if necessary.
+     * Add an entry to the tarpit for failing to authenticate, incrementing the
+     * count if necessary.
      *
      * @param evt The http request
      * @return The updated number of bad requests
      */
     public int add(HttpEvent evt);
+
     /**
      * Get the number of bad requests
+     *
      * @param evt An http request
      * @return The
      */

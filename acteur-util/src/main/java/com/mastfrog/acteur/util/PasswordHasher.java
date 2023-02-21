@@ -23,6 +23,7 @@
  */
 package com.mastfrog.acteur.util;
 
+import com.mastfrog.giulius.annotations.Setting;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.util.preconditions.ConfigurationError;
 import com.mastfrog.util.preconditions.Exceptions;
@@ -53,9 +54,13 @@ public final class PasswordHasher {
             + "<$^UJCMM<>OIUHGC^#YUJKTGYSUCINJd9f0awe0f9aefansjneaiw"
             + "aoeifa222222222222o(#(#(&@^!";
     private final Charset charset;
+    @Setting(value = "PasswordHasher: Fixed password salt for use IN TESTS (will throw a "
+            + "ConfigurationError if used in production mode)", defaultValue = "48")
     public static final String SETTINGS_KEY_PASSWORD_SALT = "salt";
     public static final String SETTINGS_KEY_HASHING_ALGORITHM = "passwordHashingAlgorithm";
     public static final String DEFAULT_HASHING_ALGORITHM = "SHA-512";
+    @Setting(value = "PasswordHasher: Length of random salt to use when generating salted hashes "
+            + "of passwords", defaultValue = "48")
     public static final String SETTINGS_KEY_RANDOM_SALT_LENGTH = "randomSaltLength";
     public static final int DEFAULT_RANDOM_SALT_LENGTH = 48;
     private final UniqueIDs guids = UniqueIDs.noFile();
@@ -114,7 +119,7 @@ public final class PasswordHasher {
             return Exceptions.chuck(ex);
         }
     }
-    
+
     private boolean slowEquals(String a, String b) {
         // Compare all the characters of the string, so that
         // the comparison time is the same whether equal or not
@@ -131,7 +136,7 @@ public final class PasswordHasher {
     private String encryptPassword(String password, String randomSalt, String algorithm) throws NoSuchAlgorithmException {
         return encodeAlgorithm(algorithm) + ":" + randomSalt + ":" + Base64.getEncoder().encodeToString(hash(password + randomSalt, algorithm));
     }
-    
+
     public String hash(String s) {
         try {
             return Base64.getEncoder().encodeToString(hash(s, algorithm));

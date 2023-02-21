@@ -60,6 +60,11 @@ import com.mastfrog.acteurbase.ActeurBaseModule;
 import com.mastfrog.acteurbase.Chain;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.giulius.InjectionInfo;
+import com.mastfrog.giulius.annotations.Setting;
+import static com.mastfrog.giulius.annotations.Setting.Tier.PRIMARY;
+import static com.mastfrog.giulius.annotations.Setting.Tier.SECONDARY;
+import static com.mastfrog.giulius.annotations.Setting.Tier.TERTIARY;
+import static com.mastfrog.giulius.annotations.Setting.ValueType.INTEGER;
 import com.mastfrog.giulius.scope.ReentrantScope;
 import com.mastfrog.giulius.thread.ConventionalThreadSupplier;
 import com.mastfrog.giulius.thread.ExecutorServiceBuilder;
@@ -142,18 +147,22 @@ public class ServerModule<A extends Application> extends AbstractModule {
      * Sets the HTTP compression level from 0 to 9, 0 meaning no compression, 9
      * meaning maximum compression; the default is 6.
      */
+    @Setting(value = "HTTP compressor compression level (0-9)", type = Setting.ValueType.INTEGER)
     public static final String HTTP_COMPRESSION_LEVEL = "compression.level";
     /**
      * Sets the size of the history buffer for compression - should be in the
      * range 9 to 15, higher numbers meaning better commpression at the cost of
      * memory.
      */
+    @Setting(value = "Sizing of the history buffer - memory vs compression ratio trade "
+            + "off - a value from 9-15 ", type = Setting.ValueType.INTEGER)
     public static final String HTTP_COMPRESSION_WINDOW_BITS = "compression.window.bits";
     /**
      * Sets the amount of memory to use for compression state, from 1 to 9,
      * higher numbers using more memory but getting better and faster
      * compression.
      */
+    @Setting(value = "Sizing of the memory available for HTTP compression (1-9)", type = Setting.ValueType.INTEGER)
     public static final String HTTP_COMPRESSION_MEMORY_LEVEL = "compression.memory.level";
 
     /**
@@ -166,6 +175,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
      * compression for messages smaller than this threshold (for small messages,
      * compression can make them bigger).
      */
+    @Setting(value = "HTTP compression threshold bytes for applying compression", type = Setting.ValueType.INTEGER)
     public static final String HTTP_COMPRESSION_THRESHOLD = "compression.threshold";
 
     /**
@@ -175,6 +185,9 @@ public class ServerModule<A extends Application> extends AbstractModule {
      * compression, such as mpeg or jpeg. This is off by default, since it adds
      * a small amount of overhead to each response.
      */
+    @Setting(value = "If true, check the content-type header when deciding to apply HTTP "
+            + "compression, and do not do so for commonly uncompressable or already-compressed "
+            + "types (jpg, gz, etc.)", type = Setting.ValueType.BOOLEAN)
     public static final String HTTP_COMPRESSION_CHECK_RESPONSE_CONTENT_TYPE = "compression.check.content.type";
 
     /**
@@ -206,6 +219,8 @@ public class ServerModule<A extends Application> extends AbstractModule {
      * If set in settings, only this IP address will be bound when starting the
      * server.
      */
+    @Setting(value = "An IP address - if set, the server will only bind to this address "
+            + "rather than all available ones.", type = Setting.ValueType.STRING)
     public static final String SETTINGS_KEY_BIND_ADDRESS = "server.bind.interface.address";
     /**
      * The base path for all URLs in the application, allowing it to be
@@ -213,34 +228,50 @@ public class ServerModule<A extends Application> extends AbstractModule {
      * under the path <code>/foo</code>, and that is transparent to application
      * code, and is used when generating redirect URLs.
      */
+    @Setting(value = "Path to prepend to all URLs served - this is transparent to Acteurs within "
+            + "the process, which will see the path they expect, but allows the entire server to "
+            + "be 'mounted' on a path.", tier = SECONDARY)
     public static final String SETTINGS_KEY_BASE_PATH = "basepath";
     /**
      * The host name to use in URLs generated for redirects and similar, by
      * PathFactory.
      */
+    @Setting(value = "Host name to use in redirect URLs and similar - should match the host this "
+            + "process is running on, or a server that proxies this service.", tier = SECONDARY)
     public static final String SETTINGS_KEY_URLS_HOST_NAME = "hostname";
 
     /**
      * The external port if running behind a proxy, for use when PathFactory
      * generates redirect URLs.
      */
+    @Setting(value = "The external port to use in redirect URLs and similar - if the server runs "
+            + "behind a reverse proxy, should be the port it is reachable through", tier = SECONDARY,
+            type = Setting.ValueType.INTEGER)
     public static final String SETTINGS_KEY_URLS_EXTERNAL_PORT = "external.port";
 
     /**
      * The secure port if running behind a proxy, for use when PathFactory
      * generates redirect URLs.
      */
+    @Setting(value = "The external HTTPS port to use in redirect URLs and similar - if the server runs "
+            + "behind a reverse proxy, should be the HTTPS port it is reachable through", tier = SECONDARY,
+            type = Setting.ValueType.INTEGER)
     public static final String SETTINGS_KEY_URLS_EXTERNAL_SECURE_PORT = "external.secure.port";
 
     /**
      * Whether or not methods on PathFactory which do not take a protocol or
      * secure parameter should generate secure or insecure URLs.
      */
+    @Setting(value = "If true, generate HTTPS URLs for redirects and similar by default, regardless of "
+            + "whether this server is an HTTPS server (it may be HTTP behind an HTTPS reverse proxy)", tier = SECONDARY,
+            type = Setting.ValueType.BOOLEAN)
     public static final String SETTINGS_KEY_GENERATE_SECURE_URLS = "secure.urls";
 
     /**
      * If set to true (the default), turn off Netty's leak detector.
      */
+    @Setting(value = "If true, disable Netty's leak-detector - this should be set to true in production.", tier = SECONDARY,
+            type = Setting.ValueType.BOOLEAN)
     public static final String SETTINGS_KEY_DISABLE_LEAK_DETECTOR = "disable.leak.detector";
     public static final boolean DEFAULT_DISABLE_LEAK_DETECTOR = true;
 
@@ -249,12 +280,17 @@ public class ServerModule<A extends Application> extends AbstractModule {
      * to true. Defaults to true unless Guice's stage is production, but can be
      * overridden with this property.
      */
+    @Setting(value = "If true, include stack traces in default error responses", tier = TERTIARY,
+            type = Setting.ValueType.BOOLEAN)
     public static final String SETTINGS_KEY_RENDER_STACK_TRACES = "render.stack.traces";
 
     /**
      * URLs are generated using the host from InetAddress.getLocalHostName().
-     * Note that the result of this may be quite unpredictable..
+     * Note that the result of this may be quite unpredictable.
      */
+    @Setting(value = "If true, use whatever is returned by InetAddress.getLocalHostName() in redirect "
+            + "URLs (typically appropriate only for tests)", tier = SECONDARY,
+            type = Setting.ValueType.BOOLEAN)
     public static final String SETTINGS_KEY_GENERATE_URLS_WITH_INET_ADDRESS_GET_LOCALHOST
             = "urls.use.inetaddress.localhost";
 
@@ -291,6 +327,8 @@ public class ServerModule<A extends Application> extends AbstractModule {
      * Property name for setting which byte buffer allocator Netty uses (heap,
      * direct, pooled).
      */
+    @Setting(value = "The Netty bytebuf allocator to use.  Possible values are 'direct', 'heap', 'pooled'"
+            + ", 'pooled-custom' or 'directOrHeap' which chooses by platform.", tier = TERTIARY, defaultValue = "pooled")
     public static final String BYTEBUF_ALLOCATOR_SETTINGS_KEY = "acteur.bytebuf.allocator";
     /**
      * Property value for telling the server to use the direct byte buffer
@@ -324,30 +362,45 @@ public class ServerModule<A extends Application> extends AbstractModule {
     /**
      * Settings key for the number of worker threads to use.
      */
+    @Setting(value = "Sets the number of worker threads for processing requests.", tier = SECONDARY,
+            type = Setting.ValueType.INTEGER)
     public static final String WORKER_THREADS = "workers";
     /**
      * Number of event threads
      */
+    @Setting(value = "Sets the number of event threads used to service the server socket.  Even for "
+            + "very high traffic servers, 1-2 even threads is usually enough.", tier = SECONDARY,
+            type = Setting.ValueType.INTEGER)
     public static final String EVENT_THREADS = "eventThreads";
     /**
      * Number of background thread pool threads. The background thread pool is
      * used by a few things which chunk responses.
      */
+    @Setting(value = "Sets the number of threads in the general-purpose background thread-pool for "
+            + "use by application code, injectable with @Named", tier = TERTIARY,
+            type = Setting.ValueType.INTEGER)
     @Deprecated
     public static final String BACKGROUND_THREADS = "backgroundThreads";
     /**
      * The port to run on
      */
+    @Setting(value = "The port to run the server on.", tier = PRIMARY,
+            type = Setting.ValueType.INTEGER, pattern = "^[1-9]\\d{1,4}$", shortcut = 'p',
+            defaultValue = "8123")
     public static final String PORT = "port";
 
     /**
      * Settings key for enabling HTTP compression.
      */
+    @Setting(value = "If true, enable HTTP compression.", tier = SECONDARY,
+            type = Setting.ValueType.BOOLEAN)
     public static final String HTTP_COMPRESSION = "httpCompression";
 
     /**
      * Settings key for the maximum content length.
      */
+    @Setting(value = "Set the maximum length for inbound requests", tier = SECONDARY,
+            type = Setting.ValueType.INTEGER, defaultValue = "1048576")
     public static final String MAX_CONTENT_LENGTH = "maxContentLength";
     /**
      * Guice binding for
@@ -360,6 +413,8 @@ public class ServerModule<A extends Application> extends AbstractModule {
      * Number of threads to process delayed responses (see Acteur.setDelay()).
      * These threads are typically not busy and can be 1-2 threads.
      */
+    @Setting(value = "Number of threads to use in the ScheduledExecutorService that manage responses "
+            + "that use Fesponse.delay()", type = INTEGER)
     public static final String SETTINGS_KEY_DELAY_THREAD_POOL_THREADS = "delay.response.threads";
     /**
      * The default number of delay threads.
@@ -372,10 +427,14 @@ public class ServerModule<A extends Application> extends AbstractModule {
      * acteur application behind a reverse proxy does not mask the actual IP
      * address.
      */
+    @Setting(value = "If true, attempt to decode X-Forwarded-For and similar headers and "
+            + "return the result from remote address methods on HttpEvent",
+            type = Setting.ValueType.BOOLEAN, defaultValue = "true")
     public static final String SETTINGS_KEY_DECODE_REAL_IP = "decodeRealIP";
     /**
      * Settings key if true, do CORS responses on OPTIONS requests.
      */
+    @Setting(value = "Enable default handling of CORS headers and preflight requests", type = Setting.ValueType.BOOLEAN)
     public static final String SETTINGS_KEY_CORS_ENABLED = "cors.enabled";
     /**
      * If true (the default), a ForkJoinPool will be used for dispatching work
@@ -384,12 +443,16 @@ public class ServerModule<A extends Application> extends AbstractModule {
      * extremely small memory footprint (7-10Mb) will reduce their memory
      * requirements under load by turning this off.
      */
+    @Setting(value = "Use fork-join pools for Netty event executors; this has performance "
+            + "benefits but increases memory requirements.", type = Setting.ValueType.BOOLEAN, defaultValue = "false")
     public static final String SETTINGS_KEY_USE_FORK_JOIN_POOL = "acteur.fork.join";
 
     /**
      * If the default support for CORS requests is enabled, this is the max age
      * in minutes that the browser should regard the response as valid.
      */
+    @Setting(value = "The max-age in minutes used in CORS responses if CORS handling is enabled",
+            type = Setting.ValueType.BOOLEAN)
     public static final String SETTINGS_KEY_CORS_MAX_AGE_MINUTES = "cors.max.age.minutes";
 
     /**
@@ -406,6 +469,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
      * what hosts the response is valid for (what sites can use scripts from
      * this server without the browser blocking them). The default is *.
      */
+    @Setting("The allowed origins to use in the headers of CORS responses if CORS support is enabled")
     public static final String SETTINGS_KEY_CORS_ALLOW_ORIGIN = "cors.allow.origin";
 
     /**
@@ -414,6 +478,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
      * what hosts the response is valid for (what sites can use scripts from
      * this server without the browser blocking them). The default is *.
      */
+    @Setting("The allowed header list used in CORS responses if CORS support is enabled")
     public static final String SETTINGS_KEY_CORS_ALLOW_HEADERS = "cors.allow.headers";
     /**
      * If the default support for CORS requests is enabled, use this instead of
@@ -425,12 +490,14 @@ public class ServerModule<A extends Application> extends AbstractModule {
      * If the default support for CORS requests is enabled, this is the value
      * for the <code>Access-Control-Allow-Credentials</code> header.
      */
+    @Setting("The allow-credential setting for CORS responses if CORS support is enabled")
     public static final String SETTINGS_KEY_CORS_ALLOW_CREDENTIALS = "cors.allow.credentials";
     /**
      * If the default support for CORS requests is enabled, this is the value of
      * what hosts the response is valid for (what sites can use scripts from
      * this server without the browser blocking them). The default is *.
      */
+    @Setting(value = "The max age in days used by CORS responses if CORS support is enabled", type = Setting.ValueType.INTEGER)
     public static final String SETTINGS_KEY_CORS_CACHE_CONTROL_MAX_AGE = "cors.cache.control.max.age.days";
 
     /**
@@ -454,6 +521,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
      * Settings key for the SSL engine to use - the name of one of the constants
      * on SslProvider.
      */
+    @Setting("The name of the SSL engine to use, as recognized by Netty's SSL support")
     public static final String SETTINGS_KEY_SSL_ENGINE = "ssl.engine";
     /**
      * Determine if the application should exit if an exception is thrown when
@@ -463,45 +531,57 @@ public class ServerModule<A extends Application> extends AbstractModule {
      * set to false and the JVM will continue running if there are any live
      * non-daemon threads.
      */
+    @Setting(value = "If true, call System.exit(1) if an attempt is made to start the server on a port which "
+            + "is already in use by another process", type = Setting.ValueType.BOOLEAN)
     public static final String SETTINGS_KEY_SYSTEM_EXIT_ON_BIND_FAILURE = "system.exit.on.bind.failure";
 
     /**
      * If enabled, serve HTTPS by default.
      */
+    @Setting(value = "If true, start an HTTPS server (using a self-signed certificate if no "
+            + "alternative configuration is provided)", type = Setting.ValueType.BOOLEAN)
     public static final String SETTINGS_KEY_SSL_ENABLED = "ssl.enabled";
 
     /**
      * If enabled, turn on websocket support for the server process.
      */
+    @Setting(value = "Enable websocket support", type = Setting.ValueType.BOOLEAN)
     public static final String SETTINGS_KEY_WEBSOCKETS_ENABLED = "websocket.enabled";
     /**
      * Low level socket option for outbound connections; default value is true,
      * disabling Nagle's algorithm.
      */
+    @Setting(value = "Disable the nagle algorithm on the server socket", type = Setting.ValueType.BOOLEAN)
     public static final String SETTINGS_KEY_SOCKET_TCP_NODELAY = "acteur.outbound.socket.tcp.nodelay";
     /**
      * Low level socket option for outbound connections.
      */
+    @Setting(value = "Socket connect timeout in milliseconds", type = Setting.ValueType.INTEGER)
     public static final String SETTINGS_KEY_SOCKET_CONNECT_TIMEOUT_MILLIS = "acteur.inbound.socket.connect.timeout.millis";
     /**
      * Low level socket option for outbound connections.
      */
+    @Setting(value = "Low-level socket max messages per read", type = Setting.ValueType.INTEGER)
     public static final String SETTINGS_KEY_SOCKET_MAX_MESSAGES_PER_READ = "acteur.inbound.socket.max.messages.per.read";
     /**
      * Low level socket option for outbound connections.
      */
+    @Setting(value = "Low-level socket max messages per individuual read", type = Setting.ValueType.INTEGER)
     public static final String SETTINGS_KEY_SOCKET_MAX_MESSAGES_PER_INDIVIDUAL_READ = "acteur.inbound.socket.max.messages.per.individual.read";
     /**
      * Low level socket option for outbound connections.
      */
+    @Setting(value = "Inbound request socket receive buffer size", type = Setting.ValueType.INTEGER)
     public static final String SETTINGS_KEY_SOCKET_SO_RCVBUF = "acteur.inbound.socket.rcvbuf.size";
     /**
      * Low level socket option for outbound connections.
      */
+    @Setting(value = "Outbound response socket send buffer size", type = Setting.ValueType.INTEGER)
     public static final String SETTINGS_KEY_SOCKET_SO_SNDBUF = "acteur.outbound.socket.sndbuf.size";
     /**
      * Low level socket option for outbound connections.
      */
+    @Setting(value = "Spin count for writing to the outbound socket", type = Setting.ValueType.INTEGER)
     public static final String SETTINGS_KEY_SOCKET_WRITE_SPIN_COUNT = "acteur.outbound.socket.write.spin.count";
     /**
      * Default value for TCP_NODELAY for outbound connections.
@@ -518,6 +598,8 @@ public class ServerModule<A extends Application> extends AbstractModule {
      * <a href="https://netty.io/4.1/api/io/netty/buffer/PooledByteBufAllocator.html">javadoc
      * for PooledByteBufAllocator</a>.
      */
+    @Setting(value = "If using CUSTOMIZED_POOLED_ALLOCATOR, the cache alignment in bytes "
+            + "for the pooled buffer allocator", type = Setting.ValueType.INTEGER)
     public static final String SETTINGS_KEY_CUSTOM_ALLOC_CACHE_ALIGNMENT = "custom.alloc.cache.alignment";
     /**
      * Fine tuning for using customized pooled byte buf allocator. Only relevant
@@ -527,6 +609,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
      * <a href="https://netty.io/4.1/api/io/netty/buffer/PooledByteBufAllocator.html">javadoc
      * for PooledByteBufAllocator</a>.
      */
+    @Setting(value = "Fine tuning if using CUSTOMIZED_POOLED_ALLOCATOR", type = Setting.ValueType.INTEGER)
     public static final String SETTINGS_KEY_CUSTOM_ALLOC_USE_CACHE_ALL_THREADS = "custom.alloc.use.cache.all.threads";
     /**
      * Fine tuning for using customized pooled byte buf allocator. Only relevant
@@ -536,6 +619,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
      * <a href="https://netty.io/4.1/api/io/netty/buffer/PooledByteBufAllocator.html">javadoc
      * for PooledByteBufAllocator</a>.
      */
+    @Setting(value = "Fine tuning if using CUSTOMIZED_POOLED_ALLOCATOR", type = Setting.ValueType.INTEGER)
     public static final String SETTINGS_KEY_CUSTOM_ALLOC_NORMAL_CACHE_SIZE = "custom.alloc.normal.cache.size";
     /**
      * Fine tuning for using customized pooled byte buf allocator. Only relevant
@@ -545,6 +629,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
      * <a href="https://netty.io/4.1/api/io/netty/buffer/PooledByteBufAllocator.html">javadoc
      * for PooledByteBufAllocator</a>.
      */
+    @Setting(value = "Fine tuning if using CUSTOMIZED_POOLED_ALLOCATOR", type = Setting.ValueType.INTEGER)
     public static final String SETTINGS_KEY_CUSTOM_ALLOC_SMALL_CACHE_SIZE = "custom.alloc.small.cache.size";
     /**
      * Fine tuning for using customized pooled byte buf allocator. Only relevant
@@ -554,6 +639,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
      * <a href="https://netty.io/4.1/api/io/netty/buffer/PooledByteBufAllocator.html">javadoc
      * for PooledByteBufAllocator</a>.
      */
+    @Setting(value = "Fine tuning if using CUSTOMIZED_POOLED_ALLOCATOR", type = Setting.ValueType.INTEGER)
     public static final String SETTINGS_KEY_CUSTOM_ALLOC_TINY_CACHE_SIZE = "custom.alloc.tiny.cache.size";
     /**
      * Fine tuning for using customized pooled byte buf allocator. Only relevant
@@ -563,6 +649,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
      * <a href="https://netty.io/4.1/api/io/netty/buffer/PooledByteBufAllocator.html">javadoc
      * for PooledByteBufAllocator</a>.
      */
+    @Setting(value = "Fine tuning if using CUSTOMIZED_POOLED_ALLOCATOR", type = Setting.ValueType.INTEGER)
     public static final String SETTINGS_KEY_CUSTOM_ALLOC_MAX_ORDER = "custom.alloc.max.order";
     /**
      * Fine tuning for using customized pooled byte buf allocator. Only relevant
@@ -572,6 +659,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
      * <a href="https://netty.io/4.1/api/io/netty/buffer/PooledByteBufAllocator.html">javadoc
      * for PooledByteBufAllocator</a>.
      */
+    @Setting(value = "Fine tuning if using CUSTOMIZED_POOLED_ALLOCATOR", type = Setting.ValueType.INTEGER)
     public static final String SETTINGS_KEY_CUSTOM_ALLOC_PAGE_SIZE = "custom.alloc.page.size";
     /**
      * Fine tuning for using customized pooled byte buf allocator. Only relevant
@@ -581,6 +669,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
      * <a href="https://netty.io/4.1/api/io/netty/buffer/PooledByteBufAllocator.html">javadoc
      * for PooledByteBufAllocator</a>.
      */
+    @Setting(value = "Fine tuning if using CUSTOMIZED_POOLED_ALLOCATOR", type = Setting.ValueType.INTEGER)
     public static final String SETTINGS_KEY_CUSTOM_ALLOC_NUM_DIRECT_ARENAS = "custom.alloc.num.direct.arenas";
     /**
      * Fine tuning for using customized pooled byte buf allocator. Only relevant
@@ -590,6 +679,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
      * <a href="https://netty.io/4.1/api/io/netty/buffer/PooledByteBufAllocator.html">javadoc
      * for PooledByteBufAllocator</a>.
      */
+    @Setting(value = "Fine tuning if using CUSTOMIZED_POOLED_ALLOCATOR", type = Setting.ValueType.INTEGER)
     public static final String SETTINGS_KEY_CUSTOM_ALLOC_NUM_HEAP_ARENAS = "custom.alloc.num.heap.arenas";
     /**
      * Fine tuning for using customized pooled byte buf allocator. Only relevant
@@ -599,23 +689,31 @@ public class ServerModule<A extends Application> extends AbstractModule {
      * <a href="https://netty.io/4.1/api/io/netty/buffer/PooledByteBufAllocator.html">javadoc
      * for PooledByteBufAllocator</a>.
      */
+    @Setting(value = "If using CUSTOMIZED_POOLED_ALLOCATOR, prefer off-heap buffers", type = Setting.ValueType.BOOLEAN)
     public static final String SETTINGS_KEY_CUSTOM_ALLOC_PREFER_DIRECT = "custom.alloc.prefer.direct";
 
     /**
      * Length in bytes of the maximum request line length, after which the http
      * codec will return a /bad-request response.
      */
+    @Setting(value = "Maximum length for the initial line of an inbound HTTP request"
+            + " (useful for denial of service avoidance)", type = Setting.ValueType.INTEGER, defaultValue = "4096")
     public static final String SETTINGS_KEY_MAX_REQUEST_LINE_LENGTH = "max.request.line.length";
     /**
      * Length in bytes of the maximum HTTP header buffer size after which the
      * http codec will return a /bad-request response.
      */
+    @Setting(value = "The maximum size for the buffer used for inbound HTTP headers", type = Setting.ValueType.INTEGER, defaultValue = "8192")
     public static final String SETTINGS_KEY_MAX_HEADER_BUFFER_SIZE = "max.header.buffer.size";
     /**
      * Length in bytes of the maximum inbound HTTP chunk size, after which the
      * http codec will return a /bad-request response.
      */
+    @Setting(value = "The maximum size of inbound or outbound HTTP chunks in chunked encoding", type = Setting.ValueType.INTEGER, defaultValue = "8192")
     public static final String SETTINGS_KEY_MAX_CHUNK_SIZE = "max.chunk.size";
+
+    @Setting(value = "The character set to use in response headers.", defaultValue = "UTF-8", tier = SECONDARY)
+    public static final String SETTINGS_KEY_CHARSET = "charset";
 
     static final AttributeKey<Boolean> SSL_ATTRIBUTE_KEY = AttributeKey.newInstance("ssl");
 
@@ -1081,7 +1179,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
 
         @Inject
         CharsetProvider(Settings settings) {
-            String set = settings.getString("charset");
+            String set = settings.getString(SETTINGS_KEY_CHARSET);
             if (set == null) {
                 charset = CharsetUtil.UTF_8;
             } else {

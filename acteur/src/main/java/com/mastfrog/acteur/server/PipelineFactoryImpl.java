@@ -45,6 +45,8 @@ import static com.mastfrog.acteur.server.ServerModule.X_INTERNAL_COMPRESS;
 import com.mastfrog.acteur.spi.ApplicationControl;
 import com.mastfrog.function.misc.QuietAutoClosable;
 import com.mastfrog.function.threadlocal.ThreadLocalValue;
+import com.mastfrog.giulius.annotations.Setting;
+import static com.mastfrog.giulius.annotations.Setting.ValueType.BOOLEAN;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.util.preconditions.ConfigurationError;
 import io.netty.buffer.ByteBuf;
@@ -77,6 +79,14 @@ import javax.inject.Singleton;
 @Singleton
 class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
 
+    @Setting(type = BOOLEAN, value = "Enable HTTP inbound request chunk aggregation.  If set to false,"
+            + " Netty's default HttpObjectAggregator is not used, and the server will not be able to "
+            + "respond to chunked encoding requests unless individual acteurs handle the protocol chunks "
+            + "manually.  This is sometimes desirable in servers that handle large media-file uploads, "
+            + "which should not be pulled into memory.", defaultValue = "true")
+    private static final String SETTINGS_KEY_AGGREGATE_CHUNKS = "aggregateChunks";
+    @Setting(type = BOOLEAN, value = "Debug: Enable extended logging of HTTP compression.", defaultValue = "true")
+    private static final String SETTINGS_KEY_HTTP_COMPRESSION_DEBUG = "http.compression.debug";
     static final boolean DEFAULT_AGGREGATE_CHUNKS = true;
     static final int DEFAULT_MAX_CONTENT_LENGTH = 1048576;
 
@@ -110,8 +120,8 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
         this.handler = handler;
         this.app = app;
         this.sslConfigProvider = sslConfigProvider;
-        aggregateChunks = settings.getBoolean("aggregateChunks", DEFAULT_AGGREGATE_CHUNKS);
-        compressionDebug = settings.getBoolean("http.compression.debug", false);
+        aggregateChunks = settings.getBoolean(SETTINGS_KEY_AGGREGATE_CHUNKS, DEFAULT_AGGREGATE_CHUNKS);
+        compressionDebug = settings.getBoolean(SETTINGS_KEY_HTTP_COMPRESSION_DEBUG, false);
         httpCompression = settings.getBoolean(HTTP_COMPRESSION, true);
         maxContentLength = settings.getInt(MAX_CONTENT_LENGTH, DEFAULT_MAX_CONTENT_LENGTH);
         useSsl = settings.getBoolean(SETTINGS_KEY_SSL_ENABLED, false);

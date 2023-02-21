@@ -33,7 +33,6 @@ import com.mastfrog.mime.MimeType;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import static io.netty.handler.codec.http.HttpResponseStatus.OK;
-import static java.nio.charset.StandardCharsets.UTF_8;
 import javax.inject.Inject;
 
 /**

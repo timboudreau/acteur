@@ -39,6 +39,11 @@
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
+            <artifactId>giulius-annotation-processors</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
             <artifactId>netty-http-test-harness</artifactId>
             <scope>test</scope>
         </dependency>

@@ -30,6 +30,7 @@ import com.mastfrog.acteur.Response;
 import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.acteur.header.entities.BasicCredentials;
 import com.mastfrog.acteur.util.Realm;
+import com.mastfrog.giulius.annotations.Setting;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.util.perf.Benchmark;
 import com.mastfrog.util.perf.Benchmark.Kind;
@@ -56,8 +57,12 @@ import javax.inject.Inject;
 @Deprecated
 public class AuthenticateBasicActeur extends AuthenticationActeur {
 
+    @Setting(value = "BasicAuth: In response n failed login attempts, ban a host", type = Setting.ValueType.INTEGER, defaultValue = "7")
     public static final String SETTINGS_KEY_TARPIT_BAD_LOGIN_ATTEMPT_COUNT = "max.allowed.failed.login.attempts";
+    @Setting(value = "BasicAuth: In response n failed auth attempts , use an escalating delay before "
+            + "returning subsequent responses to the offending address", type = Setting.ValueType.INTEGER, defaultValue = "7")
     public static final String SETTINGS_KEY_TARPIT_DELAY_RESPONSE_AFTER = "delay.failed.login.attempts.after";
+    @Setting(value = "BasicAuth: The number of seconds to delay responses", type = Setting.ValueType.INTEGER, defaultValue = "7")
     public static final String SETTINGS_KEY_TARPIT_DELAY_SECONDS = "failed.login.attempt.response.delay";
 
     public static final int DEFAULT_FAILED_LOGIN_ATTEMPT_LIMIT = 7;
@@ -108,7 +113,6 @@ public class AuthenticateBasicActeur extends AuthenticationActeur {
         into.put("Basic Authentication Required", true);
     }
 
-
     private static class NoOpDecorator implements AuthenticationDecorator {
 
         @Override
@@ -121,6 +125,7 @@ public class AuthenticateBasicActeur extends AuthenticationActeur {
             //do nothing
         }
     }
+
     /**
      * Decorator which can do things to the response on authentication
      * succeess/failure, such as setting/clearing cookies
