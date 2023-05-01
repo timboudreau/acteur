@@ -5,7 +5,7 @@
     <parent>
         <groupId>com.mastfrog</groupId>
         <artifactId>acteur-parent</artifactId>
-        <version>2.9.7</version>
+        <version>3.0.0</version>
     </parent>
     
     <artifactId>acteur-header-entities</artifactId>
@@ -23,6 +23,16 @@
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>util-strings</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>util-time</artifactId>
+            <scope>test</scope>
+        </dependency>        
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <scope>test</scope>
         </dependency>
     </dependencies>
     <scm>

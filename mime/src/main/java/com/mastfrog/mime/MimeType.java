@@ -83,10 +83,9 @@ public abstract class MimeType implements Comparable<MimeType>, Supplier<Charset
     }
 
     static Charset findCharset(String what) {
-        // With JDK9 we can use Charset.forName(string, charset)
         return CHARSETS.computeIfAbsent(what, cs -> {
             try {
-                return Charset.forName(what);
+                return Charset.isSupported(what) ? Charset.forName(what) : UTF_8;
             } catch (Exception ex) {
                 return UTF_8;
             }

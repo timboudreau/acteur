@@ -21,7 +21,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.mastfrog.acteur.util;
+package com.mastfrog.acteur.header.entities;
 
 import com.mastfrog.acteur.header.entities.StrictTransportSecurity;
 import com.mastfrog.acteur.header.entities.StrictTransportSecurity.SecurityElements;
@@ -82,7 +82,6 @@ public class StrictTransportSecurityTest {
 
         for (Field f : StrictTransportSecurity.class.getDeclaredFields()) {
             if (f.getType() == StrictTransportSecurity.class && (f.getModifiers() & Modifier.STATIC) != 0) {
-                System.out.println(f.getName() + " " + f.get(null));
                 assertEquals(f.get(null), StrictTransportSecurity.parse(f.get(null).toString()));
             }
         }

@@ -115,16 +115,13 @@ public final class StrictTransportSecurity implements Comparable<StrictTransport
     }
 
     private long toSeconds(Duration dur) {
-        return dur.get(ChronoUnit.SECONDS);
+        return dur.toSeconds();
     }
 
     public boolean equals(Object o) {
         return o == null ? false : o == this ? true : o instanceof StrictTransportSecurity
                 && toSeconds(((StrictTransportSecurity) o).maxAge) == toSeconds(maxAge)
                 && ((StrictTransportSecurity) o).elements.equals(elements);
-        // JDK 9
-//                && ((StrictTransportSecurity) o).maxAge.toSeconds() == maxAge.toSeconds()
-//                && ((StrictTransportSecurity) o).elements.equals(elements);
     }
 
     public String toString() {

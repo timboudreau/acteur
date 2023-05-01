@@ -686,7 +686,6 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
             super(false);
             if (page == null) {
                 IllegalStateException e = new IllegalStateException("Called outside ActionsImpl.onEvent");
-                e.printStackTrace();
                 throw e;
             }
             setResponseCode(status);
@@ -971,7 +970,6 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
                 try {
                     acteur = deps.getInstance(type);
                 } catch (Exception e) {
-                    e.printStackTrace(); //XXX
                     try {
                         deps.getInstance(Application.class).internalOnError(e);
                         onError(e);

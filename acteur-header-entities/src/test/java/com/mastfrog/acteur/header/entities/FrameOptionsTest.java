@@ -21,9 +21,8 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.mastfrog.acteur.util;
+package com.mastfrog.acteur.header.entities;
 
-import com.mastfrog.acteur.header.entities.FrameOptions;
 import com.mastfrog.acteur.header.entities.FrameOptions.FrameOptionType;
 import java.net.URI;
 import static org.junit.Assert.assertEquals;

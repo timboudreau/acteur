@@ -148,9 +148,8 @@ public abstract class ResponseWriter {
         @Override
         public Output write(InputStream in) throws IOException {
             ByteBuf b = buf();
-            // XXX stagger this so we don't pull the whole stream into RAM
             ByteBufOutputStream out = new ByteBufOutputStream(b);
-            Streams.copy(in, out);
+            Streams.copy(in, out, 512);
             return write(b);
         }
 

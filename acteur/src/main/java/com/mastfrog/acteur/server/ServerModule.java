@@ -866,7 +866,8 @@ public class ServerModule<A extends Application> extends AbstractModule {
         bind(Duration.class).toProvider(UptimeProvider.class);
         bind(new CKTL()).toProvider(CookiesProvider.class);
 
-        //XXX anything using this?
+        // Used in constructor of ServerImpl; only used in its toString(), but that is logged in
+        // acteur.debug mode.  Possibly get rid of it - it is only used if acteur.debug=true
         bind(String.class).annotatedWith(Names.named("application")).toInstance(this.appType.getSimpleName());
 
         bind(ServerImpl.class).asEagerSingleton();
