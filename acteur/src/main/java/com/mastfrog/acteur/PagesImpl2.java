@@ -150,7 +150,6 @@ class PagesImpl2 {
         HttpEvent httpEvent = (HttpEvent) evt;
         // If X-Internal-Compress is present, the compressor is not going to touch it anyway
         if (response.get(X_INTERNAL_COMPRESS_HEADER) != null) {
-            // XXX needed here?
             return true;
         }
         // If compression is off, it's all a non-issue
