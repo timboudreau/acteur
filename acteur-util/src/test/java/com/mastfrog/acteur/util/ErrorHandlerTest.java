@@ -27,7 +27,7 @@ import com.google.inject.AbstractModule;
 import com.mastfrog.acteur.util.ErrorHandler.Ordinal;
 import com.mastfrog.acteur.util.ErrorHandlerTest.MM;
 import com.mastfrog.giulius.tests.GuiceRunner;
-import com.mastfrog.giulius.tests.TestWith;
+import com.mastfrog.giulius.tests.anno.TestWith;
 import java.io.IOException;
 import java.util.function.Consumer;
 import javax.inject.Inject;

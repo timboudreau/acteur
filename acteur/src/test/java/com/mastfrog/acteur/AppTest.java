@@ -21,7 +21,7 @@ import com.mastfrog.acteur.util.RequestID;
 import com.mastfrog.giulius.InjectionInfo;
 import com.mastfrog.giulius.scope.ReentrantScope;
 import com.mastfrog.giulius.tests.GuiceRunner;
-import com.mastfrog.giulius.tests.TestWith;
+import com.mastfrog.giulius.tests.anno.TestWith;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.util.codec.Codec;
 import com.mastfrog.util.preconditions.Checks;

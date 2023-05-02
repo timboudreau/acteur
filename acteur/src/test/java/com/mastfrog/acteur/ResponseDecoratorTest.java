@@ -30,7 +30,7 @@ import static com.mastfrog.acteur.headers.Headers.SET_COOKIE_B_STRICT;
 import com.mastfrog.acteur.preconditions.Path;
 import com.mastfrog.acteur.server.ServerModule;
 import com.mastfrog.giulius.tests.GuiceRunner;
-import com.mastfrog.giulius.tests.TestWith;
+import com.mastfrog.giulius.tests.anno.TestWith;
 import com.mastfrog.netty.http.test.harness.TestHarness;
 import com.mastfrog.netty.http.test.harness.TestHarnessModule;
 import io.netty.handler.codec.http.HttpResponseStatus;

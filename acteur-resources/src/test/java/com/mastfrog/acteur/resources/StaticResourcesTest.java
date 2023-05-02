@@ -40,7 +40,7 @@ import static com.mastfrog.acteur.resources.ResourcesApp.tmpdir;
 import com.mastfrog.acteur.util.Server;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.giulius.tests.GuiceRunner;
-import com.mastfrog.giulius.tests.TestWith;
+import com.mastfrog.giulius.tests.anno.TestWith;
 import com.mastfrog.netty.http.client.State;
 import static com.mastfrog.netty.http.client.StateType.FullContentReceived;
 import com.mastfrog.netty.http.test.harness.TestHarness;

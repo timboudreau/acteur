@@ -74,17 +74,22 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>${project.groupId}</groupId>
+            <groupId>${mastfrog.groupId}</groupId>
             <artifactId>netty-http-test-harness</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>${project.groupId}</groupId>
+            <groupId>${mastfrog.groupId}</groupId>
             <artifactId>netty-http-client</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>${project.groupId}</groupId>
+            <groupId>${mastfrog.groupId}</groupId>
+            <artifactId>http-test-harness-acteur</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>${mastfrog.groupId}</groupId>
             <artifactId>giulius-tests</artifactId>
             <scope>test</scope>
         </dependency>

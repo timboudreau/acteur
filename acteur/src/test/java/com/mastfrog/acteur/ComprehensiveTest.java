@@ -3,7 +3,7 @@ package com.mastfrog.acteur;
 import static com.mastfrog.acteur.header.entities.Connection.close;
 import static com.mastfrog.acteur.headers.Headers.CONNECTION;
 import com.mastfrog.giulius.tests.GuiceRunner;
-import com.mastfrog.giulius.tests.TestWith;
+import com.mastfrog.giulius.tests.anno.TestWith;
 import static com.mastfrog.mime.MimeType.PLAIN_TEXT_UTF_8;
 import com.mastfrog.netty.http.client.StateType;
 import com.mastfrog.netty.http.test.harness.TestHarness;
