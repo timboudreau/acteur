@@ -40,6 +40,8 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -70,31 +72,31 @@ public class EventImplTest {
     @Test
     public void testSomeMethod() {
         EventImpl evt = newEvent(emptySettings, "http://foo.com/foo/bar/baz/quux");
-        assertEquals(Path.parse("foo/bar/baz/quux"), evt.path());
-        assertEquals("http://foo.com/foo/bar/baz/quux", evt.getRequestURL(false));
+        Assertions.assertEquals(Path.parse("foo/bar/baz/quux"), evt.path());
+        Assertions.assertEquals("http://foo.com/foo/bar/baz/quux", evt.getRequestURL(false));
 
         evt = newEvent(withBasePath, "http://foo.com/foo/bar/baz/quux");
-        assertEquals(Path.parse("baz/quux"), evt.path());
-        assertEquals("http://foo.com/foo/bar/baz/quux", evt.getRequestURL(false));
+        Assertions.assertEquals(Path.parse("baz/quux"), evt.path());
+        Assertions.assertEquals("http://foo.com/foo/bar/baz/quux", evt.getRequestURL(false));
 
         evt = newEvent(withExternalSecureHost, true, "http://foo.com/foo/bar/baz/quux");
-        assertEquals(Path.parse("foo/bar/baz/quux"), evt.path());
-        assertEquals("https://poodle.com/foo/bar/baz/quux", evt.getRequestURL(false));
+        Assertions.assertEquals(Path.parse("foo/bar/baz/quux"), evt.path());
+        Assertions.assertEquals("https://poodle.com/foo/bar/baz/quux", evt.getRequestURL(false));
 
         evt = newEvent(withExternalSecureHostOnOddPort, "http://foo.com/foo/bar/baz/quux");
-        assertEquals(Path.parse("foo/bar/baz/quux"), evt.path());
-        assertEquals("https://puddle.com:7443/foo/bar/baz/quux", evt.getRequestURL(false));
+        Assertions.assertEquals(Path.parse("foo/bar/baz/quux"), evt.path());
+        Assertions.assertEquals("https://puddle.com:7443/foo/bar/baz/quux", evt.getRequestURL(false));
 
         evt = newEvent(withExternalSecureHostOnOddPort, "http://foo.com/foo/bar/baz/quux", "X-Forwarded-Host", "x.com");
-        assertEquals(Path.parse("foo/bar/baz/quux"), evt.path());
-        assertEquals("https://puddle.com:7443/foo/bar/baz/quux", evt.getRequestURL(false));
+        Assertions.assertEquals(Path.parse("foo/bar/baz/quux"), evt.path());
+        Assertions.assertEquals("https://puddle.com:7443/foo/bar/baz/quux", evt.getRequestURL(false));
 
         evt = newEvent(withExternalSecureHostOnOddPort, "http://foo.com/foo/bar/baz/quux",
                 "X-Forwarded-Host", "x.com:7445",
                 "X-Forwarded-Proto", "https"
         );
-        assertEquals(Path.parse("foo/bar/baz/quux"), evt.path());
-        assertEquals("https://x.com:7445/foo/bar/baz/quux", evt.getRequestURL(true));
+        Assertions.assertEquals(Path.parse("foo/bar/baz/quux"), evt.path());
+        Assertions.assertEquals("https://x.com:7445/foo/bar/baz/quux", evt.getRequestURL(true));
     }
 
     private EventImpl newEvent(PathFactory paths, String url, String... headers) {
@@ -114,7 +116,7 @@ public class EventImplTest {
 
     private HttpRequest req(String url, boolean forceHttps, String... headers) {
         URL u = URL.parse(url);
-        assertTrue(Strings.join(',', headers), (headers.length) % 2 == 0);
+        Assertions.assertTrue((headers.length) % 2 == 0, Strings.join(',', headers));
         DefaultHttpHeaders hdrs = new DefaultHttpHeaders();
         for (int i = 0; i < headers.length; i += 2) {
             hdrs.add(headers[i], headers[i + 1]);
@@ -129,8 +131,7 @@ public class EventImplTest {
         } else {
             hdrs.add("X-Forwarded-Proto", u.getProtocol().toString());
         }
-        DefaultHttpRequest req = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, u.getPathAndQuery(), hdrs);
-        return req;
+        return new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, u.getPathAndQuery(), hdrs);
     }
 
 }

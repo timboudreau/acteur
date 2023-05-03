@@ -94,8 +94,8 @@ final class CORSResponseDecoratorImpl implements CORSResponseDecorator {
         if (replace != null) {
             hdrs = replace;
         } else {
-            List<CharSequence> headerNames = new ArrayList<>(CollectionUtils.transform(defaultHeaders, h -> h.name()));
-            Collections.sort(headerNames, Strings.charSequenceComparator(true));
+            List<CharSequence> headerNames = new ArrayList<>(CollectionUtils.transform(defaultHeaders, HeaderValueType::name));
+            headerNames.sort(Strings.charSequenceComparator(true));
             hdrs = new AsciiString(Strings.join(',', headerNames));
         }
         allowCredentials = settings.getBoolean(SETTINGS_KEY_CORS_ALLOW_CREDENTIALS, DEFAULT_CORS_ALLOW_CREDENTIALS);

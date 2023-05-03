@@ -32,7 +32,7 @@ import java.lang.annotation.Target;
  * Specifieds a glob-style URL path, such as /mything/* - a * can represent
  * anything but a / character.  Used for simpler matching than full-blown
  * regular expression evaluation (which it is translated to at runtime).
- *
+ * <p>
  * Annotation which can appear on an Acteur with the &#064;HttpCall annotation
  * or on a Page with that annotation.
  *

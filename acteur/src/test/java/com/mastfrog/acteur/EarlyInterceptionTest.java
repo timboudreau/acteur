@@ -169,7 +169,7 @@ public class EarlyInterceptionTest {
             ReceiveActeur(HttpEvent evt) throws URISyntaxException, IOException {
                 evt.content().resetReaderIndex();
                 Optional<Integer> bytes = evt.uriQueryParameter("bytes", Integer.class);
-                if (!bytes.isPresent()) {
+                if (bytes.isEmpty()) {
                     reply(INTERNAL_SERVER_ERROR, "No bytes= url parameter");
                 } else {
                     int val = bytes.get();

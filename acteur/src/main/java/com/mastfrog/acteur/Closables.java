@@ -44,7 +44,7 @@ public final class Closables {
         return Strings.join(',', closeables) + "/" + Strings.join(',', timers);
     }
 
-    public final <T, R extends CompletionStage<T>> R add(R fut) {
+    public <T, R extends CompletionStage<T>> R add(R fut) {
         if (fut instanceof CompletableFuture<?>) {
             add(new AutoClosableWrapper(fut));
         }
@@ -61,7 +61,7 @@ public final class Closables {
         }
     }
 
-    public final <T extends AutoCloseable> T add(T closable) {
+    public <T extends AutoCloseable> T add(T closable) {
         Checks.notNull("closeable", closable);
         if (!closeables.contains(closable)) {
             closeables.add(closable);
@@ -70,7 +70,7 @@ public final class Closables {
         return closable;
     }
 
-    public final <T extends Timer> T add(T timer) {
+    public <T extends Timer> T add(T timer) {
         Checks.notNull("timer", timer);
         if (!timers.contains(timer)) {
             timers.add(timer);
@@ -79,7 +79,7 @@ public final class Closables {
         return timer;
     }
 
-    public final Closables add(Runnable run) {
+    public Closables add(Runnable run) {
         Checks.notNull("run", run);
         for (AutoCloseable clos : closeables) {
             if (clos instanceof RunnableWrapper) {

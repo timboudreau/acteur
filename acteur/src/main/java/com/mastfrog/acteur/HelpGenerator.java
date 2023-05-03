@@ -193,7 +193,6 @@ public final class HelpGenerator {
             return;
         }
         if (a instanceof HttpCall) {
-            return;
         } else if (a instanceof Precursors) {
             Precursors p = (Precursors) a;
             for (Class<?> t : p.value()) {

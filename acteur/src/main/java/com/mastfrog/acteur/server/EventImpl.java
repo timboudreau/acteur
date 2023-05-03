@@ -341,9 +341,8 @@ final class EventImpl implements HttpEvent {
         if (neverKeepAlive) {
             return false;
         }
-        boolean hasKeepAlive = req.headers()
+        return req.headers()
                 .contains(CONNECTION, KEEP_ALIVE, true);
-        return hasKeepAlive;
     }
 
     @SuppressWarnings("deprecation")
@@ -380,7 +379,7 @@ final class EventImpl implements HttpEvent {
         String u = req.uri();
         int ix = u.indexOf('#');
         if (ix >= 0) {
-            return java.util.Optional.<CharSequence>of(u.substring(ix + 1));
+            return java.util.Optional.of(u.substring(ix + 1));
         }
         return java.util.Optional.empty();
     }
@@ -391,13 +390,13 @@ final class EventImpl implements HttpEvent {
         if (p.size() >= nonNegative("index", index)) {
             return java.util.Optional.empty();
         }
-        return java.util.Optional.<CharSequence>of(p.getElement(index).toString());
+        return java.util.Optional.of(p.getElement(index).toString());
     }
 
     @Override
     public java.util.Optional<CharSequence> uriQueryParameter(CharSequence name, boolean decode) {
         String val = urlParametersAsMap().get(notNull("name", name).toString());
-        return java.util.Optional.<CharSequence>ofNullable(val);
+        return java.util.Optional.ofNullable(val);
     }
 
     @Override

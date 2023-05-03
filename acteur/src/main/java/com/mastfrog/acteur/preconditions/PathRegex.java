@@ -31,7 +31,7 @@ import java.lang.annotation.Target;
 /**
  * Annotation which determines regular expressions used to determine whether a
  * page responds to a given request.
- *
+ * <p>
  * Annotation which can appear on an Acteur with the &#064;HttpCall annotation
  * or on a Page with that annotation.
  *

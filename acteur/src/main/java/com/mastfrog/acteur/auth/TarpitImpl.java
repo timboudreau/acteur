@@ -38,14 +38,7 @@ final class TarpitImpl implements Tarpit {
         Timer timer = new Timer(true);
         Date firstTime = new Date(TimeUtil.toUnixTimestamp(ZonedDateTime.now().plus(timeToExpiration)));
         timer.scheduleAtFixedRate(gc, firstTime, timeToExpiration.toMillis() / 2);
-        reg.add(new Runnable() {
-
-            @Override
-            public void run() {
-                gc.cancel();
-            }
-
-        });
+        reg.add(gc::cancel);
         this.keyFactory = keyFactory;
     }
 
@@ -60,8 +53,7 @@ final class TarpitImpl implements Tarpit {
     @Override
     public int count(HttpEvent evt) {
         Entry e = map.get(keyFactory.createKey(evt));
-        int result = e == null ? 0 : e.size();
-        return result;
+        return e == null ? 0 : e.size();
     }
 
     int garbageCollect() {
@@ -104,7 +96,7 @@ final class TarpitImpl implements Tarpit {
 
     private class Entry {
 
-        ConcurrentLinkedDeque<Long> accesses = new ConcurrentLinkedDeque<>();
+        final ConcurrentLinkedDeque<Long> accesses = new ConcurrentLinkedDeque<>();
 
         int touch() {
             accesses.offerLast(System.currentTimeMillis());

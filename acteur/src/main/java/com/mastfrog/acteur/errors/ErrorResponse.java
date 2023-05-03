@@ -42,7 +42,7 @@ public interface ErrorResponse {
 
     @SuppressWarnings("deprecation")
     static <T> ErrorResponse create(HttpResponseStatus status, T message) {
-        return new Simple<T>(status, message);
+        return new Simple<>(status, message);
     }
     
     default Map<CharSequence, CharSequence> headers() {

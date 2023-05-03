@@ -9,6 +9,7 @@ import com.mastfrog.acteur.preconditions.PathRegex;
 import com.mastfrog.acteur.preconditions.RequiredUrlParameters;
 import com.mastfrog.acteur.server.ServerModule;
 import com.mastfrog.giulius.tests.anno.TestWith;
+import com.mastfrog.http.harness.Assertions;
 import com.mastfrog.http.test.harness.acteur.HttpHarness;
 import com.mastfrog.http.test.harness.acteur.HttpTestHarnessModule;
 import io.netty.handler.codec.http.HttpResponseStatus;
@@ -36,15 +37,15 @@ public class TestAnnotations {
 
     @Test
     @Timeout(value = 1, unit = MINUTES)
-    public void test(HttpHarness harn) throws IOException, Throwable {
+    public void test(HttpHarness harn) throws Throwable {
         harn.get("one").applyingAssertions(a -> a.assertResponseCode(400)).assertAllSucceeded();
         assertTrue(annotationHandlerCalled);
         harn.get("one?foo=hey").applyingAssertions(a -> a.assertResponseCode(400)).assertAllSucceeded();
         harn.get("one?foo=hey&bar=you").applyingAssertions(a -> a.assertOk().assertBody("one")).assertAllSucceeded();
-        harn.get("two").applyingAssertions(a -> a.assertBadRequest()).assertAllSucceeded();
+        harn.get("two").applyingAssertions(Assertions::assertBadRequest).assertAllSucceeded();
         harn.get("two?baz=hey").applyingAssertions(a -> a.assertOk().assertBody("two")).assertAllSucceeded();
         harn.get("two?quux=you").applyingAssertions(a -> a.assertOk().assertBody("two")).assertAllSucceeded();
-        harn.get("three").applyingAssertions(a -> a.assertNotFound()).assertAllSucceeded();
+        harn.get("three").applyingAssertions(Assertions::assertNotFound).assertAllSucceeded();
         harn.post("three").applyingAssertions(a -> a.assertOk().assertBody("three")).assertAllSucceeded();
 
 //        harn.get("one").setTimeout(TO).addQueryPair("foo", "hey").go().assertStatus(BAD_REQUEST);
@@ -55,7 +56,7 @@ public class TestAnnotations {
 //        harn.get("three").setTimeout(TO).go().assertStatus(NOT_FOUND);
 //        harn.post("three").setTimeout(TO).go().assertStatus(OK).assertContent("three");
         // Also test that default CORS headers work
-        harn.options("foo").applyingAssertions(a -> a.assertNoContent()).assertAllSucceeded();
+        harn.options("foo").applyingAssertions(Assertions::assertNoContent).assertAllSucceeded();
     }
 
     @Methods

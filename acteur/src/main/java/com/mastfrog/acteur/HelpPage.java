@@ -240,15 +240,11 @@ final class HelpPage extends Page {
                             findPaths(path, result);
                         }
                         if (!result.isEmpty()) {
-                            for (int i = 0; i < result.size(); i++) {
-                                result.set(i, humanizeRegex(result.get(i)) + "&nbsp;&nbsp;<i>(generated from regular expression)</i>");
-                            }
+                            result.replaceAll(regex -> humanizeRegex(regex) + "&nbsp;&nbsp;<i>(generated from regular expression)</i>");
                         }
                     }
                 }
-                Collections.sort(result, (a, b) -> {
-                    return 0;
-                });
+                result.sort((a, b) -> 0);
                 return result;
             }
 
@@ -310,7 +306,7 @@ final class HelpPage extends Page {
 
                         List<Map.Entry<String, Object>> sorted = new ArrayList<>(help.entrySet());
 
-                        Collections.sort(sorted, (a, b) -> {
+                        sorted.sort((a, b) -> {
                             String acat = findCategory(a.getValue());
                             String bcat = findCategory(b.getValue());
                             int result = acat.compareTo(bcat);
@@ -343,7 +339,7 @@ final class HelpPage extends Page {
                                 Map<String, Object> m = (Map<String, Object>) e.getValue();
 
                                 Object methods = m.get("Methods");
-                                if (methods != null && methods instanceof Map<?, ?>) {
+                                if (methods instanceof Map<?, ?>) {
                                     Object val = ((Map<String, Object>) methods).get("value");
                                     if (val != null) {
                                         if (val.getClass().isArray()) {
@@ -366,7 +362,7 @@ final class HelpPage extends Page {
                                 Object description = m.get("Description");
                                 Map<?, ?> desc = null;
                                 sb.append("<p><i style='font-size:0.85em'>").append(category).append(" category</i></p>\n");
-                                if (description != null && description instanceof Map<?, ?>) {
+                                if (description instanceof Map<?, ?>) {
                                     desc = (Map<String, Object>) description;
                                     Object val = desc.get("value");
                                     if (val != null) {
@@ -376,7 +372,7 @@ final class HelpPage extends Page {
                                 }
 
                                 Object examples = m.get("Examples");
-                                if (examples != null && examples instanceof Map<?, ?>) {
+                                if (examples instanceof Map<?, ?>) {
                                     Map<String, Object> exs = (Map<String, Object>) examples;
                                     List<String> keys = new ArrayList<>(exs.keySet());
                                     Collections.sort(keys);
@@ -514,7 +510,7 @@ final class HelpPage extends Page {
                 return "value".equalsIgnoreCase(key) && "default".equals(object);
             }
 
-            @SuppressWarnings("unchecked")
+            @SuppressWarnings({"unchecked", "rawtypes"})
             private Object filterObject(Object object) {
                 // A single depth map with just a description is useless - flatten it
                 if (object instanceof Map<?, ?>) {

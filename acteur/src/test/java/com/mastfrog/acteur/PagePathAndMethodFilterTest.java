@@ -46,6 +46,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -144,26 +146,24 @@ public class PagePathAndMethodFilterTest {
 
         l = filter.listFor(get("api/v3/foo"));
         assertNotNull(l);
-        assertEquals(2, l.size());
+        Assertions.assertEquals(2, l.size());
         assertTrue(l.stream().anyMatch(i -> i instanceof PageWithInstanceActeurs));
     }
 
     private Object assertOne(List<Object> l, Class<?> type) {
         assertNotNull(l);
         assertFalse(l.isEmpty());
-        assertEquals(Strings.join(',', l), 1, l.size());
+        Assertions.assertEquals(1, l.size(), Strings.join(',', l));
         assertTrue(type.isInstance(l.iterator().next()) || type == l.iterator().next(), l.iterator().next() + "");
         return l.iterator().next();
     }
 
     private HttpRequest get(String url) {
-        DefaultHttpRequest req = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, url);
-        return req;
+        return new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, url);
     }
 
     private HttpRequest post(String url) {
-        DefaultHttpRequest req = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.POST, url);
-        return req;
+        return new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.POST, url);
     }
 
     static final class PageWithInstanceActeurs extends Page {
@@ -246,8 +246,7 @@ public class PagePathAndMethodFilterTest {
         if (uri.charAt(0) != '/') {
             uri = "/" + uri;
         }
-        DefaultHttpRequest req = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.valueOf(mth.name()), uri);
-        return req;
+        return new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.valueOf(mth.name()), uri);
     }
 
     @Methods(GET)

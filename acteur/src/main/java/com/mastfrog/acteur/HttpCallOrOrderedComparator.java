@@ -67,6 +67,6 @@ class HttpCallOrOrderedComparator implements Comparator<Object> {
         }
         ai = intFor(ca);
         bi = intFor(cb);
-        return ai == bi ? 0 : ai > bi ? 1 : -1;
+        return Integer.compare(ai, bi);
     }
 }

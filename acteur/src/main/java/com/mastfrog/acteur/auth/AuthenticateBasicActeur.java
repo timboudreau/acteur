@@ -34,7 +34,6 @@ import com.mastfrog.giulius.annotations.Setting;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.util.perf.Benchmark;
 import com.mastfrog.util.perf.Benchmark.Kind;
-import io.netty.channel.ChannelFutureListener;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import static io.netty.handler.codec.http.HttpResponseStatus.SERVICE_UNAVAILABLE;
 import java.io.IOException;

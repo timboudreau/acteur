@@ -396,7 +396,7 @@ public class ConnectionReuseTest {
 
     static final ExecutorService SHUTDOWN = Executors.newSingleThreadExecutor();
 
-    static void withRunningServer(WithRunningServer wr) throws Exception, Throwable {
+    static void withRunningServer(WithRunningServer wr) throws Throwable {
         // Provide a completely separate environment for each test method,
         // so calls cannot interfere with each other - the previous iteration relied
         // on static counters, and so would fail unexpectedly depending on the
@@ -500,7 +500,7 @@ public class ConnectionReuseTest {
             try {
                 assertNotNull(lastContent, "No response received while waiting for empty response");
                 ByteBuf content = lastContent.content();
-                assertTrue(content.readableBytes() == 0, content.readableBytes() + " bytes available: " + content.toString(UTF_8));
+                assertEquals(0, content.readableBytes(), content.readableBytes() + " bytes available: " + content.toString(UTF_8));
             } finally {
                 synchronized (this) {
                     this.lastContent = null;
@@ -632,15 +632,12 @@ public class ConnectionReuseTest {
             if (channel == null) {
 //                System.out.println("open channel");
                 channel = bootstrap.connect("localhost", port).sync().channel();
-                channel.closeFuture().addListener(new ChannelFutureListener() {
-                    @Override
-                    public void operationComplete(ChannelFuture f) throws Exception {
-                        if (f.cause() != null) {
-                            f.cause().printStackTrace();
-                        }
-                        latch.releaseAll();
-//                        System.out.println("Channel closed");
+                channel.closeFuture().addListener((ChannelFutureListener) f -> {
+                    if (f.cause() != null) {
+                        f.cause().printStackTrace();
                     }
+                    latch.releaseAll();
+//                        System.out.println("Channel closed");
                 });
             }
             channel.attr(latchKey).set(latch);
@@ -652,16 +649,13 @@ public class ConnectionReuseTest {
             headers.set(HttpHeaderNames.HOST, "localhost");
             headers.set(HttpHeaderNames.CONNECTION, HttpHeaderValues.KEEP_ALIVE);
             headers.set(HttpHeaderNames.ACCEPT_ENCODING, HttpHeaderValues.GZIP + "," + HttpHeaderValues.DEFLATE);
-            channel.writeAndFlush(request).addListener(new ChannelFutureListener() {
-                @Override
-                public void operationComplete(ChannelFuture f) throws Exception {
-                    if (f.cause() != null) {
-                        f.cause().printStackTrace();
-                        thrown = f.cause();
-                        latch.releaseAll();
-                    }
-//                    System.out.println("message flushed");
+            channel.writeAndFlush(request).addListener((ChannelFutureListener) f -> {
+                if (f.cause() != null) {
+                    f.cause().printStackTrace();
+                    thrown = f.cause();
+                    latch.releaseAll();
                 }
+//                    System.out.println("message flushed");
             });
             latch.await(500, TimeUnit.MILLISECONDS);
             return latch;

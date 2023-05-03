@@ -45,7 +45,7 @@ import javax.inject.Inject;
 public final class CheckIfNoneMatchHeader extends Acteur {
 
     @Inject
-    CheckIfNoneMatchHeader(HttpEvent event, Page page) throws Exception {
+    CheckIfNoneMatchHeader(HttpEvent event, Page page) {
         Checks.notNull("event", event);
         Checks.notNull("page", page);
         CharSequence etag = event.header(IF_NONE_MATCH);

@@ -145,38 +145,31 @@ public class AsyncActeursTest {
         }).assertAllSucceeded();
     }
 
-    static class ErrorMessage {
+    record ErrorMessage(String error) {
 
-        public final String error;
+            @JsonCreator
+            ErrorMessage(@JsonProperty("error") String error) {
+                this.error = error;
+            }
 
-        @JsonCreator
-        ErrorMessage(@JsonProperty("error") String error) {
-            this.error = error;
-        }
-
-        @Override
-        public String toString() {
-            return error;
-        }
+            @Override
+            public String toString() {
+                return error;
+            }
 
         @Override
-        public int hashCode() {
-            return error.hashCode();
-        }
+            public boolean equals(Object o) {
+                return o instanceof ErrorMessage && ((ErrorMessage) o).error.equals(error);
+            }
 
-        @Override
-        public boolean equals(Object o) {
-            return o instanceof ErrorMessage && ((ErrorMessage) o).error.equals(error);
-        }
+            public static ErrorMessage of(String s) {
+                return new ErrorMessage(s);
+            }
 
-        public static ErrorMessage of(String s) {
-            return new ErrorMessage(s);
+            void assertMessage(String msg) {
+                assertEquals(msg, error);
+            }
         }
-
-        void assertMessage(String msg) {
-            assertEquals(msg, error);
-        }
-    }
 
     static class AATApp extends Application {
 
@@ -416,54 +409,43 @@ public class AsyncActeursTest {
 
     static int ix = 0;
 
-    static class Thing {
+    record Thing(String name, int index) {
 
-        public final String name;
-        public final int index;
+            @JsonCreator
+            Thing(@JsonProperty("name") String name, @JsonProperty("index") int index) {
+                this.name = name;
+                this.index = index;
+            }
 
-        @JsonCreator
-        Thing(@JsonProperty("name") String name, @JsonProperty("index") int index) {
-            this.name = name;
-            this.index = index;
-        }
+            public static Thing last(String nm) {
+                return new Thing(nm, ix - 1);
+            }
 
-        public static Thing last(String nm) {
-            return new Thing(nm, ix - 1);
-        }
+            public static Thing of(String nm) {
+                return new Thing(notNull("nm", nm), ix++);
+            }
 
-        public static Thing of(String nm) {
-            return new Thing(notNull("nm", nm), ix++);
-        }
+            @Override
+            public String toString() {
+                return "Thing{" + "name=" + name + ", index=" + index + '}';
+            }
 
         @Override
-        public String toString() {
-            return "Thing{" + "name=" + name + ", index=" + index + '}';
+            public boolean equals(Object obj) {
+                if (this == obj) {
+                    return true;
+                }
+                if (obj == null) {
+                    return false;
+                }
+                if (getClass() != obj.getClass()) {
+                    return false;
+                }
+                final Thing other = (Thing) obj;
+                if (this.index != other.index) {
+                    return false;
+                }
+                return Objects.equals(this.name, other.name);
+            }
         }
-
-        @Override
-        public int hashCode() {
-            int hash = 5;
-            hash = 23 * hash + Objects.hashCode(this.name);
-            hash = 23 * hash + this.index;
-            return hash;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (this == obj) {
-                return true;
-            }
-            if (obj == null) {
-                return false;
-            }
-            if (getClass() != obj.getClass()) {
-                return false;
-            }
-            final Thing other = (Thing) obj;
-            if (this.index != other.index) {
-                return false;
-            }
-            return Objects.equals(this.name, other.name);
-        }
-    }
 }

@@ -165,7 +165,7 @@ public class AsyncAuthenticationModuleTest {
 
         @Override
         protected void configure() {
-            install(new AsyncAuthenticationModule<FakeUser>(FakeUser.class, Auth.class, scope));
+            install(new AsyncAuthenticationModule<>(FakeUser.class, Auth.class, scope));
             install(new ServerModule<>(scope, AApp.class, 1, 3, 1));
         }
     }
@@ -226,28 +226,18 @@ public class AsyncAuthenticationModuleTest {
         }
     }
 
-    public static final class FakeUser {
-
-        public final String user;
-
-        public FakeUser(String user) {
-            this.user = user;
-        }
+    public record FakeUser(String user) {
 
         @Override
-        public String toString() {
-            return user;
-        }
+            public String toString() {
+                return user;
+            }
 
-        @Override
-        public boolean equals(Object o) {
-            return o instanceof FakeUser && ((FakeUser) o).user.equals(user);
-        }
+            @Override
+            public boolean equals(Object o) {
+                return o instanceof FakeUser && ((FakeUser) o).user.equals(user);
+            }
 
-        @Override
-        public int hashCode() {
-            return user.hashCode();
-        }
     }
 
     static final class AApp extends Application {

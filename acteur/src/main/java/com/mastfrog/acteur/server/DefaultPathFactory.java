@@ -167,12 +167,7 @@ class DefaultPathFactory implements PathFactory {
     private void pruneCache() {
         // Ensure that we don't pile up cache entries by pruning those
         // unused for > five minutes
-        for (Iterator<Map.Entry<String, PathCacheEntry>> it = cache.entrySet().iterator(); it.hasNext();) {
-            Map.Entry<String, PathCacheEntry> e = it.next();
-            if (e.getValue().isExpired()) {
-                it.remove();
-            }
-        }
+        cache.entrySet().removeIf(e -> e.getValue().isExpired());
     }
 
     @Override

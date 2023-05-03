@@ -149,8 +149,7 @@ public class ActeurFactory {
                         + event.method() + " not allowed.  Accepted methods are "
                         + Headers.ALLOW.toCharSequence(methods) + "\n"));
             }
-            com.mastfrog.acteur.State result = hasMethod ? new Acteur.ConsumedState() : new Acteur.RejectedState();
-            return result;
+            return hasMethod ? new ConsumedState() : new RejectedState();
         }
 
         @Override
@@ -190,8 +189,7 @@ public class ActeurFactory {
                         + event.method() + " not allowed.  Accepted methods are "
                         + Headers.ALLOW.toCharSequence(method) + "\n"));
             }
-            com.mastfrog.acteur.State result = hasMethod ? new Acteur.ConsumedState() : new Acteur.RejectedState();
-            return result;
+            return hasMethod ? new ConsumedState() : new RejectedState();
         }
 
         @Override
@@ -386,7 +384,7 @@ public class ActeurFactory {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         PrintStream ps = new PrintStream(baos);
         t.printStackTrace(ps);
-        return new String(baos.toByteArray());
+        return baos.toString();
     }
 
     /**
@@ -960,7 +958,7 @@ public class ActeurFactory {
         return redirectEmptyPath(Path.parse(to));
     }
 
-    public Acteur redirectEmptyPath(final Path to) throws URISyntaxException {
+    public Acteur redirectEmptyPath(final Path to) {
         Checks.notNull("to", to);
         class MatchNothing extends Acteur {
 

@@ -210,8 +210,7 @@ abstract class PathFilters {
         }
 
         boolean isEarlyPageMatch(HttpRequest req) {
-            boolean result = earlyPageMatcher != null && earlyPageMatcher.match(req);
-            return result;
+            return earlyPageMatcher != null && earlyPageMatcher.match(req);
         }
 
         PagePathAndMethodFilter normalPages() {

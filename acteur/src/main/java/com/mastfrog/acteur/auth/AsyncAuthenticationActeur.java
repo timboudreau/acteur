@@ -51,7 +51,7 @@ final class AsyncAuthenticationActeur extends AuthenticationActeur {
 
     @Inject
     @SuppressWarnings("unchecked")
-    AsyncAuthenticationActeur(AsyncAuthenticator<?> auth, Chain chain, HttpEvent evt, RequestID rid, Page page) {
+    AsyncAuthenticationActeur(AsyncAuthenticator<?> auth, @SuppressWarnings("rawtypes") Chain chain, HttpEvent evt, RequestID rid, Page page) {
         String authHeader = evt.header(HttpHeaderNames.AUTHORIZATION);
         String scheme = "bearer ";
         if (authHeader == null) {

@@ -23,7 +23,6 @@
  */
 package com.mastfrog.acteur.preconditions;
 
-import java.lang.annotation.Annotation;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;

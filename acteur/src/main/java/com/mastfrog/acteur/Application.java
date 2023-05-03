@@ -93,7 +93,7 @@ public class Application implements Iterable<Page> {
     private static final HeaderValueType<CharSequence> X_REQ_ID = Headers.header(new AsciiString("X-Req-ID"));
     private static final HeaderValueType<CharSequence> X_ACTEUR = Headers.header(new AsciiString("X-Acteur"));
     private static final HeaderValueType<CharSequence> X_PAGE = Headers.header(new AsciiString("X-Page"));
-    private static final Set<String> checkedTypes = Collections.synchronizedSet(new HashSet<String>());
+    private static final Set<String> checkedTypes = Collections.synchronizedSet(new HashSet<>());
 
     /**
      * Optional setting which, if set, will be used in the Server: header of
@@ -185,8 +185,7 @@ public class Application implements Iterable<Page> {
     }
 
     public boolean isEarlyPageMatch(HttpRequest req) {
-        boolean result = filters.isEarlyPageMatch(req);
-        return result;
+        return filters.isEarlyPageMatch(req);
     }
 
     List<Object> rawPages() {

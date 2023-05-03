@@ -85,7 +85,7 @@ public class WebSocketTest {
                 .addHeader(stringHeader("origin"), url.toString())
                 .addHeader(stringHeader("Upgrade"), "websocket")
                 .dontAggregateResponse()
-                .onEvent(new Receiver<com.mastfrog.netty.http.client.State<?>>() {
+                .onEvent(new Receiver<>() {
                     @Override
                     public void receive(State<?> object) {
                         seenStates.add(object.stateType());

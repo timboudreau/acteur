@@ -75,7 +75,7 @@ public class GenericApplication extends Application {
 
         Set<Class<?>> excluded = excludePages;
         com.mastfrog.acteur.ImplicitBindings implicit = getClass().getAnnotation(com.mastfrog.acteur.ImplicitBindings.class);
-        Set<Class<?>> alreadyBound = implicit == null ? Collections.<Class<?>>emptySet()
+        Set<Class<?>> alreadyBound = implicit == null ? Collections.emptySet()
                 : new HashSet<>(Arrays.asList(implicit.value()));
         HttpCallRegistryLoader loader = new HttpCallRegistryLoader(getClass());
         List<Class<? extends Page>> originalOrder = new ArrayList<>();
@@ -109,10 +109,10 @@ public class GenericApplication extends Application {
         if (helpEnabled) {
             sorted.add(Application.helpPageType());
         }
-        Collections.sort(sorted, (a, b) -> {
+        sorted.sort((a, b) -> {
             int oa = orderOf(a);
             int ob = orderOf(b);
-            return oa == ob ? 0 : oa > ob ? 1 : -1;
+            return Integer.compare(oa, ob);
         });
         for (Class<? extends Page> pageType : sorted) {
             if (!alreadyBound.contains(pageType) && !excluded.contains(pageType)) {

@@ -189,8 +189,6 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
      * either from bindings the application was set up with, or objects provided
      * by other Acteurs which have already been run for this request.
      *
-     * @param async If true, the framework should prefer to run the <i>next</i>
-     * action asynchronously
      */
     protected Acteur() {
         super(INSTANCE);
@@ -561,9 +559,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
     protected final Acteur then(ThrowingConsumer<Resumer> cons) {
         next();
         Deferral def = Page.get().getApplication().getDependencies().getInstance(Deferral.class);
-        def.defer((Resumer res) -> {
-            cons.accept(res);
-        });
+        def.defer(cons::accept);
         return this;
     }
 
@@ -603,11 +599,9 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
         Dependencies deps = Page.get().getApplication().getDependencies();
         Chain chain = deps.getInstance(Chain.class);
         chain.add(DeferredComputationResultActeur.class);
-        return then((Resumer r) -> {
-            c.whenComplete((t, thrown) -> {
-                r.resume(new DeferredComputationResult(t, thrown, successStatus));
-            });
-        });
+        return then((Resumer r) -> c.whenComplete((t, thrown) -> {
+            r.resume(new DeferredComputationResult(t, thrown, successStatus));
+        }));
     }
 
     static final class CheckThrownActeur extends Acteur {
@@ -681,8 +675,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
         public RespondWith(HttpResponseStatus status, Object msg) {
             super(false);
             if (page == null) {
-                IllegalStateException e = new IllegalStateException("Called outside ActionsImpl.onEvent");
-                throw e;
+                throw new IllegalStateException("Called outside ActionsImpl.onEvent");
             }
             setResponseCode(status);
             if (msg != null) {
@@ -932,7 +925,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
 
         boolean inOnError;
 
-        protected void onError(Throwable t) throws UnsupportedEncodingException {
+        protected void onError(Throwable t) {
             if (inOnError) {
                 Exceptions.chuck(t);
             }
@@ -946,7 +939,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
                     } else {
                         add(Headers.CONTENT_TYPE, MimeType.PLAIN_TEXT_UTF_8.withCharset(charset));
                     }
-                    this.setMessage(new String(out.toByteArray(), charset == null ? UTF_8 : charset));
+                    this.setMessage(out.toString(charset == null ? UTF_8 : charset));
                 }
                 this.setResponseCode(HttpResponseStatus.INTERNAL_SERVER_ERROR);
             } finally {
@@ -960,12 +953,8 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
                 try {
                     acteur = deps.getInstance(type);
                 } catch (Exception e) {
-                    try {
-                        deps.getInstance(Application.class).internalOnError(e);
-                        onError(e);
-                    } catch (UnsupportedEncodingException ex) {
-                        Exceptions.chuck(ex);
-                    }
+                    deps.getInstance(Application.class).internalOnError(e);
+                    onError(e);
                 }
             }
             return acteur;

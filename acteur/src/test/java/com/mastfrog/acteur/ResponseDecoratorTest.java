@@ -62,13 +62,10 @@ public class ResponseDecoratorTest {
 
         List<Cookie> parsed = new ArrayList<>();
         resp.headers().allValues(SET_COOKIE_B_STRICT.name().toString())
-                .forEach(cookieHeader -> {
-                    parsed.add(SET_COOKIE_B_STRICT.convert(cookieHeader));
-                });
+                .forEach(cookieHeader -> parsed.add(SET_COOKIE_B_STRICT.convert(cookieHeader)));
 
-        Iterable<Cookie> cks = parsed;
         Set<Cookie> cookies = new HashSet<>();
-        for (Cookie c : cks) {
+        for (Cookie c : parsed) {
             assertTrue(c.name().equals("a") || c.name().equals("c"), c.name());
             cookies.add(c);
         }

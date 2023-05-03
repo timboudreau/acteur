@@ -35,6 +35,7 @@ import com.mastfrog.acteur.preconditions.Path;
 import com.mastfrog.acteur.server.ServerLifecycleHook;
 import com.mastfrog.acteur.server.ServerModule;
 import com.mastfrog.giulius.tests.anno.TestWith;
+import com.mastfrog.http.harness.Assertions;
 import com.mastfrog.http.test.harness.acteur.HttpHarness;
 import com.mastfrog.http.test.harness.acteur.HttpTestHarnessModule;
 import com.mastfrog.util.net.PortFinder;
@@ -79,25 +80,25 @@ public class InternalsTest {
         ZonedDateTime when = harn.get("lm")
                 .applyingAssertions(a -> a.assertOk().assertHasHeader(LAST_MODIFIED)).assertAllSucceeded()
                 .get().headers().firstValue(LAST_MODIFIED.name().toString())
-                .map(val -> LAST_MODIFIED.convert(val))
+                .map(LAST_MODIFIED::convert)
                 .orElseThrow(() -> new RuntimeException("No last modiefied header"));
 
         assertEquals(when.toInstant(), WHEN.toInstant());
 
         harn.get("lm").setHeader(IF_MODIFIED_SINCE, when)
-                .applyingAssertions(a -> a.assertNotModified())
+                .applyingAssertions(Assertions::assertNotModified)
                 .assertAllSucceeded();
 
         harn.get("lm").setHeader(IF_MODIFIED_SINCE, WHEN)
-                .applyingAssertions(a -> a.assertNotModified())
+                .applyingAssertions(Assertions::assertNotModified)
                 .assertAllSucceeded();
 
         harn.get("lm").setHeader(IF_MODIFIED_SINCE, WHEN.plus(Duration.ofHours(1)))
-                .applyingAssertions(a -> a.assertNotModified())
+                .applyingAssertions(Assertions::assertNotModified)
                 .assertAllSucceeded();
 
         harn.get("lm").setHeader(IF_MODIFIED_SINCE, WHEN.minus(Duration.ofHours(1)))
-                .applyingAssertions(a -> a.assertOk())
+                .applyingAssertions(Assertions::assertOk)
                 .assertAllSucceeded();
 
         assertTrue(HOOK_RAN.get() > 0, "Startup hook was not run");
@@ -107,7 +108,7 @@ public class InternalsTest {
     @Test
     @Timeout(30)
     public void testEmptyResponsesHaveZeroLengthContentLengthHeader(HttpHarness harn) throws Throwable {
-        String lenHeader = harn.get("/nothing").applyingAssertions(a -> a.assertOk())
+        String lenHeader = harn.get("/nothing").applyingAssertions(Assertions::assertOk)
                 .assertAllSucceeded().get().headers().firstValue(CONTENT_LENGTH.name().toString())
                 .orElse(null);
         assertEquals("0", lenHeader, "Should not have a length header");
@@ -116,7 +117,7 @@ public class InternalsTest {
     @Test
     @Timeout(30)
     public void testEmptyResponsesForContentlessCodesHaveNoContentLengthHeader(HttpHarness harn) throws Throwable {
-        String lenHeader = harn.get("/less").applyingAssertions(a -> a.assertNotModified())
+        String lenHeader = harn.get("/less").applyingAssertions(Assertions::assertNotModified)
                 .assertAllSucceeded().get().headers().firstValue(CONTENT_LENGTH.name().toString())
                 .orElse(null);
         assertNull(lenHeader, "Should not have a length header on a 304 response, but got " + lenHeader);
@@ -125,7 +126,7 @@ public class InternalsTest {
     @Test
     @Timeout(30)
     public void testNoContentResponseHasNoContentLength(HttpHarness harn) throws Throwable {
-        String lenHeader = harn.get("/evenless").applyingAssertions(a -> a.assertNoContent())
+        String lenHeader = harn.get("/evenless").applyingAssertions(Assertions::assertNoContent)
                 .assertAllSucceeded().get().headers().firstValue(CONTENT_LENGTH.name().toString())
                 .orElse(null);
         assertNull(lenHeader, "Should not have a length header on a no-content response, but got " + lenHeader);

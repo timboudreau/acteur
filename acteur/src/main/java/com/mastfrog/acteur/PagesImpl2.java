@@ -310,7 +310,6 @@ class PagesImpl2 {
                     && response.isModified();
             if (isWebSocketResponse) {
                 if (handleWebsocketResponse(response, state)) {
-                    return;
                 }
             } else if (response.isModified() && response.status != null) {
                 handleHttpResponse(response, state, acteur);
@@ -576,8 +575,7 @@ class PagesImpl2 {
                 Thread.currentThread().setName(id + " of " + r.getClass().getName());
             }
             application.probe.onBeforeRunPage(id, event, r);
-            PageChain result = new PageChain(application, application.getDependencies(), application.getRequestScope(), Acteur.class, r, r, id, event, clos);
-            return result;
+            return new PageChain(application, application.getDependencies(), application.getRequestScope(), Acteur.class, r, r, id, event, clos);
         }
 
         @Override
@@ -629,7 +627,7 @@ class PagesImpl2 {
             Iterator<Acteur> orig = super.iterator();
             Iterator<Acteur> result = orig;
             if (isReconstituted) {
-                result = new Iterator<Acteur>() {
+                result = new Iterator<>() {
                     @Override
                     public boolean hasNext() {
                         return orig.hasNext();

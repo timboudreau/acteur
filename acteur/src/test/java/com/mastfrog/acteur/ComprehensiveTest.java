@@ -1,23 +1,25 @@
 package com.mastfrog.acteur;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.base.Predicates;
-import static com.mastfrog.acteur.headers.Headers.CONTENT_TYPE;
 import com.mastfrog.giulius.tests.anno.TestWith;
 import com.mastfrog.http.test.harness.acteur.HttpHarness;
 import com.mastfrog.http.test.harness.acteur.HttpTestHarnessModule;
-import static com.mastfrog.mime.MimeType.PLAIN_TEXT_UTF_8;
-import static com.mastfrog.util.collections.CollectionUtils.setOf;
 import com.mastfrog.util.collections.StringObjectMap;
-import static io.netty.handler.codec.http.HttpResponseStatus.PAYMENT_REQUIRED;
-import static io.netty.util.CharsetUtil.UTF_8;
-import java.net.http.HttpResponse;
-import java.util.Map;
-import java.util.function.Predicate;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
+
+import java.net.http.HttpResponse;
+import java.util.Map;
+import java.util.Objects;
+import java.util.function.Predicate;
+
+import static com.mastfrog.acteur.headers.Headers.CONTENT_TYPE;
+import static com.mastfrog.mime.MimeType.PLAIN_TEXT_UTF_8;
+import static com.mastfrog.util.collections.CollectionUtils.setOf;
+import static io.netty.handler.codec.http.HttpResponseStatus.PAYMENT_REQUIRED;
+import static io.netty.util.CharsetUtil.UTF_8;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  *
@@ -143,14 +145,14 @@ public class ComprehensiveTest {
 
     @Test
     @Timeout(TIMEOUT_SECONDS)
-    public void testUnchunked(HttpHarness harness) throws Exception, Throwable {
+    public void testUnchunked(HttpHarness harness) throws Throwable {
         harness.get("unchunked?iters=7")
                 .applyingAssertions(a -> a.assertOk().assertBody(test("Iteration", 7)))
                 .assertAllSucceeded();
     }
 
     static Predicate<String> test(String msg, int count) {
-        return Predicates.equalTo(iter(msg, count));
+        return s -> Objects.equals(s, iter(msg, count));
     }
 
     private static String iter(String msg, int count) {

@@ -105,7 +105,7 @@ import java.util.concurrent.atomic.AtomicReference;
  */
 final class ResponseImpl extends Response {
 
-    static boolean DEBUG_BAD_LISTENER_STRINGS = Boolean.getBoolean("acteur.debug.listeners.strings");
+    static final boolean DEBUG_BAD_LISTENER_STRINGS = Boolean.getBoolean("acteur.debug.listeners.strings");
     private volatile boolean modified;
     HttpResponseStatus status;
     private final List<Entry<?>> headers = new ArrayList<>(3);
@@ -347,7 +347,7 @@ final class ResponseImpl extends Response {
         DynResponseWriter(final Class<? extends ResponseWriter> type, final Dependencies deps) {
             ReentrantScope scope = deps.getInstance(ReentrantScope.class);
             assert scope.inScope();
-            resp = scope.wrap(new Callable<ResponseWriter>() {
+            resp = scope.wrap(new Callable<>() {
 
                 @Override
                 public ResponseWriter call() throws Exception {
@@ -508,46 +508,40 @@ final class ResponseImpl extends Response {
             try {
                 // See https://github.com/netty/netty/issues/2415 for why this is needed
                 if (entryCount > 0) {
-                    svc.submit(new Runnable() {
-                        @Override
-                        public void run() {
-                            try {
-                                operationComplete(future);
-                            } catch (Exception ex) {
-                                ctrl.internalOnError(ex);
-                                if (future != null && future.channel().isOpen()) {
-                                    future.channel().close();
-                                }
+                    svc.submit(() -> {
+                        try {
+                            operationComplete(future);
+                        } catch (Exception ex) {
+                            ctrl.internalOnError(ex);
+                            if (future != null && future.channel().isOpen()) {
+                                future.channel().close();
                             }
                         }
                     });
                     return;
                 }
                 entryCount++;
-                Callable<Void> c = new Callable<Void>() {
-                    @Override
-                    public Void call() throws Exception {
-                        inOperationComplete = true;
-                        try {
-                            ResponseWriterListener.this.future = future;
-                            ResponseWriter.Status status = writer.write(evt, ResponseWriterListener.this, callCount++);
-                            if (status.isCallback()) {
-                                ResponseWriterListener.this.future = ResponseWriterListener.this.future.addListener(ResponseWriterListener.this);
-                            } else if (status == Status.DONE) {
-                                if (chunked) {
-                                    ResponseWriterListener.this.future = ResponseWriterListener.this.future.channel().writeAndFlush(LastHttpContent.EMPTY_LAST_CONTENT);
-                                }
-                                if (shouldClose) {
-                                    ResponseWriterListener.this.future = ResponseWriterListener.this.future.addListener(CLOSE);
-                                }
+                Callable<Void> c = () -> {
+                    inOperationComplete = true;
+                    try {
+                        ResponseWriterListener.this.future = future;
+                        Status status = writer.write(evt, ResponseWriterListener.this, callCount++);
+                        if (status.isCallback()) {
+                            ResponseWriterListener.this.future = ResponseWriterListener.this.future.addListener(ResponseWriterListener.this);
+                        } else if (status == Status.DONE) {
+                            if (chunked) {
+                                ResponseWriterListener.this.future = ResponseWriterListener.this.future.channel().writeAndFlush(LastHttpContent.EMPTY_LAST_CONTENT);
                             }
-                        } catch (Exception ex) {
-                            ctrl.internalOnError(ex);
-                        } finally {
-                            inOperationComplete = false;
+                            if (shouldClose) {
+                                ResponseWriterListener.this.future = ResponseWriterListener.this.future.addListener(CLOSE);
+                            }
                         }
-                        return null;
+                    } catch (Exception ex) {
+                        ctrl.internalOnError(ex);
+                    } finally {
+                        inOperationComplete = false;
                     }
+                    return null;
                 };
                 if (!inOperationComplete) {
                     c.call();
@@ -606,7 +600,7 @@ final class ResponseImpl extends Response {
         return message;
     }
 
-    final boolean canHaveBody(HttpResponseStatus status) {
+    boolean canHaveBody(HttpResponseStatus status) {
         switch (status.code()) {
             case 204:
             case 205:
@@ -793,7 +787,7 @@ final class ResponseImpl extends Response {
         return result;
     }
 
-    static Set<String> WARNED = ConcurrentHashMap.newKeySet();
+    static final Set<String> WARNED = ConcurrentHashMap.newKeySet();
 
     static void warn(Event<?> evt) {
         String pth = evt instanceof HttpEvent ? ((HttpEvent) evt).path().toString() : "";
@@ -873,72 +867,67 @@ final class ResponseImpl extends Response {
                 + '}';
     }
 
-    private static final class Entry<T> {
+    private record Entry<T>(HeaderValueType<T> decorator, T value) {
 
-        private final HeaderValueType<T> decorator;
-        private final T value;
-
-        Entry(HeaderValueType<T> decorator, T value) {
+        private Entry {
             Checks.notNull("decorator", decorator);
             Checks.notNull(decorator.name().toString(), value);
-            this.decorator = decorator;
-            this.value = value;
         }
 
-        public void decorate(HttpMessage msg) {
-            msg.headers().set(decorator.name(), value);
-        }
+            public void decorate(HttpMessage msg) {
+                msg.headers().set(decorator.name(), value);
+            }
 
-        public boolean is(CharSequence name) {
-            return decorator.is(name);
-        }
+            public boolean is(CharSequence name) {
+                return decorator.is(name);
+            }
 
-        public void write(HttpMessage msg) {
-            Headers.write(decorator, value, msg);
-        }
+            public void write(HttpMessage msg) {
+                Headers.write(decorator, value, msg);
+            }
 
-        void write(HttpHeaders headers) {
-            Headers.write(decorator, value, headers);
-        }
+            void write(HttpHeaders headers) {
+                Headers.write(decorator, value, headers);
+            }
 
-        public CharSequence stringValue() {
-            return decorator.toCharSequence(value);
-        }
+            public CharSequence stringValue() {
+                return decorator.toCharSequence(value);
+            }
 
-        @Override
-        public String toString() {
-            return decorator.name() + ": " + decorator.toCharSequence(value);
-        }
+            @Override
+            public String toString() {
+                return decorator.name() + ": " + decorator.toCharSequence(value);
+            }
 
-        @Override
-        public int hashCode() {
-            return decorator.name().hashCode();
-        }
+            @Override
+            public int hashCode() {
+                return decorator.name().hashCode();
+            }
 
-        @Override
-        public boolean equals(Object o) {
-            return o instanceof Entry<?> && ((Entry<?>) o).decorator.name().equals(decorator.name());
-        }
+            @Override
+            public boolean equals(Object o) {
+                return o instanceof Entry<?> && ((Entry<?>) o).decorator.name().equals(decorator.name());
+            }
 
-        @SuppressWarnings({"unchecked"})
-        public <R> HeaderValueType<R> match(HeaderValueType<R> decorator) {
-            if (this.decorator.equals(decorator)) { // Equality test is case-insensitive name match
-                if (this.decorator.type() != decorator.type()) {
-                    if (debug) {
-                        System.err.println("Requesting header " + decorator + " of type " + decorator.type().getName()
-                                + " but returning header of type " + this.decorator.type().getName() + " - if set, this"
-                                + " will probably throw a ClassCastException.");
+            @SuppressWarnings({"unchecked"})
+            public <R> HeaderValueType<R> match(HeaderValueType<R> decorator) {
+                if (this.decorator.equals(decorator)) { // Equality test is case-insensitive name match
+                    if (this.decorator.type() != decorator.type()) {
+                        if (debug) {
+                            System.err.println("Requesting header " + decorator + " of type " + decorator.type().getName()
+                                    + " but returning header of type " + this.decorator.type().getName() + " - if set, this"
+                                    + " will probably throw a ClassCastException.");
+                        }
                     }
+                    return (HeaderValueType<R>) this.decorator;
                 }
-                return (HeaderValueType<R>) this.decorator;
-            }
-            if (this.decorator.name().equals(decorator.name())
-                    && this.decorator.type().equals(decorator.type())) {
-                return decorator;
-            } else if (Strings.charSequencesEqual(this.decorator.name(), decorator.name(), true)) {
+                if (this.decorator.name().equals(decorator.name())
+                        && this.decorator.type().equals(decorator.type())) {
+                    return decorator;
+                } else if (Strings.charSequencesEqual(this.decorator.name(), decorator.name(), true)) {
 
+                }
+                return null;
             }
-            return null;
         }
-    }
 }

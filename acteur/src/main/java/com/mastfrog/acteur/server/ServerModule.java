@@ -855,8 +855,8 @@ public class ServerModule<A extends Application> extends AbstractModule {
 
         bind(UncaughtExceptionHandler.class).to(Uncaught.class);
 
-        Provider<ExecutorService> workerProvider = getProvider(Key.<ExecutorService>get(ExecutorService.class, Names.named(EVENT_THREADS)));
-        Provider<ExecutorService> backgroundProvider = getProvider(Key.<ExecutorService>get(ExecutorService.class, Names.named(BACKGROUND_THREAD_POOL_NAME)));
+        Provider<ExecutorService> workerProvider = getProvider(Key.get(ExecutorService.class, Names.named(EVENT_THREADS)));
+        Provider<ExecutorService> backgroundProvider = getProvider(Key.get(ExecutorService.class, Names.named(BACKGROUND_THREAD_POOL_NAME)));
 
         bind(ExecutorService.class).annotatedWith(Names.named(
                 SCOPED_WORKER_THREAD_POOL_NAME)).toProvider(scope.wrapThreadPool(workerProvider));
@@ -898,25 +898,22 @@ public class ServerModule<A extends Application> extends AbstractModule {
         bind(ClientDisconnectErrors.class).asEagerSingleton();
     }
 
-    private static final class WebSocketFrameProvider implements Provider<WebSocketFrame> {
-
-        private final Provider<Event> evt;
+    private record WebSocketFrameProvider(Provider<Event> evt) implements Provider<WebSocketFrame> {
 
         @Inject
-        public WebSocketFrameProvider(Provider<Event> evt) {
-            this.evt = evt;
+        private WebSocketFrameProvider {
         }
 
-        @Override
-        public WebSocketFrame get() {
-            Event evt = this.evt.get();
-            if (evt instanceof WebSocketEvent) {
-                return ((WebSocketEvent) evt).request();
+            @Override
+            public WebSocketFrame get() {
+                Event evt = this.evt.get();
+                if (evt instanceof WebSocketEvent) {
+                    return ((WebSocketEvent) evt).request();
+                }
+                throw new IllegalStateException("No web socket event in scope");
             }
-            throw new IllegalStateException("No web socket event in scope");
-        }
 
-    }
+        }
 
     private static final class ProtocolProvider implements Provider<Protocol> {
 
@@ -999,71 +996,59 @@ public class ServerModule<A extends Application> extends AbstractModule {
 
     }
 
-    private static final class PathProvider implements Provider<Path> {
-
-        private final Provider<HttpEvent> evt;
+    private record PathProvider(Provider<HttpEvent> evt) implements Provider<Path> {
 
         @Inject
-        PathProvider(Provider<HttpEvent> evt) {
-            this.evt = evt;
+        private PathProvider {
         }
 
-        @Override
-        public Path get() {
-            return evt.get().path();
-        }
-    }
-
-    private static final class MethodProvider implements Provider<HttpMethod> {
-
-        private final Provider<HttpEvent> evt;
-
-        @Inject
-        MethodProvider(Provider<HttpEvent> evt) {
-            this.evt = evt;
-        }
-
-        @Override
-        public HttpMethod get() {
-            return evt.get().method();
-        }
-
-    }
-
-    private static final class MethodProvider2 implements Provider<Method> {
-
-        private final Provider<HttpEvent> evt;
-
-        @Inject
-        MethodProvider2(Provider<HttpEvent> evt) {
-            this.evt = evt;
-        }
-
-        @Override
-        public Method get() {
-            HttpEvent e = evt.get();
-            if (e == null) {
-                return null;
+            @Override
+            public Path get() {
+                return evt.get().path();
             }
-            return e == null || !(e.method() instanceof Method) ? null : (Method) evt.get().method();
         }
 
-    }
-
-    private static final class ChannelProvider implements Provider<Channel> {
-
-        private final Provider<HttpEvent> evt;
+    private record MethodProvider(Provider<HttpEvent> evt) implements Provider<HttpMethod> {
 
         @Inject
-        ChannelProvider(Provider<HttpEvent> evt) {
-            this.evt = evt;
+        private MethodProvider {
         }
 
-        @Override
-        public Channel get() {
-            return evt.get().channel();
+            @Override
+            public HttpMethod get() {
+                return evt.get().method();
+            }
+
         }
-    }
+
+    private record MethodProvider2(Provider<HttpEvent> evt) implements Provider<Method> {
+
+        @Inject
+        private MethodProvider2 {
+        }
+
+            @Override
+            public Method get() {
+                HttpEvent e = evt.get();
+                if (e == null) {
+                    return null;
+                }
+                return e == null || !(e.method() instanceof Method) ? null : (Method) evt.get().method();
+            }
+
+        }
+
+    private record ChannelProvider(Provider<HttpEvent> evt) implements Provider<Channel> {
+
+        @Inject
+        private ChannelProvider {
+        }
+
+            @Override
+            public Channel get() {
+                return evt.get().channel();
+            }
+        }
 
     private static final class InvalidInputExceptionEvaluator extends ExceptionEvaluator {
 
@@ -1082,41 +1067,37 @@ public class ServerModule<A extends Application> extends AbstractModule {
         }
     }
 
-    private static final class EventProvider implements Provider<Event<?>> {
+    private record EventProvider(
+            @SuppressWarnings("unchecked") Provider<Event> eventProvider) implements Provider<Event<?>> {
 
-        @SuppressWarnings("unchecked")
-        private final Provider<Event> eventProvider;
-
-        @SuppressWarnings("unchecked")
-        @Inject
-        EventProvider(Provider<Event> eventProvider) {
-            this.eventProvider = eventProvider;
-        }
-
-        @Override
-        public Event<?> get() {
-            return eventProvider.get();
-        }
-    }
-
-    private static class HttpProtocolRequestProvider implements Provider<HttpProtocolRequest> {
-
-        private final Provider<Event<?>> eventProvider;
-
-        @Inject
-        HttpProtocolRequestProvider(Provider<Event<?>> eventProvider) {
-            this.eventProvider = eventProvider;
-        }
-
-        @Override
-        public HttpProtocolRequest get() {
-            Event<?> evt = eventProvider.get();
-            if (evt instanceof HttpProtocolRequest) {
-                return (HttpProtocolRequest) evt;
+            @SuppressWarnings("unchecked")
+            @Inject
+            private EventProvider(Provider<Event> eventProvider) {
+                this.eventProvider = eventProvider;
             }
-            return null;
+
+            @Override
+            public Event<?> get() {
+                return eventProvider.get();
+            }
         }
-    }
+
+    private record HttpProtocolRequestProvider(
+            Provider<Event<?>> eventProvider) implements Provider<HttpProtocolRequest> {
+
+        @Inject
+        private HttpProtocolRequestProvider {
+        }
+
+            @Override
+            public HttpProtocolRequest get() {
+                Event<?> evt = eventProvider.get();
+                if (evt instanceof HttpProtocolRequest) {
+                    return (HttpProtocolRequest) evt;
+                }
+                return null;
+            }
+        }
 
     private static final class ETL extends TypeLiteral<Event<?>> {
 
@@ -1316,78 +1297,64 @@ public class ServerModule<A extends Application> extends AbstractModule {
             result.childOption(ChannelOption.ALLOCATOR, alloc);
             result.childOption(ChannelOption.TCP_NODELAY, settings.getBoolean(SETTINGS_KEY_SOCKET_TCP_NODELAY, DEFAULT_TCP_NODELAY));
 
-            settings.ifIntPresent(SETTINGS_KEY_SOCKET_MAX_MESSAGES_PER_READ, maxOverall -> {
-                settings.ifIntPresent(SETTINGS_KEY_SOCKET_MAX_MESSAGES_PER_INDIVIDUAL_READ, maxIndividual -> {
-                    result.option(ChannelOption.RCVBUF_ALLOCATOR, new DefaultMaxBytesRecvByteBufAllocator(
-                            nonNegative(SETTINGS_KEY_SOCKET_MAX_MESSAGES_PER_READ, maxOverall),
-                            nonNegative(SETTINGS_KEY_SOCKET_MAX_MESSAGES_PER_INDIVIDUAL_READ, maxIndividual)));
-                });
-            });
+            settings.ifIntPresent(SETTINGS_KEY_SOCKET_MAX_MESSAGES_PER_READ, maxOverall -> settings.ifIntPresent(SETTINGS_KEY_SOCKET_MAX_MESSAGES_PER_INDIVIDUAL_READ, maxIndividual -> {
+                result.option(ChannelOption.RCVBUF_ALLOCATOR, new DefaultMaxBytesRecvByteBufAllocator(
+                        nonNegative(SETTINGS_KEY_SOCKET_MAX_MESSAGES_PER_READ, maxOverall),
+                        nonNegative(SETTINGS_KEY_SOCKET_MAX_MESSAGES_PER_INDIVIDUAL_READ, maxIndividual)));
+            }));
 
-            settings.ifIntPresent(SETTINGS_KEY_SOCKET_SO_RCVBUF, val -> {
-                result.option(ChannelOption.SO_SNDBUF, nonNegative(SETTINGS_KEY_SOCKET_SO_RCVBUF, val));
-            });
+            settings.ifIntPresent(SETTINGS_KEY_SOCKET_SO_RCVBUF, val -> result.option(ChannelOption.SO_SNDBUF, nonNegative(SETTINGS_KEY_SOCKET_SO_RCVBUF, val)));
 
-            settings.ifIntPresent(SETTINGS_KEY_SOCKET_SO_SNDBUF, val -> {
-                result.childOption(ChannelOption.SO_SNDBUF, nonNegative(SETTINGS_KEY_SOCKET_SO_SNDBUF, val));
-            });
+            settings.ifIntPresent(SETTINGS_KEY_SOCKET_SO_SNDBUF, val -> result.childOption(ChannelOption.SO_SNDBUF, nonNegative(SETTINGS_KEY_SOCKET_SO_SNDBUF, val)));
 
-            settings.ifIntPresent(SETTINGS_KEY_SOCKET_CONNECT_TIMEOUT_MILLIS, val -> {
-                result.option(ChannelOption.CONNECT_TIMEOUT_MILLIS,
-                        nonNegative(SETTINGS_KEY_SOCKET_CONNECT_TIMEOUT_MILLIS, val));
-            });
+            settings.ifIntPresent(SETTINGS_KEY_SOCKET_CONNECT_TIMEOUT_MILLIS, val -> result.option(ChannelOption.CONNECT_TIMEOUT_MILLIS,
+                    nonNegative(SETTINGS_KEY_SOCKET_CONNECT_TIMEOUT_MILLIS, val)));
 
-            settings.ifIntPresent(SETTINGS_KEY_SOCKET_WRITE_SPIN_COUNT, val -> {
-                result.childOption(ChannelOption.WRITE_SPIN_COUNT,
-                        greaterThanZero(SETTINGS_KEY_SOCKET_WRITE_SPIN_COUNT, val));
-            });
+            settings.ifIntPresent(SETTINGS_KEY_SOCKET_WRITE_SPIN_COUNT, val -> result.childOption(ChannelOption.WRITE_SPIN_COUNT,
+                    greaterThanZero(SETTINGS_KEY_SOCKET_WRITE_SPIN_COUNT, val)));
             return bootstrapConfigurer.get().configureServerBootstrap(configureServerBootstrap(result, settings), settings);
         }
     }
 
     @SuppressWarnings("deprecation")
-    private static final class CookiesProvider implements Provider<Set<io.netty.handler.codec.http.Cookie>> {
-
-        private final Provider<HttpEvent> ev;
+        private record CookiesProvider(
+            Provider<HttpEvent> ev) implements Provider<Set<io.netty.handler.codec.http.Cookie>> {
 
         @Inject
-        public CookiesProvider(Provider<HttpEvent> ev) {
-            this.ev = ev;
+        private CookiesProvider {
         }
 
-        @Override
-        public Set<io.netty.handler.codec.http.Cookie> get() {
-            HttpEvent evt = ev.get();
-            String h = evt.header(HttpHeaderNames.COOKIE.toString());
-            if (h != null) {
-                @SuppressWarnings("deprecation")
-                Set<io.netty.handler.codec.http.Cookie> result = io.netty.handler.codec.http.CookieDecoder.decode(h);
-                if (result != null) {
-                    return result;
+            @Override
+            public Set<io.netty.handler.codec.http.Cookie> get() {
+                HttpEvent evt = ev.get();
+                String h = evt.header(HttpHeaderNames.COOKIE.toString());
+                if (h != null) {
+                    @SuppressWarnings("deprecation")
+                    Set<io.netty.handler.codec.http.Cookie> result = io.netty.handler.codec.http.CookieDecoder.decode(h);
+                    if (result != null) {
+                        return result;
+                    }
                 }
+                return Collections.emptySet();
             }
-            return Collections.emptySet();
         }
-    }
 
     @SuppressWarnings("deprecation")
-    private static final class CookiesProvider2 implements Provider<Set<io.netty.handler.codec.http.cookie.Cookie>> {
-
-        private final Provider<HttpEvent> ev;
+        private record CookiesProvider2(
+            Provider<HttpEvent> ev) implements Provider<Set<io.netty.handler.codec.http.cookie.Cookie>> {
 
         @Inject
-        public CookiesProvider2(Provider<HttpEvent> ev) {
-            this.ev = ev;
+        private CookiesProvider2 {
         }
 
-        @Override
-        public Set<io.netty.handler.codec.http.cookie.Cookie> get() {
-            HttpEvent evt = ev.get();
-            io.netty.handler.codec.http.cookie.Cookie[] cookies = evt.header(COOKIE_B);
-            return cookies == null || cookies.length == 0 ? Collections.emptySet()
-                    : setOf(cookies);
+            @Override
+            public Set<io.netty.handler.codec.http.cookie.Cookie> get() {
+                HttpEvent evt = ev.get();
+                io.netty.handler.codec.http.cookie.Cookie[] cookies = evt.header(COOKIE_B);
+                return cookies == null || cookies.length == 0 ? Collections.emptySet()
+                        : setOf(cookies);
+            }
         }
-    }
 
     static final class Uncaught implements UncaughtExceptionHandler {
 
@@ -1404,20 +1371,17 @@ public class ServerModule<A extends Application> extends AbstractModule {
         }
     }
 
-    private static class UptimeProvider implements Provider<Duration> {
-
-        private final ZonedDateTime dt;
+    private record UptimeProvider(ZonedDateTime dt) implements Provider<Duration> {
 
         @Inject
-        UptimeProvider(ZonedDateTime dt) {
-            this.dt = dt;
+        private UptimeProvider {
         }
 
-        @Override
-        public Duration get() {
-            return Duration.between(dt, ZonedDateTime.now());
+            @Override
+            public Duration get() {
+                return Duration.between(dt, ZonedDateTime.now());
+            }
         }
-    }
 
     protected void onInit(Settings settings) {
     }

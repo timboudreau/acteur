@@ -85,7 +85,7 @@ public abstract class PageAnnotationHandler {
             }
             tps.add((Class<? extends Annotation>) type);
         }
-        this.types = ImmutableSet.<Class<? extends Annotation>>copyOf(tps);
+        this.types = ImmutableSet.copyOf(tps);
         registry.register(this);
     }
 
@@ -134,7 +134,7 @@ public abstract class PageAnnotationHandler {
 
         public void register(PageAnnotationHandler handler) {
             handlers.add(handler);
-            Collections.sort(handlers, new Ordered.OrderedObjectComparator());
+            handlers.sort(new Ordered.OrderedObjectComparator());
         }
 
         private volatile Set<Class<? extends Annotation>> types;
@@ -143,7 +143,7 @@ public abstract class PageAnnotationHandler {
             if (types == null) {
                 synchronized (this) {
                     if (types == null) {
-                        ImmutableSet.Builder<Class<? extends Annotation>> builder = ImmutableSet.<Class<? extends Annotation>>builder();
+                        ImmutableSet.Builder<Class<? extends Annotation>> builder = ImmutableSet.builder();
                         for (PageAnnotationHandler h : handlers) {
                             builder.addAll(h.types());
                         }

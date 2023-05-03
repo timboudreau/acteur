@@ -108,7 +108,7 @@ public final class HttpCallRegistryLoader implements Iterable<Class<? extends Pa
 
     @SuppressWarnings("unchecked")
     public Set<Class<? extends Module>> modules() throws IOException, ClassNotFoundException {
-        Set<Class<? extends Module>> types = new HashSet();
+        Set<Class<? extends Module>> types = new HashSet<>();
         ClassLoader cl = type.getClassLoader();
         if (cl == null) {
             return emptySet(); // graal

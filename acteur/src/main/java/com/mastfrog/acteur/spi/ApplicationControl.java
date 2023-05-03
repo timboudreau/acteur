@@ -62,12 +62,9 @@ public interface ApplicationControl {
     }
 
     default ChannelFuture logFailure(ChannelFuture f) {
-        f.addListener(new GenericFutureListener<Future<? super Void>>() {
-            @Override
-            public void operationComplete(Future<? super Void> f) throws Exception {
-                if (f.cause() != null) {
-                    internalOnError(f.cause());
-                }
+        f.addListener(f1 -> {
+            if (f1.cause() != null) {
+                internalOnError(f1.cause());
             }
         });
         return f;

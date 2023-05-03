@@ -14,6 +14,7 @@ import com.mastfrog.acteur.server.ServerBuilder;
 import com.mastfrog.acteur.server.ServerModule;
 import com.mastfrog.acteur.util.RequestID;
 import com.mastfrog.giulius.tests.anno.TestWith;
+import com.mastfrog.http.harness.Assertions;
 import com.mastfrog.http.test.harness.acteur.HttpHarness;
 import com.mastfrog.http.test.harness.acteur.HttpTestHarnessModule;
 import static com.mastfrog.mime.MimeType.PLAIN_TEXT_UTF_8;
@@ -79,13 +80,11 @@ public class PutTest {
                     .assertBody("Test " + ix + " iter")).assertAllSucceeded();
 
         }
-        harn.get(veryLongUrl(35)).applyingAssertions(a -> a.assertOk()).assertAllSucceeded();
+        harn.get(veryLongUrl(35)).applyingAssertions(Assertions::assertOk).assertAllSucceeded();
     }
 
     private String veryLongUrl(int amt) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("/0123456789".repeat(Math.max(0, amt)));
-        return sb.toString();
+        return "/0123456789".repeat(Math.max(0, amt));
     }
 
     static class EchoServer extends Application {

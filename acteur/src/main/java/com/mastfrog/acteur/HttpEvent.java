@@ -32,6 +32,7 @@ import io.netty.handler.codec.http.HttpRequest;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
@@ -200,11 +201,7 @@ public interface HttpEvent extends Event<HttpRequest>, HttpProtocolRequest {
     default String urlParameter(String name, boolean decode) {
         String result = urlParameter(name);
         if (decode && result != null) {
-            try {
-                result = URLDecoder.decode(result, "UTF-8");
-            } catch (UnsupportedEncodingException ex) {
-                return Exceptions.chuck(ex);
-            }
+            result = URLDecoder.decode(result, StandardCharsets.UTF_8);
         }
         return result;
     }

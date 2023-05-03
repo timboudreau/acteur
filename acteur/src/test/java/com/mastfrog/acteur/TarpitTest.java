@@ -14,6 +14,7 @@ import com.mastfrog.acteur.util.Realm;
 import com.mastfrog.acteur.util.RotatingRealmProvider;
 import com.mastfrog.function.throwing.ThrowingRunnable;
 import com.mastfrog.giulius.tests.anno.TestWith;
+import com.mastfrog.http.harness.Assertions;
 import com.mastfrog.http.test.harness.acteur.HttpHarness;
 import com.mastfrog.http.test.harness.acteur.HttpTestHarnessModule;
 import java.io.IOException;
@@ -47,33 +48,25 @@ public class TarpitTest {
         assertEquals(realm.toString(), hdr.get().toString());
         BasicCredentials creds = new BasicCredentials("foober", "woober");
 
-        long elapsed1 = benchmark(() -> {
-            harn.get("foo").setHeader(AUTHORIZATION, creds)
-                    .applyingAssertions(a -> a.assertUnauthorized()).assertAllSucceeded();
-        });
+        long elapsed1 = benchmark(() -> harn.get("foo").setHeader(AUTHORIZATION, creds)
+                .applyingAssertions(Assertions::assertUnauthorized).assertAllSucceeded());
 
         System.out.println("---- Invalid auth 1: " + elapsed1 + "ms ----");
 
-        long elapsed2 = benchmark(() -> {
-            harn.get("foo").setHeader(AUTHORIZATION, creds)
-                    .applyingAssertions(a -> a.assertUnauthorized()).assertAllSucceeded();
-        });
+        long elapsed2 = benchmark(() -> harn.get("foo").setHeader(AUTHORIZATION, creds)
+                .applyingAssertions(Assertions::assertUnauthorized).assertAllSucceeded());
 
         System.out.println("---- Invalid auth 2: " + elapsed2 + "ms ----");
 
         assertTrue(elapsed2 > 1_000, "Second response should have been delayed at least 1 second.");
 
-        long elapsed3 = benchmark(() -> {
-            harn.get("foo").setHeader(AUTHORIZATION, creds)
-                    .applyingAssertions(a -> a.assertUnauthorized()).assertAllSucceeded();
-        });
+        long elapsed3 = benchmark(() -> harn.get("foo").setHeader(AUTHORIZATION, creds)
+                .applyingAssertions(Assertions::assertUnauthorized).assertAllSucceeded());
 
         System.out.println("---- Invalid auth 3: " + elapsed3 + "ms ----");
         assertTrue(elapsed3 > 2_000, "Second response should have been delayed at least 2 seconds.");
-        long elapsed4 = benchmark(() -> {
-            harn.get("foo").setHeader(AUTHORIZATION, creds)
-                    .applyingAssertions(a -> a.assertOk()).assertAllSucceeded();
-        });
+        long elapsed4 = benchmark(() -> harn.get("foo").setHeader(AUTHORIZATION, creds)
+                .applyingAssertions(Assertions::assertOk).assertAllSucceeded());
         System.out.println("---- Valid auth: " + elapsed1 + "ms ----");
         assertTrue(elapsed4 < elapsed3, "Successful auth should not be delayed");
     }
@@ -116,7 +109,7 @@ public class TarpitTest {
     @Singleton
     static class Auth implements Authenticator {
 
-        Map<String, Integer> counts = new HashMap<>();
+        final Map<String, Integer> counts = new HashMap<>();
 
         @Override
         public Object[] authenticate(String realm, BasicCredentials credentials) throws IOException {

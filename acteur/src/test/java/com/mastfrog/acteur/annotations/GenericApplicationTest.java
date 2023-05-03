@@ -34,7 +34,7 @@ public class GenericApplicationTest {
         Set<Class<?>> types = ldr.implicitBindings();
         assertNotNull(types, "Types is null");
         Set<Class<?>> expect = new LinkedHashSet<>(Arrays.asList(new Class<?>[]{String.class, Integer.class, RandomStrings.class, FakePage.Foo.Bar.class, FakePage.Foo.class}));
-        assertTrue(types.equals(expect), "GOT " + types);
+        assertEquals(types, expect, "GOT " + types);
     }
 
     @Test

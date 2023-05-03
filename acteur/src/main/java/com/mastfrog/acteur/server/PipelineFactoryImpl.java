@@ -289,8 +289,7 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
             if (msg instanceof ReferenceCounted) {
                 ((ReferenceCounted) msg).touch("sel-compressor-accept-inbound");
             }
-            boolean result = super.acceptInboundMessage(msg);
-            return result;
+            return super.acceptInboundMessage(msg);
         }
 
         @Override

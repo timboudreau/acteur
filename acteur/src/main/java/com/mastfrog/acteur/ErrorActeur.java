@@ -87,7 +87,7 @@ final class ErrorActeur extends Acteur {
         StringBuilder sb = new StringBuilder("Page " + page + " (" + page.getClass().getName() + ") threw " + t.getMessage() + '\n');
         try (final ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             t.printStackTrace(new PrintStream(out));
-            sb.append(new String(out.toByteArray()));
+            sb.append(out.toString());
         } catch (IOException ioe) {
             throw new AssertionError(ioe); // can't happen
         }

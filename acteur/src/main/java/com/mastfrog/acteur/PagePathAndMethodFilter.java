@@ -30,22 +30,14 @@ import static com.mastfrog.acteur.headers.Method.GET;
 import com.mastfrog.acteur.preconditions.Methods;
 import com.mastfrog.acteur.preconditions.Path;
 import com.mastfrog.acteur.preconditions.PathRegex;
-import com.mastfrog.util.preconditions.Exceptions;
 import com.mastfrog.util.strings.Strings;
 import com.mastfrog.util.collections.CollectionUtils;
 import com.mastfrog.util.strings.AlignedText;
 import io.netty.handler.codec.http.HttpRequest;
-import java.io.UnsupportedEncodingException;
+
 import java.net.URLDecoder;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.EnumMap;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 
@@ -81,7 +73,7 @@ final class PagePathAndMethodFilter {
         this(filterForBasePath(basePath));
     }
 
-    private static final Function<String, String> filterForBasePath(String basePath) {
+    private static Function<String, String> filterForBasePath(String basePath) {
         if (basePath == null || basePath.isEmpty() || "/".equals(basePath.trim())) {
             return new IdentityFunction();
         } else {
@@ -108,25 +100,23 @@ final class PagePathAndMethodFilter {
         }
     }
 
-    static final class BasePathFilterFunction implements Function<String, String> {
+    record BasePathFilterFunction(String basePath) implements Function<String, String> {
 
-        final String basePath;
-
-        public BasePathFilterFunction(String basePath) {
-            this.basePath = '/' + trimLeadingAndTrailingSlashes(basePath);
-        }
-
-        @Override
-        public String apply(String t) {
-            if (basePath.equals(t) || (t.length() == basePath.length() + 1 && t.charAt(t.length() - 1) == '/')) {
-                return "";
-            } else if (t.startsWith(basePath) && t.charAt(basePath.length()) == '/') {
-                return t.substring(basePath.length() + 1);
+            BasePathFilterFunction(String basePath) {
+                this.basePath = '/' + trimLeadingAndTrailingSlashes(basePath);
             }
-            return null;
-        }
 
-    }
+            @Override
+            public String apply(String t) {
+                if (basePath.equals(t) || (t.length() == basePath.length() + 1 && t.charAt(t.length() - 1) == '/')) {
+                    return "";
+                } else if (t.startsWith(basePath) && t.charAt(basePath.length()) == '/') {
+                    return t.substring(basePath.length() + 1);
+                }
+                return null;
+            }
+
+        }
 
     static final class IdentityFunction implements Function<String, String> {
 
@@ -144,7 +134,7 @@ final class PagePathAndMethodFilter {
     @Override
     public String toString() {
         List<Method> mths = new ArrayList<>(all.keySet());
-        Collections.sort(mths, (Method o1, Method o2) -> o1.name().compareTo(o2.name()));
+        mths.sort(Comparator.comparing(Enum::name));
         StringBuilder sb = new StringBuilder();
         for (Method m : mths) {
             ByMethod by = all.get(m);
@@ -336,11 +326,7 @@ final class PagePathAndMethodFilter {
             if (a != null) {
                 res.add(a);
             } else if (Strings.contains('%', trimmedUri)) {
-                try {
-                    decodedUri = URLDecoder.decode(trimmedUri, "UTF-8");
-                } catch (UnsupportedEncodingException ex) {
-                    return Exceptions.chuck(ex);
-                }
+                decodedUri = URLDecoder.decode(trimmedUri, StandardCharsets.UTF_8);
                 a = pageForExacts.get(decodedUri);
                 if (a != null) {
                     res.add(a);
@@ -350,11 +336,7 @@ final class PagePathAndMethodFilter {
                 String toTest = trimmedUri;
                 if (decodePatterns.contains(p)) {
                     if (decodedUri == null) {
-                        try {
-                            decodedUri = URLDecoder.decode(trimmedUri, "UTF-8");
-                        } catch (UnsupportedEncodingException ex) {
-                            return Exceptions.chuck(ex);
-                        }
+                        decodedUri = URLDecoder.decode(trimmedUri, StandardCharsets.UTF_8);
                     }
                     toTest = decodedUri;
                 }
@@ -371,7 +353,7 @@ final class PagePathAndMethodFilter {
 
         Iterator<Object> allMatching(String trimmedUri) {
             List<List<Object>> res = matchingLists(trimmedUri);
-            return CollectionUtils.combine(CollectionUtils.transform(res, l -> l.iterator()));
+            return CollectionUtils.combine(CollectionUtils.transform(res, List::iterator));
         }
 
         boolean match(String trimmedUri) {
@@ -380,11 +362,7 @@ final class PagePathAndMethodFilter {
             }
             String decodedUri = null;
             if (Strings.contains('%', trimmedUri) || Strings.contains('+', trimmedUri)) {
-                try {
-                    decodedUri = URLDecoder.decode(trimmedUri, "UTF-8");
-                } catch (UnsupportedEncodingException ex) {
-                    return Exceptions.chuck(ex);
-                }
+                decodedUri = URLDecoder.decode(trimmedUri, StandardCharsets.UTF_8);
                 if (exacts.contains(decodedUri)) {
                     return true;
                 }
@@ -436,11 +414,7 @@ final class PagePathAndMethodFilter {
                         if (pth.decode()) {
                             decodeExacts.add(pt);
                         }
-                        List<Object> l = pageForExacts.get(pt);
-                        if (l == null) {
-                            l = new ArrayList<>(5);
-                            pageForExacts.put(pt, l);
-                        }
+                        List<Object> l = pageForExacts.computeIfAbsent(pt, k -> new ArrayList<>(5));
                         l.add(instance == null ? page : instance);
                     } else {
                         Pattern pattern = pp.getPattern(PathPatterns.patternFromGlob(pat));
@@ -448,11 +422,7 @@ final class PagePathAndMethodFilter {
                         if (pth.decode()) {
                             decodePatterns.add(pattern);
                         }
-                        List<Object> l = pagePatterns.get(pattern);
-                        if (l == null) {
-                            l = new ArrayList<>();
-                            pagePatterns.put(pattern, l);
-                        }
+                        List<Object> l = pagePatterns.computeIfAbsent(pattern, k -> new ArrayList<>());
                         l.add(instance == null ? page : instance);
                     }
                 }
@@ -467,11 +437,7 @@ final class PagePathAndMethodFilter {
                         if (rx.decode()) {
                             decodeExacts.add(exact);
                         }
-                        List<Object> l = pageForExacts.get(exact);
-                        if (l == null) {
-                            l = new ArrayList<>(5);
-                            pageForExacts.put(exact, l);
-                        }
+                        List<Object> l = pageForExacts.computeIfAbsent(exact, k -> new ArrayList<>(5));
                         l.add(instance == null ? page : instance);
                     } else {
                         Pattern pattern = pp.getPattern(regex);
@@ -511,11 +477,7 @@ final class PagePathAndMethodFilter {
             if (decode) {
                 decodePatterns.add(pattern);
             }
-            List<Object> l = pagePatterns.get(pattern);
-            if (l == null) {
-                l = new ArrayList<>();
-                pagePatterns.put(pattern, l);
-            }
+            List<Object> l = pagePatterns.computeIfAbsent(pattern, k -> new ArrayList<>());
             l.add(instance);
         }
 
@@ -524,11 +486,7 @@ final class PagePathAndMethodFilter {
             if (decode) {
                 decodeExacts.add(pat);
             }
-            List<Object> l = pageForExacts.get(pat);
-            if (l == null) {
-                l = new ArrayList<>(5);
-                pageForExacts.put(pat, l);
-            }
+            List<Object> l = pageForExacts.computeIfAbsent(pat, k -> new ArrayList<>(5));
             l.add(instance);
         }
     }

@@ -192,8 +192,7 @@ public class ContentConverter {
         }
         buf.resetReaderIndex();
         try (InputStream in = new ByteBufInputStream(buf)) {
-            T result = codec.readValue(in, type);
-            return result;
+            return codec.readValue(in, type);
         } catch (IOException ioe) {
             ioe.printStackTrace();
             throw ioe;

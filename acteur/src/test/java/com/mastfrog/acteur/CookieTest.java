@@ -124,7 +124,7 @@ public class CookieTest {
                 .applyingAssertions(a -> a.assertOk().assertHasBody())
                 .assertAllSucceeded().get(StringObjectMap.class);
 
-        assertEquals(3, m.size(), "All cookies were not found: " + m.toString());
+        assertEquals(3, m.size(), "All cookies were not found: " + m);
         assertEquals("hey", m.get("a"));
         assertEquals("you", m.get("b"));
         assertEquals("thing", m.get("c"));

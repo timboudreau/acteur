@@ -8,6 +8,7 @@ import static com.mastfrog.acteur.headers.Headers.CONTENT_LENGTH;
 import com.mastfrog.acteur.server.ServerModule;
 import com.mastfrog.acteur.util.RequestID;
 import com.mastfrog.giulius.tests.anno.TestWith;
+import com.mastfrog.http.harness.Assertions;
 import com.mastfrog.http.test.harness.acteur.HttpHarness;
 import com.mastfrog.http.test.harness.acteur.HttpTestHarnessModule;
 import io.netty.buffer.Unpooled;
@@ -29,14 +30,14 @@ public class TestMultiplePages {
 
     @Test
     public void test(HttpHarness harn) throws InterruptedException, IOException {
-        harn.get("doesntmatter").applyingAssertions(a -> a.assertOk()).assertAllSucceeded();
+        harn.get("doesntmatter").applyingAssertions(Assertions::assertOk).assertAllSucceeded();
     }
 
     static class M implements Module {
 
         @Override
         public void configure(Binder binder) {
-            binder.install(new ServerModule(A.class, 1, 2, 64));
+            binder.install(new ServerModule<>(A.class, 1, 2, 64));
         }
 
     }
@@ -97,25 +98,22 @@ public class TestMultiplePages {
         }
     }
 
-    private static final class BlockingBodyWriter implements ChannelFutureListener {
+    private record BlockingBodyWriter(RequestID id, ExecutorService svc,
+                                      HttpEvent evt) implements ChannelFutureListener {
 
-        private final RequestID id;
-        private final ExecutorService svc;
-        private final HttpEvent evt;
+            @Inject
+            private BlockingBodyWriter(RequestID id,
+                                       @Named(ServerModule.BACKGROUND_THREAD_POOL_NAME) ExecutorService svc, HttpEvent evt) {
+                this.id = id;
+                this.svc = svc;
+                this.evt = evt;
+            }
 
-        @Inject
-        BlockingBodyWriter(RequestID id,
-                @Named(ServerModule.BACKGROUND_THREAD_POOL_NAME) ExecutorService svc, HttpEvent evt) {
-            this.id = id;
-            this.svc = svc;
-            this.evt = evt;
+            @Override
+            public void operationComplete(ChannelFuture future) throws Exception {
+                future = future.channel().writeAndFlush(Unpooled.copiedBuffer(id
+                        + " Okay, here goes nothing", UTF_8));
+                future.addListener(CLOSE);
+            }
         }
-
-        @Override
-        public void operationComplete(ChannelFuture future) throws Exception {
-            future = future.channel().writeAndFlush(Unpooled.copiedBuffer(id
-                    + " Okay, here goes nothing", UTF_8));
-            future.addListener(CLOSE);
-        }
-    }
 }

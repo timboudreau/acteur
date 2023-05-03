@@ -263,7 +263,6 @@ final class ServerImpl implements Server {
                 // and we are already waiting
                 waitClose.await();
             } catch (InterruptedException ex) {
-                return;
             }
         }
 

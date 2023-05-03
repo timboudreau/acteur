@@ -10,6 +10,7 @@ import com.mastfrog.url.Path;
 import com.mastfrog.url.URL;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ThreadFactory;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import org.junit.jupiter.api.Test;
@@ -26,12 +27,8 @@ public class PathFactoryTest {
         @Override
         protected void configure() {
             super.configure();
-            bind(ThreadFactory.class).annotatedWith(Names.named(ServerModule.WORKER_THREADS)).toInstance(new ThreadFactory() {
-
-                @Override
-                public Thread newThread(Runnable r) {
-                    throw new UnsupportedOperationException("Not supported yet.");
-                }
+            bind(ThreadFactory.class).annotatedWith(Names.named(ServerModule.WORKER_THREADS)).toInstance(r -> {
+                throw new UnsupportedOperationException("Not supported yet.");
             });
         }
     }
@@ -58,7 +55,7 @@ public class PathFactoryTest {
         assertEquals("foo/bar/moo.txt", path.toString());
 
         path = Path.parse("loading-small.gif", true);
-        String s = URLEncoder.encode("loading-small.gif", "UTF-8");
+        String s = URLEncoder.encode("loading-small.gif", StandardCharsets.UTF_8);
         path = dpf.toPath("loading%2dsmall.gif");
         assertEquals("loading-small.gif", path.toString());
     }

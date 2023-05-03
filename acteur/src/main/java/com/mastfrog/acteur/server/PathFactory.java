@@ -179,7 +179,7 @@ public interface PathFactory {
      * @throws IllegalArgumentException if the path is not a legal URL path
      * (character set, etc.) - convert using IDN first if you need to; or if the
      * port in the Host header is not a number.
-     *
+     * <p>
      *
      * @return A URL
      */

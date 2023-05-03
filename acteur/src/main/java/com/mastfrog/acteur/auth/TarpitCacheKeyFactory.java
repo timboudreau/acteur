@@ -20,7 +20,6 @@ public class TarpitCacheKeyFactory {
         if (!(addr instanceof InetSocketAddress)) {
             return null;
         }
-        String remoteAddress = ((InetSocketAddress) addr).getHostString();
-        return remoteAddress;
+        return ((InetSocketAddress) addr).getHostString();
     }
 }

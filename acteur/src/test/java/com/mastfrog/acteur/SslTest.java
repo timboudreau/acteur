@@ -57,7 +57,7 @@ public class SslTest {
 
         @Override
         public void configure(Binder binder) {
-            binder.install(new ServerModule(SslApp.class));
+            binder.install(new ServerModule<>(SslApp.class));
         }
     }
 

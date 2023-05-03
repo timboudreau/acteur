@@ -57,6 +57,7 @@ public class AppTest {
 
     static class M extends AbstractModule {
 
+        @SuppressWarnings("rawtypes")
         @Override
         protected void configure() {
             bind(Charset.class).toInstance(CharsetUtil.UTF_8);
@@ -93,29 +94,18 @@ public class AppTest {
             //Generic madness - Event != Event<?>
             final Provider<Event> e = binder().getProvider(Event.class);
             bind(new TypeLiteral<Event<?>>() {
-            }).toProvider(new Provider<Event<?>>() {
-
-                @Override
-                public Event<?> get() {
-                    return e.get();
-                }
-
-            });
+            }).toProvider(e::get);
 
             scope.bindTypes(binder(), Event.class, HttpEvent.class,
                     Page.class, BasicCredentials.class, Thing.class);
-            bind(ThreadFactory.class).annotatedWith(Names.named(ServerModule.WORKER_THREADS)).toInstance(new ThreadFactory() {
-
-                @Override
-                public Thread newThread(Runnable r) {
-                    throw new UnsupportedOperationException("Not supported yet.");
-                }
+            bind(ThreadFactory.class).annotatedWith(Names.named(ServerModule.WORKER_THREADS)).toInstance(r -> {
+                throw new UnsupportedOperationException("Not supported yet.");
             });
         }
     }
 
     @Test
-    public void testApp(Application app, PathFactory paths, ReentrantScope scope, Settings settings) throws IOException, InterruptedException, Exception {
+    public void testApp(Application app, PathFactory paths, ReentrantScope scope, Settings settings) throws Exception {
         assertTrue(app instanceof App);
         assertTrue(app.iterator().hasNext(), "App has no pages");
         Page page = app.iterator().next();
@@ -228,6 +218,7 @@ public class AppTest {
         }
     }
 
+    @SuppressWarnings("rawtypes")
     private Event createEvent(PathFactory paths) throws IOException {
         ByteBuf buf = Unpooled.directBuffer(256);
         DefaultFullHttpRequest req = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET,
@@ -271,7 +262,7 @@ public class AppTest {
 
     static class Thing {
 
-        public String foo = "Foo foo fru";
+        public final String foo = "Foo foo fru";
         public long bar = System.currentTimeMillis();
     }
 

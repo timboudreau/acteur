@@ -166,14 +166,7 @@ public class CompApp extends Application {
         Branch(ActeurFactory af) {
             add(af.matchMethods(Method.GET));
             add(af.matchPath("^branch$"));
-            add(af.branch(ABranch.class, BBranch.class, new Test() {
-
-                @Override
-                public boolean test(HttpEvent evt) {
-                    return "true".equals(evt.urlParameter("a"));
-                }
-
-            }));
+            add(af.branch(ABranch.class, BBranch.class, evt -> "true".equals(evt.urlParameter("a"))));
         }
 
         private static class ABranch extends Acteur {
@@ -317,13 +310,9 @@ public class CompApp extends Application {
             @Override
             public void operationComplete(final ChannelFuture future) throws Exception {
                 if (entryCount > 0) {
-                    svc.submit(new Callable<Void>() {
-
-                        @Override
-                        public Void call() throws Exception {
-                            operationComplete(future);
-                            return null;
-                        }
+                    svc.submit((Callable<Void>) () -> {
+                        operationComplete(future);
+                        return null;
                     });
                     return;
                 }
