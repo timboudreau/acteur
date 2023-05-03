@@ -19,11 +19,11 @@ public @interface Help {
 
     @Setting(value = "Defines a regular expression used for the URL path for JSON help",
             defaultValue = "^help$", tier = TERTIARY)
-    public static final String HELP_URL_PATTERN_SETTINGS_KEY = "helpUrlPattern";
+    String HELP_URL_PATTERN_SETTINGS_KEY = "helpUrlPattern";
 
     @Setting(value = "Defines a regular expression used to match the URL path for HTML help",
             defaultValue = "\"^help\\\\.html$\"", tier = TERTIARY)
-    public static final String HELP_HTML_URL_PATTERN_SETTINGS_KEY = "helpHtmlUrlPattern";
+    String HELP_HTML_URL_PATTERN_SETTINGS_KEY = "helpHtmlUrlPattern";
 
     String value() default "";
 }

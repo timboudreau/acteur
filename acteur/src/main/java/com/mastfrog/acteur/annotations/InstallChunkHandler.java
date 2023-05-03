@@ -51,7 +51,7 @@ public class InstallChunkHandler extends Acteur {
     @Inject
     InstallChunkHandler(Page page, Deferral defer, HttpEvent evt, Dependencies deps, ApplicationControl ctrl) {
         Object[] inject = new Object[0];
-        if (Method.POST.equals(evt.method()) || Method.PUT.equals(evt.method()) || HttpMethod.PATCH.equals(evt.method())) {
+        if (Method.POST.name().equals(evt.method().name()) || Method.PUT.name().equals(evt.method().name()) || HttpMethod.PATCH.name().equals(evt.method().name())) {
 
             ChannelHandlerContext ctx = evt.ctx();
 
@@ -61,6 +61,7 @@ public class InstallChunkHandler extends Acteur {
                         + "@Early annotation.  Stale sources?"));
             }
 
+            assert early != null;
             if (early.value() != ChunkHandler.class) {
                 ChunkHandler ch = deps.getInstance(early.value());
                 ctx.pipeline().addAfter(PipelineDecorator.PRE_CONTENT_PAGE_HANDLER, ch.getClass().getSimpleName(), ch);

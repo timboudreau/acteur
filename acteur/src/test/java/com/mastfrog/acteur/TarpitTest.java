@@ -61,7 +61,7 @@ public class TarpitTest {
 
         System.out.println("---- Invalid auth 2: " + elapsed2 + "ms ----");
 
-        assertTrue(elapsed2 > 1000, "Second response should have been delayed at least 1 second.");
+        assertTrue(elapsed2 > 1_000, "Second response should have been delayed at least 1 second.");
 
         long elapsed3 = benchmark(() -> {
             harn.get("foo").setHeader(AUTHORIZATION, creds)
@@ -69,7 +69,7 @@ public class TarpitTest {
         });
 
         System.out.println("---- Invalid auth 3: " + elapsed3 + "ms ----");
-        assertTrue(elapsed3 > 2000, "Second response should have been delayed at least 2 seconds.");
+        assertTrue(elapsed3 > 2_000, "Second response should have been delayed at least 2 seconds.");
         long elapsed4 = benchmark(() -> {
             harn.get("foo").setHeader(AUTHORIZATION, creds)
                     .applyingAssertions(a -> a.assertOk()).assertAllSucceeded();

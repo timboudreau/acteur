@@ -1451,10 +1451,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
             }
             // Avoid logging every connection reset - it generates a lot of
             // logging noise in normal use
-            if ("Connection reset".equals(t.getMessage())) {
-                return true;
-            }
-            return false;
+            return "Connection reset".equals(t.getMessage());
         }
 
         @Override

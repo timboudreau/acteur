@@ -1,26 +1,3 @@
-/*
- * The MIT License
- *
- * Copyright 2018 Tim Boudreau.
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- */
 package com.mastfrog.acteur;
 
 import com.google.inject.AbstractModule;
@@ -87,13 +64,13 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import org.junit.Before;
 import org.junit.jupiter.api.AfterAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -629,7 +606,7 @@ public class ConnectionReuseTest {
         void shutdown() {
             try {
                 group.shutdownGracefully().get();
-            } catch (Exception ex) {
+            } catch (InterruptedException | ExecutionException ex) {
                 ex.printStackTrace();
                 group.shutdownNow();
             } finally {
@@ -694,7 +671,7 @@ public class ConnectionReuseTest {
 
             final ThrowingBiConsumer<HttpResponse, HttpContent> consumer;
 
-            public HttpUploadClientInitializer(ThrowingBiConsumer<HttpResponse, HttpContent> consumer) {
+            HttpUploadClientInitializer(ThrowingBiConsumer<HttpResponse, HttpContent> consumer) {
                 this.consumer = consumer;
             }
 
@@ -703,7 +680,7 @@ public class ConnectionReuseTest {
                 ChannelPipeline pipeline = ch.pipeline();
                 pipeline.addLast("codec", new HttpClientCodec());
                 pipeline.addLast("inflater", new HttpContentDecompressor());
-                pipeline.addLast("agg", new HttpObjectAggregator(16384));
+                pipeline.addLast("agg", new HttpObjectAggregator(16_384));
                 pipeline.addLast("chunkedWriter", new ChunkedWriteHandler());
                 pipeline.addLast("handler", new HttpClientHandler(consumer));
 //                pipeline.addLast("deflater", new HttpContentCompressor());
@@ -717,7 +694,7 @@ public class ConnectionReuseTest {
                 private final ThrowingBiConsumer<HttpResponse, HttpContent> consumer;
                 HttpResponse lastResponse;
 
-                public HttpClientHandler(ThrowingBiConsumer<HttpResponse, HttpContent> consumer) {
+                HttpClientHandler(ThrowingBiConsumer<HttpResponse, HttpContent> consumer) {
                     this.consumer = consumer;
                 }
 
@@ -772,6 +749,7 @@ public class ConnectionReuseTest {
             this.app = app;
         }
 
+        @Override
         public void onError(Throwable thrown) {
             ((ReuseApp) app).onError(thrown);
         }
@@ -977,6 +955,7 @@ public class ConnectionReuseTest {
                 ok();
             }
 
+            @SuppressWarnings("SwitchStatementWithTooFewBranches")
             @Override
             public void operationComplete(ChannelFuture f) throws Exception {
                 if (f.cause() != null) {

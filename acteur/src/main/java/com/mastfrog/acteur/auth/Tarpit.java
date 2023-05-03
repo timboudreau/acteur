@@ -17,9 +17,9 @@ import com.mastfrog.giulius.annotations.Setting;
 public interface Tarpit {
 
     @Setting(value = "BasicAuth: Number of minutes a host should be banned", type = Setting.ValueType.INTEGER, defaultValue = "5")
-    public static final String SETTINGS_KEY_TARPIT_EXPIRATION_TIME_MINUTES
+    String SETTINGS_KEY_TARPIT_EXPIRATION_TIME_MINUTES
             = "tarpit.default.expiration.minutes";
-    public static final int DEFAULT_TARPIT_EXPIRATION_TIME_MINUTES = 5;
+    int DEFAULT_TARPIT_EXPIRATION_TIME_MINUTES = 5;
 
     /**
      * Add an entry to the tarpit for failing to authenticate, incrementing the
@@ -28,7 +28,7 @@ public interface Tarpit {
      * @param evt The http request
      * @return The updated number of bad requests
      */
-    public int add(HttpEvent evt);
+    int add(HttpEvent evt);
 
     /**
      * Get the number of bad requests
@@ -36,7 +36,7 @@ public interface Tarpit {
      * @param evt An http request
      * @return The
      */
-    public int count(HttpEvent evt);
+    int count(HttpEvent evt);
 
-    public void remove(HttpEvent evt);
+    void remove(HttpEvent evt);
 }

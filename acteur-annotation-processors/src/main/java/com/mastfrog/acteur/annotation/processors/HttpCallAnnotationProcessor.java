@@ -89,7 +89,7 @@ import javax.tools.JavaFileObject;
     INJECT_BODY_AS_ANNOTATION,
     INJECT_URL_PARAMS_AS_ANNOTATION
 })
-@SupportedSourceVersion(SourceVersion.RELEASE_8)
+@SupportedSourceVersion(SourceVersion.RELEASE_17)
 public class HttpCallAnnotationProcessor extends IndexGeneratingProcessor<Line> {
 
     public static final String GENERATED_SOURCE_SUFFIX = "__GenPage";

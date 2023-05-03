@@ -59,31 +59,31 @@ public interface PathFactory {
      * @deprecated use @link{ServerModule.SETTINGS_KEY_BASE_PATH}
      */
     @Deprecated
-    public static final String BASE_PATH_SETTINGS_KEY = SETTINGS_KEY_BASE_PATH;
+    String BASE_PATH_SETTINGS_KEY = SETTINGS_KEY_BASE_PATH;
     /**
      * @deprecated use @link{ServerModule.SETTINGS_KEY_URLS_HOST_NAME}
      */
     @Deprecated
-    public static final String HOSTNAME_SETTINGS_KEY = SETTINGS_KEY_URLS_HOST_NAME;
+    String HOSTNAME_SETTINGS_KEY = SETTINGS_KEY_URLS_HOST_NAME;
 
     /**
      * @deprecated use @link{ServerModule.SETTINGS_KEY_URLS_EXTERNAL_PORT}
      */
     @Deprecated
-    public static final String EXTERNAL_PORT = SETTINGS_KEY_URLS_EXTERNAL_PORT;
+    String EXTERNAL_PORT = SETTINGS_KEY_URLS_EXTERNAL_PORT;
 
     /**
      * @deprecated use
      * @link{ServerModule.SETTINGS_KEY_URLS_EXTERNAL_SECURE_PORT}
      */
     @Deprecated
-    public static final String EXTERNAL_SECURE_PORT = SETTINGS_KEY_URLS_EXTERNAL_SECURE_PORT;
+    String EXTERNAL_SECURE_PORT = SETTINGS_KEY_URLS_EXTERNAL_SECURE_PORT;
 
     /**
      * @deprecated use @link{ServerModule.SETTINGS_KEY_GENERATE_SECURE_URLS}
      */
     @Deprecated
-    public static final String SETTINGS_KEY_DEFAULT_SECURE_URLS = SETTINGS_KEY_GENERATE_SECURE_URLS;
+    String SETTINGS_KEY_DEFAULT_SECURE_URLS = SETTINGS_KEY_GENERATE_SECURE_URLS;
 
     /**
      * Convert a URI from a request to a path, stripping out the basepath if
@@ -92,7 +92,7 @@ public interface PathFactory {
      * @param uri A URI
      * @return A path
      */
-    public Path toPath(String uri);
+    Path toPath(String uri);
 
     /**
      * Construct a URL suitable for external use, inserting the basepath and
@@ -102,7 +102,7 @@ public interface PathFactory {
      * @param secure Whether or not to construct an https URL
      * @return A url
      */
-    public URL constructURL(Path path, boolean secure);
+    URL constructURL(Path path, boolean secure);
 
     /**
      * Construct a URL suitable for external use, inserting the basepath and
@@ -112,19 +112,11 @@ public interface PathFactory {
      * @param path The path relative to the web application
      * @return A url
      */
-    public URL constructURL(Protocol protocol, Path path);
+    URL constructURL(Protocol protocol, Path path);
 
-    public URL constructURL(Protocol protocol, Path path, boolean secure);
+    URL constructURL(Protocol protocol, Path path, boolean secure);
 
-    public URL constructURL(Protocol protocol, Path path, int port);
-
-    /**
-     * Prepend the base path if necessary
-     *
-     * @param path A path
-     * @return a path
-     */
-    public Path toExternalPath(Path path);
+    URL constructURL(Protocol protocol, Path path, int port);
 
     /**
      * Prepend the base path if necessary
@@ -132,7 +124,15 @@ public interface PathFactory {
      * @param path A path
      * @return a path
      */
-    public Path toExternalPath(String path);
+    Path toExternalPath(Path path);
+
+    /**
+     * Prepend the base path if necessary
+     *
+     * @param path A path
+     * @return a path
+     */
+    Path toExternalPath(String path);
 
     /**
      * Generate a URL to this application, using the path and the system default
@@ -141,9 +141,9 @@ public interface PathFactory {
      * @param path
      * @return
      */
-    public URL constructURL(Path path);
+    URL constructURL(Path path);
 
-    public int portForProtocol(Protocol protocol);
+    int portForProtocol(Protocol protocol);
 
     /**
      * Generate a URL to this application, using the path and the system default

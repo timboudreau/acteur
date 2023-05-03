@@ -811,7 +811,7 @@ public class ActeurFactory {
             if (pattern.length() > 0 && pattern.charAt(0) == '/') {
                 pattern = pattern.substring(1);
             }
-            return new ExactMatchPath(event, patterns[0], decode);
+            return new ExactMatchPath(event, pattern, decode);
         }
         String[] rexen = new String[patterns.length];
         for (int i = 0; i < rexen.length; i++) {
@@ -1010,6 +1010,6 @@ public class ActeurFactory {
          * @param evt The request
          * @return The result of the test
          */
-        public boolean test(HttpEvent evt);
+        boolean test(HttpEvent evt);
     }
 }

@@ -35,7 +35,7 @@ public class PutTest {
 
     public static void main(String[] args) throws IOException, InterruptedException {
         new ServerBuilder().applicationClass(EchoServer.class).add(
-                Settings.builder().add("port", 8123).build()).build().start().await();
+                Settings.builder().add("port", 8_123).build()).build().start().await();
     }
 
     // Just subclasses ServerModule to provide the application class
@@ -84,9 +84,7 @@ public class PutTest {
 
     private String veryLongUrl(int amt) {
         StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < amt; i++) {
-            sb.append("/0123456789");
-        }
+        sb.append("/0123456789".repeat(Math.max(0, amt)));
         return sb.toString();
     }
 

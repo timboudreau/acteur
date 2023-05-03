@@ -37,10 +37,8 @@ public class VerifyDateTimeBehavior {
 
         String val = Headers.DATE.toCharSequence(zeroed).toString();
 
-
         ZonedDateTime parsed = Headers.DATE.toValue(val);
         String val2 = Headers.DATE.toCharSequence(parsed).toString();
-
 
         assertEquals(val, val2);
 
@@ -54,12 +52,10 @@ public class VerifyDateTimeBehavior {
 
         ZonedDateTime withZulu = dt.withZoneSameInstant(ZoneId.of("GMT"));
 
-
         ZonedDateTime withEST = zeroed.withZoneSameInstant(ZoneId.of("America/New_York"));
 //                zeroed.toDateTime(DateTimeZone.forID("EST"));
 
         assertEquals(TimeUtil.toUnixTimestamp(zeroed), TimeUtil.toUnixTimestamp(withEST));
-
 
         String ss = "Tue, 25 Sep 1973 13:10:30 EST";
         String ss1 = "Tue, 25 Sep 1973 13:10:30 -05:00";
@@ -79,7 +75,7 @@ public class VerifyDateTimeBehavior {
         assertEquals(ugh.toEpochSecond(), ugh3.toEpochSecond());
 
         ZonedDateTime ugh4 = Headers.DATE.toValue(ss2);
-        assertEquals(TimeUtil.toUnixTimestamp(ugh), TimeUtil.toUnixTimestamp(ugh4), ugh4.toString() + " expected " + ugh.toString());
+        assertEquals(TimeUtil.toUnixTimestamp(ugh), TimeUtil.toUnixTimestamp(ugh4), ugh4.toString() + " expected " + ugh);
 
         assertEquals(ugh.toInstant(), ugh.withZoneSameInstant(ZoneId.of("GMT")).toInstant());
     }

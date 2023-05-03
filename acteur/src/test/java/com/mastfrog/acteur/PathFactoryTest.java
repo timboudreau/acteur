@@ -1,11 +1,11 @@
 package com.mastfrog.acteur;
 
 import com.google.inject.name.Names;
-import com.mastfrog.settings.Settings;
-import com.mastfrog.giulius.tests.anno.TestWith;
 import com.mastfrog.acteur.AppTest.M;
 import com.mastfrog.acteur.server.PathFactory;
 import com.mastfrog.acteur.server.ServerModule;
+import com.mastfrog.giulius.tests.anno.TestWith;
+import com.mastfrog.settings.Settings;
 import com.mastfrog.url.Path;
 import com.mastfrog.url.URL;
 import java.io.UnsupportedEncodingException;

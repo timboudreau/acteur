@@ -46,12 +46,6 @@ class DefaultRequestLogger implements RequestLogger {
 
     @Override
     public void onBeforeEvent(RequestID rid, Event<?> event) {
-//        int reqNum = rid == null ? -1 : rid.getIndex();
-//        Object msg = event.request();
-//        String uri = msg instanceof HttpRequest ? ((HttpRequest) msg).getUri() :
-//                msg instanceof WebSocketFrame ? ((WebSocketFrame) msg).toString() :
-//                "";
-////        System.out.println(reqNum + " " + event.remoteAddress() + " " + event.method() + " " + event.path() + " " + uri);
     }
 
     @Override

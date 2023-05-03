@@ -293,7 +293,7 @@ public class ContentConverter {
                     case "1":
                         return true;
                     default:
-                        return result == null ? false : Boolean.parseBoolean(result);
+                        return result != null && Boolean.parseBoolean(result);
                 }
             } else if (method.getReturnType() == String.class) {
                 return result.split(",");

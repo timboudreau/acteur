@@ -408,7 +408,7 @@ final class ResponseImpl extends Response {
     }
 
     boolean isKeepAlive(Event<?> evt) {
-        boolean result = evt instanceof HttpEvent ? ((HttpEvent) evt).requestsConnectionStayOpen() : false;
+        boolean result = evt instanceof HttpEvent && ((HttpEvent) evt).requestsConnectionStayOpen();
         if (result) {
             result = !isHttp10StyleResponse();
         }
@@ -653,10 +653,7 @@ final class ResponseImpl extends Response {
         if (status == NOT_MODIFIED || status == NO_CONTENT) {
             return true;
         }
-        if (listener == null && (message == null || (message instanceof String && ((String) message).isEmpty()))) {
-            return true;
-        }
-        return false;
+        return listener == null && (message == null || (message instanceof String && ((String) message).isEmpty()));
     }
 
     private static final AsciiString ZERO = AsciiString.of("0");
@@ -745,9 +742,6 @@ final class ResponseImpl extends Response {
             // if the connection is reused for another response.  So instead, we
             // manually flush our own last content
 
-//            hdrs.set(TRANSFER_ENCODING, HttpHeaderValues.CHUNKED);
-//            listener = SEND_EMPTY_LAST_CHUNK;
-//            chunked = true;
             switch (status.code()) {
                 case 204:
                 case 304:

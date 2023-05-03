@@ -151,7 +151,7 @@ public class InternalsTest {
     static final class HookImpl extends ServerLifecycleHook {
 
         @Inject
-        public HookImpl(Registry reg) {
+        HookImpl(Registry reg) {
             super(reg);
         }
 

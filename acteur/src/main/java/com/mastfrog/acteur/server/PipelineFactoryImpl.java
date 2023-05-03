@@ -400,9 +400,7 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
                     }
                 } else {
                     Boolean early = ctx.channel().attr(EARLY_KEY).get();
-                    if (early != null && early) {
-                        return false;
-                    }
+                    return early == null || !early;
                 }
                 return true;
             } else {

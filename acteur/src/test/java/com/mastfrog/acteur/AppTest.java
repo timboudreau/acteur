@@ -1,7 +1,6 @@
 package com.mastfrog.acteur;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.mastfrog.mime.MimeType;
 import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 import com.google.inject.Provider;
@@ -22,6 +21,7 @@ import com.mastfrog.acteur.util.RequestID;
 import com.mastfrog.giulius.InjectionInfo;
 import com.mastfrog.giulius.scope.ReentrantScope;
 import com.mastfrog.giulius.tests.anno.TestWith;
+import com.mastfrog.mime.MimeType;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.util.codec.Codec;
 import com.mastfrog.util.preconditions.Checks;
@@ -256,7 +256,7 @@ public class AppTest {
         return EventImplFactory.newEvent(req, paths);
     }
 
-    static interface ReqParams {
+    interface ReqParams {
 
         String realname();
 
@@ -279,13 +279,13 @@ public class AppTest {
 
         State received;
         private int count = 0;
-        private int max = 5;
 
         void await() throws InterruptedException {
             synchronized (this) {
                 while (received == null) {
                     count++;
-                    wait(1000);
+                    wait(1_000);
+                    int max = 5;
                     if (count == max) {
                         if (this.received == null) {
                             fail("Never called");

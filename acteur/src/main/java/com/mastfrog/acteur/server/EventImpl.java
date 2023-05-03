@@ -56,11 +56,10 @@ import static io.netty.util.CharsetUtil.UTF_8;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
-import java.nio.charset.Charset;
 import java.util.ArrayList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.unmodifiableMap;
-import java.util.HashMap;
+
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -85,7 +84,7 @@ final class EventImpl implements HttpEvent {
     private final PathFactory paths;
     private boolean neverKeepAlive = false;
     private final ChannelHandlerContext channel;
-    private ContentConverter converter;
+    private final ContentConverter converter;
     private boolean ssl;
     private boolean early;
     private Map<String, String> paramsMap;
@@ -347,7 +346,6 @@ final class EventImpl implements HttpEvent {
         return hasKeepAlive;
     }
 
-    @Override
     @SuppressWarnings("deprecation")
     public Optional<Integer> intUrlParameter(String name) {
         String val = urlParameter(name);
@@ -358,7 +356,6 @@ final class EventImpl implements HttpEvent {
         return Optional.empty();
     }
 
-    @Override
     @SuppressWarnings("deprecation")
     public Optional<Long> longUrlParameter(String name) {
         String val = urlParameter(name);

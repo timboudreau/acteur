@@ -564,11 +564,7 @@ final class PagePathAndMethodFilter {
             this.path = path;
         }
 
-//        MethodPath(HttpRequest req) {
-//            path = trimLeadingAndTrailingSlashes(trimQuery(req.uri()));
-//            method = Method.get(req);
-//        }
-        @Override
+@Override
         public int hashCode() {
             if (hash != 0) {
                 return hash;

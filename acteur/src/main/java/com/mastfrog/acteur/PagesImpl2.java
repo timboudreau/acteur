@@ -172,9 +172,7 @@ class PagesImpl2 {
                     return false;
                 }
                 // Test for deflate
-                if (Strings.charSequenceContains(seq, HttpHeaderValues.DEFLATE, debug)) {
-                    return false;
-                }
+                return !Strings.charSequenceContains(seq, HttpHeaderValues.DEFLATE, debug);
             }
         }
         return true;
@@ -596,7 +594,7 @@ class PagesImpl2 {
         private final ReentrantScope scope;
         private static final Object[] EMPTY = new Object[0];
         boolean isReconstituted;
-        private Application app;
+        private final Application app;
 
         PageChain(Application app, Instantiator deps, ReentrantScope scope, Class<? super Acteur> type, Page page, Object... ctx) {
             super(deps, type, page.acteurs(app.isDefaultCorsHandlingEnabled()));

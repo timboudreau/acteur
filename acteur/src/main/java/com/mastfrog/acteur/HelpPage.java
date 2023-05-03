@@ -259,37 +259,42 @@ final class HelpPage extends Page {
                     Map<String, Object> help = app.describeYourself();
                     if (html) {
                         IndexBuilder index = new IndexBuilder();
-                        StringBuilder sb = new StringBuilder("<!doctype html>\n<html>\n\t<head>\n"
-                                + "\t\t<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n"
-                                + "<link href=\"https://fonts.googleapis.com/css?family=Mukta+Malar\" rel=\"stylesheet\">\n"
-                                + "\t\t<style>\n\t\t\tbody {\n\t\t\t\tfont-family: 'Mukta Malar'; color:#4e4e5e; margin: 2em;\n\t\t\t}\n "
-                                + ".arrayElement { border-right: 2px solid #ccc; font-size: 0.9em;}"
-                                + ".arrayElement:last-of-type { border-right: none; }"
-                                + "\ntable { font-size: 0.875em; border-spacing: 0; padding: 0; margin: 0; }"
-                                + "\ntable table { border-spacing: 0; padding: 0; margin: 0; }"
-                                + "\n.singleValue { background-color: #ffe; border-bottom: 1px #bbb solid; border-right: 1px #bbb solid; }"
-                                + "\ntd { border: none; padding-left: 1em; padding-right: 1em; }"
-                                + "\nth { border: none; padding-left: 1em; padding-right: 1em; }"
-                                + "\n.maptitle { background-color: #ccd; border-bottom: 1px #bbb; padding-left: 1em; }"
-                                + "\n.mapvalue { border-bottom: 1px #bbb; padding: 0; }"
-                                + "\n.title { min-width: 12rem; background-color: #dde; padding-left: 1em; padding-right: 1em; text-transform: capitalize}"
-                                + "\n.title,.maptitle { min-width: 12rem; border-bottom: 1px #bbb solid; color: black; }"
-                                + "\n.sample { display: block; max-width: 80%; overflow: auto; word-wrap: break-word; overflow-wrap: break-word }"
-                                + "\n.sample pre { word-wrap: break-word; overflow-wrap: break-word; white-space: pre-wrap; }"
-                                + "\n.value { padding-bottom: 1em;\n"
-                                + "    display: inline-block;\n"
-                                + "    min-height: 100%;\n"
-                                + "    vertical-align: middle;\n"
-                                + "    height: 100%;\n"
-                                + "    line-height: 1em;\n"
-                                + "    padding-top: 1em; }"
-                                + "</style>"
-                                + "\n\t\t<title>")
+                        StringBuilder sb = new StringBuilder("""
+                                <!doctype html>
+                                <html>
+                                \t<head>
+                                \t\t<meta name="viewport" content="width=device-width, initial-scale=1.0">
+                                <link href="https://fonts.googleapis.com/css?family=Mukta+Malar" rel="stylesheet">
+                                \t\t<style>
+                                \t\t\tbody {
+                                \t\t\t\tfont-family: 'Mukta Malar'; color:#4e4e5e; margin: 2em;
+                                \t\t\t}
+                                 .arrayElement { border-right: 2px solid #ccc; font-size: 0.9em;}.arrayElement:last-of-type { border-right: none; }
+                                table { font-size: 0.875em; border-spacing: 0; padding: 0; margin: 0; }
+                                table table { border-spacing: 0; padding: 0; margin: 0; }
+                                .singleValue { background-color: #ffe; border-bottom: 1px #bbb solid; border-right: 1px #bbb solid; }
+                                td { border: none; padding-left: 1em; padding-right: 1em; }
+                                th { border: none; padding-left: 1em; padding-right: 1em; }
+                                .maptitle { background-color: #ccd; border-bottom: 1px #bbb; padding-left: 1em; }
+                                .mapvalue { border-bottom: 1px #bbb; padding: 0; }
+                                .title { min-width: 12rem; background-color: #dde; padding-left: 1em; padding-right: 1em; text-transform: capitalize}
+                                .title,.maptitle { min-width: 12rem; border-bottom: 1px #bbb solid; color: black; }
+                                .sample { display: block; max-width: 80%; overflow: auto; word-wrap: break-word; overflow-wrap: break-word }
+                                .sample pre { word-wrap: break-word; overflow-wrap: break-word; white-space: pre-wrap; }
+                                .value { padding-bottom: 1em;
+                                    display: inline-block;
+                                    min-height: 100%;
+                                    vertical-align: middle;
+                                    height: 100%;
+                                    line-height: 1em;
+                                    padding-top: 1em; }</style>
+                                \t\t<title>""")
                                 .append(app.getName())
-                                .append(" API Help</title>\n"
-                                        + "\t\t</head>\n"
-                                        + "<body>\n"
-                                        + "\t\t<h1><a name='top'>")
+                                .append("""
+                                         API Help</title>
+                                        \t\t</head>
+                                        <body>
+                                        \t\t<h1><a name='top'>""")
                                 .append(app.getName()).append(" API Help</a></h1>\n");
                         Description des = app.getClass().getAnnotation(Description.class);
                         int offset = sb.length();
@@ -462,7 +467,7 @@ final class HelpPage extends Page {
                             }
                         }
                         sb.append("</body></html>\n");
-                        sb.insert(offset, index.toString());
+                        sb.insert(offset, index);
                         out.write(sb.toString());
                         return Status.DONE;
                     } else {
@@ -506,10 +511,7 @@ final class HelpPage extends Page {
                 if ("AuthenticationActeur".equalsIgnoreCase(key)) { // useless special case
                     return true;
                 }
-                if ("value".equalsIgnoreCase(key) && "default".equals(object)) {
-                    return true;
-                }
-                return false;
+                return "value".equalsIgnoreCase(key) && "default".equals(object);
             }
 
             @SuppressWarnings("unchecked")
@@ -555,8 +557,7 @@ final class HelpPage extends Page {
                 if (key == null || object instanceof Map<?, ?>) {
                     Map<String, Object> m = Collections.checkedMap((Map<String, Object>) object, String.class, Object.class);
                     if (key != null) {
-                        sb.append("\n<tr class='maprow r").append(depth).append("'>\n"
-                                + "<th valign=\"left\" class='maptitle title" + depth + "'>\n")
+                        sb.append("\n<tr class='maprow r").append(depth).append("'>\n" + "<th valign=\"left\" class='maptitle title").append(depth).append("'>\n")
                                 .append(humanized).append("\n</th>\n<td class='mapvalue val")
                                 .append(depth)
                                 .append("'>\n");

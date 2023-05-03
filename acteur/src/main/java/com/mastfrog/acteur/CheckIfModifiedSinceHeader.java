@@ -52,20 +52,6 @@ public final class CheckIfModifiedSinceHeader extends Acteur {
                 }
             }
         }
-        /*
-        ZonedDateTime lastModifiedMustBeNewerThan = event.header(IF_MODIFIED_SINCE);
-        ZonedDateTime pageLastModified = response().get(Headers.LAST_MODIFIED);
-        boolean notModified = lastModifiedMustBeNewerThan != null && pageLastModified != null;
-        if (notModified) {
-            pageLastModified = pageLastModified.with(ChronoField.MILLI_OF_SECOND, 0);
-            notModified = pageLastModified.isBefore(lastModifiedMustBeNewerThan)
-                    || pageLastModified.isBefore(lastModifiedMustBeNewerThan);
-            if (notModified) {
-                reply(NOT_MODIFIED);
-                return;
-            }
-        }
-         */
         next();
     }
 

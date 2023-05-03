@@ -40,7 +40,7 @@ import java.lang.annotation.Target;
 @Description("Requires authentication")
 public @interface Authenticated {
 
-    public static final String OPTIONAL = "optional";
+    String OPTIONAL = "optional";
     /**
      * Unused for basic auth, but may be by other authentication schemes
      *

@@ -21,34 +21,21 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-
 package com.mastfrog.acteur;
 
 import com.google.inject.Binder;
 import com.google.inject.Module;
-import com.mastfrog.acteur.util.RequestID;
-import io.netty.handler.codec.http.HttpResponseStatus;
 
 /**
  * Quiets down the logger for tests.
  *
  * @author Tim Boudreau
  */
-public class SilentRequestLogger implements RequestLogger, Module {
-
-    @Override
-    public void onBeforeEvent(RequestID rid, Event<?> event) {
-        // do nothing
-    }
-
-    @Override
-    public void onRespond(RequestID rid, Event<?> event, HttpResponseStatus status) {
-        // do nothing
-    }
+public class SilentRequestLogger implements Module {
 
     @Override
     public void configure(Binder binder) {
-        binder.bind(RequestLogger.class).toInstance(this);
+        binder.bind(RequestLogger.class).toInstance(RequestLogger.SILENT);
     }
 
 }

@@ -52,7 +52,7 @@ public @interface Examples {
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.TYPE)
     @Description("A single named, documented use case")
-    public @interface Case {
+    @interface Case {
 
         /**
          * The title of this use case, if any.

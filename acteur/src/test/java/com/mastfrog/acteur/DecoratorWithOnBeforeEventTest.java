@@ -194,7 +194,7 @@ public class DecoratorWithOnBeforeEventTest {
 
     static class M extends ServerModule<DWOBEApp> {
 
-        public M() {
+        M() {
             super(DWOBEApp.class);
         }
 

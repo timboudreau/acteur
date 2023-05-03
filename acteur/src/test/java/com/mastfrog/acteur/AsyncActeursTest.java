@@ -77,7 +77,7 @@ import org.junit.jupiter.api.Timeout;
 public class AsyncActeursTest {
 
     private static final Duration TIMEOUT = Duration.ofMinutes(2);
-    private static final long DUR = 2 * 1000 * 60;
+    private static final long DUR = 2 * 1_000 * 60;
 
     @Timeout(value = 2, unit = MINUTES)
     @Test
@@ -150,18 +150,21 @@ public class AsyncActeursTest {
         public final String error;
 
         @JsonCreator
-        public ErrorMessage(@JsonProperty("error") String error) {
+        ErrorMessage(@JsonProperty("error") String error) {
             this.error = error;
         }
 
+        @Override
         public String toString() {
             return error;
         }
 
+        @Override
         public int hashCode() {
             return error.hashCode();
         }
 
+        @Override
         public boolean equals(Object o) {
             return o instanceof ErrorMessage && ((ErrorMessage) o).error.equals(error);
         }
@@ -360,7 +363,7 @@ public class AsyncActeursTest {
     static class FooExceptionEval extends ExceptionEvaluator {
 
         @Inject
-        public FooExceptionEval(ExceptionEvaluatorRegistry registry) {
+        FooExceptionEval(ExceptionEvaluatorRegistry registry) {
             super(registry);
         }
 
@@ -382,10 +385,11 @@ public class AsyncActeursTest {
 
         private final long val;
 
-        public LongWrapper(long val) {
+        LongWrapper(long val) {
             this.val = val;
         }
 
+        @Override
         public String toString() {
             return Long.toString(val);
         }
@@ -393,11 +397,11 @@ public class AsyncActeursTest {
 
     static class Module extends ServerModule<AATApp> {
 
-        public Module() {
+        Module() {
             this(new ReentrantScope());
         }
 
-        public Module(ReentrantScope scope) {
+        Module(ReentrantScope scope) {
             super(scope, AATApp.class, 6, 2, 2);
         }
 
@@ -418,7 +422,7 @@ public class AsyncActeursTest {
         public final int index;
 
         @JsonCreator
-        public Thing(@JsonProperty("name") String name, @JsonProperty("index") int index) {
+        Thing(@JsonProperty("name") String name, @JsonProperty("index") int index) {
             this.name = name;
             this.index = index;
         }
@@ -459,10 +463,7 @@ public class AsyncActeursTest {
             if (this.index != other.index) {
                 return false;
             }
-            if (!Objects.equals(this.name, other.name)) {
-                return false;
-            }
-            return true;
+            return Objects.equals(this.name, other.name);
         }
     }
 }

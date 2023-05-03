@@ -31,7 +31,7 @@ import org.junit.jupiter.api.Timeout;
 @TestWith({M.class, HttpTestHarnessModule.class, SilentRequestLogger.class})
 public class TestAnnotations {
 
-    private static final long TIMEOUT = 60000;
+    private static final long TIMEOUT = 60_000;
     private static final Duration TO = Duration.ofMillis(TIMEOUT);
 
     @Test

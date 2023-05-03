@@ -89,6 +89,7 @@ final class ErrorActeur extends Acteur {
             t.printStackTrace(new PrintStream(out));
             sb.append(new String(out.toByteArray()));
         } catch (IOException ioe) {
+            throw new AssertionError(ioe); // can't happen
         }
         setState(new RespondWith(HttpResponseStatus.INTERNAL_SERVER_ERROR, sb.toString()));
     }

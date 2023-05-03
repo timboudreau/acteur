@@ -40,6 +40,7 @@ import com.mastfrog.acteur.util.RequestID;
 import com.mastfrog.acteurbase.InstantiatingIterators;
 import com.mastfrog.function.misc.QuietAutoClosable;
 import com.mastfrog.giulius.Dependencies;
+import com.mastfrog.giulius.annotations.Setting;
 import com.mastfrog.giulius.scope.ReentrantScope;
 import com.mastfrog.graal.annotation.Expose;
 import com.mastfrog.mime.MimeType;
@@ -88,7 +89,23 @@ import java.util.concurrent.CountDownLatch;
 @Expose(methods = @Expose.MethodInfo(name = "control", parameterTypes = {}))
 public class Application implements Iterable<Page> {
 
+    private static final HeaderValueType<CharSequence> X_REQ_PATH = Headers.header(new AsciiString("X-Req-Path"));
+    private static final HeaderValueType<CharSequence> X_REQ_ID = Headers.header(new AsciiString("X-Req-ID"));
+    private static final HeaderValueType<CharSequence> X_ACTEUR = Headers.header(new AsciiString("X-Acteur"));
+    private static final HeaderValueType<CharSequence> X_PAGE = Headers.header(new AsciiString("X-Page"));
     private static final Set<String> checkedTypes = Collections.synchronizedSet(new HashSet<String>());
+
+    /**
+     * Optional setting which, if set, will be used in the Server: header of
+     * responses.
+     */
+    @Setting(value = "Optional setting which, if set, will be used in the `Server:` header of responses.")
+    public static final String SETTINGS_KEY_APPLICATION_NAME = "application.name";
+    /**
+     * System property that, if set to true, enables various sorts of console
+     * debug logging.
+     */
+    public static final String SYSTEM_PROPERTY_ACTEUR_DEBUG = "acteur.debug";
     private final List<Object> pages = new ArrayList<>();
     @Inject
     private Dependencies deps;
@@ -111,10 +128,10 @@ public class Application implements Iterable<Page> {
     private ResponseDecorator responseDecorator;
 
     @Inject(optional = true)
-    @Named("application.name")
+    @Named(SETTINGS_KEY_APPLICATION_NAME)
     String name;
 
-    private boolean debug = Boolean.getBoolean("acteur.debug");
+    private final boolean debug = Boolean.getBoolean(SYSTEM_PROPERTY_ACTEUR_DEBUG);
 
     @Inject(optional = true)
     @Named(GUICE_BINDING_DEFAULT_CONTEXT_OBJECTS)
@@ -129,12 +146,18 @@ public class Application implements Iterable<Page> {
     @Inject
     private InstantiatingIterators iterators;
     private boolean checkedEarlyHelp;
+    private final RequestID.Factory ids = new RequestID.Factory();
 
-    private List<Object> earlyPages = new ArrayList<>(10);
+    private final List<Object> earlyPages = new ArrayList<>(10);
 
     private final PathFilters filters = PathFilters.create(this::dependenciesUnsafe);
-
-    private final RequestID.Factory ids = new RequestID.Factory();
+    @Inject(optional = true)
+    FailureResponseFactory failureResponses;
+    final ChannelFutureListener errorLoggingListener = future -> {
+        if (!future.isSuccess() && future.cause() != null) {
+            internalOnError(future.cause());
+        }
+    };
 
     /**
      * Create an application, optionally passing in an array of page types (you
@@ -156,12 +179,6 @@ public class Application implements Iterable<Page> {
             add(helpPageType());
         }
     }
-
-    final ChannelFutureListener errorLoggingListener = future -> {
-        if (!future.isSuccess() && future.cause() != null) {
-            internalOnError(future.cause());
-        }
-    };
 
     public boolean hasEarlyPages() {
         return !this.earlyPages.isEmpty();
@@ -305,15 +322,19 @@ public class Application implements Iterable<Page> {
         if (checkedTypes.contains(type.getName())) {
             return true;
         }
-        boolean found = true;
-        for (Constructor c : type.getDeclaredConstructors()) {
+        Constructor<?>[] constructors = type.getDeclaredConstructors();
+        boolean found = constructors.length == 0;
+
+        for (Constructor c : constructors) {
             if (c.getParameterTypes() == null || c.getParameterTypes().length == 0) {
                 found = true;
+            } else {
+                if (c.getAnnotation(Inject.class) != null || c.getAnnotation(javax.inject.Inject.class) != null) {
+                    found = true;
+                }
             }
-            @SuppressWarnings("unchecked")
-            Inject inj = (Inject) c.getAnnotation(Inject.class);
-            if (inj != null) {
-                found = true;
+            if (found) {
+                break;
             }
         }
         if (!found) {
@@ -326,27 +347,6 @@ public class Application implements Iterable<Page> {
     public String getName() {
         return name == null ? getClass().getSimpleName() : name;
     }
-
-    /**
-     * Add any custom headers or other attributes - override to intercept all
-     * requests.
-     *
-     * @param event
-     * @param page
-     * @param action
-     * @param response
-     * @deprecated Use onBeforeSendResponse instead
-     * @return
-     */
-    @Deprecated
-    protected HttpResponse decorateResponse(Event<?> event, Page page, Acteur action, HttpResponse response) {
-        return response;
-    }
-
-    private static final HeaderValueType<CharSequence> X_REQ_PATH = Headers.header(new AsciiString("X-Req-Path"));
-    private static final HeaderValueType<CharSequence> X_ACTEUR = Headers.header(new AsciiString("X-Acteur"));
-    private static final HeaderValueType<CharSequence> X_PAGE = Headers.header(new AsciiString("X-Page"));
-    private static final HeaderValueType<CharSequence> X_REQ_ID = Headers.header(new AsciiString("X-Req-ID"));
 
     HttpResponse _decorateResponse(RequestID id, Event<?> event, Page page, Acteur action, HttpResponse response) {
         Headers.write(Headers.SERVER, getName(), response);
@@ -364,11 +364,8 @@ public class Application implements Iterable<Page> {
         if (corsEnabled) {
             corsDecorator.decorateApplicationResponse(response, page);
         }
-        return decorateResponse(event, page, action, response);
+        return response;
     }
-
-    @Inject(optional = true)
-    FailureResponseFactory failureResponses;
 
     /**
      * Create a 404 response
@@ -579,7 +576,7 @@ public class Application implements Iterable<Page> {
         } else {
             fut = channel.writeAndFlush(DefaultLastHttpContent.EMPTY_LAST_CONTENT);
         }
-        boolean keepAlive = event instanceof HttpEvent ? ((HttpEvent) event).requestsConnectionStayOpen() : false;
+        boolean keepAlive = event instanceof HttpEvent && ((HttpEvent) event).requestsConnectionStayOpen();
         if (!keepAlive) {
             fut.addListener(ChannelFutureListener.CLOSE);
         }

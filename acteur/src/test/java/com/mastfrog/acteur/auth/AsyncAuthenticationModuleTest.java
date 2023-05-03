@@ -186,16 +186,10 @@ public class AsyncAuthenticationModuleTest {
             if (header == null) {
                 return "No auth header";
             }
-            switch (token) {
-                case "abcd":
-                case "efgh":
-                case "ijkl":
-                case "mnop":
-                case "qrst":
-                    return null;
-                default:
-                    return "Unknown user";
-            }
+            return switch (token) {
+                case "abcd", "efgh", "ijkl", "mnop", "qrst" -> null;
+                default -> "Unknown user";
+            };
         }
 
         @Override
@@ -212,35 +206,21 @@ public class AsyncAuthenticationModuleTest {
                     res = new AuthenticationResult<>(null, EXPECTATION_FAILED, "You are bad.", token);
                 } else {
                     switch (token) {
-                        case "abcd":
-                            res = new AuthenticationResult<>(new FakeUser("Moe"), token);
-                            break;
-                        case "efgh":
-                            res = new AuthenticationResult<>(new FakeUser("Curly"), token);
-                            break;
-                        case "mnop":
+                        case "abcd" -> res = new AuthenticationResult<>(new FakeUser("Moe"), token);
+                        case "efgh" -> res = new AuthenticationResult<>(new FakeUser("Curly"), token);
+                        case "mnop" -> {
                             result.completeExceptionally(new RuntimeException("Complete auth exceptionally"));
                             return;
-                        case "qrst":
+                        }
+                        case "qrst" -> {
                             result.completeExceptionally(new ResponseException(PAYMENT_REQUIRED, "Gimme money, that's what I want."));
                             return;
-                        default:
-                            res = new AuthenticationResult<>(null, EXPECTATION_FAILED, "You are bad.", token);
-                            break;
+                        }
+                        default -> res = new AuthenticationResult<>(null, EXPECTATION_FAILED, "You are bad.", token);
                     }
                     result.complete(res);
                 }
 
-//                if ("abcd".equals(token) || "efgh".equals(token)) {
-//                    res = new AuthenticationResult<>(new FakeUser("abcd".equals(token) ? "Moe" : "Curly"), token);
-//                } else {
-//                    if ("mnop".equals(token)) {
-//                        result.completeExceptionally(new RuntimeException("Complete auth exceptionally"));
-//                        return;
-//                    }
-//                    res = new AuthenticationResult<>(null, EXPECTATION_FAILED, "You are bad.", token);
-//                }
-//                result.complete(res);
             });
             return result;
         }

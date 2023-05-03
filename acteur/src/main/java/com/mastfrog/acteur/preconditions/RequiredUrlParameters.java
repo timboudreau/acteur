@@ -43,7 +43,7 @@ public @interface RequiredUrlParameters {
 
     Combination combination() default Combination.ALL;
 
-    public enum Combination {
+    enum Combination {
 
         ALL,
         AT_LEAST_ONE

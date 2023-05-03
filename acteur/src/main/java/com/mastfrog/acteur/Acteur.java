@@ -308,10 +308,6 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
      * @param into A map to put key/value pairs into
      */
     public void describeYourself(Map<String, Object> into) {
-//        Description desc = getClass().getAnnotation(Description.class);
-//        if (desc != null) {
-//            into.put(getClass().getSimpleName(), desc.value());
-//        }
     }
 
     protected final Acteur noContent() {
@@ -727,26 +723,20 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
      */
     protected class ConsumedState extends BaseState {
 
-        private final Page page;
-        private final Object[] context;
-
         public ConsumedState(Object... context) {
             super(false);
-            page = Page.get();
+            Page page = Page.get();
             if (page == null) {
                 throw new IllegalStateException("Called outside ActionsImpl.onEvent");
             }
-            this.context = context;
         }
     }
 
     protected class ConsumedLockedState extends BaseState {
 
-        private final Page page;
-
         public ConsumedLockedState(Object... context) {
             super(context);
-            page = Page.get();
+            Page page = Page.get();
             if (page == null) {
                 throw new IllegalStateException("Called outside ActionsImpl.onEvent");
             }
@@ -956,7 +946,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
                     } else {
                         add(Headers.CONTENT_TYPE, MimeType.PLAIN_TEXT_UTF_8.withCharset(charset));
                     }
-                    this.setMessage(new String(out.toByteArray(), charset));
+                    this.setMessage(new String(out.toByteArray(), charset == null ? UTF_8 : charset));
                 }
                 this.setResponseCode(HttpResponseStatus.INTERNAL_SERVER_ERROR);
             } finally {

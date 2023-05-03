@@ -36,7 +36,7 @@ import io.netty.handler.codec.http.HttpResponseStatus;
 @ImplementedBy(DefaultRequestLogger.class)
 public interface RequestLogger {
 
-    public static RequestLogger SILENT = (rid, evt, status) -> {
+    RequestLogger SILENT = (rid, evt, status) -> {
     };
 
     default void onBeforeEvent(RequestID rid, Event<?> event) {

@@ -208,7 +208,7 @@ final class ServerImpl implements Server {
         }
 
         private synchronized boolean isTerminated() {
-            return localChannel == null ? true : !localChannel.isOpen();
+            return localChannel == null || !localChannel.isOpen();
         }
 
         private void shutdown(long timeout, TimeUnit unit, boolean await) throws InterruptedException {

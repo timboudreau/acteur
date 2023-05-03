@@ -69,9 +69,7 @@ public final class Err implements ErrorResponse {
         if (this.headers == null) {
             this.headers = new LinkedHashMap<>();
         }
-        headers.forEach((k, v) -> {
-            this.headers.put(k, v);
-        });
+        this.headers.putAll(headers);
         return this;
     }
 

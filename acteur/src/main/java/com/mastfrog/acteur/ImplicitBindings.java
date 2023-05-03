@@ -56,5 +56,5 @@ public @interface ImplicitBindings {
      * be injectable into subsequent acteurs.
      * @return The list of classes
      */
-    public Class<?>[] value();
+    Class<?>[] value();
 }

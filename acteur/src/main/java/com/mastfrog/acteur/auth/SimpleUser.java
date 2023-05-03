@@ -42,7 +42,7 @@ public interface SimpleUser<IdType> {
      *
      * @return A name
      */
-    public String name();
+    String name();
 
     /**
      * Version of this user, to be incremented when the record of this user is
@@ -50,7 +50,7 @@ public interface SimpleUser<IdType> {
      *
      * @return a version
      */
-    public int version();
+    int version();
 
     /**
      * An ID type, typically a database primary key or something like MongoDB's
@@ -58,7 +58,7 @@ public interface SimpleUser<IdType> {
      *
      * @return The id that uniquely identifies this user
      */
-    public IdType id();
+    IdType id();
 
     /**
      * Get a string representation of the ID suitable for use in URLs or other
@@ -66,7 +66,7 @@ public interface SimpleUser<IdType> {
      *
      * @return The string form of the id
      */
-    public String idAsString();
+    String idAsString();
 
     /**
      * Get a human-readable display name, falling back to the name if none is
@@ -74,14 +74,14 @@ public interface SimpleUser<IdType> {
      *
      * @return A human readable name
      */
-    public String displayName();
+    String displayName();
 
     /**
      * Simple implementation of SimpleUser
      *
      * @param <T> The ID type
      */
-    public static class Base<T> implements SimpleUser<T> {
+    class Base<T> implements SimpleUser<T> {
 
         private final String name;
         private final int version;

@@ -39,6 +39,6 @@ import java.lang.annotation.Target;
 @Target(ElementType.TYPE)
 @Description("If a particular HTTP method matches, require some set of parameters")
 public @interface RequireParametersIfMethodMatches {
-    public String[] value();
-    public Method method();
+    String[] value();
+    Method method();
 }

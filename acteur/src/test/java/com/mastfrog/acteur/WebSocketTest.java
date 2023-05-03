@@ -80,7 +80,7 @@ public class WebSocketTest {
         Set<StateType> seenStates = synchronizedSet(noneOf(StateType.class));
 
         ResponseFuture fut = harn.post("ws")
-                .setTimeout(Duration.ofSeconds(60000))
+                .setTimeout(Duration.ofSeconds(60_000))
                 .addHeader(Headers.CONNECTION, Connection.upgrade)
                 .addHeader(stringHeader("origin"), url.toString())
                 .addHeader(stringHeader("Upgrade"), "websocket")

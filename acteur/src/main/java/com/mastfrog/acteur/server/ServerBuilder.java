@@ -238,9 +238,7 @@ public final class ServerBuilder {
      */
     public ServerBuilder disableBindings(SettingsBindings... bindings) {
         EnumSet<SettingsBindings> toRemove = EnumSet.noneOf(SettingsBindings.class);
-        for (SettingsBindings b : bindings) {
-            toRemove.add(b);
-        }
+        toRemove.addAll(Arrays.asList(bindings));
         settingsBindings.removeAll(toRemove);
         return this;
     }
@@ -254,9 +252,7 @@ public final class ServerBuilder {
      */
     public ServerBuilder enableOnlyBindingsFor(SettingsBindings... bindings) {
         EnumSet<SettingsBindings> newSet = EnumSet.noneOf(SettingsBindings.class);
-        for (SettingsBindings b : bindings) {
-            newSet.add(b);
-        }
+        newSet.addAll(Arrays.asList(bindings));
         this.settingsBindings.clear();
         this.settingsBindings.addAll(newSet);
         return this;

@@ -82,7 +82,7 @@ public class PatternAndGlobCacheTest {
         if (glob == null && globForRegex == null) {
             return this;
         } else if (globForRegex != null) {
-            assertEquals( glob, globForRegex, regex + " should be " + glob);
+            assertEquals(glob, globForRegex, regex + " should be " + glob);
         }
         return this;
     }

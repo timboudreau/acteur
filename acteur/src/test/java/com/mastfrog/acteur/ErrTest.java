@@ -111,7 +111,7 @@ public class ErrTest {
 
     static class M extends ServerModule<ErrApp> {
 
-        public M() {
+        M() {
             super(ErrApp.class);
         }
     }

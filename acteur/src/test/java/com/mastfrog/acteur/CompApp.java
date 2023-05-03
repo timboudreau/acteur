@@ -4,7 +4,6 @@ import com.google.inject.AbstractModule;
 import com.google.inject.ConfigurationException;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
-import com.mastfrog.acteur.Acteur.RespondWith;
 import com.mastfrog.acteur.ActeurFactory.Test;
 import com.mastfrog.acteur.errors.Err;
 import com.mastfrog.acteur.errors.ErrorRenderer;
@@ -24,8 +23,8 @@ import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.giulius.annotations.Namespace;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.settings.SettingsBuilder;
-import com.mastfrog.util.preconditions.Exceptions;
 import com.mastfrog.util.net.PortFinder;
+import com.mastfrog.util.preconditions.Exceptions;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFuture;
@@ -36,6 +35,7 @@ import static io.netty.handler.codec.http.HttpResponseStatus.OK;
 import io.netty.util.CharsetUtil;
 import java.io.IOException;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Random;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
@@ -68,7 +68,7 @@ public class CompApp extends Application {
 
     @Override
     public void onError(Throwable err) {
-        this.err = err;
+        CompApp.err = err;
     }
 
     static volatile Throwable err;
@@ -85,9 +85,9 @@ public class CompApp extends Application {
 
         @Override
         protected void configure() {
-            int startPort = 2000 + (1000 * new Random(System.currentTimeMillis()).nextInt(40));
-            System.setProperty(ServerModule.PORT, "" + new PortFinder(startPort, 65535, 1000).findAvailableServerPort());
-            install(new ServerModule<CompApp>(CompApp.class));
+            int startPort = 2_000 + (1_000 * new Random(System.currentTimeMillis()).nextInt(40));
+            System.setProperty(ServerModule.PORT, "" + new PortFinder(startPort, 65_535, 1_000).findAvailableServerPort());
+            install(new ServerModule<>(CompApp.class));
             bind(ExceptionEval.class).asEagerSingleton();
             bind(ErrorRenderer.class).to(ExceptionRen.class);
         }
@@ -96,7 +96,7 @@ public class CompApp extends Application {
     static class ExceptionEval extends ExceptionEvaluator {
 
         @Inject
-        public ExceptionEval(ExceptionEvaluatorRegistry registry) {
+        ExceptionEval(ExceptionEvaluatorRegistry registry) {
             super(registry);
         }
 
@@ -170,7 +170,7 @@ public class CompApp extends Application {
 
                 @Override
                 public boolean test(HttpEvent evt) {
-                    return "true".equals(evt.getParameter("a"));
+                    return "true".equals(evt.urlParameter("a"));
                 }
 
             }));
@@ -216,7 +216,7 @@ public class CompApp extends Application {
 
                 String content = cvt.toObject(evt.content(), evt.header(Headers.CONTENT_TYPE), String.class);
 //                String content = evt.getContentAsString();
-                ByteBuf buf = evt.getContent();
+                ByteBuf buf = evt.content();
 //                String content = buf.readCharSequence(buf.readableBytes(), CharsetUtil.UTF_8).toString();
 
                 if (content.isEmpty()) {
@@ -252,7 +252,7 @@ public class CompApp extends Application {
             @Override
             public synchronized void run() {
                 try {
-                    Thread.sleep(1000);
+                    Thread.sleep(1_000);
                 } catch (InterruptedException ex) {
                     Exceptions.printStackTrace(ex);
                 }
@@ -296,7 +296,8 @@ public class CompApp extends Application {
             @Inject
             OldStyleActeur(HttpEvent evt, @Named(ServerModule.BACKGROUND_THREAD_POOL_NAME) ExecutorService svc) {
                 this.svc = svc;
-                max = evt.intUrlParameter("iters").get();
+                Optional<Integer> result = evt.uriQueryParameter("iters", Integer.class);
+                max = result.get();
                 if (max == null) {
                     max = 5;
                 }
@@ -369,8 +370,10 @@ public class CompApp extends Application {
 
                 @Inject
                 IterWriter(HttpEvent evt) {
-                    max = evt.getIntParameter("iters").get();
-                    msg = evt.getParameter("msg");
+                    Optional<Integer> result
+                            = evt.uriQueryParameter("iters", Integer.class);
+                    max = result.get();
+                    msg = evt.urlParameter("msg");
                     if (msg == null) {
                         msg = "Iteration ";
                     }

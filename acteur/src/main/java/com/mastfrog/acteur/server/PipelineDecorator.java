@@ -39,31 +39,31 @@ public interface PipelineDecorator {
     /**
      * Name of the pipeline's HttpObjectDecoder
      */
-    public static final String DECODER = "decoder";
+    String DECODER = "decoder";
     /**
      * Name of the pipeline's HttpObjectAggregator
      */
-    public static final String AGGREGATOR = "aggregator";
+    String AGGREGATOR = "aggregator";
     /**
      * Name of the pipeline's HttpObjectEncoder
      */
-    public static final String ENCODER = "encoder";
+    String ENCODER = "encoder";
     /**
      * Name of the pipeline's compressor, if any
      */
-    public static final String COMPRESSOR = "deflater";
+    String COMPRESSOR = "deflater";
     /**
      * Name of the pipeline's dispatch handler that invokes acteurs
      */
-    public static final String HANDLER = "handler";
+    String HANDLER = "handler";
 
     /**
      * Name of the handler for &#064; early pages/acteurs.  Only
      * present if the application has some.
      */
-    public static final String PRE_CONTENT_PAGE_HANDLER = "early";
+    String PRE_CONTENT_PAGE_HANDLER = "early";
 
-    public static final String SSL_HANDLER = "ssl";
+    String SSL_HANDLER = "ssl";
 
     default void onBeforeInstallSslHandler(ChannelPipeline pipeline) {
         // do nothing

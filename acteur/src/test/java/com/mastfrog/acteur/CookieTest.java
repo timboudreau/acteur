@@ -150,7 +150,7 @@ public class CookieTest {
 
     private static class CTApp extends Application {
 
-        public CTApp() {
+        CTApp() {
             add(OneCookiePage.class);
             add(MultiCookiePage.class);
             add(SpaceCookiePage.class);
