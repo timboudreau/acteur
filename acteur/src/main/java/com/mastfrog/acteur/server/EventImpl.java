@@ -345,26 +345,6 @@ final class EventImpl implements HttpEvent {
                 .contains(CONNECTION, KEEP_ALIVE, true);
     }
 
-    @SuppressWarnings("deprecation")
-    public Optional<Integer> intUrlParameter(String name) {
-        String val = urlParameter(name);
-        if (val != null) {
-            int ival = Integer.parseInt(val);
-            return Optional.of(ival);
-        }
-        return Optional.empty();
-    }
-
-    @SuppressWarnings("deprecation")
-    public Optional<Long> longUrlParameter(String name) {
-        String val = urlParameter(name);
-        if (val != null) {
-            long lval = Long.parseLong(val);
-            return Optional.of(lval);
-        }
-        return Optional.empty();
-    }
-
     public <T> java.util.Optional<T> httpHeader(HeaderValueType<T> header) {
         return java.util.Optional.ofNullable(header(notNull("header", header)));
     }

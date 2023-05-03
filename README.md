@@ -1,9 +1,310 @@
-Acteur
-======
+Acteur - Async Web Development Made Simple and Maintainable
+===========================================================
 
-Acteur is a framework for writing web server applications with 
-[Netty](http://netty.io) by composing together reusable chunks of logic called
-<code>Acteur</code>s (think of the Actor pattern, but a little bit foreign :-)).
+Acteur is a framework for writing async web server applications in Java.
+
+Asynchronous programming frequently gets derided as *too hard*, or
+*callback hell* and things like that.  And the industry has come up
+with various solutions to that perceived problem - for example 
+Javascript and Rust's async/await, JDK 21's green threads.
+
+The problem with both of those solutions is that they are solving *the
+wrong problem*.  The former is a way to pretend you're writing synchronous
+code, and the latter is a way to write code that looks multithreaded but
+isn't.
+
+The *actual problem* - and the one Acteur addresses - is *dispatch*:
+What's actually needed isn't a way to let you pretend asynchronous code is
+synchronous - it's having the right abstractions to make the distinction
+of synchronous vs asynchronous **disappear**:
+
+* You write some chunks of (usually) synchronous logic
+* You describe a choreography of how and when they get called
+* A dispatch engine calls them with the appropriate arguments when they are needed
+
+Take a look at some asynchronous code in Javascript or Rust that uses async/await,
+at what is going on at those boundaries where something is awaited.  Nearly every
+time, that boundary divides two logically separated activities - and often at least
+one of those activities is something that could be reused across multiple kinds of
+requests, if it could be untangled from its surroundings.  Async/await lets you
+write spaghetti-code ... with fewer curly braces. Yay!
+
+What's needed isn't a way to play make-believe that asynchronous code is
+synchronous, it's a way to *structure* your application *as* a set of steps - callbacks
+in a sense - that each do one step of a decision tree.  And a thing that simply
+calls them and lets them feed arguments to each other.
+
+Done right, you get a framework that largely just gets out of the way and lets you
+write business logic.  Other than typing `extends Acteur` and the occasional helper
+type, there just aren't a lot of must-learn abstractions involved.
+
+Take responding to an HTTP request (or really any decision tree), and carve
+it up into a series of steps.  What do they look like?  Here's an example
+from a video uploading app:
+
+1. Match the URL method to one the application responds to
+2. Match the URL path to one the application responds to that method on
+3. Examine an authorization header (cookie, whatever) and figure out if the user is authorized, and identify them
+4. Validate some URL parameters of the request
+5. Examine the content-type of the request (and size, etc.) to validate the request
+6. As the first few bytes of the payload arrive, validate that they match a known media file header structure
+7. As the remaining bytes arrive, update a running hash of the bytes, writing them all to a temp file
+8. When the upload concludes, move the temporary file to a staging area for conversion and put a message in a queue
+9. Compose a response that identifies the queue job to process the video and send it as the response payload
+
+There are a few things to notice about these steps - early every one is making one of four choices:
+* Reject the request without prejudice (meaning a different chain of steps get a crack at it if there is another)
+* Compute some data to make available to subsequent steps in the chain and move forward with the chain
+* Return a response
+* Defer further steps in the chain until some work is complete, then resume
+
+Each step is a small state machine that emits one of those states, and possibly some
+data that should be available to a later step - often not used immediately (for example,
+the user identity computed in step 3 may not be used again until step 8.
+
+Some of the steps involve asynchronous computation, like calling a database or another web
+service - step 3 is definitely an example of that - where request processing needs to pause
+until the new state is computed.  Steps 6 and 7 definitely are, since it is probable that
+there are no payload bytes to examine at the time the request arrives, and the caller controls
+when they do.  Other steps don't *have* to be synchronous, but it is harmless if they are.
+
+And many of the steps will be useful for many different path+method combinations - even more
+so if they can be made a little bit generic.
+
+In fact, the boundaries where async I/O happens are almost always also the boundaries where
+you'd want to carve logic up for reuse.  You only wind up in callback-hell if you don't have
+the abstractions available to let you write it as a single step, for reuse.
+
+So what we need is
+
+* A way to encapsulate each step in a wad of logic that has a name that lets it be referenced declaratively
+* A way to compose a list of those steps
+* A thing that will dispatch one step, then the next, handle the states they emit, and when one
+step takes as input a type that a previous step generated, propagate that data to it
+
+With those things, 99% of the time, you literally *don't care* whether the code is asynchronous
+or not.  A step gets called, with the arguments it has declared, and emits its state.
+
+It turns out that Java and its ecosystem already has a pretty ideal mechanism for that: **constructors**.
+A constructor guarantees that code is run once and only once for the lifetime of an object;  it
+expresses its dependencies as the set of its arguments.  And there is a wonderful, mature, existing
+mechanism for dispatch:  Guice.
+
+That's right - take Guice and turn it sideways, and what is it *really*?  A *constructor dispatch engine* -
+that's the thing it actually does.
+
+The Framework
+-------------
+
+An `Acteur` is a single step in processing a request.  It does its work in its constructor - in fact,
+that's the only part of it that does work, and once the constructor is run, the acteur is discarded.
+It must make a choice to emit some state (there is a `setState()` method, but usually you call something
+else that implicitly sets it, like `next()` or `reply(OK, "Hello world")`.
+
+An Acteur is a function object.  But unlike lambdas (which would put us back in callback-hell), it
+is a *named type* that can be referenced by its `class`, which lets us put it into a list (or many lists!)
+of steps to validate or respond to a request.  And since it is a constructor, Guice can find its arguments
+for it trivially.
+
+The earliest examples of Acteur applications had you explicitly add a bunch of `Acteur`s to a `Page` object
+(the name inspired by Apache wicket's Page type) - and you can still do that today, though it is more
+common and simpler to use annotations and let the code for that be generated.  But it is still used in
+Acteur's own tests, and does paint a complete picture of what really is going on, so here is an old-school
+application with one http call:
+
+```java
+public static class HelloApp extends Application {
+  HelloApp() {
+    add(HelloPage.class);
+  }
+  static class HelloPage extends Page {
+    @Inject
+    HelloPage(ActeurFactory builtins) {
+      add(builtins.matchPath("^hello$")); // only respond to /hello
+      add(builtins.matchMethod(GET)); // only respond to HTTP GET requests
+      add(AuthenticationActeur.class); // We will have bound Authenticator to handle basic auth
+      add(HelloActeur.class); // Compute the response
+    }
+  }
+  static class HelloActeur {
+    @Inject
+    public HelloActeur(BasicCredentials auth, HttpEvent event) {
+        ok("Hello " + auth.username + " at " + event.remoteAddress());
+    }
+  }
+}
+```
+
+It's pretty clear what's going on here.  The `Application` is a list of `Page`s - state machines
+that can process a request, and a `Page` is a list of `Acteur`s - steps which can compute a state
+change.  An inbound request gets tried against each `Page` type in the application, and if none
+of them respond, a `404 Not Found` response is generated.
+
+```
+Application
+    page-1
+        acteur-1-a
+        acteur-1-b
+        acteur-1-c
+        ...
+    page-2
+        acteur-2-a
+        acteur-2-b
+        acteur-2-c
+    ...
+```
+
+Where the magic happens is in how the `BasicCredentials` *generated by AuthenticationActeur* finds
+its way to `HelloActeur`.  These steps are not necessarily even run on the same thread.  Suffice it
+to say that it does - an `Acteur` can call `next(someObject, someOtherObject)` and those objects will
+be available to any subsequent `Acteur` that knows their type.
+
+This is, effectively message-passing - done the simplest way possible, with no high-cognitive-overhead
+abstractions:  Messages are objects.  Your objects.  Whatever you want them to be (just make them
+immutable or thread-safe).
+
+Another thing to notice is, *this code has a threading model* but it is completely invisible to
+the application author (in fact `Acteur` has a system property that will make it run request steps
+synchronously instead of asynchronously - your application will work either way, *because the threading
+model is not exposed*).
+
+Now, the way you'd write this in a modern Acteur application is much simpler:
+
+```java
+@HttpCall
+@Methods(GET)
+@Path("hello")
+@Precursors(AuthenticationActeur.class)
+public class HelloActeur {
+    @Inject
+    public HelloActeur(BasicCredentials auth, HttpEvent event) {
+        ok("Hello " + auth.username + " at " + event.remoteAddress());
+    }
+}
+```
+
+In fact, if you build this code (make sure `acteur-annotation-processors` is a `provided` scope dependency),
+you'll find something a lot like that old-school code above gets generated into `target/generated-sources`.
+
+The point is, we've made all of the boilerplate disappear - we've just written a class that is our business
+logic.  `@HttpCall` registers our generated `Page` in a file under `META-INF/` in our JAR.  Launching our
+application is as simple as
+
+```java
+public static void main(String... args) throws Exception {
+   new ServerBuilder().build().start().await(); 
+}
+```
+
+In practice, you write one `Acteur` which is the main logic of a given HTTP call, and annotate it with
+`@HttpCall` to cause a `Page` to be generated for it, and decorate that `Acteur` with annotations that describe
+what to run ahead of it (and optionally, with `@Concluders`, after it).  And we can reuse them.  Let's
+generalize things a little to see how that works:
+
+```java
+enum Verb {
+  hello,
+  goodbye;
+}
+static class VerbFinder extends Acteur {
+  @Inject
+  VerbFinder(HttpEvent evt) {
+    next(Verb.valueOf(evt.path().toString()));
+  }
+}
+@HttpCall(scopeTypes=Verb.class) // tell the framework some acteur wants a Verb as an argument
+@Methods(GET)
+@Path({"/hello", "/goodbye"})
+@Precursors({VerbFinder.class, AuthenticationActeur.class})
+static class GreetingActeur {
+    @Inject
+    public GreetingActeur(BasicCredentials auth, Verb verb, HttpEvent event) {
+        ok(verb + " " + auth.username + " at " + event.remoteAddress());
+    }
+}
+```
+
+It's a little silly, but perhaps you see the point - we've now made emitting a greeting
+generic with respect to *what* greeting it emits.  And we can compose that code into
+any request.
+
+Where this becomes powerful is when you're integrating calls to other services that *are*
+async into the declarative workflow.  An `Acteur` has a few options that let you stop the
+processing of the request until some code has completed and let you resume it, *with some
+new objects for injection into later `Acteur`s*.  The simplest way is to call `defer()`
+which returns a `CompletableFuture` - or `deferThenRespond(status)` if the object you will
+complete the `CompletableFuture` with simply *is* the HTTP payload.
+
+Say we want to look up an object in a remote database.  We can make that *really* generic,
+by writing an `Acteur` that simply takes a query object of some sort, defers responding,
+makes an async call to the database and completes the `CompletableFuture` with the query
+result:
+
+```java
+class DBQuery {
+  @Inject
+  DbQuery(Query query, Provider<DatabaseConnection> conn) {
+     CompletableFuture<QueryResult> future = defer();
+     conn.get().query(query, (error, results) -> {
+        if (error != null) {
+            future.completeExceptionally(error);
+        } else {
+            future.complete(results);
+        }
+     });
+  }
+}
+```
+
+So, yes, we did have to write a little bit of callback async logic here - precisely
+because we're calling someone else's async API.  But the key is *nobody else does!*.
+From here out, any acteur that needs the answer to a database query just lists some
+acteur that constructs a query out of the request URI or payload or whatever, followed
+by `DbQuery` - `@Precursors(CreateTheQuery.class, DbQuery.class)` and take database
+result type as an argument.
+
+And that is exactly what the async Postgres and MongoDB support libraries for Acteur
+do.
+
+Design Philosophy
+-----------------
+
+A few maxims guide the design of Acteur:
+
+* Stay out of the way
+* Objects are messages - the application author's own types, not a giant pile of abstractions we force on them
+* The power of a threading model is inversely proportional to its visibility to callers
+* Don't force the details on applications, but don't lock them away either - if you *want* to
+grab hold of the raw socket and shovel bytes down it in Acteur, you can.  You shouldn't need to, but
+the framework isn't in the business of telling you what you can and can't do.
+
+Recipes
+-------
+
+#### Ensuring Resource Cleanup On Abort
+
+Sometimes you'll open a stream or cursor or other finite resource that should be closed
+when the request cycle ends, even if that happens by the connection being abruptly closed.
+`Closables` is an object you can ask to have injected, which will run some code on connection
+closure.  Here's an example doing a directory listing:
+
+```java
+public class ListDirectory extends Acteur {
+   @Inject
+   ListDirectory(Path dir, Closables closer) throws IOException {
+     // Assume `dir` is computed by some preceding Acteur and passed along to us
+     Stream<Path> listing = Files.list(dir);
+     closer.add(listing::close);
+     next();
+   }
+}
+```
+
+#### Turning Exceptions Into Appropriate Error Responses
+--------------------------------------------------------
+
+Original Readme
+---------------
 
 A further description of the framework's aims can be found in
 [this blog](http://timboudreau.com/blog/Acteur/read).  This project uses 

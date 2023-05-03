@@ -25,7 +25,6 @@ package com.mastfrog.acteur.headers;
 
 import com.mastfrog.function.ReversibleFunction;
 import com.mastfrog.util.strings.Strings;
-import com.mastfrog.util.collections.Converter;
 import java.util.Optional;
 
 /**
