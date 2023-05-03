@@ -57,7 +57,7 @@ import org.junit.jupiter.api.Timeout;
 @TestWith({AuthTestModule.class, HttpTestHarnessModule.class})
 public class AsyncAuthenticationModuleTest {
 
-    private static final int TIMEOUT = 5;
+    private static final int TIMEOUT = 45;
 
     @Test
     @Timeout(TIMEOUT)

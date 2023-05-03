@@ -23,7 +23,6 @@ import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import java.io.IOException;
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
@@ -64,7 +63,7 @@ public class PutTest {
     }
 
     @Test
-    @Timeout(value = 360000, unit = MILLISECONDS)
+    @Timeout(60)
     public void testPuts(HttpHarness harn, Application application) throws Throwable {
         harn.get("foo/bar/baz").applyingAssertions(a -> a.assertResponseCode(200).assertBody("Hello world"))
                 .assertAllSucceeded();
@@ -79,25 +78,7 @@ public class PutTest {
                     .applyingAssertions(a -> a.assertOk()
                     .assertBody("Test " + ix + " iter")).assertAllSucceeded();
 
-//            harn.put("/")
-//                    .setTimeout(Duration.ofSeconds(20))
-//                    .addHeader(Headers.header("X-Iteration"), "" + i)
-//                    .onEvent(new Receiver<com.mastfrog.netty.http.client.State<?>>() {
-//                        @Override
-//                        public void receive(com.mastfrog.netty.http.client.State<?> state) {
-//                            if (state.get() instanceof ByteBuf) {
-//                                ByteBuf buf = (ByteBuf) state.get();
-//                                buf.resetReaderIndex();
-//                            }
-//                        }
-//                    })
-//                    .setBody("Test " + i + " iter", MimeType.PLAIN_TEXT_UTF_8).go()
-//                    .await()
-//                    .assertStatus(OK)
-//                    //                    .assertStateSeen(com.mastfrog.netty.http.client.StateType.FullContentReceived)
-//                    .assertContent("Test " + i + " iter");
         }
-//        harn.get(veryLongUrl(35)).setTimeout(Duration.ofMinutes(3)).go().await().assertStatus(OK);
         harn.get(veryLongUrl(35)).applyingAssertions(a -> a.assertOk()).assertAllSucceeded();
     }
 
@@ -130,7 +111,7 @@ public class PutTest {
     static class EchoActeur extends Acteur {
 
         @Inject
-        EchoActeur(HttpEvent evt) throws IOException {
+        EchoActeur(HttpEvent evt) throws Exception {
             add(Headers.CACHE_CONTROL, CacheControl.$(CacheControlTypes.Public));
             if (evt.method() == Method.GET) {
                 setState(new RespondWith(HttpResponseStatus.OK, "Hello world"));
@@ -142,6 +123,7 @@ public class PutTest {
                 setState(new RespondWith(HttpResponseStatus.OK));
                 boolean chunked = ix++ % 2 != 0;
                 setChunked(chunked);
+                // This test bumps into a race inside the jdk's http client
                 if (!chunked) {
                     add(Headers.CONTENT_LENGTH, evt.content().readableBytes());
                 }

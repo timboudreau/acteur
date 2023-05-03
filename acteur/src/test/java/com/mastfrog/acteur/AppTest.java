@@ -13,6 +13,7 @@ import com.mastfrog.acteur.header.entities.CacheControl;
 import com.mastfrog.acteur.header.entities.CacheControlTypes;
 import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.acteur.headers.Method;
+import com.mastfrog.acteur.preconditions.Description;
 import com.mastfrog.acteur.server.EventImplFactory;
 import com.mastfrog.acteur.server.PathFactory;
 import com.mastfrog.acteur.server.ServerModule;
@@ -24,6 +25,7 @@ import com.mastfrog.giulius.tests.anno.TestWith;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.util.codec.Codec;
 import com.mastfrog.util.preconditions.Checks;
+import com.mastfrog.util.preconditions.ConfigurationError;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufOutputStream;
 import io.netty.buffer.Unpooled;
@@ -45,6 +47,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import org.junit.jupiter.api.Test;
@@ -117,6 +120,29 @@ public class AppTest {
         assertTrue(app.iterator().hasNext(), "App has no pages");
         Page page = app.iterator().next();
         assertNotNull(page);
+        String desc = page.getDescription();
+        assertEquals("This is a page", desc);
+        assertEquals(7, page.countActeurs());
+    }
+
+    @Test
+    public void testCannotAddAbstractPage(Application app) {
+        assertThrows(ConfigurationError.class, () -> {
+            app.add(AbstractPage.class);
+        });
+    }
+
+    @Test
+    public void testCannotAddLocalPage(Application app) {
+        assertThrows(ConfigurationError.class, () -> {
+            class LocalPage extends Page {
+            }
+            app.add(LocalPage.class);
+        });
+    }
+
+    static abstract class AbstractPage extends Page {
+
     }
 
     static class App extends Application {
@@ -126,6 +152,7 @@ public class AppTest {
         }
     }
 
+    @Description("This is a page")
     static class P extends Page {
 
         @Inject

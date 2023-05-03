@@ -14,6 +14,7 @@ import com.mastfrog.acteur.errors.ExceptionEvaluatorRegistry;
 import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.acteur.headers.Method;
 import static com.mastfrog.acteur.headers.Method.GET;
+import com.mastfrog.acteur.preconditions.Description;
 import com.mastfrog.acteur.preconditions.Methods;
 import com.mastfrog.acteur.preconditions.Path;
 import com.mastfrog.acteur.server.ServerModule;
@@ -41,6 +42,8 @@ import java.util.concurrent.ExecutorService;
 import static org.junit.Assert.assertNotNull;
 
 @SuppressWarnings("deprecation")
+@Help
+@Description("App that does lots of stuff")
 public class CompApp extends Application {
 
     public CompApp() {

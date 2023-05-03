@@ -78,9 +78,9 @@
             <scope>test</scope>
         </dependency>
         <!-- We are almost done with netty-http-test-harness, but there is
-             one test, WebSocketTest, which utilizes the ability to turn off
-             chunked encoding and write raw data to the socket, which would
-             be hard to replicate using the JDK's http client. -->
+        one test, WebSocketTest, which utilizes the ability to turn off
+        chunked encoding and write raw data to the socket, which would
+        be hard to replicate using the JDK's http client. -->
         <dependency>
             <groupId>${mastfrog.groupId}</groupId>
             <artifactId>netty-http-test-harness</artifactId>
@@ -136,5 +136,51 @@
             <url>https://timboudreau.com</url>
         </developer>
     </developers>
+
+    <build>
+        <plugins>
+            <plugin>
+
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+
+                <executions>
+
+                    <execution>
+                        <id>prepare-agent</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>prepare-package</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>post-unit-test</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                        <configuration>
+                            <dataFile>target/jacoco.exec</dataFile>
+                            <outputDirectory>target/jacoco-ut</outputDirectory>
+                        </configuration>
+                    </execution>
+
+                </executions>
+
+                <configuration>
+                    <systemPropertyVariables>
+                        <jacoco-agent.destfile>target/jacoco.exec</jacoco-agent.destfile>
+                    </systemPropertyVariables>
+                </configuration>
+
+            </plugin>            
+        </plugins>
+    </build>
 
 </project>

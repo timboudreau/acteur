@@ -123,7 +123,6 @@ public class DecoratorWithOnBeforeEventTest {
 
         @Inject
         DecoActeur(Thing thing, HttpEvent e) {
-            System.out.println("DECO FOR " + e.path());
             ok(thing.toString());
         }
     }

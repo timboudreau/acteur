@@ -495,7 +495,8 @@ public class ConnectionReuseTest {
                 }
                 synchronized (this) {
                     if (lastContent == null) {
-                        wait(10);
+//                        System.out.println("loop wait " + i);
+                        wait(50);
                     } else {
                         return lastContent;
                     }

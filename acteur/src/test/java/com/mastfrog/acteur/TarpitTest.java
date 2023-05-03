@@ -37,7 +37,6 @@ public class TarpitTest {
 
     @Test
     public void testTarpit(HttpHarness harn, Realm realm) throws Exception {
-        System.out.println("REALM " + realm);
         Optional<Realm> hdr = WWW_AUTHENTICATE.get(harn.get("foo").applyingAssertions(a -> a.assertUnauthorized()
                 .assertHasHeader(WWW_AUTHENTICATE)
                 .assertHeaderEquals(WWW_AUTHENTICATE.toString(), "Basic realm=\"" + realm + "\"")

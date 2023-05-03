@@ -1,14 +1,21 @@
 package com.mastfrog.acteur;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Predicates;
 import static com.mastfrog.acteur.headers.Headers.CONTENT_TYPE;
 import com.mastfrog.giulius.tests.anno.TestWith;
 import com.mastfrog.http.test.harness.acteur.HttpHarness;
 import com.mastfrog.http.test.harness.acteur.HttpTestHarnessModule;
 import static com.mastfrog.mime.MimeType.PLAIN_TEXT_UTF_8;
+import static com.mastfrog.util.collections.CollectionUtils.setOf;
+import com.mastfrog.util.collections.StringObjectMap;
 import static io.netty.handler.codec.http.HttpResponseStatus.PAYMENT_REQUIRED;
 import static io.netty.util.CharsetUtil.UTF_8;
+import java.net.http.HttpResponse;
+import java.util.Map;
 import java.util.function.Predicate;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
@@ -20,6 +27,48 @@ import org.junit.jupiter.api.Timeout;
 public class ComprehensiveTest {
 
     private static final int TIMEOUT_SECONDS = 180;
+
+    @Test
+    @Timeout(TIMEOUT_SECONDS)
+    public void testPlainHelp(HttpHarness harn) throws Throwable {
+        HttpResponse<String> resp = harn.get("help")
+                .applyingAssertions(a -> a.assertOk()
+                .assertHeaderEquals("content-type", "application/json;charset=utf-8"))
+                .assertAllSucceeded().get();
+
+        Map<String, Object> m = new ObjectMapper().readValue(resp.body(), StringObjectMap.class);
+        assertEquals(setOf("CORSResource",
+                "HelpPage",
+                "IterPage",
+                "Unchunked",
+                "Echo",
+                "DeferredOutput",
+                "Branch",
+                "NoContentPage",
+                "DynPage"), m.keySet());
+    }
+
+    @Test
+    @Timeout(TIMEOUT_SECONDS)
+    public void testHtmlHelp(HttpHarness harn) throws Throwable {
+        HttpResponse<String> resp = harn.get("help?html=true")
+                .applyingAssertions(a -> a.assertOk()
+                .assertHeaderEquals("content-type", "text/html;charset=utf-8"))
+                .assertAllSucceeded().get();
+        String body = resp.body();
+        assertTrue(body.contains("<p>App that does lots of stuff"));
+        setOf("CORSResource",
+                "HelpPage",
+                "IterPage",
+                "Unchunked",
+                "Echo",
+                "DeferredOutput",
+                "Branch",
+                "NoContentPage",
+                "DynPage").forEach(item -> {
+                    assertTrue(body.contains(item));
+                });
+    }
 
     @Test
     @Timeout(TIMEOUT_SECONDS)
