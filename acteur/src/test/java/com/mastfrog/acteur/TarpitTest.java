@@ -2,38 +2,91 @@ package com.mastfrog.acteur;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
+import com.mastfrog.acteur.TarpitTest.MM;
 import com.mastfrog.acteur.auth.AuthenticationActeur;
 import com.mastfrog.acteur.auth.Authenticator;
 import com.mastfrog.acteur.header.entities.BasicCredentials;
+import static com.mastfrog.acteur.headers.Headers.AUTHORIZATION;
+import static com.mastfrog.acteur.headers.Headers.WWW_AUTHENTICATE;
 import com.mastfrog.acteur.headers.Method;
 import com.mastfrog.acteur.server.ServerModule;
 import com.mastfrog.acteur.util.Realm;
 import com.mastfrog.acteur.util.RotatingRealmProvider;
-import com.mastfrog.acteur.util.Server;
-import com.mastfrog.giulius.Dependencies;
-import com.mastfrog.settings.Settings;
-import com.mastfrog.settings.SettingsBuilder;
+import com.mastfrog.function.throwing.ThrowingRunnable;
+import com.mastfrog.giulius.tests.anno.TestWith;
+import com.mastfrog.http.test.harness.acteur.HttpHarness;
+import com.mastfrog.http.test.harness.acteur.HttpTestHarnessModule;
 import java.io.IOException;
+import static java.lang.System.currentTimeMillis;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.Test;
 
 /**
+ * Tests the "tarpit" which delays responses incrementally on repeated failed
+ * login attempts.
  *
- * @author tim
+ * @author Tim Boudreau
  */
+@TestWith({MM.class, HttpTestHarnessModule.class, SilentRequestLogger.class})
+@SuppressWarnings("deprecation")
 public class TarpitTest {
 
-    @SuppressWarnings("deprecation")
-    public static void main(String[] args) throws IOException, InterruptedException {
-        Settings settings = new SettingsBuilder()
-                .add(com.mastfrog.acteur.auth.AuthenticateBasicActeur.SETTINGS_KEY_TARPIT_DELAY_RESPONSE_AFTER, "2")
-                .add(com.mastfrog.acteur.auth.AuthenticateBasicActeur.SETTINGS_KEY_TARPIT_DELAY_SECONDS, "2").build();
-        Dependencies deps = new Dependencies(settings, new MM(), new SilentRequestLogger());
-        deps.getInstance(Server.class).start().await();
+    @Test
+    public void testTarpit(HttpHarness harn, Realm realm) throws Exception {
+        System.out.println("REALM " + realm);
+        Optional<Realm> hdr = WWW_AUTHENTICATE.get(harn.get("foo").applyingAssertions(a -> a.assertUnauthorized()
+                .assertHasHeader(WWW_AUTHENTICATE)
+                .assertHeaderEquals(WWW_AUTHENTICATE.toString(), "Basic realm=\"" + realm + "\"")
+        ).assertAllSucceeded()
+                .get().headers().firstValue(WWW_AUTHENTICATE.toString()));
+
+        assertTrue(hdr.isPresent(), "No realm in header or no header");
+        assertEquals(realm.toString(), hdr.get().toString());
+        BasicCredentials creds = new BasicCredentials("foober", "woober");
+
+        long elapsed1 = benchmark(() -> {
+            harn.get("foo").setHeader(AUTHORIZATION, creds)
+                    .applyingAssertions(a -> a.assertUnauthorized()).assertAllSucceeded();
+        });
+
+        System.out.println("---- Invalid auth 1: " + elapsed1 + "ms ----");
+
+        long elapsed2 = benchmark(() -> {
+            harn.get("foo").setHeader(AUTHORIZATION, creds)
+                    .applyingAssertions(a -> a.assertUnauthorized()).assertAllSucceeded();
+        });
+
+        System.out.println("---- Invalid auth 2: " + elapsed2 + "ms ----");
+
+        assertTrue(elapsed2 > 1000, "Second response should have been delayed at least 1 second.");
+
+        long elapsed3 = benchmark(() -> {
+            harn.get("foo").setHeader(AUTHORIZATION, creds)
+                    .applyingAssertions(a -> a.assertUnauthorized()).assertAllSucceeded();
+        });
+
+        System.out.println("---- Invalid auth 3: " + elapsed3 + "ms ----");
+        assertTrue(elapsed3 > 2000, "Second response should have been delayed at least 2 seconds.");
+        long elapsed4 = benchmark(() -> {
+            harn.get("foo").setHeader(AUTHORIZATION, creds)
+                    .applyingAssertions(a -> a.assertOk()).assertAllSucceeded();
+        });
+        System.out.println("---- Valid auth: " + elapsed1 + "ms ----");
+        assertTrue(elapsed4 < elapsed3, "Successful auth should not be delayed");
+    }
+
+    private static long benchmark(ThrowingRunnable run) throws Exception {
+        long now = currentTimeMillis();
+        run.run();
+        return currentTimeMillis() - now;
     }
 
     @SuppressWarnings("deprecation")
-    @ImplicitBindings(Integer.class)
+    @com.mastfrog.acteur.ImplicitBindings(Integer.class)
     static class App extends Application {
 
         App() {
@@ -95,6 +148,5 @@ public class TarpitTest {
             bind(Realm.class).toProvider(RotatingRealmProvider.class);
             bind(Authenticator.class).to(Auth.class);
         }
-
     }
 }

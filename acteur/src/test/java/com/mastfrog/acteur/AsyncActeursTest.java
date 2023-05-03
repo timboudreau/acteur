@@ -35,15 +35,13 @@ import com.mastfrog.acteur.preconditions.Methods;
 import com.mastfrog.acteur.preconditions.Path;
 import com.mastfrog.acteur.server.ServerModule;
 import com.mastfrog.giulius.scope.ReentrantScope;
-import com.mastfrog.giulius.tests.GuiceRunner;
 import com.mastfrog.giulius.tests.anno.TestWith;
-import com.mastfrog.netty.http.test.harness.TestHarness;
-import com.mastfrog.netty.http.test.harness.TestHarness.CallResult;
-import com.mastfrog.netty.http.test.harness.TestHarnessModule;
+import com.mastfrog.http.test.harness.acteur.HttpHarness;
+import com.mastfrog.http.test.harness.acteur.HttpTestHarnessModule;
 import com.mastfrog.shutdown.hooks.ShutdownHookRegistry;
-import static com.mastfrog.util.preconditions.Checks.notNull;
 import static com.mastfrog.util.collections.CollectionUtils.map;
 import com.mastfrog.util.collections.StringObjectMap;
+import static com.mastfrog.util.preconditions.Checks.notNull;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import static io.netty.handler.codec.http.HttpResponseStatus.CREATED;
 import static io.netty.handler.codec.http.HttpResponseStatus.EXPECTATION_FAILED;
@@ -53,6 +51,7 @@ import static io.netty.handler.codec.http.HttpResponseStatus.PAYMENT_REQUIRED;
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
 import java.net.InetAddress;
+import java.net.http.HttpClient;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Objects;
@@ -61,44 +60,49 @@ import java.util.TimerTask;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import static java.util.concurrent.TimeUnit.MINUTES;
 import java.util.regex.Pattern;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 /**
  *
  * @author Tim Boudreau
  */
-@RunWith(GuiceRunner.class)
-@TestWith({TestHarnessModule.class, AsyncActeursTest.Module.class, SilentRequestLogger.class})
+@TestWith({HttpTestHarnessModule.class, AsyncActeursTest.Module.class, SilentRequestLogger.class})
 public class AsyncActeursTest {
 
     private static final Duration TIMEOUT = Duration.ofMinutes(2);
     private static final long DUR = 2 * 1000 * 60;
 
-    @Inject
-    TestHarness harn;
+    @Timeout(value = 2, unit = MINUTES)
+    @Test
+    public void testAsynchronous(HttpHarness harn) throws Throwable {
 
-    private CallResult get(String pth) throws Throwable {
-        return harn.get(pth).setTimeout(TIMEOUT).go().await();
-    }
+        Thing t = harn.get("/p1").applyingAssertions(assertions -> {
+            assertions.assertOk();
+        }).await().assertAllSucceeded().get(Thing.class);
 
-    @Test(timeout = DUR)
-    public void testAsynchronous(TestHarness harn) throws Throwable {
-        Thing t = get("/p1").assertStatus(OK).content(Thing.class);
         assertNotNull(t);
         assertEquals(Thing.last("p1a1"), t);
 
-        get("/p2").assertStatus(EXPECTATION_FAILED).content(ErrorMessage.class)
-                .assertMessage("p2a1");
+        harn.get("/p2").applyingAssertions(asserts -> {
+            asserts.assertVersion(HttpClient.Version.HTTP_1_1)
+                    .assertResponseCode(EXPECTATION_FAILED.code());
+        }).assertAllSucceeded().get(ErrorMessage.class).assertMessage("p2a1");
 
-        get("/p3").assertStatus(INTERNAL_SERVER_ERROR).content(ErrorMessage.class).assertMessage("p3a1");
+        harn.get("p3").applyingAssertions(asserts -> {
+            asserts.assertVersion(HttpClient.Version.HTTP_1_1)
+                    .assertResponseCode(INTERNAL_SERVER_ERROR.code());
+        }).assertAllSucceeded().get(ErrorMessage.class).assertMessage("p3a1");
 
-        Map<String, Object> m = get("/p4").assertStatus(CREATED).content(StringObjectMap.class);
+        Map<String, Object> m = harn.get("/p4").applyingAssertions(asserts -> {
+            asserts.assertResponseCode(CREATED.code());
+        }).assertAllSucceeded().get(StringObjectMap.class);
 
         assertEquals("foo", m.get("txt"));
         assertEquals(InetAddress.getLoopbackAddress().getHostName(), m.get("addr"));
@@ -106,14 +110,21 @@ public class AsyncActeursTest {
         Map<?, ?> m1 = (Map<?, ?>) m.get("thing");
         assertEquals("wubba", m1.get("name"));
 
-        get("/p5").assertStatus(INTERNAL_SERVER_ERROR).content(ErrorMessage.class).assertMessage("uh oh");
+        harn.get("/p5").applyingAssertions(asserts -> {
+            asserts.assertResponseCode(INTERNAL_SERVER_ERROR.code());
+        }).assertAllSucceeded().get(ErrorMessage.class).assertMessage("uh oh");
 
-        get("/p6").assertStatus(INTERNAL_SERVER_ERROR).content(ErrorMessage.class).assertMessage("uh oh");
+        harn.get("p6").applyingAssertions(asserts -> {
+            asserts.assertResponseCode(INTERNAL_SERVER_ERROR.code());
+        }).assertAllSucceeded().get(ErrorMessage.class).assertMessage("uh oh");
+
+        String msg = harn.get("/p7").applyingAssertions(asserts -> {
+            asserts.assertOk();
+        }).assertAllSucceeded().get(String.class);
 
         // Test that we run deferred after the timer expires
-        String msg = get("/p7").assertStatus(OK).content();
-        assertNotNull("Response body was empty", msg);
-        assertTrue(msg, Pattern.compile("^\\d+$").matcher(msg).find());
+        assertNotNull(msg, "Response body was empty");
+        assertTrue(Pattern.compile("^\\d+$").matcher(msg).find(), msg);
         assertNotNull(TIMER_REF);
         long val = Long.parseLong(msg);
         // Test that the timer ran at least 200 ms after the acteur was called
@@ -124,14 +135,14 @@ public class AsyncActeursTest {
             System.runFinalization();
         }
         // Ensure ShutdownHookRegistry is not strongly referencing the timer
-        assertNull("Timer not garbage collected", TIMER_REF.get());
+        assertNull(TIMER_REF.get(), "Timer not garbage collected");
 
         TIMER_REF = null;
 
-        // Now make sure exception evaluation works properly
-        CallResult res = harn.get("/p7").addQueryPair("fail", "true").setTimeout(TIMEOUT).go().await();
-        res.assertStatus(PAYMENT_REQUIRED);
-        res.assertContent("Hey");
+        harn.get("/p7?fail=true").applyingAssertions(asserts -> {
+            asserts.assertResponseCode(PAYMENT_REQUIRED.code())
+                    .assertBody("Hey");
+        }).assertAllSucceeded();
     }
 
     static class ErrorMessage {
@@ -453,6 +464,5 @@ public class AsyncActeursTest {
             }
             return true;
         }
-
     }
 }

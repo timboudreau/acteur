@@ -32,10 +32,8 @@ import io.netty.handler.codec.http.DefaultHttpRequest;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpVersion;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import org.junit.Test;
+import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
 
 /**
  *
@@ -59,8 +57,8 @@ public class DefaultPathFactoryTest {
         String test1 = "https://paths.example:5721/foo/hey/you";
         String test2 = "https://timboudreau.org:5223/foo/whee?this=that&you=me";
 
-        assertEquals(test1 + "\tversus\n" + url, test1, url.toString());
-        assertEquals(url.toString(), f.constructURI("/hey/you").toString());
+        assertEquals(test1, url.toString(), test1 + "\tversus\n" + url);
+        assertEquals(f.constructURI("/hey/you").toString(), url.toString());
 
         // Test that the Host: header is used when present, and that query strings survive
         EventImpl fakeEvent = new EventImpl(new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/up/down",
@@ -71,13 +69,13 @@ public class DefaultPathFactoryTest {
 
         assertEquals("timboudreau.org", url.getHost().toString());
         assertEquals(5223, url.getPort().intValue());
-        assertEquals(test2 + "\tversus\n" + url, test2, url.toString());
+        assertEquals(test2, url.toString(), test2 + "\tversus\n" + url);
 
         // Test that anchors survive
         url = f.constructURL("/whee?this=that&you=me#woohoo", fakeEvent);
         assertTrue(url.isValid());
         assertEquals("woohoo", url.getAnchor().toString());
-        assertNotNull(url + " has no parameters", url.getParameters());
+        assertNotNull(url.getParameters(), url + " has no parameters");
         assertTrue(url.getParameters().isValid());
 
         // Test that X-Forwarded-Proto overrides settings if present, and uses

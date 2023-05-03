@@ -1,6 +1,5 @@
 package com.mastfrog.acteur.annotations;
 
-import com.mastfrog.acteur.annotations.HttpCall;
 import com.mastfrog.acteur.Page;
 
 /**

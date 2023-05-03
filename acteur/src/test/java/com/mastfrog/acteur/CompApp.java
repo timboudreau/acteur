@@ -17,13 +17,10 @@ import static com.mastfrog.acteur.headers.Method.GET;
 import com.mastfrog.acteur.preconditions.Methods;
 import com.mastfrog.acteur.preconditions.Path;
 import com.mastfrog.acteur.server.ServerModule;
-import com.mastfrog.acteur.util.ErrorInterceptor;
 import com.mastfrog.acteur.util.Server;
 import com.mastfrog.acteurbase.Chain;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.giulius.annotations.Namespace;
-import com.mastfrog.netty.http.client.HttpClient;
-import com.mastfrog.netty.http.test.harness.TestHarness;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.settings.SettingsBuilder;
 import com.mastfrog.util.preconditions.Exceptions;
@@ -87,13 +84,7 @@ public class CompApp extends Application {
         protected void configure() {
             int startPort = 2000 + (1000 * new Random(System.currentTimeMillis()).nextInt(40));
             System.setProperty(ServerModule.PORT, "" + new PortFinder(startPort, 65535, 1000).findAvailableServerPort());
-            bind(HttpClient.class).toInstance(HttpClient.builder()
-                    .noCompression()
-                    .followRedirects().resolveAllHostsToLocalhost().threadCount(4)
-                    .setUserAgent(getClass().getName()).build());
-
             install(new ServerModule<CompApp>(CompApp.class));
-            bind(ErrorInterceptor.class).to(TestHarness.class);
             bind(ExceptionEval.class).asEagerSingleton();
             bind(ErrorRenderer.class).to(ExceptionRen.class);
         }
@@ -166,7 +157,6 @@ public class CompApp extends Application {
         }
     }
      */
-
     private static final class Branch extends Page {
 
         @Inject
@@ -225,7 +215,6 @@ public class CompApp extends Application {
 //                String content = evt.getContentAsString();
                 ByteBuf buf = evt.getContent();
 //                String content = buf.readCharSequence(buf.readableBytes(), CharsetUtil.UTF_8).toString();
-
 
                 if (content.isEmpty()) {
                     reply(BAD_REQUEST, "Empty content");
@@ -428,7 +417,7 @@ public class CompApp extends Application {
     public static class FirstActeur extends Acteur {
 
         @Inject
-        FirstActeur(Chain<Acteur, ? extends Chain<Acteur,?>> chain) {
+        FirstActeur(Chain<Acteur, ? extends Chain<Acteur, ?>> chain) {
             chain.add(SecondActeur.class);
             next();
         }
@@ -437,7 +426,7 @@ public class CompApp extends Application {
     public static class SecondActeur extends Acteur {
 
         @Inject
-        SecondActeur(Chain<Acteur, ? extends Chain<Acteur,?>> chain) {
+        SecondActeur(Chain<Acteur, ? extends Chain<Acteur, ?>> chain) {
             chain.add(ThirdActeur.class);
             next();
         }

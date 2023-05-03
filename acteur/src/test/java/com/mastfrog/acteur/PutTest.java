@@ -1,11 +1,11 @@
 package com.mastfrog.acteur;
 
-import com.mastfrog.mime.MimeType;
 import com.google.inject.Inject;
 import com.mastfrog.acteur.PutTest.SM;
 import com.mastfrog.acteur.header.entities.CacheControl;
 import com.mastfrog.acteur.header.entities.CacheControlTypes;
 import com.mastfrog.acteur.headers.Headers;
+import static com.mastfrog.acteur.headers.Headers.CONTENT_TYPE;
 import com.mastfrog.acteur.headers.Method;
 import static com.mastfrog.acteur.headers.Method.GET;
 import static com.mastfrog.acteur.headers.Method.PUT;
@@ -13,27 +13,25 @@ import com.mastfrog.acteur.preconditions.Methods;
 import com.mastfrog.acteur.server.ServerBuilder;
 import com.mastfrog.acteur.server.ServerModule;
 import com.mastfrog.acteur.util.RequestID;
-import com.mastfrog.giulius.tests.GuiceRunner;
 import com.mastfrog.giulius.tests.anno.TestWith;
-import com.mastfrog.netty.http.test.harness.TestHarness;
-import com.mastfrog.netty.http.test.harness.TestHarnessModule;
+import com.mastfrog.http.test.harness.acteur.HttpHarness;
+import com.mastfrog.http.test.harness.acteur.HttpTestHarnessModule;
+import static com.mastfrog.mime.MimeType.PLAIN_TEXT_UTF_8;
 import com.mastfrog.settings.Settings;
-import com.mastfrog.util.thread.Receiver;
 import io.netty.buffer.ByteBuf;
 import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpResponseStatus;
-import static io.netty.handler.codec.http.HttpResponseStatus.OK;
 import java.io.IOException;
-import java.time.Duration;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 /**
  *
  * @author Tim Boudreau
  */
-@TestWith({TestHarnessModule.class, SM.class}) // Use these Guice modules
-@RunWith(GuiceRunner.class) // Use the Guice-Tests JUnit runner
+@TestWith({HttpTestHarnessModule.class, SM.class}) // Use these Guice modules
 public class PutTest {
 
     public static void main(String[] args) throws IOException, InterruptedException {
@@ -65,35 +63,42 @@ public class PutTest {
         }
     }
 
-    @Test(timeout = 360000L)
-    public void testPuts(TestHarness harn, Application application) throws Throwable {
-        harn.get("foo/bar/baz")
-                .setTimeout(Duration.ofSeconds(20))
-                .go().assertStatus(OK).assertContent("Hello world");
-        harn.get("/")
-                .setTimeout(Duration.ofSeconds(20))
-                .go().assertStatus(OK).assertContent("Hello world");
-        for (int i = 0; i < 2; i++) {
+    @Test
+    @Timeout(value = 360000, unit = MILLISECONDS)
+    public void testPuts(HttpHarness harn, Application application) throws Throwable {
+        harn.get("foo/bar/baz").applyingAssertions(a -> a.assertResponseCode(200).assertBody("Hello world"))
+                .assertAllSucceeded();
+        harn.get("/").applyingAssertions(a -> a.assertResponseCode(200).assertBody("Hello world"))
+                .assertAllSucceeded();
 
-            harn.put("/")
-                    .setTimeout(Duration.ofSeconds(20))
-                    .addHeader(Headers.header("X-Iteration"), "" + i)
-                    .onEvent(new Receiver<com.mastfrog.netty.http.client.State<?>>() {
-                        @Override
-                        public void receive(com.mastfrog.netty.http.client.State<?> state) {
-                            if (state.get() instanceof ByteBuf) {
-                                ByteBuf buf = (ByteBuf) state.get();
-                                buf.resetReaderIndex();
-                            }
-                        }
-                    })
-                    .setBody("Test " + i + " iter", MimeType.PLAIN_TEXT_UTF_8).go()
-                    .await()
-                    .assertStatus(OK)
-                    //                    .assertStateSeen(com.mastfrog.netty.http.client.StateType.FullContentReceived)
-                    .assertContent("Test " + i + " iter");
+        for (int i = 0; i < 2; i++) {
+            int ix = i;
+            harn.put("/", "Test " + i + " iter", UTF_8)
+                    .setHeader(CONTENT_TYPE, PLAIN_TEXT_UTF_8)
+                    .setHeader("X-Iteration", "" + i)
+                    .applyingAssertions(a -> a.assertOk()
+                    .assertBody("Test " + ix + " iter")).assertAllSucceeded();
+
+//            harn.put("/")
+//                    .setTimeout(Duration.ofSeconds(20))
+//                    .addHeader(Headers.header("X-Iteration"), "" + i)
+//                    .onEvent(new Receiver<com.mastfrog.netty.http.client.State<?>>() {
+//                        @Override
+//                        public void receive(com.mastfrog.netty.http.client.State<?> state) {
+//                            if (state.get() instanceof ByteBuf) {
+//                                ByteBuf buf = (ByteBuf) state.get();
+//                                buf.resetReaderIndex();
+//                            }
+//                        }
+//                    })
+//                    .setBody("Test " + i + " iter", MimeType.PLAIN_TEXT_UTF_8).go()
+//                    .await()
+//                    .assertStatus(OK)
+//                    //                    .assertStateSeen(com.mastfrog.netty.http.client.StateType.FullContentReceived)
+//                    .assertContent("Test " + i + " iter");
         }
-        harn.get(veryLongUrl(35)).setTimeout(Duration.ofMinutes(3)).go().await().assertStatus(OK);
+//        harn.get(veryLongUrl(35)).setTimeout(Duration.ofMinutes(3)).go().await().assertStatus(OK);
+        harn.get(veryLongUrl(35)).applyingAssertions(a -> a.assertOk()).assertAllSucceeded();
     }
 
     private String veryLongUrl(int amt) {

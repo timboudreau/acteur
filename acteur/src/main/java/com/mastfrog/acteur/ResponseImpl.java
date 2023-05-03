@@ -435,7 +435,7 @@ final class ResponseImpl extends Response {
     }
 
     static String checkValidCharacters(String ls) {
-         // Comment this if we have acteurs returning garbage strings from
+        // Comment this if we have acteurs returning garbage strings from
         // toString() which contain 0x0 - these will cause an exception from
         // netty
         if (!DEBUG_BAD_LISTENER_STRINGS) {
@@ -748,10 +748,17 @@ final class ResponseImpl extends Response {
 //            hdrs.set(TRANSFER_ENCODING, HttpHeaderValues.CHUNKED);
 //            listener = SEND_EMPTY_LAST_CHUNK;
 //            chunked = true;
-            if (debug) {
-                System.out.println("noBody - set content-length: 0, chunked false");
+            switch (status.code()) {
+                case 204:
+                case 304:
+                    break;
+                default:
+                    if (debug) {
+                        System.out.println("noBody - set content-length: 0, chunked false");
+                    }
+                    hdrs.set(CONTENT_LENGTH, ZERO);
             }
-            hdrs.set(CONTENT_LENGTH, ZERO);
+
             chunked = false;
             DefaultFullHttpResponse result = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, status, Unpooled.EMPTY_BUFFER, hdrs, EmptyHttpHeaders.INSTANCE);
             result.touch("response-impl-a");

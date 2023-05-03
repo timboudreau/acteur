@@ -23,113 +23,41 @@
  */
 package com.mastfrog.acteur;
 
+import com.google.inject.Binder;
 import com.google.inject.Inject;
+import com.google.inject.Module;
 import com.mastfrog.acteur.headers.Headers;
-import com.mastfrog.acteur.server.ServerBuilder;
 import com.mastfrog.acteur.server.ServerModule;
-import com.mastfrog.acteur.util.Server;
-import com.mastfrog.acteur.util.ServerControl;
-import com.mastfrog.netty.http.client.HttpClient;
-import com.mastfrog.netty.http.client.ResponseHandler;
-import com.mastfrog.settings.SettingsBuilder;
+import com.mastfrog.giulius.tests.anno.TestWith;
+import com.mastfrog.http.test.harness.acteur.HttpHarness;
+import com.mastfrog.http.test.harness.acteur.HttpTestHarnessModule;
+import com.mastfrog.predicates.string.StringPredicates;
 import com.mastfrog.url.Protocol;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import com.mastfrog.util.net.PortFinder;
-import io.netty.handler.codec.http.HttpHeaders;
-import io.netty.handler.codec.http.HttpResponseStatus;
-import static io.netty.handler.codec.http.HttpResponseStatus.OK;
-import io.netty.handler.ssl.SslProvider;
-import java.io.IOException;
-import java.time.Duration;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 /**
  *
  * @author Tim Boudreau
  */
+@TestWith({SslTest.M.class, HttpTestHarnessModule.class, SilentRequestLogger.class})
 public class SslTest {
 
-    private int port;
-    private ServerControl serverControl;
-    private HttpClient client;
-
-    @Test(timeout=65000)
-    public void test() throws Throwable {
-        AtomicReference<Throwable> thrown = new AtomicReference<>();
-        AtomicReference<String> content = new AtomicReference<>();
-        AtomicReference<HttpHeaders> headers = new AtomicReference<>();
-        AtomicReference<HttpResponseStatus> status = new AtomicReference<>();
-        client.get().setTimeout(Duration.ofSeconds(60)).setURL("https://localhost:" + port + "/test").execute(new ResponseHandler<String>(String.class) {
-            @Override
-            protected void onError(Throwable err) {
-                thrown.set(err);
-            }
-
-            @Override
-            protected void onErrorResponse(HttpResponseStatus stat, HttpHeaders hdrs, String ct) {
-                status.set(stat);
-                content.set(ct);
-                headers.set(hdrs);
-            }
-
-            @Override
-            protected void receive(HttpResponseStatus stat, HttpHeaders hdrs, String obj) {
-                status.set(stat);
-                content.set(obj);
-                headers.set(hdrs);
-            }
-        }).await(60, TimeUnit.SECONDS);
-
-        if (thrown.get() != null) {
-            throw thrown.get();
-        }
-        assertNotNull(status.get());
-        assertNotNull(content.get());
-        assertNotNull(headers.get());
-        assertEquals(OK, status.get());
-        assertEquals("https\n" + MESSAGE, content.get());
-        assertTrue(headers.get().contains("X-Request-Encrypted"));
+    @Test
+    @Timeout(35)
+    public void testSsl(HttpHarness harn) {
+        harn.get("/test").applyingAssertions(
+                a -> a.assertOk().assertHasBody()
+                        .assertBody(StringPredicates.startsWith("https\n" + MESSAGE))
+                        .assertHasHeader("X-Request-Encrypted")
+        ).assertAllSucceeded();
     }
 
-    static boolean useOpenSSL;
-    
-    @Before
-    public void setup() throws IOException {
-        port = new PortFinder(12000, 65535).findAvailableServerPort();
-        SettingsBuilder set = new SettingsBuilder().add(ServerModule.PORT, port);
-        if (useOpenSSL) {
-            set.add(ServerModule.SETTINGS_KEY_SSL_ENGINE, SslProvider.OPENSSL_REFCNT.name());
-        }
-        Server server = new ServerBuilder().applicationClass(SslApp.class).ssl()
-                .add(SilentRequestLogger.class)
-                .add(set.build()).build();
-        this.serverControl = server.start();
-        client = HttpClient.builder().useCompression().build();
-    }
-    
-    public static void main(String[] args) throws IOException, InterruptedException {
-//        useOpenSSL = true;
-        SslTest test = new SslTest();
-        test.setup();
-        test.serverControl.await();
-    }
+    static class M implements Module {
 
-    @After
-    public void tearDown() throws InterruptedException {
-        try {
-            if (client != null) {
-                client.shutdown();
-            }
-        } finally {
-            if (serverControl != null) {
-                serverControl.shutdown(true);
-            }
+        @Override
+        public void configure(Binder binder) {
+            binder.install(new ServerModule(SslApp.class));
         }
     }
 

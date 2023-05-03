@@ -30,6 +30,7 @@ import com.mastfrog.acteur.HttpEvent;
 import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.acteur.headers.Method;
+import static com.mastfrog.acteur.server.ServerModule.SSL_ATTRIBUTE_KEY;
 import com.mastfrog.mime.MimeType;
 import com.mastfrog.url.Path;
 import com.mastfrog.url.Protocol;
@@ -56,6 +57,8 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.charset.Charset;
+import java.util.ArrayList;
+import static java.util.Collections.emptyList;
 import static java.util.Collections.unmodifiableMap;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -186,10 +189,14 @@ final class EventImpl implements HttpEvent {
     public boolean isSsl() {
         boolean result = ssl;
         if (!result) {
+            // XXX what is this?
             CharSequence cs = header(Headers.X_FORWARDED_PROTO);
             if (cs != null) {
                 result = HTTPS.contentEqualsIgnoreCase(HTTPS);
             }
+        }
+        if (!result) {
+            result = channel.attr(SSL_ATTRIBUTE_KEY).get();
         }
         return result;
     }
@@ -278,8 +285,15 @@ final class EventImpl implements HttpEvent {
 
     @Override
     public <T> List<T> headers(HeaderValueType<T> headerType) {
-        List<CharSequence> headers = CollectionUtils.<CharSequence>generalize(request().headers().getAll(headerType.name()));
-        return CollectionUtils.convertedList(headers, headerType, CharSequence.class, headerType.type());
+        List<String> headers = request().headers().getAll(headerType.name());
+        if (headers.isEmpty()) {
+            return emptyList();
+        }
+        List<T> result = new ArrayList<>(headers.size());
+        for (String headerValue : headers) {
+            result.add(headerType.convert(headerValue));
+        }
+        return result;
     }
 
     @Override

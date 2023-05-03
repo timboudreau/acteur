@@ -32,48 +32,49 @@ import com.mastfrog.acteur.preconditions.Methods;
 import com.mastfrog.acteur.preconditions.PathRegex;
 import com.mastfrog.acteur.server.ServerModule;
 import com.mastfrog.acteur.util.RequestID;
-import com.mastfrog.giulius.tests.GuiceRunner;
 import com.mastfrog.giulius.tests.anno.TestWith;
-import com.mastfrog.netty.http.test.harness.TestHarness;
-import com.mastfrog.netty.http.test.harness.TestHarnessModule;
+import com.mastfrog.http.test.harness.acteur.HttpHarness;
+import com.mastfrog.http.test.harness.acteur.HttpTestHarnessModule;
 import io.netty.channel.Channel;
-import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseStatus;
-import java.time.Duration;
+import static java.util.concurrent.TimeUnit.MINUTES;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.inject.Inject;
-import static org.junit.Assert.assertEquals;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 /**
  *
  * @author Tim Boudreau
  */
-@RunWith(GuiceRunner.class)
-@TestWith({TestHarnessModule.class, DecoratorWithOnBeforeEventTest.M.class, SilentRequestLogger.class})
+@TestWith({HttpTestHarnessModule.class, DecoratorWithOnBeforeEventTest.M.class, SilentRequestLogger.class})
 public class DecoratorWithOnBeforeEventTest {
 
     private static final HeaderValueType<CharSequence> THING_HEADER = header("x-thing");
 
-    @Test(timeout = 1200000)
-    public void test(TestHarness harn, DWOBEApp app) throws Throwable {
+    @Test
+    @Timeout(value = 2, unit = MINUTES)
+    public void test(HttpHarness harn, DWOBEApp app) throws Throwable {
+        assertNotNull(app, "App is null");
         int nextThing = Thing.COUNTER.get() + 1;
 
-        TestHarness.CallResult cr = harn.get("/deco")
-                .setTimeout(Duration.ofMinutes(2))
-                .go()
-                .await().assertCode(200)
-                .assertHasHeader(THING_HEADER)
-                .assertHeader(THING_HEADER, "Thing-" + nextThing)
-                .assertContent("Thing-" + nextThing);
+        harn.get("/deco")
+                .applyingAssertions(
+                        a -> a.assertOk()
+                                .assertHasHeader(THING_HEADER)
+                                .assertHeaderEquals("x-thing", "Thing-" + nextThing)
+                                .assertBody("Thing-" + nextThing)
+                ).assertAllSucceeded();
 
-        cr = harn.get("/nothing/abcde").go().await().assertCode(404)
-                .assertHasHeader(THING_HEADER)
-                .assertHeader(THING_HEADER, "Thing-" + (nextThing + 1));
+        harn.get("/nothing/abcde").applyingAssertions(a -> a.assertNotFound()
+                .assertHasHeader(THING_HEADER).assertHeaderEquals("x-thing", "Thing-" + (nextThing + 1)))
+                .assertAllSucceeded();
 
-        assertEquals(2, app.ec);
-        assertEquals(1, app.nf);
+        synchronized (app) {
+            assertEquals(2, app.ec);
+            assertEquals(1, app.nf);
+        }
     }
 
     @Singleton
@@ -83,28 +84,24 @@ public class DecoratorWithOnBeforeEventTest {
         int nf;
 
         DWOBEApp() {
-            
+
             add(NothingPageOne.class);
             add(NothingPageTwo.class);
             add(DecoPage.class);
         }
 
         @Override
-        protected void onBeforeRespond(RequestID id, Event<?> event, HttpResponseStatus status) {
+        protected synchronized void onBeforeRespond(RequestID id, Event<?> event, HttpResponseStatus status) {
             ec++;
         }
 
         @Override
         protected void send404(RequestID id, Event<?> event, Channel channel) {
-            nf++;
+            synchronized (this) {
+                nf++;
+            }
             super.send404(id, event, channel);
         }
-
-        @Override
-        protected HttpResponse createNotFoundResponse(Event<?> event) {
-            return super.createNotFoundResponse(event);
-        }
-
     }
 
     @Methods(GET)
@@ -195,7 +192,7 @@ public class DecoratorWithOnBeforeEventTest {
             }
         }
     }
-    
+
     static class M extends ServerModule<DWOBEApp> {
 
         public M() {

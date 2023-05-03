@@ -32,11 +32,16 @@ import static com.mastfrog.acteur.headers.Headers.stringHeader;
 import com.mastfrog.acteur.server.PathFactory;
 import com.mastfrog.acteur.server.ServerModule;
 import com.mastfrog.acteur.websocket.WebSocketUpgradeActeur;
-import com.mastfrog.giulius.tests.GuiceRunner;
 import com.mastfrog.giulius.tests.anno.TestWith;
 import com.mastfrog.netty.http.client.ResponseFuture;
 import com.mastfrog.netty.http.client.State;
 import com.mastfrog.netty.http.client.StateType;
+import static com.mastfrog.netty.http.client.StateType.AwaitingResponse;
+import static com.mastfrog.netty.http.client.StateType.Connected;
+import static com.mastfrog.netty.http.client.StateType.Connecting;
+import static com.mastfrog.netty.http.client.StateType.ContentReceived;
+import static com.mastfrog.netty.http.client.StateType.HeadersReceived;
+import static com.mastfrog.netty.http.client.StateType.SendRequest;
 import com.mastfrog.netty.http.test.harness.TestHarness;
 import com.mastfrog.netty.http.test.harness.TestHarnessModule;
 import com.mastfrog.url.Path;
@@ -50,28 +55,29 @@ import io.netty.handler.codec.http.websocketx.WebSocketFrame;
 import java.io.DataInput;
 import java.io.IOException;
 import java.time.Duration;
+import static java.util.Collections.synchronizedSet;
+import java.util.EnumSet;
+import static java.util.EnumSet.noneOf;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import javax.inject.Inject;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
-/**
- *
- * @author Tim Boudreau
- */
-@RunWith(GuiceRunner.class)
 @TestWith({WSM.class, TestHarnessModule.class, SilentRequestLogger.class})
 public class WebSocketTest {
 
-    @Test(timeout = 60000)
+    @Test
+    @Timeout(60)
     public void test(TestHarness harn, PathFactory factory, ObjectMapper mapper) throws Throwable {
         URL url = factory.constructURL(Path.parse("/ws"), false);
 
-        Map<String,Object> payload = map("ix").to(10).map("name").to("first").build();
+        Map<String, Object> payload = map("ix").to(10).map("name").to("first").build();
+
+        Set<StateType> seenStates = synchronizedSet(noneOf(StateType.class));
 
         ResponseFuture fut = harn.post("ws")
                 .setTimeout(Duration.ofSeconds(60000))
@@ -82,12 +88,14 @@ public class WebSocketTest {
                 .onEvent(new Receiver<com.mastfrog.netty.http.client.State<?>>() {
                     @Override
                     public void receive(State<?> object) {
-//                        System.out.println("STATE " + object + " - " + object.get());
+                        seenStates.add(object.stateType());
                     }
                 }).execute();
         fut.sendOn(StateType.HeadersReceived, new TextWebSocketFrame(mapper.writeValueAsString(payload)));
-        fut.await(5, TimeUnit.SECONDS).throwIfError();
+        fut.await(3, TimeUnit.SECONDS).throwIfError();
 
+        assertEquals(EnumSet.of(Connecting, Connected, SendRequest, AwaitingResponse, HeadersReceived, ContentReceived),
+                seenStates);
     }
 
     static final class WSM extends AbstractModule {
@@ -108,7 +116,6 @@ public class WebSocketTest {
 
         static final class WsPage extends Page {
 
-            @SuppressWarnings("deprecation")
             @Inject
             WsPage(ActeurFactory af) {
                 add(af.matchPath("ws"));
@@ -121,7 +128,8 @@ public class WebSocketTest {
                 @Inject
                 @SuppressWarnings("unchecked")
                 WsActeur(WebSocketFrame frame, ObjectMapper mapper) throws IOException {
-                    Map<String, Object> m = mapper.readValue((DataInput) new ByteBufInputStream(frame.content()), Map.class);
+                    Map<String, Object> m = mapper.readValue(
+                            (DataInput) new ByteBufInputStream(frame.content()), Map.class);
                     Object o = m.get("ix");
                     assertNotNull(o);
                     assertTrue(o instanceof Number);

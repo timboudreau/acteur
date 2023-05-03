@@ -23,14 +23,9 @@
  */
 package com.mastfrog.acteur;
 
-import com.mastfrog.acteur.PathPatterns;
 import java.util.regex.Pattern;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-import org.junit.Test;
+import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
 
 /**
  *
@@ -75,7 +70,7 @@ public class PatternAndGlobCacheTest {
         Pattern p = cache.getPattern(regex);
         Pattern p1 = cache.getPattern(regex);
         if (p != null && p1 != null) {
-            assertSame(regex, p, p1);
+            assertSame(p, p1, regex);
         } else if ((p == null) != (p1 == null)) {
             fail("Got null and non null in consecutive tries: " + p + " " + p1);
         }
@@ -87,20 +82,20 @@ public class PatternAndGlobCacheTest {
         if (glob == null && globForRegex == null) {
             return this;
         } else if (globForRegex != null) {
-            assertEquals(regex + " should be " + glob, glob, globForRegex);
+            assertEquals( glob, globForRegex, regex + " should be " + glob);
         }
         return this;
     }
 
     private PatternAndGlobCacheTest assertExact(String glob) {
-        assertTrue(glob, cache.isExactGlob(glob));
-        assertTrue(glob, cache.isExactGlob(glob));
+        assertTrue(cache.isExactGlob(glob), glob);
+        assertTrue(cache.isExactGlob(glob), glob);
         return this;
     }
 
     private PatternAndGlobCacheTest assertInexact(String glob) {
-        assertFalse(glob, cache.isExactGlob(glob));
-        assertFalse(glob, cache.isExactGlob(glob));
+        assertFalse(cache.isExactGlob(glob), glob);
+        assertFalse(cache.isExactGlob(glob), glob);
         return this;
     }
 }

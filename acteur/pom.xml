@@ -1,5 +1,4 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-
 <project
     xmlns="http://maven.apache.org/POM/4.0.0"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -64,8 +63,13 @@
             <artifactId>javassist</artifactId>
         </dependency>
         <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -73,14 +77,13 @@
             <artifactId>bcpkix-jdk15on</artifactId>
             <scope>test</scope>
         </dependency>
+        <!-- We are almost done with netty-http-test-harness, but there is
+             one test, WebSocketTest, which utilizes the ability to turn off
+             chunked encoding and write raw data to the socket, which would
+             be hard to replicate using the JDK's http client. -->
         <dependency>
             <groupId>${mastfrog.groupId}</groupId>
             <artifactId>netty-http-test-harness</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>${mastfrog.groupId}</groupId>
-            <artifactId>netty-http-client</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -91,6 +94,11 @@
         <dependency>
             <groupId>${mastfrog.groupId}</groupId>
             <artifactId>giulius-tests</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>${mastfrog.groupId}</groupId>
+            <artifactId>giulius-junit5-tests</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

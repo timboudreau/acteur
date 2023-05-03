@@ -23,7 +23,6 @@
  */
 package com.mastfrog.acteur;
 
-import com.mastfrog.mime.MimeType;
 import com.google.inject.AbstractModule;
 import com.mastfrog.acteur.EarlyInterceptionTest.IceptModule;
 import com.mastfrog.acteur.annotations.Early;
@@ -34,18 +33,16 @@ import com.mastfrog.acteur.preconditions.Path;
 import com.mastfrog.acteur.server.PathFactory;
 import static com.mastfrog.acteur.server.PipelineDecorator.HANDLER;
 import com.mastfrog.acteur.server.ServerModule;
-import com.mastfrog.acteur.util.ErrorInterceptor;
 import com.mastfrog.acteur.util.Server;
 import com.mastfrog.acteurbase.Deferral;
 import com.mastfrog.acteurbase.Deferral.Resumer;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.giulius.InjectionInfo;
 import com.mastfrog.giulius.scope.ReentrantScope;
-import com.mastfrog.giulius.tests.GuiceRunner;
 import com.mastfrog.giulius.tests.anno.TestWith;
-import com.mastfrog.netty.http.client.HttpClient;
-import com.mastfrog.netty.http.test.harness.TestHarness;
-import com.mastfrog.netty.http.test.harness.TestHarnessModule;
+import com.mastfrog.http.test.harness.acteur.HttpHarness;
+import com.mastfrog.http.test.harness.acteur.HttpTestHarnessModule;
+import static com.mastfrog.mime.MimeType.PLAIN_TEXT_UTF_8;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.settings.SettingsBuilder;
 import com.mastfrog.util.net.PortFinder;
@@ -59,49 +56,43 @@ import io.netty.handler.codec.http.HttpContent;
 import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import static io.netty.handler.codec.http.HttpResponseStatus.BAD_REQUEST;
-import io.netty.handler.codec.http.HttpVersion;
+import static io.netty.handler.codec.http.HttpResponseStatus.INTERNAL_SERVER_ERROR;
+import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
 import io.netty.handler.codec.http.LastHttpContent;
+import static io.netty.util.CharsetUtil.UTF_8;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.time.Duration;
+import java.util.Optional;
 import java.util.Random;
 import javax.inject.Inject;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 /**
+ * Tests that the &#064;Early annotation works to
  *
  * @author Tim Boudreau
  */
-@RunWith(GuiceRunner.class)
-@TestWith({IceptModule.class, TestHarnessModule.class, SilentRequestLogger.class})
+@TestWith({IceptModule.class, HttpTestHarnessModule.class, SilentRequestLogger.class})
 public class EarlyInterceptionTest {
 
-    private static final Duration TIMEOUT = Duration.ofSeconds(60);
-
-    @Test(timeout = 60000)
-    public void test(TestHarness harn, Application app) throws Throwable {
-        assertTrue("No early pages found", app.hasEarlyPages());
-        assertTrue("URI not matched", app.isEarlyPageMatch(new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.POST, "/intercept")));
-
-        if (true) {
-            // XXX fix netty-http-test-harness to deal with early redirects
-            return;
-        }
-
+    @Test
+    @Timeout(60)
+    public void test(HttpHarness harn, Application app) throws Throwable {
+        assertTrue(app.hasEarlyPages(), "No early pages found");
+        assertTrue(app.isEarlyPageMatch(new DefaultHttpRequest(HTTP_1_1, HttpMethod.POST, "/intercept")), "URI not matched");
         String msg = "hello";
-        String expect = "Received: hello";
-        harn.post("/intercept")
-                .setTimeout(TIMEOUT)
-                .setBody(msg, MimeType.PLAIN_TEXT_UTF_8)
-                .go()
-                .await()
-                .assertContent(expect);
+        String expect = "Received=hello, bytes=0, tok=12345";
+
+        harn.post("/intercept", msg, UTF_8)
+                .setHeader(Headers.CONTENT_TYPE, PLAIN_TEXT_UTF_8)
+                .applyingAssertions(a -> a.assertOk().assertBody(expect))
+                .assertAllSucceeded();
 
         assertEquals(0, interceptedContent);
+        harn.rethrowServerErrors();
     }
 
     private static final class EarlyInterceptionApplication extends Application {
@@ -109,7 +100,7 @@ public class EarlyInterceptionTest {
         EarlyInterceptionApplication() {
             add(InterceptPage.class);
             add(ReceivePayloadPage.class);
-            add(Fallthrough.class);
+//            add(Fallthrough.class);
         }
     }
 
@@ -129,9 +120,6 @@ public class EarlyInterceptionTest {
             @Inject
             @SuppressWarnings("deprecation")
             InterceptActeur(HttpEvent evt, PathFactory pths, Deferral defer) throws URISyntaxException, IOException {
-//                add(Headers.LOCATION, pths.constructURL(com.mastfrog.url.Path.parse("/receive?tok=12345"), false).toURI());
-                add(Headers.LOCATION, new URI("/receive?tok=12345"));
-                reply(HttpResponseStatus.TEMPORARY_REDIRECT);
                 ByteBuf buf = evt.content();
                 if (buf == null) {
                     interceptedContent = -1;
@@ -139,6 +127,8 @@ public class EarlyInterceptionTest {
                     interceptedContent = buf.readableBytes();
                 }
                 evt.ctx().pipeline().addAfter(HANDLER, "bytes", new Bytes(defer.defer(), evt.channel().alloc()));
+                reply(HttpResponseStatus.TEMPORARY_REDIRECT);
+                add(Headers.LOCATION, new URI("/receive?tok=12345&bytes=" + interceptedContent));
             }
         }
     }
@@ -178,8 +168,18 @@ public class EarlyInterceptionTest {
             @Inject
             ReceiveActeur(HttpEvent evt) throws URISyntaxException, IOException {
                 evt.content().resetReaderIndex();
+                Optional<Integer> bytes = evt.uriQueryParameter("bytes", Integer.class);
+                if (!bytes.isPresent()) {
+                    reply(INTERNAL_SERVER_ERROR, "No bytes= url parameter");
+                } else {
+                    int val = bytes.get();
+                    if (val != 0) {
+                        reply(INTERNAL_SERVER_ERROR, "HTTP request should not have had a payload yet when "
+                                + "the redirect was processed, but found " + val + " bytes");
+                    }
+                }
                 String received = evt.content() != null ? evt.stringContent() : "[nothing]";
-                ok("Received: " + received);
+                ok("Received=" + received + ", bytes=" + evt.urlParameter("bytes") + ", tok=" + evt.urlParameter("tok"));
             }
         }
     }
@@ -200,21 +200,15 @@ public class EarlyInterceptionTest {
     }
 
     static class IceptModule extends AbstractModule {
+
         private final ReentrantScope scope = new ReentrantScope(new InjectionInfo());
 
         @Override
         protected void configure() {
             int startPort = 2000 + (1000 * new Random(System.currentTimeMillis()).nextInt(40));
             System.setProperty(ServerModule.PORT, "" + new PortFinder(startPort, 65535, 1000).findAvailableServerPort());
-            bind(HttpClient.class).toInstance(HttpClient.builder()
-                    .noCompression()
-                    .followRedirects()
-                    .resolveAllHostsToLocalhost()
-                    .threadCount(4)
-                    .setUserAgent(EarlyInterceptionTest.class.getName()).build());
             install(new ServerModule<>(scope, EarlyInterceptionApplication.class, 2, 2, 1));
             scope.bindTypes(binder(), Bytes.class);
-            bind(ErrorInterceptor.class).to(TestHarness.class);
         }
     }
 
@@ -223,4 +217,5 @@ public class EarlyInterceptionTest {
         Dependencies deps = new Dependencies(s, new IceptModule());
         deps.getInstance(Server.class).start().await();
     }
+
 }

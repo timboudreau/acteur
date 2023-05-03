@@ -105,7 +105,6 @@ public class AuthenticateBasicActeur extends AuthenticationActeur {
         decorator.onAuthenticationFailed(evt, page, response);
         add(Headers.WWW_AUTHENTICATE, realm);
         setState(new RespondWith(HttpResponseStatus.UNAUTHORIZED));
-        setResponseBodyWriter(ChannelFutureListener.CLOSE);
     }
 
     @Override

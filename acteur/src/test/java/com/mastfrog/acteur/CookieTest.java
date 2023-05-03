@@ -25,97 +25,120 @@ package com.mastfrog.acteur;
 
 import com.google.inject.Inject;
 import com.mastfrog.acteur.CookieTest.CTM;
-import com.mastfrog.acteur.headers.Headers;
+import static com.mastfrog.acteur.headers.Headers.ACCESS_CONTROL_ALLOW;
+import static com.mastfrog.acteur.headers.Headers.ACCESS_CONTROL_ALLOW_CREDENTIALS;
+import static com.mastfrog.acteur.headers.Headers.ACCESS_CONTROL_ALLOW_ORIGIN;
+import static com.mastfrog.acteur.headers.Headers.ACCESS_CONTROL_MAX_AGE;
 import static com.mastfrog.acteur.headers.Headers.COOKIE_B;
 import static com.mastfrog.acteur.headers.Headers.SET_COOKIE_B;
 import com.mastfrog.acteur.preconditions.Path;
 import com.mastfrog.acteur.server.ServerModule;
-import com.mastfrog.giulius.tests.GuiceRunner;
 import com.mastfrog.giulius.tests.anno.TestWith;
-import com.mastfrog.netty.http.test.harness.TestHarness;
-import com.mastfrog.netty.http.test.harness.TestHarness.CallResult;
-import com.mastfrog.netty.http.test.harness.TestHarnessModule;
+import com.mastfrog.http.test.harness.acteur.HttpHarness;
+import com.mastfrog.http.test.harness.acteur.HttpTestHarnessModule;
 import com.mastfrog.util.collections.StringObjectMap;
-import static io.netty.handler.codec.http.HttpResponseStatus.OK;
 import io.netty.handler.codec.http.cookie.Cookie;
 import io.netty.handler.codec.http.cookie.DefaultCookie;
-import java.time.Duration;
+import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import java.util.function.BiConsumer;
+import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 /**
  *
  * @author Tim Boudreau
  */
-@TestWith({TestHarnessModule.class, CTM.class, SilentRequestLogger.class})
-@RunWith(GuiceRunner.class)
+@TestWith({HttpTestHarnessModule.class, CTM.class, SilentRequestLogger.class})
 public class CookieTest {
 
-    private final Duration timeout = Duration.ofMinutes(1);
-
     @Test
-    public void testOneCookie(TestHarness harn) throws Throwable {
-        CallResult res = harn.get("one").setTimeout(timeout).go().await().assertStatus(OK)
-                .assertHasHeader(Headers.SET_COOKIE_B.name())
-                .assertContent("Set one cookie");
-        Iterable<Cookie> cookies = res.getHeaders(SET_COOKIE_B);
-        assertTrue("No cookies found", cookies.iterator().hasNext());
-        res.assertCookieValue("hey", "you");
+    @Timeout(60)
+    public void testOneCookie(HttpHarness harn) throws Throwable {
+        HttpResponse<String> resp = harn.get("one").applyingAssertions(a -> a.assertHasHeader(SET_COOKIE_B)
+                .assertBody("Set one cookie")).assertAllSucceeded().get();
+        resp.headers().allValues(SET_COOKIE_B.toString());
+        List<Cookie> cookies = cookies(resp);
+        assertTrue(cookies.iterator().hasNext(), "No cookies found");
+        assertEquals(1, cookies.size());
+        assertEquals(cookies.get(0).name(), "hey");
+        assertEquals(cookies.get(0).value(), "you");
+    }
+
+    private static List<Cookie> cookies(HttpResponse<?> resp) {
+        List<Cookie> cookies = new ArrayList<>();
+        for (String h : resp.headers().allValues(SET_COOKIE_B.toString())) {
+            cookies.add(SET_COOKIE_B.convert(h));
+        }
+        return cookies;
     }
 
     @Test
-    public void testCookieEncoding(TestHarness harn) throws Throwable {
-        CallResult res = harn.get("space").setTimeout(timeout).go().await().assertStatus(OK)
-                .assertHasHeader(Headers.SET_COOKIE_B.name())
-                .assertContent("Set encodable cookie");
-        Iterable<Cookie> cookies = res.getHeaders(SET_COOKIE_B);
-        assertTrue("No cookies found", cookies.iterator().hasNext());
-        res.assertCookieValue("name", "Joe Blow");
+    @Timeout(60)
+    public void testCookieEncoding(HttpHarness harn) throws Throwable {
+        HttpResponse<String> resp = harn.get("space").applyingAssertions(a -> a.assertHasHeader(SET_COOKIE_B)
+                .assertBody("Set encodable cookie")).assertAllSucceeded().get();
+
+        List<Cookie> cookies = cookies(resp);
+        assertTrue(cookies.iterator().hasNext(), "No cookies found");
+        assertEquals(1, cookies.size());
+        assertEquals(cookies.get(0).name(), "name");
+        assertEquals(cookies.get(0).value(), "Joe Blow");
     }
 
     @Test
-    public void testMultipleCookies(TestHarness harn) throws Throwable {
-        CallResult res = harn.get("multi").go().await().assertStatus(OK)
-                .assertHasHeader(Headers.SET_COOKIE_B.name())
-                .assertContent("Set three cookies");
-        Iterable<Cookie> cookies = res.getHeaders(SET_COOKIE_B);
-        assertTrue("No cookies found", cookies.iterator().hasNext());
+    @Timeout(60)
+    public void testMultipleCookies(HttpHarness harn) throws Throwable {
+
+        HttpResponse<String> resp = harn.get("multi").applyingAssertions(a -> a.assertHasHeader(SET_COOKIE_B)
+                .assertBody("Set three cookies")).assertAllSucceeded().get();
+
+        List<Cookie> all = cookies(resp);
+        assertTrue(all.iterator().hasNext(), "No cookies found");
+        assertEquals(3, all.size(), () -> "Should have gotten 3 cookies, not " + all.size());
         int ct = 0;
-        StringBuilder sb = new StringBuilder();
-        List<Cookie> all = new ArrayList<>(3);
-        for (Cookie ck : cookies) {
-            all.add(ck);
-            sb.append(ck.name()).append('=').append(ck.value()).append(", ");
+        StringBuilder errorMessage = new StringBuilder();
+        for (Cookie ck : all) {
+            errorMessage.append(ck.name()).append('=').append(ck.value()).append(", ");
             ct++;
         }
-        assertEquals(sb.toString(), 3, ct);
-        res.assertCookieValue("a", "hey");
-        res.assertCookieValue("b", "you");
-        res.assertCookieValue("c", "thing");
+        BiConsumer<String, String> assertCookieValue = (name, val) -> {
+            for (Cookie ck : all) {
+                if (name.equals(ck.name()) && val.equals(ck.value())) {
+                    return;
+                }
+            }
+            fail("No cookie " + name + "=" + val + " in " + errorMessage);
+        };
+
+        assertCookieValue.accept("a", "hey");
+        assertCookieValue.accept("b", "you");
+        assertCookieValue.accept("c", "thing");
 
         Map<String, Object> m = harn.get("return")
-                .setTimeout(timeout)
-                .addHeader(COOKIE_B, all.toArray(new Cookie[0]))
-                .go().await().assertStatus(OK)
-                .content(StringObjectMap.class);
-        assertEquals("All cookies were not found: " + m.toString(), 3, m.size());
+                .setHeader(COOKIE_B, all.toArray(Cookie[]::new))
+                .applyingAssertions(a -> a.assertOk().assertHasBody())
+                .assertAllSucceeded().get(StringObjectMap.class);
+
+        assertEquals(3, m.size(), "All cookies were not found: " + m.toString());
         assertEquals("hey", m.get("a"));
         assertEquals("you", m.get("b"));
         assertEquals("thing", m.get("c"));
     }
-    
+
     @Test
-    public void testCORSHandling(TestHarness harn) throws Throwable {
-        harn.options("one").setTimeout(timeout).go().await().assertHasHeader(Headers.ACCESS_CONTROL_ALLOW)
-                .assertHasHeader(Headers.ACCESS_CONTROL_ALLOW_CREDENTIALS)
-                .assertHasHeader(Headers.ACCESS_CONTROL_MAX_AGE)
-                .assertHasHeader(Headers.ACCESS_CONTROL_ALLOW_ORIGIN);
+    @Timeout(60)
+    public void testCORSHandling(HttpHarness harn) throws Throwable {
+        harn.options("one").applyingAssertions(
+                a -> a.assertHasHeader(ACCESS_CONTROL_ALLOW)
+                        .assertHasHeader(ACCESS_CONTROL_ALLOW_CREDENTIALS)
+                        .assertHasHeader(ACCESS_CONTROL_ALLOW_ORIGIN)
+                        .assertHasHeader(ACCESS_CONTROL_MAX_AGE))
+                .assertAllSucceeded();
     }
 
     static final class CTM extends ServerModule<CTApp> {

@@ -89,9 +89,7 @@ public class ActeurFactory {
      *
      * @param methods Methods
      * @return An Acteur that can be used in a page
-     * @deprecated Use &#064Methods instead - it is self-documenting
      */
-    @Deprecated
     public Acteur matchMethods(final Method... methods) {
         return matchMethods(false, methods);
     }
@@ -692,14 +690,11 @@ public class ActeurFactory {
      *
      * @param regexen Regexen
      * @return An acteur
-     * @deprecated Use &#064PathRegex instead - it is self-documenting
      */
-    @Deprecated
     public Acteur matchPath(final String... regexen) {
         return matchPath(false, regexen);
     }
 
-    @Deprecated
     public Acteur matchPath(boolean decode, final String... regexen) {
         if (regexen.length == 1) {
             String exactPath = cache.exactPathForRegex(regexen[0]);

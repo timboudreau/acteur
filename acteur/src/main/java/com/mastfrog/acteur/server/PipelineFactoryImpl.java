@@ -85,7 +85,7 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
             + "manually.  This is sometimes desirable in servers that handle large media-file uploads, "
             + "which should not be pulled into memory.", defaultValue = "true")
     private static final String SETTINGS_KEY_AGGREGATE_CHUNKS = "aggregateChunks";
-    @Setting(type = BOOLEAN, value = "Debug: Enable extended logging of HTTP compression.", defaultValue = "true")
+    @Setting(type = BOOLEAN, value = "Debug: Enable extended logging of HTTP compression.", defaultValue = "false")
     private static final String SETTINGS_KEY_HTTP_COMPRESSION_DEBUG = "http.compression.debug";
     static final boolean DEFAULT_AGGREGATE_CHUNKS = true;
     static final int DEFAULT_MAX_CONTENT_LENGTH = 1048576;
@@ -254,7 +254,7 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
 
         SelectiveCompressor(int compressionLevel, int windowBits, int memLevel, int compressionThreshold,
                 boolean compressionCheckContentType, boolean compressionDebug) {
-            super(compressionLevel, windowBits, memLevel);
+            super(compressionLevel, windowBits, memLevel, compressionThreshold);
             this.compressionThreshold = compressionThreshold;
             this.compressionCheckContentType = compressionCheckContentType;
             this.debug = compressionDebug;

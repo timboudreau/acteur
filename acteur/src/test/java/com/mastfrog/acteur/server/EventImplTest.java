@@ -40,13 +40,9 @@ import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-/**
- *
- * @author tim
- */
 public class EventImplTest {
 
     private PathFactory emptySettings;
@@ -54,7 +50,7 @@ public class EventImplTest {
     private PathFactory withExternalSecureHost;
     private PathFactory withExternalSecureHostOnOddPort;
 
-    @Before
+    @BeforeEach
     public void setUp() throws IOException {
         emptySettings = new DefaultPathFactory(new SettingsBuilder().build());
         withBasePath = new DefaultPathFactory(new SettingsBuilder()

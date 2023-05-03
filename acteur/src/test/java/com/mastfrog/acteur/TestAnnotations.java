@@ -8,15 +8,10 @@ import com.mastfrog.acteur.preconditions.PageAnnotationHandler;
 import com.mastfrog.acteur.preconditions.PathRegex;
 import com.mastfrog.acteur.preconditions.RequiredUrlParameters;
 import com.mastfrog.acteur.server.ServerModule;
-import com.mastfrog.giulius.tests.GuiceRunner;
 import com.mastfrog.giulius.tests.anno.TestWith;
-import com.mastfrog.netty.http.test.harness.TestHarness;
-import com.mastfrog.netty.http.test.harness.TestHarnessModule;
+import com.mastfrog.http.test.harness.acteur.HttpHarness;
+import com.mastfrog.http.test.harness.acteur.HttpTestHarnessModule;
 import io.netty.handler.codec.http.HttpResponseStatus;
-import static io.netty.handler.codec.http.HttpResponseStatus.BAD_REQUEST;
-import static io.netty.handler.codec.http.HttpResponseStatus.NOT_FOUND;
-import static io.netty.handler.codec.http.HttpResponseStatus.NO_CONTENT;
-import static io.netty.handler.codec.http.HttpResponseStatus.OK;
 import java.io.IOException;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -24,34 +19,43 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 import java.lang.annotation.Target;
 import java.time.Duration;
 import java.util.List;
-import static org.junit.Assert.assertTrue;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import static java.util.concurrent.TimeUnit.MINUTES;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 /**
  *
  * @author Tim Boudreau
  */
-@RunWith(GuiceRunner.class)
-@TestWith({M.class, TestHarnessModule.class, SilentRequestLogger.class})
+@TestWith({M.class, HttpTestHarnessModule.class, SilentRequestLogger.class})
 public class TestAnnotations {
 
     private static final long TIMEOUT = 60000;
     private static final Duration TO = Duration.ofMillis(TIMEOUT);
 
-    @Test(timeout=TIMEOUT)
-    public void test(TestHarness harn) throws IOException, Throwable {
-        harn.get("one").setTimeout(TO).go().assertStatus(BAD_REQUEST);
+    @Test
+    @Timeout(value = 1, unit = MINUTES)
+    public void test(HttpHarness harn) throws IOException, Throwable {
+        harn.get("one").applyingAssertions(a -> a.assertResponseCode(400)).assertAllSucceeded();
         assertTrue(annotationHandlerCalled);
-        harn.get("one").setTimeout(TO).addQueryPair("foo", "hey").go().assertStatus(BAD_REQUEST);
-        harn.get("one").setTimeout(TO).addQueryPair("foo", "hey").addQueryPair("bar", "you").go().assertStatus(OK).assertContent("one");
-        harn.get("two").setTimeout(TO).go().assertStatus(BAD_REQUEST);
-        harn.get("two").setTimeout(TO).addQueryPair("baz", "hey").go().assertStatus(OK).assertContent("two");
-        harn.get("two").setTimeout(TO).addQueryPair("quux", "you").go().assertStatus(OK).assertContent("two");
-        harn.get("three").setTimeout(TO).go().assertStatus(NOT_FOUND);
-        harn.post("three").setTimeout(TO).go().assertStatus(OK).assertContent("three");
+        harn.get("one?foo=hey").applyingAssertions(a -> a.assertResponseCode(400)).assertAllSucceeded();
+        harn.get("one?foo=hey&bar=you").applyingAssertions(a -> a.assertOk().assertBody("one")).assertAllSucceeded();
+        harn.get("two").applyingAssertions(a -> a.assertBadRequest()).assertAllSucceeded();
+        harn.get("two?baz=hey").applyingAssertions(a -> a.assertOk().assertBody("two")).assertAllSucceeded();
+        harn.get("two?quux=you").applyingAssertions(a -> a.assertOk().assertBody("two")).assertAllSucceeded();
+        harn.get("three").applyingAssertions(a -> a.assertNotFound()).assertAllSucceeded();
+        harn.post("three").applyingAssertions(a -> a.assertOk().assertBody("three")).assertAllSucceeded();
+
+//        harn.get("one").setTimeout(TO).addQueryPair("foo", "hey").go().assertStatus(BAD_REQUEST);
+//        harn.get("one").setTimeout(TO).addQueryPair("foo", "hey").addQueryPair("bar", "you").go().assertStatus(OK).assertContent("one");
+//        harn.get("two").setTimeout(TO).go().assertStatus(BAD_REQUEST);
+//        harn.get("two").setTimeout(TO).addQueryPair("baz", "hey").go().assertStatus(OK).assertContent("two");
+//        harn.get("two").setTimeout(TO).addQueryPair("quux", "you").go().assertStatus(OK).assertContent("two");
+//        harn.get("three").setTimeout(TO).go().assertStatus(NOT_FOUND);
+//        harn.post("three").setTimeout(TO).go().assertStatus(OK).assertContent("three");
         // Also test that default CORS headers work
-        harn.options("foo").go().assertStatus(NO_CONTENT);
+        harn.options("foo").applyingAssertions(a -> a.assertNoContent()).assertAllSucceeded();
     }
 
     @Methods
@@ -96,6 +100,7 @@ public class TestAnnotations {
     static boolean annotationHandlerCalled;
 
     static class PAH extends PageAnnotationHandler {
+
         @Inject
         PAH(PageAnnotationHandler.Registry reg) {
             super(reg, Foo.class);

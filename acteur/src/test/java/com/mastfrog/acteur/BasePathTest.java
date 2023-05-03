@@ -23,101 +23,107 @@
  */
 package com.mastfrog.acteur;
 
-import com.mastfrog.mime.MimeType;
+import com.google.inject.Binder;
 import com.google.inject.Inject;
+import com.google.inject.Module;
 import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.acteur.preconditions.Path;
 import com.mastfrog.acteur.preconditions.PathRegex;
 import com.mastfrog.acteur.server.ServerModule;
-import static com.mastfrog.acteur.server.ServerModule.PORT;
-import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_BASE_PATH;
-import com.mastfrog.function.throwing.ThrowingBiConsumer;
-import com.mastfrog.giulius.Dependencies;
-import com.mastfrog.netty.http.test.harness.TestHarness;
-import com.mastfrog.netty.http.test.harness.TestHarnessModule;
-import com.mastfrog.settings.Settings;
-import com.mastfrog.settings.SettingsBuilder;
-import com.mastfrog.util.net.PortFinder;
-import com.mastfrog.util.preconditions.Exceptions;
-import static io.netty.handler.codec.http.HttpResponseStatus.NOT_FOUND;
-import static io.netty.handler.codec.http.HttpResponseStatus.OK;
-import java.io.IOException;
-import java.time.Duration;
-import org.junit.Test;
+import com.mastfrog.giulius.tests.anno.TestWith;
+import com.mastfrog.http.test.harness.acteur.HttpHarness;
+import com.mastfrog.http.test.harness.acteur.HttpTestHarnessModule;
+import com.mastfrog.mime.MimeType;
+import com.mastfrog.util.streams.Streams;
+import java.io.PrintStream;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
+/**
+ * Tests that if we set the basepath setting, so the application is "mounted" on
+ * some subpath, that paths are interpreted correctly (acteurs do not see the
+ * base path as part of the url path, and the application does not serve paths
+ * <i>above</i> the base path).
+ *
+ * @author Tim Boudreau
+ */
+@TestWith({HttpTestHarnessModule.class, BasePathTest.M.class, SilentRequestLogger.class})
 public class BasePathTest {
 
-    private static final PortFinder pf = new PortFinder();
-    private static final Duration TO = Duration.ofSeconds(5);
-
     @Test
-    public void testBp1() throws Throwable {
-        withRunningServer("foo", (port, harn) -> {
-            try {
-
-                String rc = harn.get("foo").setTimeout(TO)
-                        .go().await().assertStatus(OK)
-                        .assertHeader(Headers.stringHeader("X-Req-Path"), "/")
-                        .assertContent("root: ")
-                        .content();
-
-                harn.get("foo/").setTimeout(TO)
-                        .go().await().assertStatus(OK)
-                        .assertHeader(Headers.stringHeader("X-Req-Path"), "/")
-                        .assertContent("root: ")
-                        .content();
-
-                harn.get("/foo/").setTimeout(TO)
-                        .go().await().assertStatus(OK)
-                        .assertHeader(Headers.stringHeader("X-Req-Path"), "/")
-                        .assertContent("root: ")
-                        .content();
-
-                harn.get("/foo").setTimeout(TO)
-                        .go().await().assertStatus(OK)
-                        .assertHeader(Headers.stringHeader("X-Req-Path"), "/")
-                        .assertContent("root: ")
-                        .content();
-
-                System.out.println("rc: '" + rc + "'");
-
-                harn.get("foo/content/moo").setTimeout(TO)
-                        .go().await()
-                        .assertStatus(OK)
-                        .assertContent("content/moo")
-                        .assertHeader(Headers.stringHeader("X-Req-Path"), "content/moo");
-
-                harn.get("")
-                        .setTimeout(TO)
-                        .go().await().assertStatus(NOT_FOUND);
-
-                harn.get("foo/x/y/z").setTimeout(TO)
-                        .go().await().assertStatus(NOT_FOUND);
-
-                harn.get("content/x").setTimeout(TO)
-                        .go().await().assertStatus(NOT_FOUND);
-
-            } catch (Throwable ex) {
-                Exceptions.chuck(ex);
-            }
-        });
+    @Timeout(30)
+    public void testUnqualifiedPath(HttpHarness harn) {
+        harn.get("foo").applyingAssertions(
+                a -> a.assertOk().assertHeaderEquals("X-Req-Path", "/")
+                        .assertBody("root:")).assertAllSucceeded();
     }
 
-    void withRunningServer(String base, ThrowingBiConsumer<Integer, TestHarness> bic) throws IOException, InterruptedException, Exception {
-        SettingsBuilder sb = Settings.builder();
-        int port = pf.findAvailableServerPort();
-        System.setProperty("acteur.debug", "true");
-        if (base != null) {
-            sb.add(SETTINGS_KEY_BASE_PATH, base);
-            sb.add(PORT, port);
+    @Test
+    @Timeout(30)
+    public void testTrailingSlashPath(HttpHarness harn) {
+        harn.get("foo/").applyingAssertions(
+                a -> a.assertOk().assertHeaderEquals("X-Req-Path", "/")
+                        .assertBody("root:")).assertAllSucceeded();
+    }
+
+    @Test
+    @Timeout(30)
+    public void testLeadingAndTrailingSlashPath(HttpHarness harn) {
+        harn.get("/foo/").applyingAssertions(
+                a -> a.assertOk().assertHeaderEquals("X-Req-Path", "/")
+                        .assertBody("root:")).assertAllSucceeded();
+    }
+
+    @Test
+    @Timeout(30)
+    public void testLeadingSlashPath(HttpHarness harn) {
+        // XXX the new jdk http test harness will always prepend the
+        // slash
+        harn.get("/foo").applyingAssertions(
+                a -> a.assertOk().assertHeaderEquals("X-Req-Path", "/")
+                        .assertBody("root:")).assertAllSucceeded();
+    }
+
+    @Test
+    @Timeout(30)
+    public void testValidSubpath(HttpHarness harn) {
+        harn.get("foo/content/moo").applyingAssertions(
+                a -> a.assertOk().assertHeaderEquals("X-Req-Path", "content/moo")
+                        .assertBody("content/moo")).assertAllSucceeded();
+    }
+
+    @Test
+    @Timeout(30)
+    public void testEmptyPath(HttpHarness harn) {
+        // Paths below the base path should always return not found.
+        harn.get("").applyingAssertions(
+                a -> a.assertNotFound()).assertAllSucceeded();
+    }
+
+    @Test
+    @Timeout(30)
+    public void testValidSubpathButAtTopLevel(HttpHarness harn) {
+        harn.get("content/x").applyingAssertions(a -> a.assertNotFound())
+                .assertAllSucceeded();
+    }
+
+    @Test
+    @Timeout(30)
+    public void testInvalidSubpath(HttpHarness harn) {
+        harn.get("foo/x/y/z").applyingAssertions(a -> a.assertNotFound())
+                .assertAllSucceeded();
+    }
+
+    static class M implements Module {
+
+        @Override
+        public void configure(Binder binder) {
+            binder.install(new ServerModule<>(App.class));
         }
-        Dependencies deps = new Dependencies(sb.build(), new ServerModule<>(App.class),
-                new TestHarnessModule());
-        try {
-            bic.accept(port, deps.getInstance(TestHarness.class));
-        } finally {
-            deps.shutdown();
-        }
+
     }
 
     static final class App extends Application {
@@ -172,5 +178,29 @@ public class BasePathTest {
             add(Headers.CONTENT_TYPE, MimeType.PLAIN_TEXT_UTF_8);
             ok("This is the home page.\n");
         }
+    }
+
+    private static PrintStream originalSystemOut;
+
+    @BeforeEach
+    public void enableDebug() {
+        // This must be set - the test rely on the X-Req-Path header to
+        // determine what path the server thinks it was responding to,
+        // which we use to test path translation
+        System.setProperty("acteur.debug", "true");
+    }
+
+    @BeforeAll
+    public static void beforeAll() {
+        // Acteur debug is very noisy, and we do not need noisy tests.
+        System.setOut(Streams.nullPrintStream());
+    }
+
+    @AfterAll
+    public static void afterAll() {
+        if (originalSystemOut != null) {
+            System.setOut(originalSystemOut);
+        }
+        System.setProperty("acteur.debug", "false");
     }
 }

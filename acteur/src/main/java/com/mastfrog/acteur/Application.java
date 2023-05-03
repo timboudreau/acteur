@@ -458,6 +458,7 @@ public class Application implements Iterable<Page> {
      * @param err
      * @deprecated Implement ErrorHandler and bind it as an eager singleton
      */
+    @Deprecated
     public void onError(Throwable err) {
     }
 

@@ -23,46 +23,55 @@
  */
 package com.mastfrog.acteur.headers;
 
+import com.mastfrog.function.ReversibleFunction;
 import com.mastfrog.util.strings.Strings;
 import com.mastfrog.util.collections.Converter;
+import java.util.Optional;
 
 /**
- * Base interface for things that convert an HTTP header to an appropriate
- * Java object and back.  See <a href="./Headers.html">Headers</a> for
- * useful implementations.  The equality contract is that the name() return
- * value match case-insensitively for two instances to be equal, regardless
- * of differences in the value of type().
+ * Base interface for things that convert an HTTP header to an appropriate Java
+ * object and back. See <a href="./Headers.html">Headers</a> for useful
+ * implementations. The equality contract is that the name() return value match
+ * case-insensitively for two instances to be equal, regardless of differences
+ * in the value of type().
  *
  * @see Headers
  * @author Tim Boudreau
  */
-public interface HeaderValueType<T> extends Converter<T, CharSequence>, Comparable<HeaderValueType<?>> {
+public interface HeaderValueType<T> extends ReversibleFunction<T, CharSequence>, Comparable<HeaderValueType<?>> {
+
     /**
      * The Java type
+     *
      * @return A type
      */
     public Class<T> type();
 
     /**
      * The header name as it should appear in HTTP headers
+     *
      * @return The name
      */
     public CharSequence name();
-    
+
+    public default Optional<T> get(Optional<? extends CharSequence> opt) {
+        return opt.map(cs -> convert(cs));
+    }
+
     /**
-     * Test if this header's name is the same as the passed name
-     * (case insensitive).
-     * 
+     * Test if this header's name is the same as the passed name (case
+     * insensitive).
+     *
      * @param name A name
      * @return True if it matches
      */
     public default boolean is(CharSequence name) {
-        return  Strings.charSequencesEqual(name(), name, true);
+        return Strings.charSequencesEqual(name(), name, true);
     }
 
     /**
      * Convert an object to a String suitable for inclusion in headers.
-     * 
+     *
      * @param value A value
      * @return A header value
      * @deprecated Prefer toCharSequence
@@ -71,39 +80,58 @@ public interface HeaderValueType<T> extends Converter<T, CharSequence>, Comparab
     public default String toString(T value) {
         return toCharSequence(value).toString();
     }
-    
+
     /**
      * Convert an object to a CharSequence suitable for inclusion in headers,
      * typically using Netty's AsciiString.
-     * 
+     *
      * @param value A value
      * @return A header value
      */
     public default CharSequence toCharSequence(T value) {
         return toString(value);
     }
-    
+
     /**
-     * Parse the value of a header of this type, returning an appropriate
-     * Java object or null
+     * Parse the value of a header of this type, returning an appropriate Java
+     * object or null
+     *
      * @param value A header
      * @return An object that represents the header appropriately, such as a
      * <code>DateTime</code> for a date header.
      */
     public T toValue(CharSequence value);
 
-    @Override
     public default T convert(CharSequence r) {
-        return toValue(r.toString());
+        return toValue(r);
     }
 
-    @Override
     public default CharSequence unconvert(T t) {
         return toString(t);
     }
-    
+
     public default HeaderValueType<CharSequence> toStringHeader() {
         return Headers.header(name());
+    }
+
+    @Override
+    default CharSequence apply(T t) {
+        return unconvert(t);
+    }
+
+    @Override
+    default ReversibleFunction<CharSequence, T> reverse() {
+        return new ReversibleFunction<>() {
+            @Override
+            public ReversibleFunction<T, CharSequence> reverse() {
+                return HeaderValueType.this;
+            }
+
+            @Override
+            public T apply(CharSequence t) {
+                return convert(t);
+            }
+        };
     }
 
     @Override

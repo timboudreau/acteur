@@ -26,81 +26,110 @@ package com.mastfrog.acteur;
 import com.google.inject.Inject;
 import com.mastfrog.acteur.InternalsTest.ITM;
 import com.mastfrog.acteur.headers.Headers;
+import static com.mastfrog.acteur.headers.Headers.CONTENT_LENGTH;
+import static com.mastfrog.acteur.headers.Headers.IF_MODIFIED_SINCE;
+import static com.mastfrog.acteur.headers.Headers.LAST_MODIFIED;
 import static com.mastfrog.acteur.headers.Method.GET;
 import com.mastfrog.acteur.preconditions.Methods;
 import com.mastfrog.acteur.preconditions.Path;
 import com.mastfrog.acteur.server.ServerLifecycleHook;
 import com.mastfrog.acteur.server.ServerModule;
-import com.mastfrog.giulius.tests.GuiceRunner;
 import com.mastfrog.giulius.tests.anno.TestWith;
-import com.mastfrog.netty.http.test.harness.TestHarness;
-import com.mastfrog.netty.http.test.harness.TestHarnessModule;
+import com.mastfrog.http.test.harness.acteur.HttpHarness;
+import com.mastfrog.http.test.harness.acteur.HttpTestHarnessModule;
 import com.mastfrog.util.net.PortFinder;
 import com.mastfrog.util.time.TimeUtil;
 import io.netty.channel.Channel;
 import static io.netty.handler.codec.http.HttpResponseStatus.NOT_MODIFIED;
 import static io.netty.handler.codec.http.HttpResponseStatus.NO_CONTENT;
-import static io.netty.handler.codec.http.HttpResponseStatus.OK;
 import java.time.Duration;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoField;
 import java.util.concurrent.atomic.AtomicInteger;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 /**
  *
  * @author Tim Boudreau
  */
-@TestWith({TestHarnessModule.class, ITM.class, SilentRequestLogger.class})
-@RunWith(GuiceRunner.class)
+@TestWith({HttpTestHarnessModule.class, ITM.class, SilentRequestLogger.class})
 public class InternalsTest {
 
     private static final ZonedDateTime WHEN = ZonedDateTime.now().with(ChronoField.MILLI_OF_SECOND, 0);
-    private static final Duration DUR = Duration.ofSeconds(30);
 
     @Test
-    public void testHeadersSharedBetweenActeurs(TestHarness harn) throws Throwable {
-        harn.get("shared").go()
-                .assertHasHeader("x-expect")
-                .assertHasHeader(Headers.LAST_MODIFIED)
-                .assertStatus(OK)
-                .assertContent("Found " + Headers.ISO2822DateFormat.format(ZERO));
+    @Timeout(30)
+    public void testHeadersSharedBetweenActeurs(HttpHarness harn) throws Throwable {
+        harn.get("shared").applyingAssertions(
+                a -> a.assertHasHeader("x-expect")
+                        .assertHasHeader(LAST_MODIFIED)
+                        .assertOk()
+                        .assertBody("Found " + Headers.ISO2822DateFormat.format(ZERO)))
+                .assertAllSucceeded();
+        harn.rethrowServerErrors();
     }
 
     @Test
-    public void testDateHeaderHandling(TestHarness harn) throws Throwable {
+    @Timeout(30)
+    public void testDateHeaderHandling(HttpHarness harn) throws Throwable {
+
         ZonedDateTime when = harn.get("lm")
-                .setTimeout(DUR)
-                .go().assertHasHeader(Headers.LAST_MODIFIED)
-                .assertContent("Got here.")
-                .getHeader(Headers.LAST_MODIFIED);
+                .applyingAssertions(a -> a.assertOk().assertHasHeader(LAST_MODIFIED)).assertAllSucceeded()
+                .get().headers().firstValue(LAST_MODIFIED.name().toString())
+                .map(val -> LAST_MODIFIED.convert(val))
+                .orElseThrow(() -> new RuntimeException("No last modiefied header"));
+
         assertEquals(when.toInstant(), WHEN.toInstant());
 
-        harn.get("lm").addHeader(Headers.IF_MODIFIED_SINCE, when).setTimeout(DUR).go().assertStatus(NOT_MODIFIED);
-        harn.get("lm").addHeader(Headers.IF_MODIFIED_SINCE, WHEN).setTimeout(DUR).go().assertStatus(NOT_MODIFIED);
-        harn.get("lm").addHeader(Headers.IF_MODIFIED_SINCE, WHEN.plus(Duration.ofHours(1))).setTimeout(DUR).go().assertStatus(NOT_MODIFIED);
-        harn.get("lm").addHeader(Headers.IF_MODIFIED_SINCE, WHEN.minus(Duration.ofHours(1))).setTimeout(DUR).go().assertStatus(OK);
-        assertTrue("Startup hook was not run", HOOK_RAN.get() > 0);
+        harn.get("lm").setHeader(IF_MODIFIED_SINCE, when)
+                .applyingAssertions(a -> a.assertNotModified())
+                .assertAllSucceeded();
+
+        harn.get("lm").setHeader(IF_MODIFIED_SINCE, WHEN)
+                .applyingAssertions(a -> a.assertNotModified())
+                .assertAllSucceeded();
+
+        harn.get("lm").setHeader(IF_MODIFIED_SINCE, WHEN.plus(Duration.ofHours(1)))
+                .applyingAssertions(a -> a.assertNotModified())
+                .assertAllSucceeded();
+
+        harn.get("lm").setHeader(IF_MODIFIED_SINCE, WHEN.minus(Duration.ofHours(1)))
+                .applyingAssertions(a -> a.assertOk())
+                .assertAllSucceeded();
+
+        assertTrue(HOOK_RAN.get() > 0, "Startup hook was not run");
+        harn.rethrowServerErrors();
     }
 
     @Test
-    public void testEmptyResponsesHaveZeroLengthContentLengthHeader(TestHarness harn) throws Throwable {
-//        assertNull(harn.get("/nothing").setTimeout(DUR).go().assertStatus(OK).getHeader(Headers.CONTENT_LENGTH));
-//        assertNull(harn.get("/nothingchunked").setTimeout(DUR).go().assertStatus(OK).getHeader(Headers.CONTENT_LENGTH));
+    @Timeout(30)
+    public void testEmptyResponsesHaveZeroLengthContentLengthHeader(HttpHarness harn) throws Throwable {
+        String lenHeader = harn.get("/nothing").applyingAssertions(a -> a.assertOk())
+                .assertAllSucceeded().get().headers().firstValue(CONTENT_LENGTH.name().toString())
+                .orElse(null);
+        assertEquals("0", lenHeader, "Should not have a length header");
     }
 
     @Test
-    public void testEmptyResponsesForContentlessCodesHaveNoContentLengthHeader(TestHarness harn) throws Throwable {
-//        assertNull("Should not have had a content length header", harn.get("/less").go()
-//                .assertStatus(NOT_MODIFIED)
-//                .getHeader(Headers.CONTENT_LENGTH));
-//        assertNull("Should not have had a content length header", harn.get("/evenless").go()
-//                .assertStatus(NO_CONTENT)
-//                .getHeader(Headers.CONTENT_LENGTH));
+    @Timeout(30)
+    public void testEmptyResponsesForContentlessCodesHaveNoContentLengthHeader(HttpHarness harn) throws Throwable {
+        String lenHeader = harn.get("/less").applyingAssertions(a -> a.assertNotModified())
+                .assertAllSucceeded().get().headers().firstValue(CONTENT_LENGTH.name().toString())
+                .orElse(null);
+        assertNull(lenHeader, "Should not have a length header on a 304 response, but got " + lenHeader);
+    }
+
+    @Test
+    @Timeout(30)
+    public void testNoContentResponseHasNoContentLength(HttpHarness harn) throws Throwable {
+        String lenHeader = harn.get("/evenless").applyingAssertions(a -> a.assertNoContent())
+                .assertAllSucceeded().get().headers().firstValue(CONTENT_LENGTH.name().toString())
+                .orElse(null);
+        assertNull(lenHeader, "Should not have a length header on a no-content response, but got " + lenHeader);
+
     }
 
     static final class ITM extends ServerModule<ITApp> {

@@ -9,9 +9,10 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoField;
 import java.util.regex.Pattern;
-import org.junit.Test;
-
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.Test;
 
 /**
  *
@@ -78,7 +79,7 @@ public class VerifyDateTimeBehavior {
         assertEquals(ugh.toEpochSecond(), ugh3.toEpochSecond());
 
         ZonedDateTime ugh4 = Headers.DATE.toValue(ss2);
-        assertEquals(ugh4.toString() + " expected " + ugh.toString(), TimeUtil.toUnixTimestamp(ugh), TimeUtil.toUnixTimestamp(ugh4));
+        assertEquals(TimeUtil.toUnixTimestamp(ugh), TimeUtil.toUnixTimestamp(ugh4), ugh4.toString() + " expected " + ugh.toString());
 
         assertEquals(ugh.toInstant(), ugh.withZoneSameInstant(ZoneId.of("GMT")).toInstant());
     }

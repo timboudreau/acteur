@@ -1,37 +1,44 @@
 package com.mastfrog.acteur;
 
+import com.google.inject.Binder;
 import com.google.inject.Inject;
+import com.google.inject.Module;
 import com.google.inject.name.Named;
+import static com.mastfrog.acteur.headers.Headers.CONTENT_LENGTH;
 import com.mastfrog.acteur.server.ServerModule;
 import com.mastfrog.acteur.util.RequestID;
-import com.mastfrog.acteur.util.Server;
-import com.mastfrog.giulius.Dependencies;
-import com.mastfrog.util.net.PortFinder;
+import com.mastfrog.giulius.tests.anno.TestWith;
+import com.mastfrog.http.test.harness.acteur.HttpHarness;
+import com.mastfrog.http.test.harness.acteur.HttpTestHarnessModule;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import static io.netty.channel.ChannelFutureListener.CLOSE;
 import io.netty.handler.codec.http.HttpResponseStatus;
-import io.netty.util.CharsetUtil;
 import java.io.IOException;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import java.util.concurrent.ExecutorService;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 /**
  *
  * @author Tim Boudreau
  */
+@TestWith({TestMultiplePages.M.class, HttpTestHarnessModule.class})
 public class TestMultiplePages {
 
     @Test
-    @SuppressWarnings("deprecation")
-    public void test() throws InterruptedException, IOException {
-        ServerModule<A> m = new ServerModule<>(A.class, 1, 2, 64);
-        Dependencies deps = new Dependencies(m);
-        Server serv = deps.getInstance(Server.class);
-        PortFinder pf = new PortFinder();
-        // XXX what is this test for?
-        serv.start(pf.findAvailableServerPort()).shutdown(true);
+    public void test(HttpHarness harn) throws InterruptedException, IOException {
+        harn.get("doesntmatter").applyingAssertions(a -> a.assertOk()).assertAllSucceeded();
+    }
+
+    static class M implements Module {
+
+        @Override
+        public void configure(Binder binder) {
+            binder.install(new ServerModule(A.class, 1, 2, 64));
+        }
+
     }
 
     private static class A extends Application {
@@ -85,17 +92,20 @@ public class TestMultiplePages {
         Act(HttpEvent evt, RequestID id) {
             setResponseBodyWriter(BlockingBodyWriter.class);
             setState(new RespondWith(HttpResponseStatus.OK));
+            String text = id + " Okay, here goes nothing";
+            add(CONTENT_LENGTH, text.getBytes(UTF_8).length);
         }
     }
 
-    private static class BlockingBodyWriter implements ChannelFutureListener {
+    private static final class BlockingBodyWriter implements ChannelFutureListener {
 
         private final RequestID id;
         private final ExecutorService svc;
         private final HttpEvent evt;
 
         @Inject
-        BlockingBodyWriter(RequestID id, @Named(ServerModule.BACKGROUND_THREAD_POOL_NAME) ExecutorService svc, HttpEvent evt) {
+        BlockingBodyWriter(RequestID id,
+                @Named(ServerModule.BACKGROUND_THREAD_POOL_NAME) ExecutorService svc, HttpEvent evt) {
             this.id = id;
             this.svc = svc;
             this.evt = evt;
@@ -103,8 +113,8 @@ public class TestMultiplePages {
 
         @Override
         public void operationComplete(ChannelFuture future) throws Exception {
-            future = future.channel().write(Unpooled.copiedBuffer(id
-                    + " Okay, here goes nothing", CharsetUtil.UTF_8));
+            future = future.channel().writeAndFlush(Unpooled.copiedBuffer(id
+                    + " Okay, here goes nothing", UTF_8));
             future.addListener(CLOSE);
         }
     }

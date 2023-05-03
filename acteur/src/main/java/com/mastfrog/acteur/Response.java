@@ -175,6 +175,7 @@ public abstract class Response {
      * @return this
      * @deprecated use contentWriter() instead
      */
+    @Deprecated
     public final Response setBodyWriter(ResponseWriter writer) {
         return contentWriter(writer);
     }

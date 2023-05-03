@@ -5,44 +5,26 @@ import com.google.inject.TypeLiteral;
 import com.google.inject.name.Names;
 import com.mastfrog.acteur.Page;
 import com.mastfrog.acteur.SilentRequestLogger;
-import com.mastfrog.acteur.server.ServerBuilder;
 import com.mastfrog.giulius.Dependencies;
-import com.mastfrog.giulius.tests.GuiceRunner;
 import com.mastfrog.giulius.tests.anno.TestWith;
-import com.mastfrog.netty.http.client.HttpClient;
-import com.mastfrog.netty.http.test.harness.TestHarnessModule;
 import com.mastfrog.settings.Settings;
-import com.mastfrog.settings.SettingsBuilder;
 import com.mastfrog.util.strings.RandomStrings;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.Set;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
 
-/**
- *
- * @author Tim Boudreau
- */
-@TestWith({GenericApplicationModule.class, TestHarnessModule.class, SilentRequestLogger.class})
-@RunWith(GuiceRunner.class)
+@TestWith({GenericApplicationModule.class, SilentRequestLogger.class})
 public class GenericApplicationTest {
-    
-    public static void main(String[] args) throws IOException, InterruptedException {
-        Settings s = new SettingsBuilder().build();
-        new ServerBuilder().add(s).build().start(8080).await();
-    }
 
     static class M extends AbstractModule {
 
         @Override
         protected void configure() {
-            bind(new TypeLiteral<Class<?>[]>(){}).annotatedWith(Names.named("excluded")).toInstance(new Class[0]);
-            bind(HttpClient.class).toInstance(HttpClient.builder().build());
+            bind(new TypeLiteral<Class<?>[]>() {
+            }).annotatedWith(Names.named("excluded")).toInstance(new Class[0]);
         }
     }
 
@@ -50,9 +32,9 @@ public class GenericApplicationTest {
     public void testRegistry() {
         HttpCallRegistryLoader ldr = new HttpCallRegistryLoader(GenericApplicationTest.class);
         Set<Class<?>> types = ldr.implicitBindings();
-        assertNotNull("Types is null", types);
+        assertNotNull(types, "Types is null");
         Set<Class<?>> expect = new LinkedHashSet<>(Arrays.asList(new Class<?>[]{String.class, Integer.class, RandomStrings.class, FakePage.Foo.Bar.class, FakePage.Foo.class}));
-        assertTrue("GOT " + types, types.equals(expect));
+        assertTrue(types.equals(expect), "GOT " + types);
     }
 
     @Test
@@ -66,16 +48,16 @@ public class GenericApplicationTest {
         for (Page p : app) {
             switch (ix++) {
                 case 0:
-                    assertTrue(ix + " " + p.getClass().getName(), p instanceof ZZZPage);
+                    assertTrue(p instanceof ZZZPage, ix + " " + p.getClass().getName());
                     break;
                 case 1:
-                    assertTrue(ix + " " + p.getClass().getName(), p instanceof FakePage);
+                    assertTrue(p instanceof FakePage, ix + " " + p.getClass().getName());
                     break;
                 case 2:
-                    assertTrue(ix + " " + p.getClass().getName(), p instanceof AnotherPage);
+                    assertTrue(p instanceof AnotherPage, ix + " " + p.getClass().getName());
                     break;
                 case 3:
-                    assertTrue(ix + " " + p.getClass().getName(), p instanceof X__GenPage);
+                    assertTrue(p instanceof X__GenPage, ix + " " + p.getClass().getName());
                     break;
                 default:
                     throw new AssertionError(ix);

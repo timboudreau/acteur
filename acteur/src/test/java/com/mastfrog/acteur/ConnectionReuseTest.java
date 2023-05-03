@@ -87,17 +87,21 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 /**
  * Netty's HttpContentEncoder makes some assumptions that we work around - such
@@ -120,7 +124,7 @@ public class ConnectionReuseTest {
             // compressed and not compressed
             client.request("/ok");
             receiver.assertNoBody();
-//        receiver.assertHeader(HttpHeaderNames.CONTENT_LENGTH, "0");
+            receiver.assertHeader(HttpHeaderNames.CONTENT_LENGTH, "0");
             app.rethrowIfThrown();
 
             client.request("/notmodifiedchunky");
@@ -413,6 +417,8 @@ public class ConnectionReuseTest {
         void go(int port, ServerControl ctrl, ReuseApp app, Receiver receiver, TinyHttpClient client) throws Throwable;
     }
 
+    static final ExecutorService SHUTDOWN = Executors.newSingleThreadExecutor();
+
     static void withRunningServer(WithRunningServer wr) throws Exception, Throwable {
         // Provide a completely separate environment for each test method,
         // so calls cannot interfere with each other - the previous iteration relied
@@ -428,7 +434,7 @@ public class ConnectionReuseTest {
                     .add(HTTP_COMPRESSION_THRESHOLD, 5)
                     .build();
             ServerModule<ReuseApp> sm = new ServerModule<>(ReuseApp.class, 4, 2, 1);
-            Dependencies deps = new Dependencies(settings, sm/*, new SilentRequestLogger()*/, new AbstractModule() {
+            Dependencies deps = new Dependencies(settings, sm, new SilentRequestLogger(), new AbstractModule() {
                 @Override
                 protected void configure() {
                     bind(ErrorInterceptor.class).to(EI.class);
@@ -445,11 +451,13 @@ public class ConnectionReuseTest {
             all.andAlways(client::shutdown);
             wr.go(port, ctrl, app, receiver, client);
         } finally {
-            all.run();
+            // The slowest part of the test is waiting for executors to terminate,
+            // so shuffle that off to a background thread.
+            SHUTDOWN.submit(all.toNonThrowing());
         }
     }
 
-    @Before
+    @BeforeEach
     public void startup() throws IOException {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < 100; i++) {
@@ -457,6 +465,11 @@ public class ConnectionReuseTest {
         }
         sb.append('\n');
         compressedContent = sb.toString();
+    }
+
+    @AfterAll
+    public static void shutdown() {
+        SHUTDOWN.shutdown();
     }
 
     static final class Receiver implements ThrowingBiConsumer<HttpResponse, HttpContent> {
@@ -482,8 +495,7 @@ public class ConnectionReuseTest {
                 }
                 synchronized (this) {
                     if (lastContent == null) {
-//                        System.out.println("loop wait " + i);
-                        wait(50);
+                        wait(10);
                     } else {
                         return lastContent;
                     }
@@ -493,13 +505,13 @@ public class ConnectionReuseTest {
         }
 
         void assertNoHeader(CharSequence name) {
-            assertNotNull("No response", resp);
+            assertNotNull(resp, "No response");
             String found = resp.headers().get(name);
             assertNull("Unexpected header " + name + " in " + headersString(), found);
         }
 
         void assertHeader(CharSequence name, String val) {
-            assertNotNull("No response", resp);
+            assertNotNull(resp, "No response");
             String found = resp.headers().get(name);
             assertNotNull("No " + name + " header present in " + headersString(), found);
             assertEquals(val, found);
@@ -508,9 +520,9 @@ public class ConnectionReuseTest {
         void assertNoBody() throws InterruptedException {
             HttpContent lastContent = awaitContent();
             try {
-                assertNotNull("No response received while waiting for empty response", lastContent);
+                assertNotNull(lastContent, "No response received while waiting for empty response");
                 ByteBuf content = lastContent.content();
-                assertTrue(content.readableBytes() + " bytes available: " + content.toString(UTF_8), content.readableBytes() == 0);
+                assertTrue(content.readableBytes() == 0, content.readableBytes() + " bytes available: " + content.toString(UTF_8));
             } finally {
                 synchronized (this) {
                     this.lastContent = null;
@@ -521,7 +533,7 @@ public class ConnectionReuseTest {
         void assertHasBody() throws InterruptedException {
             HttpContent lastContent = awaitContent();
             try {
-                assertNotNull("No response received while waiting for empty response", lastContent);
+                assertNotNull(lastContent, "No response received while waiting for empty response");
                 ByteBuf content = lastContent.content();
                 assertNotNull(content);
                 assertTrue(content.readableBytes() != 0);
@@ -536,10 +548,10 @@ public class ConnectionReuseTest {
         void assertBody(String body) throws InterruptedException {
             HttpContent lastContent = awaitContent();
             try {
-                assertNotNull("No response received while waiting for '" + body + "'", lastContent);
+                assertNotNull(lastContent, "No response received while waiting for '" + body + "'");
                 ByteBuf content = lastContent.content();
                 CharSequence seq = content.readCharSequence(content.readableBytes(), UTF_8);
-                assertNotNull("No body", seq);
+                assertNotNull(seq, "No body");
                 if (!Strings.contentEqualsIgnoreCase(body, seq)) {
                     int max = Math.min(body.length(), seq.length());
                     String diff = "No character differences through character " + max;
@@ -656,7 +668,7 @@ public class ConnectionReuseTest {
             channel.attr(latchKey).set(latch);
 
 //            assertTrue("Keep alive failed.", channel.isOpen());
-            assertTrue("Keep alive failed.", channel.isWritable());
+            assertTrue(channel.isWritable(), "Keep alive failed.");
             HttpRequest request = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, path);
             HttpHeaders headers = request.headers();
             headers.set(HttpHeaderNames.HOST, "localhost");
@@ -789,7 +801,7 @@ public class ConnectionReuseTest {
                 Exceptions.chuck(new IOException("Server-side exception", th));
             }
             try {
-                Thread.sleep(200);
+                Thread.sleep(5);
             } catch (InterruptedException ex) {
                 Logger.getLogger(ConnectionReuseTest.class.getName()).log(Level.SEVERE, null, ex);
             }

@@ -21,7 +21,6 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-
 package com.mastfrog.acteur;
 
 import com.mastfrog.acteur.ResponseDecoratorTest.M;
@@ -29,44 +28,48 @@ import com.mastfrog.acteur.headers.Headers;
 import static com.mastfrog.acteur.headers.Headers.SET_COOKIE_B_STRICT;
 import com.mastfrog.acteur.preconditions.Path;
 import com.mastfrog.acteur.server.ServerModule;
-import com.mastfrog.giulius.tests.GuiceRunner;
 import com.mastfrog.giulius.tests.anno.TestWith;
-import com.mastfrog.netty.http.test.harness.TestHarness;
-import com.mastfrog.netty.http.test.harness.TestHarnessModule;
+import com.mastfrog.http.test.harness.acteur.HttpHarness;
+import com.mastfrog.http.test.harness.acteur.HttpTestHarnessModule;
 import io.netty.handler.codec.http.HttpResponseStatus;
-import static io.netty.handler.codec.http.HttpResponseStatus.OK;
 import io.netty.handler.codec.http.cookie.Cookie;
 import io.netty.handler.codec.http.cookie.DefaultCookie;
-import java.time.Duration;
+import java.net.http.HttpResponse;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.Test;
 
 /**
  *
  * @author Tim Boudreau
  */
-@RunWith(GuiceRunner.class)
-@TestWith({M.class, TestHarnessModule.class, SilentRequestLogger.class})
+@TestWith({M.class, HttpTestHarnessModule.class, SilentRequestLogger.class})
 public class ResponseDecoratorTest {
 
     @Test
-    public void testResponseDecorator(TestHarness harn, RD rd) throws Throwable {
-        TestHarness.CallResult res = harn.get("/test")
-                .setTimeout(Duration.ofMinutes(1))
-                .go().await()
-                .assertStatus(OK)
-                .assertHasHeader(SET_COOKIE_B_STRICT)
-                .assertHasHeader(Headers.stringHeader("X-foo"));
+    public void testResponseDecorator(HttpHarness harn, RD rd) throws Throwable {
 
-        Iterable<Cookie> cks = res.getHeaders(SET_COOKIE_B_STRICT);
+        HttpResponse<String> resp = harn.get("/test").applyingAssertions(a -> a.assertOk()
+                .assertHasHeader(SET_COOKIE_B_STRICT.toString())
+                .assertHasHeader("X-foo"))
+                .assertAllSucceeded()
+                .get();
+
+        List<Cookie> parsed = new ArrayList<>();
+        resp.headers().allValues(SET_COOKIE_B_STRICT.name().toString())
+                .forEach(cookieHeader -> {
+                    parsed.add(SET_COOKIE_B_STRICT.convert(cookieHeader));
+                });
+
+        Iterable<Cookie> cks = parsed;
         Set<Cookie> cookies = new HashSet<>();
         for (Cookie c : cks) {
-            assertTrue(c.name(), c.name().equals("a") || c.name().equals("c"));
+            assertTrue(c.name().equals("a") || c.name().equals("c"), c.name());
             cookies.add(c);
         }
         assertEquals(2, cookies.size());
@@ -115,7 +118,8 @@ public class ResponseDecoratorTest {
         final AtomicInteger nums = new AtomicInteger();
 
         @Override
-        public void onBeforeSendResponse(Application application, HttpResponseStatus status, Event<?> event, Response response, Acteur acteur, Page page) {
+        public void onBeforeSendResponse(Application application,
+                HttpResponseStatus status, Event<?> event, Response response, Acteur acteur, Page page) {
             assertTrue(application instanceof RDApp);
             response.add(Headers.stringHeader("X-Foo"), "whee-" + nums.getAndIncrement());
             DefaultCookie ck1 = new DefaultCookie("a", "b");

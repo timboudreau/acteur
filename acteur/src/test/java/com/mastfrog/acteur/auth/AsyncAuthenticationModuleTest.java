@@ -30,125 +30,133 @@ import com.mastfrog.acteur.Application;
 import com.mastfrog.acteur.HttpEvent;
 import com.mastfrog.acteur.Page;
 import com.mastfrog.acteur.auth.AsyncAuthenticationModuleTest.AuthTestModule;
+import com.mastfrog.acteur.errors.ResponseException;
 import static com.mastfrog.acteur.headers.Headers.AUTHORIZATION;
 import static com.mastfrog.acteur.headers.Method.GET;
 import static com.mastfrog.acteur.preconditions.Authenticated.OPTIONAL;
 import com.mastfrog.acteur.server.ServerModule;
 import com.mastfrog.acteur.util.RequestID;
 import com.mastfrog.giulius.scope.ReentrantScope;
-import com.mastfrog.giulius.tests.GuiceRunner;
 import com.mastfrog.giulius.tests.anno.TestWith;
-import com.mastfrog.netty.http.test.harness.TestHarness;
-import com.mastfrog.netty.http.test.harness.TestHarnessModule;
+import com.mastfrog.http.test.harness.acteur.HttpHarness;
+import com.mastfrog.http.test.harness.acteur.HttpTestHarnessModule;
 import com.mastfrog.shutdown.hooks.ShutdownHookRegistry;
 import com.mastfrog.util.function.EnhCompletableFuture;
 import com.mastfrog.util.function.EnhCompletionStage;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import static io.netty.handler.codec.http.HttpResponseStatus.EXPECTATION_FAILED;
 import static io.netty.handler.codec.http.HttpResponseStatus.INTERNAL_SERVER_ERROR;
-import static io.netty.handler.codec.http.HttpResponseStatus.OK;
+import static io.netty.handler.codec.http.HttpResponseStatus.PAYMENT_REQUIRED;
 import static io.netty.handler.codec.http.HttpResponseStatus.UNAUTHORIZED;
-import java.time.Duration;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import javax.annotation.Nullable;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
-@RunWith(GuiceRunner.class)
-@TestWith({AuthTestModule.class, TestHarnessModule.class})
+@TestWith({AuthTestModule.class, HttpTestHarnessModule.class})
 public class AsyncAuthenticationModuleTest {
 
-    private static final long timeout = 5000;
-    private static final Duration DUR = Duration.ofMillis(timeout);
+    private static final int TIMEOUT = 5;
 
-    @Test(timeout = timeout)
-    public void testAsyncAuth(TestHarness harn) throws Throwable {
-        if (true) {
-            // Guice 4.2 ignores @Nullable on our two post-auth acteurs -
-            // need to find a workaround
-            return;
-        }
-        harn.get("/noauth")
-                .setTimeout(DUR)
-                .go()
-                .await()
-                .assertStatus(OK)
-                .assertContent("hello");
+    @Test
+    @Timeout(TIMEOUT)
+    public void testNoAuth(HttpHarness harn) throws Exception {
+        harn.get("/noauth").applyingAssertions(a -> a.assertOk().assertBody("hello"))
+                .assertAllSucceeded();
+    }
 
+    @Test
+    @Timeout(TIMEOUT)
+    public void testAuthit1(HttpHarness harn) throws Exception {
         harn.get("/authit")
-                .addHeader(AUTHORIZATION.toStringHeader(), "Bearer abcd")
-                .setTimeout(DUR)
-                .go()
-                .await()
-                .assertStatus(OK)
-                .assertContent("Hello Moe");
+                .setHeader(AUTHORIZATION.toStringHeader(), "Bearer abcd")
+                .applyingAssertions(a -> a.assertOk().assertBody("Hello Moe"))
+                .assertAllSucceeded();
+    }
 
+    @Test
+    @Timeout(TIMEOUT)
+    public void testAuthit2(HttpHarness harn) throws Exception {
         harn.get("/authit")
-                .addHeader(AUTHORIZATION.toStringHeader(), "Bearer efgh")
-                .setTimeout(DUR)
-                .go()
-                .await()
-                .assertStatus(OK)
-                .assertContent("Hello Curly");
+                .setHeader(AUTHORIZATION.toStringHeader(), "Bearer efgh")
+                .applyingAssertions(a -> a.assertOk().assertBody("Hello Curly"))
+                .assertAllSucceeded();
+    }
 
+    @Test
+    @Timeout(TIMEOUT)
+    public void testBadAuth(HttpHarness harn) throws Exception {
         harn.get("/authit")
-                .addHeader(AUTHORIZATION.toStringHeader(), "Bearer ijkl")
-                .setTimeout(DUR)
-                .go()
-                .await()
-                .assertStatus(EXPECTATION_FAILED)
-                .assertContent("You are bad.");
+                .setHeader(AUTHORIZATION.toStringHeader(), "Bearer ijkl")
+                .applyingAssertions(a -> a.assertResponseCode(EXPECTATION_FAILED.code())
+                .assertBody("You are bad.")).assertAllSucceeded();
 
+    }
+
+    @Test
+    @Timeout(TIMEOUT)
+    public void testUnknownAuth(HttpHarness harn) throws Exception {
         harn.get("/authit")
-                .addHeader(AUTHORIZATION.toStringHeader(), "Bearer wxyz")
-                .setTimeout(DUR)
-                .go()
-                .await()
-                .assertStatus(UNAUTHORIZED)
-                .assertContent("Unknown user");
+                .setHeader(AUTHORIZATION.toStringHeader(), "Bearer wxyz")
+                .applyingAssertions(a -> a.assertResponseCode(UNAUTHORIZED.code())
+                .assertBody("Unknown user")).assertAllSucceeded();
+    }
 
+    @Test
+    @Timeout(TIMEOUT)
+    public void testSimulatedError(HttpHarness harn) throws Exception {
         harn.get("/authit")
-                .addHeader(AUTHORIZATION.toStringHeader(), "Bearer mnop")
-                .setTimeout(DUR)
-                .go()
-                .await()
-                .assertStatus(INTERNAL_SERVER_ERROR);
+                .setHeader(AUTHORIZATION.toStringHeader(), "Bearer mnop")
+                .applyingAssertions(a -> a.assertResponseCode(INTERNAL_SERVER_ERROR.code()))
+                .assertAllSucceeded();
+    }
 
+    @Test
+    @Timeout(TIMEOUT)
+    public void testMalformedAuthHeader(HttpHarness harn) throws Exception {
         harn.get("/authit")
-                .addHeader(AUTHORIZATION.toStringHeader(), "Gwerb")
-                .go()
-                .await()
-                .assertStatus(UNAUTHORIZED);
+                .setHeader(AUTHORIZATION.toStringHeader(), "Gwerb")
+                .applyingAssertions(a -> a.assertResponseCode(UNAUTHORIZED.code()))
+                .assertAllSucceeded();
+    }
 
+    @Test
+    @Timeout(TIMEOUT)
+    public void testNoAuthHeader(HttpHarness harn) throws Exception {
         harn.get("/authit")
-                .setTimeout(DUR)
-                .go()
-                .await()
-                .assertStatus(UNAUTHORIZED);
+                .applyingAssertions(
+                        a -> a.assertResponseCode(UNAUTHORIZED.code()).assertBody("No auth header present")
+                ).assertAllSucceeded();
+    }
 
+    @Test
+    @Timeout(TIMEOUT)
+    public void testOptionalAuthWithHeader(HttpHarness harn) throws Exception {
         harn.get("/maybe")
-                .addHeader(AUTHORIZATION.toStringHeader(), "Bearer abcd")
-                .setTimeout(DUR)
-                .go()
-                .await()
-                .assertStatus(OK)
-                .assertContent("Goodbye Moe");
+                .setHeader(AUTHORIZATION.toStringHeader(), "Bearer abcd")
+                .applyingAssertions(
+                        a -> a.assertOk().assertBody("Goodbye Moe")
+                ).assertAllSucceeded();
+    }
 
+    @Test
+    @Timeout(TIMEOUT)
+    public void testOptionalAuthSansHeader(HttpHarness harn) throws Exception {
         harn.get("/maybe")
-                .addHeader(AUTHORIZATION.toStringHeader(), "Bearer efgh")
-                .setTimeout(DUR)
-                .go()
-                .await()
-                .assertStatus(OK)
-                .assertContent("Goodbye Curly");
+                .applyingAssertions(a -> a.assertOk().assertBody("Goodbye Nobody"))
+                .assertAllSucceeded();
+    }
 
-        harn.get("/maybe")
-                .setTimeout(DUR)
-                .go()
-                .await()
-                .assertStatus(OK)
-                .assertContent("Goodbye Nobody");
+    @Test
+    @Timeout(TIMEOUT)
+    public void testResponseExceptionIsProcessedToResponseCode(HttpHarness harn) throws Exception {
+        harn.get("/authit")
+                .setHeader(AUTHORIZATION.toStringHeader(), "Bearer qrst")
+                .applyingAssertions(a -> a
+                .assertResponseCode(PAYMENT_REQUIRED.code())
+                .assertBody("{\"error\":\"Gimme money, that's what I want.\"}"))
+                .assertAllSucceeded();
     }
 
     static final class AuthTestModule extends AbstractModule {
@@ -178,10 +186,16 @@ public class AsyncAuthenticationModuleTest {
             if (header == null) {
                 return "No auth header";
             }
-            if ("abcd".equals(token) || "efgh".equals(token) || "ijkl".equals(token) || "mnop".equals(token)) {
-                return null;
+            switch (token) {
+                case "abcd":
+                case "efgh":
+                case "ijkl":
+                case "mnop":
+                case "qrst":
+                    return null;
+                default:
+                    return "Unknown user";
             }
-            return "Unknown user";
         }
 
         @Override
@@ -194,16 +208,39 @@ public class AsyncAuthenticationModuleTest {
             EnhCompletableFuture<AuthenticationResult<FakeUser>> result = new EnhCompletableFuture<>();
             svc.submit(() -> {
                 AuthenticationResult<FakeUser> res;
-                if ("abcd".equals(token) || "efgh".equals(token)) {
-                    res = new AuthenticationResult<>(new FakeUser("abcd".equals(token) ? "Moe" : "Curly"), token);
-                } else {
-                    if ("mnop".equals(token)) {
-                        result.completeExceptionally(new RuntimeException("Complete auth exceptionally"));
-                        return;
-                    }
+                if (token == null) {
                     res = new AuthenticationResult<>(null, EXPECTATION_FAILED, "You are bad.", token);
+                } else {
+                    switch (token) {
+                        case "abcd":
+                            res = new AuthenticationResult<>(new FakeUser("Moe"), token);
+                            break;
+                        case "efgh":
+                            res = new AuthenticationResult<>(new FakeUser("Curly"), token);
+                            break;
+                        case "mnop":
+                            result.completeExceptionally(new RuntimeException("Complete auth exceptionally"));
+                            return;
+                        case "qrst":
+                            result.completeExceptionally(new ResponseException(PAYMENT_REQUIRED, "Gimme money, that's what I want."));
+                            return;
+                        default:
+                            res = new AuthenticationResult<>(null, EXPECTATION_FAILED, "You are bad.", token);
+                            break;
+                    }
+                    result.complete(res);
                 }
-                result.complete(res);
+
+//                if ("abcd".equals(token) || "efgh".equals(token)) {
+//                    res = new AuthenticationResult<>(new FakeUser("abcd".equals(token) ? "Moe" : "Curly"), token);
+//                } else {
+//                    if ("mnop".equals(token)) {
+//                        result.completeExceptionally(new RuntimeException("Complete auth exceptionally"));
+//                        return;
+//                    }
+//                    res = new AuthenticationResult<>(null, EXPECTATION_FAILED, "You are bad.", token);
+//                }
+//                result.complete(res);
             });
             return result;
         }

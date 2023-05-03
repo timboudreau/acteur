@@ -43,11 +43,11 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 import java.lang.annotation.Target;
 import java.util.List;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import org.junit.Before;
-import org.junit.Test;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 /**
  *
@@ -69,7 +69,7 @@ public class PagePathAndMethodFilterTest {
         filter.add(new PageWithDecode());
         List<Object> l = filter.listFor(get("/"));
         assertNotNull(l);
-        assertTrue(Strings.join(',', l), l.isEmpty());
+        assertTrue(l.isEmpty(), Strings.join(',', l));
 
         l = filter.listFor(get("api/v3/foo"));
         assertOne(l, PageWithInstanceActeurs.class);
@@ -152,7 +152,7 @@ public class PagePathAndMethodFilterTest {
         assertNotNull(l);
         assertFalse(l.isEmpty());
         assertEquals(Strings.join(',', l), 1, l.size());
-        assertTrue(l.iterator().next() + "", type.isInstance(l.iterator().next()) || type == l.iterator().next());
+        assertTrue(type.isInstance(l.iterator().next()) || type == l.iterator().next(), l.iterator().next() + "");
         return l.iterator().next();
     }
 
@@ -209,7 +209,7 @@ public class PagePathAndMethodFilterTest {
 
     }
 
-    @Before
+    @BeforeEach
     @SuppressWarnings("unchecked")
     public void setup() {
         for (Class<?> c : classes) {
@@ -228,15 +228,15 @@ public class PagePathAndMethodFilterTest {
                 Method mth = pg.getAnnotation(Methods.class).value()[0];
                 for (String uri : shoulds.value()) {
                     HttpRequest req = req(mth, uri);
-                    assertTrue(mth + " " + uri + " should be matched but isn't", pgs.match(req));
+                    assertTrue(pgs.match(req), mth + " " + uri + " should be matched but isn't");
                 }
             }
-            ShouldNotMatch shouldntss = pg.getAnnotation(ShouldNotMatch.class);
-            if (shouldntss != null) {
+            ShouldNotMatch shouldnts = pg.getAnnotation(ShouldNotMatch.class);
+            if (shouldnts != null) {
                 Method mth = pg.getAnnotation(Methods.class).value()[0];
-                for (String uri : shouldntss.value()) {
+                for (String uri : shouldnts.value()) {
                     HttpRequest req = req(mth, uri);
-                    assertFalse(mth + " " + uri + " should be matched but isn't", pgs.match(req));
+                    assertFalse(pgs.match(req), mth + " " + uri + " should be matched but isn't");
                 }
             }
         }

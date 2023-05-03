@@ -27,12 +27,17 @@ import com.mastfrog.acteur.util.Realm;
 import com.mastfrog.util.preconditions.Checks;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.util.AsciiString;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  *
  * @author Tim Boudreau
  */
 final class AuthHeader extends AbstractHeader<Realm> {
+
+    private static final Pattern BASIC_PATTERN = Pattern.compile("realm=\"?(.*?)\"?$", Pattern.CASE_INSENSITIVE);
+    private static final Pattern BEARER_PATTERN = Pattern.compile("bearer\\s+(.*)\\s*$", Pattern.CASE_INSENSITIVE);
 
     AuthHeader() {
         super(Realm.class, HttpHeaderNames.WWW_AUTHENTICATE);
@@ -47,6 +52,15 @@ final class AuthHeader extends AbstractHeader<Realm> {
     @Override
     public Realm toValue(CharSequence value) {
         Checks.notNull("value", value);
+        Matcher m = BASIC_PATTERN.matcher(value);
+        if (m.find()) {
+            return Realm.createSimple(m.group(1));
+        } else {
+            m = BEARER_PATTERN.matcher(value);
+            if (m.find()) {
+                return Realm.createSimple(m.group(1));
+            }
+        }
         return Realm.createSimple(value);
     }
 

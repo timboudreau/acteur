@@ -26,47 +26,43 @@ package com.mastfrog.acteur;
 import com.google.inject.Inject;
 import com.mastfrog.acteur.errors.Err;
 import com.mastfrog.acteur.errors.ResponseException;
-import com.mastfrog.acteur.headers.Headers;
 import static com.mastfrog.acteur.headers.Method.GET;
 import com.mastfrog.acteur.server.ServerModule;
-import com.mastfrog.giulius.tests.GuiceRunner;
 import com.mastfrog.giulius.tests.anno.TestWith;
-import com.mastfrog.netty.http.test.harness.TestHarness;
-import com.mastfrog.netty.http.test.harness.TestHarnessModule;
+import com.mastfrog.http.test.harness.acteur.HttpHarness;
+import com.mastfrog.http.test.harness.acteur.HttpTestHarnessModule;
 import io.netty.handler.codec.http.HttpResponseStatus;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import static java.util.concurrent.TimeUnit.MINUTES;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 /**
  *
  * @author Tim Boudreau
  */
-@RunWith(GuiceRunner.class)
-@TestWith({TestHarnessModule.class, ErrTest.M.class, SilentRequestLogger.class})
+@TestWith({HttpTestHarnessModule.class, ErrTest.M.class, SilentRequestLogger.class})
 public class ErrTest {
 
-    @Test(timeout = 60000)
-    public void testHeadersPropagateViaErr(TestHarness harn) throws Throwable {
-        String ct = harn.get("errant").go()
-                .await()
-                .assertCode(503)
-                .assertHeader(Headers.header("x-fwee"), "foober")
-                .content();
-        assertNotNull(ct);
-        assertEquals("{\"error\":\"Glorg\",\"whatever\":\"hey\"}", ct.trim());
+    @Timeout(value = 1, unit = MINUTES)
+    @Test
+    public void testHeadersPropagateViaErr(HttpHarness harn) throws Throwable {
+        harn.get("errant")
+                .applyingAssertions(
+                        a -> a.assertResponseCode(503)
+                                .assertBody("{\"error\":\"Glorg\",\"whatever\":\"hey\"}")
+                                .assertHeaderEquals("x-fwee", "foober"))
+                .assertAllSucceeded();
     }
 
-    @Test(timeout = 60000)
-    public void testHeadersPropagateViaThrow(TestHarness harn) throws Throwable {
-        String ct = harn.get("throw").go()
-                .await()
-                .assertCode(502)
-                .assertHeader(Headers.header("hork"), "snorg")
-                .content();
-        assertNotNull(ct);
-        assertEquals("{\"error\":\"Woovle\"}", ct);
+    @Timeout(value = 1, unit = MINUTES)
+    @Test
+    public void testHeadersPropagateViaThrow(HttpHarness harn) throws Throwable {
+        harn.get("throw")
+                .applyingAssertions(
+                        a -> a.assertResponseCode(502)
+                                .assertHeaderEquals("hork", "snorg")
+                                .assertBody("{\"error\":\"Woovle\"}"))
+                .assertAllSucceeded();
     }
 
     static class ErrApp extends Application {
@@ -80,7 +76,6 @@ public class ErrTest {
     static class ErrPage extends Page {
 
         @Inject
-        @SuppressWarnings("deprecation")
         ErrPage(ActeurFactory f) {
             add(f.matchMethods(GET));
             add(f.matchPath("^errant$"));
@@ -91,7 +86,6 @@ public class ErrTest {
     static class ErrPage2 extends Page {
 
         @Inject
-        @SuppressWarnings("deprecation")
         ErrPage2(ActeurFactory f) {
             add(f.matchMethods(GET));
             add(f.matchPath("^throw$"));

@@ -2,7 +2,6 @@ package com.mastfrog.acteur;
 
 import com.google.inject.name.Names;
 import com.mastfrog.settings.Settings;
-import com.mastfrog.giulius.tests.GuiceTest;
 import com.mastfrog.giulius.tests.anno.TestWith;
 import com.mastfrog.acteur.AppTest.M;
 import com.mastfrog.acteur.server.PathFactory;
@@ -12,11 +11,11 @@ import com.mastfrog.url.URL;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.concurrent.ThreadFactory;
-import static org.junit.Assert.*;
-import org.junit.Test;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import org.junit.jupiter.api.Test;
 
 @TestWith({M.class})
-public class PathFactoryTest extends GuiceTest {
+public class PathFactoryTest {
 
     static class M extends ServerModule<A> {
 

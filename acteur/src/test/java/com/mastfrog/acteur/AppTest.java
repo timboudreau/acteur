@@ -20,7 +20,6 @@ import static com.mastfrog.acteur.server.ServerModule.DELAY_EXECUTOR;
 import com.mastfrog.acteur.util.RequestID;
 import com.mastfrog.giulius.InjectionInfo;
 import com.mastfrog.giulius.scope.ReentrantScope;
-import com.mastfrog.giulius.tests.GuiceRunner;
 import com.mastfrog.giulius.tests.anno.TestWith;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.util.codec.Codec;
@@ -44,15 +43,14 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
-import static org.junit.Assert.*;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
+import org.junit.jupiter.api.Test;
 
-@RunWith(GuiceRunner.class)
 @TestWith({M.class, SilentRequestLogger.class})
 public class AppTest {
-
-    static ReentrantScope scope = new ReentrantScope(new InjectionInfo());
 
     static class M extends AbstractModule {
 
@@ -116,7 +114,7 @@ public class AppTest {
     @Test
     public void testApp(Application app, PathFactory paths, ReentrantScope scope, Settings settings) throws IOException, InterruptedException, Exception {
         assertTrue(app instanceof App);
-        assertTrue("App has no pages", app.iterator().hasNext());
+        assertTrue(app.iterator().hasNext(), "App has no pages");
         Page page = app.iterator().next();
         assertNotNull(page);
     }
