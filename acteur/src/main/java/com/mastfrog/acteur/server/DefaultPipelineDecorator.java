@@ -34,7 +34,7 @@ import javax.inject.Inject;
 class DefaultPipelineDecorator implements PipelineDecorator {
 
     @Inject
-    public DefaultPipelineDecorator() {
+     DefaultPipelineDecorator() {
         // constructor for Graal's native-image code to detect
     }
 

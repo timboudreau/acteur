@@ -6,7 +6,7 @@ import com.mastfrog.acteur.Page;
  *
  * @author Tim Boudreau
  */
-@HttpCall(order=2000)
+@HttpCall(order=2_000)
 public class AnotherPage extends Page {
 
 }

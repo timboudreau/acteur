@@ -1,25 +1,23 @@
 package com.mastfrog.acteur;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import static com.mastfrog.acteur.headers.Headers.CONTENT_TYPE;
 import com.mastfrog.giulius.tests.anno.TestWith;
 import com.mastfrog.http.test.harness.acteur.HttpHarness;
 import com.mastfrog.http.test.harness.acteur.HttpTestHarnessModule;
+import static com.mastfrog.mime.MimeType.PLAIN_TEXT_UTF_8;
+import static com.mastfrog.util.collections.CollectionUtils.setOf;
 import com.mastfrog.util.collections.StringObjectMap;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.Timeout;
-
+import static io.netty.handler.codec.http.HttpResponseStatus.PAYMENT_REQUIRED;
+import static io.netty.util.CharsetUtil.UTF_8;
 import java.net.http.HttpResponse;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Predicate;
-
-import static com.mastfrog.acteur.headers.Headers.CONTENT_TYPE;
-import static com.mastfrog.mime.MimeType.PLAIN_TEXT_UTF_8;
-import static com.mastfrog.util.collections.CollectionUtils.setOf;
-import static io.netty.handler.codec.http.HttpResponseStatus.PAYMENT_REQUIRED;
-import static io.netty.util.CharsetUtil.UTF_8;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 /**
  *

@@ -239,6 +239,7 @@ public class Application implements Iterable<Page> {
             }
         }
 
+        @Override
         public ChannelFuture logFailure(ChannelFuture future) {
             Checks.notNull("future", future).addListener(Application.this.errorLoggingListener);
             return future;
@@ -618,7 +619,7 @@ public class Application implements Iterable<Page> {
 
         private final HttpResponse resp;
 
-        public NotFoundResponseWrapper(HttpResponse resp) {
+        NotFoundResponseWrapper(HttpResponse resp) {
             this.resp = resp;
         }
 

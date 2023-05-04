@@ -44,7 +44,6 @@ import io.netty.util.AsciiString;
 import static java.lang.System.currentTimeMillis;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
@@ -184,10 +183,12 @@ class DefaultPathFactory implements PathFactory {
         return constructURL(protocol, path, secure);
     }
 
+    @Override
     public URL constructURL(Protocol protocol, Path path, boolean secure) {
         return constructURL(protocol, path, secure ? securePort : port);
     }
 
+    @Override
     public URL constructURL(Protocol protocol, Path path, int port) {
         Checks.nonNegative("port", port);
         if (basePath().size() > 0) {
@@ -328,7 +329,7 @@ class DefaultPathFactory implements PathFactory {
         private long touched = currentTimeMillis();
         private final Path path;
 
-        public PathCacheEntry(Path path) {
+        PathCacheEntry(Path path) {
             this.path = path;
         }
 

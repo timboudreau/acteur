@@ -27,10 +27,8 @@ import com.mastfrog.acteur.headers.HeaderValueType;
 import com.mastfrog.acteur.request.HttpProtocolRequest;
 import com.mastfrog.acteur.util.HttpMethod;
 import com.mastfrog.url.Path;
-import com.mastfrog.util.preconditions.Exceptions;
 import io.netty.handler.codec.http.HttpRequest;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -142,8 +140,8 @@ public interface HttpEvent extends Event<HttpRequest>, HttpProtocolRequest {
     <T> T urlParametersAs(Class<T> type);
 
     /**
-     * Get the request body as a string, in the encoding specified by
-     * the request's content-type header, or UTF-8 if none.
+     * Get the request body as a string, in the encoding specified by the
+     * request's content-type header, or UTF-8 if none.
      *
      * @return A string
      * @throws IOException If something goes wrong decoding the body
@@ -153,21 +151,22 @@ public interface HttpEvent extends Event<HttpRequest>, HttpProtocolRequest {
 
     /**
      * Determine if this request's connection header requests leaving the
-     * connection open.  This method is used by the framework to decide what to
-     * do at the end of sending a response.  It can also be used with the settings
-     * value "neverKeepAlive" to disable any keep-alive behavior within the
-     * application.  In particular, unlike Netty's utility methods, this method
-     * defaults to <code>false</code> if no <code>Connection</code> header is
-     * present.
+     * connection open. This method is used by the framework to decide what to
+     * do at the end of sending a response. It can also be used with the
+     * settings value "neverKeepAlive" to disable any keep-alive behavior within
+     * the application. In particular, unlike Netty's utility methods, this
+     * method defaults to <code>false</code> if no <code>Connection</code>
+     * header is present.
      *
      * @return True if the connection should be kept alive after the conclusion
      * of responding to this request.
      * @since 2.0.0
      */
     boolean requestsConnectionStayOpen();
-    
+
     /**
      * Determine if this event was over an encrypted connection.
+     *
      * @return True if it was encrypted
      * @since 2.0.0
      */

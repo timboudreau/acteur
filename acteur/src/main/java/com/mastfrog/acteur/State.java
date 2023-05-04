@@ -26,10 +26,11 @@ package com.mastfrog.acteur;
 import com.mastfrog.acteurbase.ActeurState;
 
 /**
- * The output condition of an {@link Acteur}.  An acteur must either set its state
- * in its constructor, or override getState().  As of 1.6, Acteur has methods such
- * as <code>next()</code>, <code>reject()</code>, <code>reply()</code> that will
- * create one of these under-the=hood, so directly using this class is rare.
+ * The output condition of an {@link Acteur}. An acteur must either set its
+ * state in its constructor, or override getState(). As of 1.6, Acteur has
+ * methods such as <code>next()</code>, <code>reject()</code>,
+ * <code>reply()</code> that will create one of these under-the=hood, so
+ * directly using this class is rare.
  */
 public abstract class State extends ActeurState<Response, ResponseImpl> {
 
@@ -54,20 +55,6 @@ public abstract class State extends ActeurState<Response, ResponseImpl> {
     @Override
     public boolean isRejected() {
         return super.isRejected();
-    }
-
-    /**
-     * Returns whether the event processing has to be stopped after the
-     * processing by the chain the acteur producing this state belongs to - the
-     * request will not be processed by other "page" chains if this one rejects
-     * it.
-     *
-     * @return true if locked in chain
-     * @deprecated no longer used
-     */
-    @Deprecated
-    protected boolean isLockedInChain() {
-        return !isRejected();
     }
 
     /**

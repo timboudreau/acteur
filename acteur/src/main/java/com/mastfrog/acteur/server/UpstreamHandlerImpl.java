@@ -110,6 +110,7 @@ final class UpstreamHandlerImpl extends ChannelInboundHandlerAdapter {
         application.onEvent(evt, ctx.channel());
     }
 
+    @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
         if (msg instanceof HttpRequest) {
             final HttpRequest request = (HttpRequest) msg;

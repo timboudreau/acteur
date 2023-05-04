@@ -43,7 +43,6 @@ import com.mastfrog.http.test.harness.acteur.HttpHarness;
 import com.mastfrog.http.test.harness.acteur.HttpTestHarnessModule;
 import com.mastfrog.mime.MimeType;
 import com.mastfrog.util.function.EnhCompletableFuture;
-
 import static io.netty.handler.codec.http.HttpResponseStatus.CREATED;
 import static io.netty.handler.codec.http.HttpResponseStatus.NON_AUTHORITATIVE_INFORMATION;
 import io.netty.util.concurrent.FastThreadLocalThread;
@@ -310,7 +309,7 @@ public final class DeferralStyleTest {
 
     static class Thingamabob extends RuntimeException {
 
-        public Thingamabob(String message) {
+        Thingamabob(String message) {
             super(message);
         }
     }

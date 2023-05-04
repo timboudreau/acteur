@@ -289,7 +289,7 @@ public final class ServerBuilder {
             db.withShutdownHookExecutorAwaitDuration(Duration.ofMinutes(1));
         }
 
-        db.enableOnlyBindingsFor(settingsBindings.toArray(new SettingsBindings[settingsBindings.size()]));
+        db.enableOnlyBindingsFor(settingsBindings.toArray(SettingsBindings[]::new));
         db.add(settings, namespace);
         db.add(settings, DEFAULT_NAMESPACE);
         for (Module m : modules) {
@@ -321,7 +321,7 @@ public final class ServerBuilder {
 
     static class CorsAndHelpModule extends GenericApplicationSettings implements Module {
 
-        public CorsAndHelpModule(boolean corsEnabled, boolean helpEnabled) {
+        CorsAndHelpModule(boolean corsEnabled, boolean helpEnabled) {
             super(corsEnabled, helpEnabled);
         }
 
@@ -335,7 +335,7 @@ public final class ServerBuilder {
 
         private final SslContext ctx;
 
-        public SslConfigImpl(SslContext ctx) {
+        SslConfigImpl(SslContext ctx) {
             this.ctx = ctx;
         }
 
@@ -359,13 +359,14 @@ public final class ServerBuilder {
         @Override
         protected void configure() {
             super.configure();
-            Class<?>[] types = toBind.toArray(new Class<?>[toBind.size()]);
+            Class<?>[] types = toBind.toArray(Class<?>[]::new);
             scope.bindTypes(binder(), types);
             if (ctx != null) {
                 bind(ActeurSslConfig.class).toInstance(new SslConfigImpl(ctx));
             }
         }
 
+        @Override
         public ReentrantScope scope() {
             return scope;
         }
@@ -386,13 +387,13 @@ public final class ServerBuilder {
         private final Set<Class<?>> toBind;
         private SslContext ctx;
 
-        public GS(ReentrantScope scope, Class<T> appType, Settings settings, Set<Class<?>> toBind, SslContext ctx) {
+        GS(ReentrantScope scope, Class<T> appType, Settings settings, Set<Class<?>> toBind, SslContext ctx) {
             super(scope, settings, appType, new Class<?>[0]);
             this.toBind = toBind;
             this.ctx = ctx;
         }
 
-        public GS(Settings settings, Set<Class<?>> toBind) {
+        GS(Settings settings, Set<Class<?>> toBind) {
             super(settings);
             this.toBind = toBind;
         }
@@ -400,13 +401,14 @@ public final class ServerBuilder {
         @Override
         protected void configure() {
             super.configure();
-            Class<?>[] types = toBind.toArray(new Class<?>[toBind.size()]);
+            Class<?>[] types = toBind.toArray(Class<?>[]::new);
             scope.bindTypes(binder(), types);
             if (ctx != null) {
                 bind(ActeurSslConfig.class).toInstance(new SslConfigImpl(ctx));
             }
         }
 
+        @Override
         public ReentrantScope scope() {
             return scope;
         }

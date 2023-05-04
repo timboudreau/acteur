@@ -50,6 +50,7 @@ final class JsonArrayFormatting implements ArrayFormatting {
         return "512:OK:[,]";
     }
 
+    @Override
     public boolean equals(Object o) {
         if (o == null || !(o instanceof ArrayFormatting)) {
             return false;
@@ -57,6 +58,7 @@ final class JsonArrayFormatting implements ArrayFormatting {
         return GeneralArrayFormatting.equal(this, (ArrayFormatting) o);
     }
 
+    @Override
     public int hashCode() {
         return GeneralArrayFormatting.hash(this);
     }

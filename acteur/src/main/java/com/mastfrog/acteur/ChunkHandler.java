@@ -78,14 +78,14 @@ public abstract class ChunkHandler extends SimpleChannelInboundHandler<Object> {
     }
 
     /**
-     * Called with each chunk of content as it arrives.  Once the final content is processed and you want
-     * to send the response, call resume() with any objects you want to add for injection into susbsequent
-     * acteurs.
+     * Called with each chunk of content as it arrives. Once the final content
+     * is processed and you want to send the response, call resume() with any
+     * objects you want to add for injection into susbsequent acteurs.
      *
      * @param ctx The context
      * @param chunk The chunk
-     * @param trailersOrHeaders Trailers in the case of a LastHttpContent, headers in the case of a FullHttpRequest (non
-     * chunked)
+     * @param trailersOrHeaders Trailers in the case of a LastHttpContent,
+     * headers in the case of a FullHttpRequest (non chunked)
      * @param done If this is the last one
      * @throws Exception If something goes wrong
      */

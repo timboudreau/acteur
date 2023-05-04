@@ -124,14 +124,17 @@ public interface SimpleUser<IdType> {
             return displayName == null ? name : displayName;
         }
 
+        @Override
         public final boolean equals(Object o) {
             return o instanceof SimpleUser && id.equals(((SimpleUser) o).id());
         }
 
+        @Override
         public final int hashCode() {
             return Objects.hashCode(id);
         }
 
+        @Override
         public String toString() {
             return name + " (" + id + ")";
         }

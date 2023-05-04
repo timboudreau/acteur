@@ -23,6 +23,7 @@
  */
 package com.mastfrog.acteur;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.google.inject.Singleton;
@@ -34,10 +35,10 @@ import com.mastfrog.acteur.annotations.Precursors;
 import com.mastfrog.acteur.preconditions.Description;
 import com.mastfrog.acteur.preconditions.Example;
 import com.mastfrog.acteur.preconditions.Examples;
+import static com.mastfrog.util.collections.CollectionUtils.toList;
 import static com.mastfrog.util.preconditions.Checks.notNull;
 import com.mastfrog.util.preconditions.Exceptions;
 import com.mastfrog.util.strings.Strings;
-import static com.mastfrog.util.collections.CollectionUtils.toList;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -302,7 +303,7 @@ public final class HelpGenerator {
                     .enable(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS);
             return "<pre>" + mapper.writeValueAsString(o)
                     .replace("\"", "&quot;") + "</pre>";
-        } catch (Exception e) {
+        } catch (JsonProcessingException | IllegalAccessException | IllegalArgumentException | NoSuchFieldException | SecurityException e) {
             return "Could not lookup and generate JSON from " + type.getName() + "." + field + ": "
                     + e;
         }

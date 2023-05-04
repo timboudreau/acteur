@@ -4,7 +4,6 @@ import com.google.inject.AbstractModule;
 import com.google.inject.ConfigurationException;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
-import com.mastfrog.acteur.ActeurFactory.Test;
 import com.mastfrog.acteur.errors.Err;
 import com.mastfrog.acteur.errors.ErrorRenderer;
 import com.mastfrog.acteur.errors.ErrorResponse;

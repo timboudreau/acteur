@@ -46,16 +46,15 @@ import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_CORS_ALLOW_HE
 import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_CORS_MAX_AGE_MINUTES;
 import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_CORS_REPLACE_ALLOW_HEADERS;
 import com.mastfrog.settings.Settings;
-import com.mastfrog.util.strings.Strings;
 import com.mastfrog.util.collections.CollectionUtils;
 import static com.mastfrog.util.collections.CollectionUtils.setOf;
+import com.mastfrog.util.strings.Strings;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.util.AsciiString;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;

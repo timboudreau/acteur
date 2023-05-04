@@ -14,7 +14,7 @@ import com.mastfrog.acteur.preconditions.PathRegex;
  *
  * @author Tim Boudreau
  */
-@HttpCall(order = 30000, scopeTypes = {Foo.class, Bar.class})
+@HttpCall(order = 30_000, scopeTypes = {Foo.class, Bar.class})
 @PathRegex("^foo\\/bar$")
 @Methods({GET, Method.DELETE})
 @Precursors({Fooble.class, Barble.class})

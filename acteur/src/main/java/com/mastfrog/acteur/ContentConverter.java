@@ -156,9 +156,9 @@ public class ContentConverter {
         }
 
         /**
-         * Validate the contents of a bytebuf without necessarily instantiating an object.
-         * Throw an exception of some known type (may want to install an ExceptionEvaluator to turn
-         * that into a meaningful response code).
+         * Validate the contents of a bytebuf without necessarily instantiating
+         * an object. Throw an exception of some known type (may want to install
+         * an ExceptionEvaluator to turn that into a meaningful response code).
          *
          * @param <T> The type
          * @param buf The buffer
@@ -170,17 +170,16 @@ public class ContentConverter {
         protected abstract <T> void validate(ByteBuf buf, MimeType mimeType, Class<T> type, Codec codec) throws Exception;
 
         /**
-         * Validate a map which will be further deserialized into an object of type T.
-         * Throw an exception of some known type (may want to install an ExceptionEvaluator to turn
-         * that into a meaningful response code).
+         * Validate a map which will be further deserialized into an object of
+         * type T. Throw an exception of some known type (may want to install an
+         * ExceptionEvaluator to turn that into a meaningful response code).
          *
          * @param <T> The type
          * @param type The type
          * @param map The map
          */
-        protected abstract <T> void validate(Class<T> type, Map<String,?> map);
+        protected abstract <T> void validate(Class<T> type, Map<String, ?> map);
     }
-
 
     protected <T> T readObject(ByteBuf buf, MimeType mimeType, Class<T> type) throws Exception {
         if (type == String.class || type == CharSequence.class) {
@@ -255,36 +254,36 @@ public class ContentConverter {
                 if (ret == Long.class && result == null) {
                     return null;
                 }
-                return Long.parseLong(result);
+                return Long.valueOf(result);
             } else if (ret == String.class || ret == CharSequence.class) {
                 return result;
             } else if (ret == Integer.TYPE || ret == Integer.class) {
                 if (ret == Integer.class && result == null) {
                     return null;
                 }
-                return Integer.parseInt(result);
+                return Integer.valueOf(result);
             } else if (ret == Double.TYPE || ret == Double.class || ret == Number.class) {
                 if (ret == Double.class && result == null) {
                     return null;
                 }
-                return Double.parseDouble(result);
+                return Double.valueOf(result);
             } else if (ret == Float.TYPE || ret == Float.class) {
                 if (ret == Float.class && result == null) {
                     return null;
                 }
-                return Float.parseFloat(result);
+                return Float.valueOf(result);
             } else if (ret == char[].class) {
                 return result.toCharArray();
             } else if (Byte.TYPE == ret || Byte.class == ret) {
                 if (ret == Byte.class && result == null) {
                     return null;
                 }
-                return Byte.parseByte(result);
+                return Byte.valueOf(result);
             } else if (Short.class == ret || Short.TYPE == ret) {
                 if (ret == Short.class && result == null) {
                     return null;
                 }
-                return Short.parseShort(result);
+                return Short.valueOf(result);
             } else if (ret == Boolean.TYPE || ret == Boolean.class) {
                 switch (result) {
                     case "0":

@@ -62,7 +62,6 @@ import static io.netty.util.CharsetUtil.UTF_8;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;
 import java.util.List;
 import java.util.Map;
@@ -210,7 +209,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
         return creationStackTrace;
     }
 
-    static class RT extends ActeurResponseFactory<Response, ResponseImpl> {
+    private static final class RT extends ActeurResponseFactory<Response, ResponseImpl> {
 
         @Override
         protected ResponseImpl create() {
@@ -470,7 +469,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
                     if (t != null) {
                         if (alreadyResumed.compareAndSet(false, true)) {
                             l.add(DeferredComputationResult.thrown(t));
-                            resumer.resume(l.toArray(new Object[l.size()]));
+                            resumer.resume(l.toArray(Object[]::new));
                         }
                     } else {
                         if (o != null) {
@@ -482,7 +481,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
                         }
                         if (count.incrementAndGet() == stages.length && alreadyResumed.compareAndSet(false, true)) {
                             l.add(DeferredComputationResult.empty());
-                            resumer.resume(l.toArray(new Object[l.size()]));
+                            resumer.resume(l.toArray(Object[]::new));
                         }
                     }
                 });
@@ -815,6 +814,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
             }
         }
 
+        @Override
         public Void call() throws Exception {
             // Instantiate the listener
             T listener = injector.getInstance(listenerType);
@@ -822,6 +822,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
             return null;
         }
 
+        @Override
         public String toString() {
             return "InstantiatingWrapper-" + listenerType.getName();
         }

@@ -86,7 +86,7 @@ final class SelfSignedSslConfig extends ActeurSslConfig {
     @Ordered(1)
     static class SuppressUnknownCAExceptions extends ExceptionEvaluator {
 
-        public SuppressUnknownCAExceptions(ExceptionEvaluatorRegistry registry) {
+        SuppressUnknownCAExceptions(ExceptionEvaluatorRegistry registry) {
             super(registry);
         }
 

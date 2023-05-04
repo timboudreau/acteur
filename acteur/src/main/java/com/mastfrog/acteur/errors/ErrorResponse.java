@@ -75,6 +75,7 @@ public interface ErrorResponse {
             return message;
         }
 
+        @Override
         public String toString() {
             return status + " " + message;
         }

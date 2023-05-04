@@ -103,8 +103,8 @@ public final class InputStreamActeurTest {
     static final byte[] BYTES;
 
     static {
-        Random rnd = new Random(89247284);
-        BYTES = new byte[2500];
+        Random rnd = new Random(89_247_284);
+        BYTES = new byte[2_500];
         rnd.nextBytes(BYTES);
     }
 }

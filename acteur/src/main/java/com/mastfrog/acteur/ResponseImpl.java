@@ -39,10 +39,10 @@ import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.giulius.scope.ReentrantScope;
 import com.mastfrog.marshallers.netty.NettyContentMarshallers;
 import com.mastfrog.mime.MimeType;
-import com.mastfrog.util.preconditions.Checks;
 import com.mastfrog.util.codec.Codec;
-import com.mastfrog.util.strings.Strings;
 import com.mastfrog.util.collections.CollectionUtils;
+import com.mastfrog.util.preconditions.Checks;
+import com.mastfrog.util.strings.Strings;
 import com.mastfrog.util.thread.ThreadLocalTransfer;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
@@ -278,7 +278,7 @@ final class ResponseImpl extends Response {
                 Method[] m = (Method[]) en.value;
                 all.addAll(Arrays.asList(m));
             }
-            value = (T) all.toArray(new Method[all.size()]);
+            value = (T) all.toArray(Method[]::new);
             e = new Entry<>(decorator, value);
         }
         headers.add(e);
@@ -358,6 +358,7 @@ final class ResponseImpl extends Response {
                     return w;
                 }
 
+                @Override
                 public String toString() {
                     return type.toString();
                 }
@@ -376,6 +377,7 @@ final class ResponseImpl extends Response {
             return actual.write(evt, out, iteration);
         }
 
+        @Override
         public String toString() {
             return "DynResponseWriter for " + resp.toString();
         }
@@ -814,7 +816,7 @@ final class ResponseImpl extends Response {
 
         private final ByteBuf buf;
 
-        public SendOneBuffer(ByteBuf buf) {
+        SendOneBuffer(ByteBuf buf) {
             this.buf = buf;
         }
 
@@ -869,65 +871,65 @@ final class ResponseImpl extends Response {
 
     private record Entry<T>(HeaderValueType<T> decorator, T value) {
 
-        private Entry {
+        private Entry  {
             Checks.notNull("decorator", decorator);
             Checks.notNull(decorator.name().toString(), value);
         }
 
-            public void decorate(HttpMessage msg) {
-                msg.headers().set(decorator.name(), value);
-            }
-
-            public boolean is(CharSequence name) {
-                return decorator.is(name);
-            }
-
-            public void write(HttpMessage msg) {
-                Headers.write(decorator, value, msg);
-            }
-
-            void write(HttpHeaders headers) {
-                Headers.write(decorator, value, headers);
-            }
-
-            public CharSequence stringValue() {
-                return decorator.toCharSequence(value);
-            }
-
-            @Override
-            public String toString() {
-                return decorator.name() + ": " + decorator.toCharSequence(value);
-            }
-
-            @Override
-            public int hashCode() {
-                return decorator.name().hashCode();
-            }
-
-            @Override
-            public boolean equals(Object o) {
-                return o instanceof Entry<?> && ((Entry<?>) o).decorator.name().equals(decorator.name());
-            }
-
-            @SuppressWarnings({"unchecked"})
-            public <R> HeaderValueType<R> match(HeaderValueType<R> decorator) {
-                if (this.decorator.equals(decorator)) { // Equality test is case-insensitive name match
-                    if (this.decorator.type() != decorator.type()) {
-                        if (debug) {
-                            System.err.println("Requesting header " + decorator + " of type " + decorator.type().getName()
-                                    + " but returning header of type " + this.decorator.type().getName() + " - if set, this"
-                                    + " will probably throw a ClassCastException.");
-                        }
-                    }
-                    return (HeaderValueType<R>) this.decorator;
-                }
-                if (this.decorator.name().equals(decorator.name())
-                        && this.decorator.type().equals(decorator.type())) {
-                    return decorator;
-                } else if (Strings.charSequencesEqual(this.decorator.name(), decorator.name(), true)) {
-
-                }
-                return null;
-            }
+        public void decorate(HttpMessage msg) {
+            msg.headers().set(decorator.name(), value);
         }
+
+        public boolean is(CharSequence name) {
+            return decorator.is(name);
+        }
+
+        public void write(HttpMessage msg) {
+            Headers.write(decorator, value, msg);
+        }
+
+        void write(HttpHeaders headers) {
+            Headers.write(decorator, value, headers);
+        }
+
+        public CharSequence stringValue() {
+            return decorator.toCharSequence(value);
+        }
+
+        @Override
+        public String toString() {
+            return decorator.name() + ": " + decorator.toCharSequence(value);
+        }
+
+        @Override
+        public int hashCode() {
+            return decorator.name().hashCode();
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            return o instanceof Entry<?> && ((Entry<?>) o).decorator.name().equals(decorator.name());
+        }
+
+        @SuppressWarnings({"unchecked"})
+        public <R> HeaderValueType<R> match(HeaderValueType<R> decorator) {
+            if (this.decorator.equals(decorator)) { // Equality test is case-insensitive name match
+                if (this.decorator.type() != decorator.type()) {
+                    if (debug) {
+                        System.err.println("Requesting header " + decorator + " of type " + decorator.type().getName()
+                                + " but returning header of type " + this.decorator.type().getName() + " - if set, this"
+                                + " will probably throw a ClassCastException.");
+                    }
+                }
+                return (HeaderValueType<R>) this.decorator;
+            }
+            if (this.decorator.name().equals(decorator.name())
+                    && this.decorator.type().equals(decorator.type())) {
+                return decorator;
+            } else if (Strings.charSequencesEqual(this.decorator.name(), decorator.name(), true)) {
+
+            }
+            return null;
+        }
+    }
 }

@@ -26,10 +26,10 @@ package com.mastfrog.acteur.annotations;
 import com.google.inject.Module;
 import com.mastfrog.acteur.Page;
 import com.mastfrog.parameters.gen.Origin;
-import com.mastfrog.util.preconditions.Exceptions;
-import com.mastfrog.util.streams.Streams;
 import com.mastfrog.util.collections.CollectionUtils;
 import com.mastfrog.util.collections.Converter;
+import com.mastfrog.util.preconditions.Exceptions;
+import com.mastfrog.util.streams.Streams;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
@@ -238,6 +238,7 @@ public final class HttpCallRegistryLoader implements Iterable<Class<? extends Pa
             return mine.compareTo(theirs);
         }
 
+        @Override
         public String toString() {
             return type.getSimpleName();
         }

@@ -111,7 +111,7 @@ public final class Closables {
 
         private final Channel channel;
 
-        public CloseWhenChannelCloses(Channel channel) {
+        CloseWhenChannelCloses(Channel channel) {
             this.channel = channel;
             channel.closeFuture().addListener(this);
         }
@@ -130,6 +130,7 @@ public final class Closables {
             close();
         }
 
+        @Override
         public String toString() {
             return "channel:" + channel.id();
         }
@@ -148,6 +149,7 @@ public final class Closables {
             run.run();
         }
 
+        @Override
         public String toString() {
             return run.toString();
         }

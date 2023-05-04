@@ -49,7 +49,6 @@ import com.mastfrog.mime.MimeType;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.url.Path;
 import com.mastfrog.util.collections.ArrayUtils;
-import com.mastfrog.util.collections.CollectionUtils;
 import static com.mastfrog.util.collections.CollectionUtils.convertedIterator;
 import static com.mastfrog.util.collections.CollectionUtils.toIterable;
 import com.mastfrog.util.collections.Converter;

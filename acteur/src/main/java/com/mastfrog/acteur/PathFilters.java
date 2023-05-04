@@ -209,18 +209,22 @@ abstract class PathFilters {
             this.earlyPageMatcher = earlyPageMatcher;
         }
 
+        @Override
         boolean isEarlyPageMatch(HttpRequest req) {
             return earlyPageMatcher != null && earlyPageMatcher.match(req);
         }
 
+        @Override
         PagePathAndMethodFilter normalPages() {
             return filter;
         }
 
+        @Override
         void addEarlyPage(Page page) {
             earlyPages().add(page);
         }
 
+        @Override
         void addEarlyPage(Class<? extends Page> page) {
             earlyPages().add(page);
         }

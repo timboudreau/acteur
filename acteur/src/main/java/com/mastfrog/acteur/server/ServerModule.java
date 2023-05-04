@@ -965,7 +965,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
         final NettyContentMarshallers marshallers;
 
         @Inject
-        public MarshallersProvider(ObjectMapper mapper) {
+         MarshallersProvider(ObjectMapper mapper) {
             marshallers = NettyContentMarshallers.getDefault(mapper);
         }
 
@@ -1055,7 +1055,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
     private static final class InvalidInputExceptionEvaluator extends ExceptionEvaluator {
 
         @Inject
-        public InvalidInputExceptionEvaluator(ExceptionEvaluatorRegistry registry) {
+         InvalidInputExceptionEvaluator(ExceptionEvaluatorRegistry registry) {
             super(registry);
         }
 
@@ -1110,7 +1110,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
         private final ApplicationControl control;
 
         @Inject
-        public ApplicationControlProvider(Provider<Application> app) throws NoSuchMethodException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
+         ApplicationControlProvider(Provider<Application> app) throws NoSuchMethodException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
             // In order to separate the API and SPI of Application, so Application
             // is not polluted with methods a subclasser should never call,
             // we do this:
@@ -1131,7 +1131,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
         private final Provider<ObjectMapper> mapper;
 
         @Inject
-        public CodecImpl(Provider<ObjectMapper> mapper) {
+         CodecImpl(Provider<ObjectMapper> mapper) {
             this.mapper = mapper;
         }
 
@@ -1244,7 +1244,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
         private final ByteBufAllocator allocator;
 
         @Inject
-        public ByteBufAllocatorProvider(Settings settings) {
+         ByteBufAllocatorProvider(Settings settings) {
             String s = settings.getString(BYTEBUF_ALLOCATOR_SETTINGS_KEY, DEFAULT_ALLOCATOR);
             boolean disableLeakDetector = settings.getBoolean(SETTINGS_KEY_DISABLE_LEAK_DETECTOR, DEFAULT_DISABLE_LEAK_DETECTOR);
             ByteBufAllocator result;
@@ -1284,7 +1284,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
         private final Provider<ByteBufAllocator> allocator;
         private final Provider<ServerBootstrapConfigurer> bootstrapConfigurer;
 
-        public ServerBootstrapProvider(Provider<Settings> settings, Provider<ByteBufAllocator> allocator, Provider<ServerBootstrapConfigurer> bootstrapConfigurer) {
+        ServerBootstrapProvider(Provider<Settings> settings, Provider<ByteBufAllocator> allocator, Provider<ServerBootstrapConfigurer> bootstrapConfigurer) {
             this.settings = settings;
             this.allocator = allocator;
             this.bootstrapConfigurer = bootstrapConfigurer;

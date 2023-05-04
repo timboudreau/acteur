@@ -60,8 +60,8 @@ public final class CheckIfUnmodifiedSinceHeader extends Acteur {
     @Override
     public void describeYourself(Map<String, Object> into) {
         into.put("Replies with a 304 Not-Modified status if the "
-        + "If-Modified-Since header in the current request matches the "
-        + "Last-Modified header already set on the current response", true);
+                + "If-Modified-Since header in the current request matches the "
+                + "Last-Modified header already set on the current response", true);
     }
 
 }

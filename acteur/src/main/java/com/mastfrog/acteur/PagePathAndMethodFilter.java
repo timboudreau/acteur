@@ -30,11 +30,10 @@ import static com.mastfrog.acteur.headers.Method.GET;
 import com.mastfrog.acteur.preconditions.Methods;
 import com.mastfrog.acteur.preconditions.Path;
 import com.mastfrog.acteur.preconditions.PathRegex;
-import com.mastfrog.util.strings.Strings;
 import com.mastfrog.util.collections.CollectionUtils;
 import com.mastfrog.util.strings.AlignedText;
+import com.mastfrog.util.strings.Strings;
 import io.netty.handler.codec.http.HttpRequest;
-
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
@@ -42,11 +41,10 @@ import java.util.function.Function;
 import java.util.regex.Pattern;
 
 /**
- * Pre-intercepts the method and path and, for pages that specify them,
- * trims down the set of Page classes that need to be run against a
- * request to only those that either specify nothing or could possibly
- * match the request, significantly reducing the work done to process an
- * invalid request.
+ * Pre-intercepts the method and path and, for pages that specify them, trims
+ * down the set of Page classes that need to be run against a request to only
+ * those that either specify nothing or could possibly match the request,
+ * significantly reducing the work done to process an invalid request.
  *
  * @author Tim Boudreau
  */
@@ -86,10 +84,11 @@ final class PagePathAndMethodFilter {
 
         private final BasePathFilterFunction f;
 
-        public DebugBasePathFilterFunction(BasePathFilterFunction f) {
+        DebugBasePathFilterFunction(BasePathFilterFunction f) {
             this.f = f;
         }
 
+        @Override
         public String apply(String t) {
             String result = f.apply(t);
             System.out.println("URI for '" + t + "' with base path '"
@@ -102,21 +101,21 @@ final class PagePathAndMethodFilter {
 
     record BasePathFilterFunction(String basePath) implements Function<String, String> {
 
-            BasePathFilterFunction(String basePath) {
-                this.basePath = '/' + trimLeadingAndTrailingSlashes(basePath);
-            }
-
-            @Override
-            public String apply(String t) {
-                if (basePath.equals(t) || (t.length() == basePath.length() + 1 && t.charAt(t.length() - 1) == '/')) {
-                    return "";
-                } else if (t.startsWith(basePath) && t.charAt(basePath.length()) == '/') {
-                    return t.substring(basePath.length() + 1);
-                }
-                return null;
-            }
-
+        BasePathFilterFunction(String basePath) {
+            this.basePath = '/' + trimLeadingAndTrailingSlashes(basePath);
         }
+
+        @Override
+        public String apply(String t) {
+            if (basePath.equals(t) || (t.length() == basePath.length() + 1 && t.charAt(t.length() - 1) == '/')) {
+                return "";
+            } else if (t.startsWith(basePath) && t.charAt(basePath.length()) == '/') {
+                return t.substring(basePath.length() + 1);
+            }
+            return null;
+        }
+
+    }
 
     static final class IdentityFunction implements Function<String, String> {
 
@@ -304,6 +303,7 @@ final class PagePathAndMethodFilter {
         private final Set<Pattern> decodePatterns = new HashSet<>();
         private final Set<String> decodeExacts = new HashSet<>();
 
+        @Override
         public String toString() {
             StringBuilder sb = new StringBuilder();
             sb.append("  exact: ").append(Strings.join(", ", exacts));
@@ -522,7 +522,7 @@ final class PagePathAndMethodFilter {
             this.path = path;
         }
 
-@Override
+        @Override
         public int hashCode() {
             if (hash != 0) {
                 return hash;
@@ -542,6 +542,7 @@ final class PagePathAndMethodFilter {
                     && ((MethodPath) obj).path.equals(path);
         }
 
+        @Override
         public String toString() {
             return method.name() + ":" + path;
         }

@@ -48,7 +48,7 @@ public abstract class ResponseWriter {
     public Status write(Event<?> evt, Output out, int iteration) throws Exception {
         return write(evt, out);
     }
-    
+
     public Status write(Event<?> evt, Output out) throws Exception {
         throw new UnsupportedOperationException("Must override one of the write() methods");
     }
@@ -60,8 +60,8 @@ public abstract class ResponseWriter {
          */
         NOT_DONE,
         /**
-         * Don't call the object returing this value back - it will take care
-         * of writing more output and closing the channel when done.
+         * Don't call the object returing this value back - it will take care of
+         * writing more output and closing the channel when done.
          */
         DEFERRED,
         DONE;
@@ -88,15 +88,15 @@ public abstract class ResponseWriter {
         Output write(ByteBuffer buf) throws IOException;
 
         Output write(ByteBuf buf) throws IOException;
-                
-        Output write(FileRegion region) throws IOException
-                ;
+
+        Output write(FileRegion region) throws IOException;
+
         Output write(HttpContent chunk) throws IOException;
 
         <T> Output trailer(HeaderValueType<T> type, T value);
-        
+
         Channel channel();
-        
+
         ChannelFuture future();
     }
 

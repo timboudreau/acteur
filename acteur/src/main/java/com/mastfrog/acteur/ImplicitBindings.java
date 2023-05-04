@@ -52,8 +52,9 @@ import java.lang.annotation.Target;
 public @interface ImplicitBindings {
 
     /**
-     * A list of types which Acteurs will pass in their state, which should
-     * be injectable into subsequent acteurs.
+     * A list of types which Acteurs will pass in their state, which should be
+     * injectable into subsequent acteurs.
+     *
      * @return The list of classes
      */
     Class<?>[] value();

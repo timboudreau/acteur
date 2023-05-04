@@ -147,6 +147,7 @@ final class ServerImpl implements Server {
         }
     }
 
+    @Override
     public ServerControl start() throws IOException {
         return start(this.port);
     }
@@ -203,6 +204,7 @@ final class ServerImpl implements Server {
             this.exitOnBindFailure = exitOnBindFailure;
         }
 
+        @Override
         public void shutdown(boolean immediately, long timeout, TimeUnit unit) throws InterruptedException {
             shutdown(timeout, unit, true);
         }

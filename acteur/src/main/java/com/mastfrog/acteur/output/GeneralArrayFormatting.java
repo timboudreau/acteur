@@ -39,7 +39,7 @@ class GeneralArrayFormatting implements ArrayFormatting {
     final int batchBytes;
     final HttpResponseStatus successStatus;
 
-    public GeneralArrayFormatting(String openingDelimiter, String closingDelimiter, String interItemDelimiter, int batchBytes, HttpResponseStatus successStatus) {
+    GeneralArrayFormatting(String openingDelimiter, String closingDelimiter, String interItemDelimiter, int batchBytes, HttpResponseStatus successStatus) {
         this.openingDelimiter = openingDelimiter;
         this.closingDelimiter = closingDelimiter;
         this.interItemDelimiter = interItemDelimiter;
@@ -72,6 +72,7 @@ class GeneralArrayFormatting implements ArrayFormatting {
         return successStatus;
     }
 
+    @Override
     public boolean equals(Object o) {
         if (o == null || !(o instanceof ArrayFormatting)) {
             return false;
@@ -79,10 +80,12 @@ class GeneralArrayFormatting implements ArrayFormatting {
         return equal(this, (ArrayFormatting) o);
     }
 
+    @Override
     public int hashCode() {
         return hash(this);
     }
 
+    @Override
     public String toString() {
         return stringify(this);
     }

@@ -12,4 +12,7 @@ public class EventImplFactory {
     public static Event newEvent(HttpRequest req, PathFactory paths) {
         return new EventImpl(req, paths);
     }
+
+    private EventImplFactory() {
+    }
 }

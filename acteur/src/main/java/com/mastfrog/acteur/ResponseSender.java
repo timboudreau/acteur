@@ -29,5 +29,6 @@ package com.mastfrog.acteur;
  * @author Tim Boudreau
  */
 interface ResponseSender extends Thread.UncaughtExceptionHandler {
+
     void receive(Acteur action, com.mastfrog.acteur.State state, ResponseImpl response);
 }

@@ -24,13 +24,13 @@
 package com.mastfrog.acteur;
 
 import com.google.inject.Singleton;
+import com.mastfrog.acteur.header.entities.CacheControl;
+import com.mastfrog.acteur.header.entities.CacheControlTypes;
 import static com.mastfrog.acteur.headers.Headers.CACHE_CONTROL;
 import static com.mastfrog.acteur.headers.Method.OPTIONS;
 import com.mastfrog.acteur.preconditions.Description;
 import com.mastfrog.acteur.preconditions.Methods;
 import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_CORS_CACHE_CONTROL_MAX_AGE;
-import com.mastfrog.acteur.header.entities.CacheControl;
-import com.mastfrog.acteur.header.entities.CacheControlTypes;
 import com.mastfrog.settings.Settings;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import java.time.Duration;

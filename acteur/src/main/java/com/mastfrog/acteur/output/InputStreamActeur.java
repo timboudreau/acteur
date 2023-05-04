@@ -37,8 +37,6 @@ import io.netty.channel.ChannelFutureListener;
 import io.netty.handler.codec.http.DefaultHttpContent;
 import io.netty.handler.codec.http.LastHttpContent;
 import java.io.InputStream;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.inject.Inject;
 
 /**

@@ -47,8 +47,8 @@ public class DefaultPathFactoryTest {
                 .add(ServerModule.SETTINGS_KEY_BASE_PATH, "/foo")
                 .add(ServerModule.SETTINGS_KEY_GENERATE_SECURE_URLS, "true")
                 .add(ServerModule.SETTINGS_KEY_URLS_HOST_NAME, "paths.example")
-                .add(ServerModule.SETTINGS_KEY_URLS_EXTERNAL_PORT, 5720)
-                .add(ServerModule.SETTINGS_KEY_URLS_EXTERNAL_SECURE_PORT, 5721)
+                .add(ServerModule.SETTINGS_KEY_URLS_EXTERNAL_PORT, 5_720)
+                .add(ServerModule.SETTINGS_KEY_URLS_EXTERNAL_SECURE_PORT, 5_721)
                 .build());
 
         URL url = f.constructURL("/hey/you");
@@ -68,7 +68,7 @@ public class DefaultPathFactoryTest {
         assertTrue(url.isValid());
 
         assertEquals("timboudreau.org", url.getHost().toString());
-        assertEquals(5223, url.getPort().intValue());
+        assertEquals(5_223, url.getPort().intValue());
         assertEquals(test2, url.toString(), test2 + "\tversus\n" + url);
 
         // Test that anchors survive
@@ -88,7 +88,7 @@ public class DefaultPathFactoryTest {
         assertEquals("/foo/should/be/insecure", url.getPath().toStringWithLeadingSlash());
         assertEquals(HTTP, url.getProtocol());
         assertEquals("paths.example", url.getHost().toString());
-        assertEquals(5720, url.getPort().intValue());
+        assertEquals(5_720, url.getPort().intValue());
 
     }
 

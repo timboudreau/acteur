@@ -102,6 +102,7 @@ public abstract class EventLoopFactory {
             workers = new NioEventLoopGroup(workerThreadCount.get(), workerThreadFactory);
         }
 
+        @Override
         protected ChannelFactory<? extends ServerChannel> channelFactory() {
             return new NioServerChannelFactory(debug);
         }

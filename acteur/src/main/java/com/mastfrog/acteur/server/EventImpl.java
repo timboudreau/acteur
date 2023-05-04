@@ -59,11 +59,9 @@ import java.net.SocketAddress;
 import java.util.ArrayList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.unmodifiableMap;
-
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
@@ -93,7 +91,7 @@ final class EventImpl implements HttpEvent {
         this.req = req;
         this.path = paths.toPath(req.uri());
         this.paths = paths;
-        address = new InetSocketAddress("timboudreau.com", 8985); //XXX for tests
+        address = new InetSocketAddress("timboudreau.com", 8_985); //XXX for tests
         this.channel = null;
         Codec codec = new ServerModule.CodecImpl(Providers.of(new ObjectMapper()));
         this.converter = new ContentConverter(codec, Providers.of(UTF_8), null);
@@ -129,6 +127,7 @@ final class EventImpl implements HttpEvent {
      *
      * @return A URL string
      */
+    @Override
     public String getRequestURL(boolean preferHeaders) {
         HttpEvent evt = this;
         String uri = evt.request().uri();
@@ -185,6 +184,7 @@ final class EventImpl implements HttpEvent {
         return this;
     }
 
+    @Override
     public boolean isSsl() {
         boolean result = ssl;
         if (!result) {
@@ -345,6 +345,7 @@ final class EventImpl implements HttpEvent {
                 .contains(CONNECTION, KEEP_ALIVE, true);
     }
 
+    @Override
     public <T> java.util.Optional<T> httpHeader(HeaderValueType<T> header) {
         return java.util.Optional.ofNullable(header(notNull("header", header)));
     }

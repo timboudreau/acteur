@@ -39,14 +39,14 @@ final class NioServerChannelFactory implements ChannelFactory<NioServerSocketCha
 
     private static final class DebugNioServerSocketChannel extends NioServerSocketChannel {
 
-        public DebugNioServerSocketChannel() {
+        DebugNioServerSocketChannel() {
         }
 
-        public DebugNioServerSocketChannel(SelectorProvider provider) {
+        DebugNioServerSocketChannel(SelectorProvider provider) {
             super( provider );
         }
 
-        public DebugNioServerSocketChannel(ServerSocketChannel channel) {
+        DebugNioServerSocketChannel(ServerSocketChannel channel) {
             super( channel );
         }
 

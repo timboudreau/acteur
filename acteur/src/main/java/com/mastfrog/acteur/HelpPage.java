@@ -119,6 +119,7 @@ final class HelpPage extends Page {
                     itemsForCategory.get(category).add(name);
                 }
 
+                @Override
                 public String toString() {
                     StringBuilder sb = new StringBuilder();
                     List<String> categories = new ArrayList<>(itemsForCategory.keySet());

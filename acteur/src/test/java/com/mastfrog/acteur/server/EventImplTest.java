@@ -1,7 +1,7 @@
 /*
  * The MIT License
  *
- * Copyright 2018 tim.
+ * Copyright 2018 Tim Boudreau.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -38,9 +38,6 @@ import io.netty.handler.codec.http.HttpVersion;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -65,7 +62,7 @@ public class EventImplTest {
         withExternalSecureHostOnOddPort = new DefaultPathFactory(new SettingsBuilder()
                 .add(SETTINGS_KEY_URLS_HOST_NAME, "puddle.com")
                 .add(ServerModule.SETTINGS_KEY_GENERATE_SECURE_URLS, true)
-                .add(ServerModule.SETTINGS_KEY_URLS_EXTERNAL_SECURE_PORT, 7443)
+                .add(ServerModule.SETTINGS_KEY_URLS_EXTERNAL_SECURE_PORT, 7_443)
                 .build());
     }
 

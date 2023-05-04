@@ -73,7 +73,7 @@ public class AsyncAuthenticationModule<AuthInfoType> extends AbstractModule {
         private final Provider<? extends AuthenticationResult<?>> resProvider;
 
         @Inject
-        public ParameterizedAuthProvider(Provider<? extends AuthenticationResult<?>> resProvider) {
+         ParameterizedAuthProvider(Provider<? extends AuthenticationResult<?>> resProvider) {
             this.resProvider = resProvider;
         }
 

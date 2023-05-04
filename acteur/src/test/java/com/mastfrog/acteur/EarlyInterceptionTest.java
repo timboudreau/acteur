@@ -138,7 +138,7 @@ public class EarlyInterceptionTest {
         private final Resumer resumer;
         final CompositeByteBuf buf;
 
-        public Bytes(Resumer resumer, ByteBufAllocator alloc) {
+        Bytes(Resumer resumer, ByteBufAllocator alloc) {
             super(HttpContent.class);
             this.resumer = resumer;
             buf = alloc.compositeBuffer();
@@ -205,15 +205,15 @@ public class EarlyInterceptionTest {
 
         @Override
         protected void configure() {
-            int startPort = 2000 + (1000 * new Random(System.currentTimeMillis()).nextInt(40));
-            System.setProperty(ServerModule.PORT, "" + new PortFinder(startPort, 65535, 1000).findAvailableServerPort());
+            int startPort = 2_000 + (1_000 * new Random(System.currentTimeMillis()).nextInt(40));
+            System.setProperty(ServerModule.PORT, "" + new PortFinder(startPort, 65_535, 1_000).findAvailableServerPort());
             install(new ServerModule<>(scope, EarlyInterceptionApplication.class, 2, 2, 1));
             scope.bindTypes(binder(), Bytes.class);
         }
     }
 
     public static void main(String[] args) throws IOException, InterruptedException {
-        Settings s = new SettingsBuilder().add("port", 5571).build();
+        Settings s = new SettingsBuilder().add("port", 5_571).build();
         Dependencies deps = new Dependencies(s, new IceptModule());
         deps.getInstance(Server.class).start().await();
     }

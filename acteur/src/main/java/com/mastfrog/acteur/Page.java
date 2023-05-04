@@ -134,7 +134,7 @@ public abstract class Page {
         final boolean knownExact;
         final Set<String> patterns;
 
-        public PathPatternInfo(boolean decode, boolean regex, Set<String> patterns, boolean knownExact) {
+        PathPatternInfo(boolean decode, boolean regex, Set<String> patterns, boolean knownExact) {
             this.decode = decode;
             this.regex = regex;
             this.patterns = patterns;
@@ -211,7 +211,7 @@ public abstract class Page {
             assert Application.checkConstructor(action);
         }
         if (FAILED.contains(action)) {
-            throw new IllegalArgumentException("Not a usable acteur class - " + action 
+            throw new IllegalArgumentException("Not a usable acteur class - " + action
                     + " see previous error");
         }
         acteurs.add(action);

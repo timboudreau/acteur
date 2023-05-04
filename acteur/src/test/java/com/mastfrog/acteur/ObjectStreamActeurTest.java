@@ -255,7 +255,7 @@ public class ObjectStreamActeurTest {
         public final String val;
 
         @JsonCreator
-        public Thing(@JsonProperty("num") int num, @JsonProperty("val") String val) {
+         Thing(@JsonProperty("num") int num, @JsonProperty("val") String val) {
             this.num = num;
             this.val = val;
         }
@@ -295,7 +295,7 @@ public class ObjectStreamActeurTest {
     static final List<Thing> THINGS = new ArrayList<>();
 
     static {
-        Random rnd = new Random(12345);
+        Random rnd = new Random(12_345);
         RandomStrings rs = new RandomStrings();
         for (int i = 0; i < 384; i++) {
             String s = rs.get(7);

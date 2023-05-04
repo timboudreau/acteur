@@ -88,7 +88,7 @@ public class WebSocketUpgradeActeur extends Acteur {
 
     @Setting(value = "Max bytes per websocket frame", type = Setting.ValueType.INTEGER, defaultValue = "5242880")
     public static final String SETTINGS_KEY_WEBSOCKET_FRAME_MAX_LENGTH = "websocket.frame.max.bytes";
-    public static final int DEFAULT_WEBSOCKET_FRAME_MAX_LENGTH = 5 * 1024 * 1024;
+    public static final int DEFAULT_WEBSOCKET_FRAME_MAX_LENGTH = 5 * 1_024 * 1_024;
 
     public static final AttributeKey<Supplier<? extends Chain<? extends Acteur, ?>>> CHAIN_KEY
             = AttributeKey.valueOf(WebSocketUpgradeActeur.class, "websocket");
@@ -135,7 +135,7 @@ public class WebSocketUpgradeActeur extends Acteur {
         List<Object> result = new LinkedList<>();
         populate(a, result);
         populate(b, result);
-        return result.toArray(new Object[0]);
+        return result.toArray(Object[]::new);
     }
 
     private static void populate(Object o, List<? super Object> into) {
