@@ -1,0 +1,28 @@
+<html>
+    <head>
+        <title>com.mastfrog.acteur.output</title>
+    </head>
+    <body>
+        <h1>com.mastfrog.acteur.output</h1>
+        <p>
+            This package contains classes for writing output from streams of various
+            sorts <i>scalably</i>, emitting data in small chunks so that a request cannot
+            pull very large amounts of data into memory.
+        </p><p>
+            For each case, an Acteur is provided which expects the stream-type (such as a
+            <code>Stream</code> or <code>InputStream</code>) to have been made available
+            in the request scope by a preceding <code>Acteur</code>, by calling <code>next(theStream)</code>.
+        </p><p>
+            The stream handling acteur will take care of batching output until all of the data
+            has been written (or the client has closed the connection) and will ensure the stream
+            gets closed when the connection does, if not sooner.
+        </p>
+        
+        <h2>Streams</h2>
+        <p>
+            If you have a <code>Stream</code>, do something like this example, which performs
+            a directory listing:
+        </p>
+
+    </body>
+</html>

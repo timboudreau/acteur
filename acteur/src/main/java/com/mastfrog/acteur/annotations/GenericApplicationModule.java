@@ -107,6 +107,7 @@ public class GenericApplicationModule<T extends GenericApplication> extends Serv
         this.exclude = exclude;
     }
 
+    @SuppressWarnings("deprecation")
     public static <T extends Module> T instantiateModule(Class<T> m, Settings settings, ReentrantScope scope) throws NoSuchMethodException, InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
         boolean log = settings.getBoolean("gamlog", false);
         try {

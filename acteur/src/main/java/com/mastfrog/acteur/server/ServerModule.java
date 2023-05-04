@@ -50,6 +50,7 @@ import com.mastfrog.acteur.headers.Headers;
 import static com.mastfrog.acteur.headers.Headers.COOKIE_B;
 import static com.mastfrog.acteur.headers.Headers.X_FORWARDED_PROTO;
 import com.mastfrog.acteur.headers.Method;
+import com.mastfrog.acteur.output.ArrayFormatting;
 import com.mastfrog.acteur.request.HttpProtocolRequest;
 import com.mastfrog.acteur.spi.ApplicationControl;
 import com.mastfrog.acteur.util.ErrorHandler;
@@ -841,6 +842,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
 
         scope.bindTypes(binder(), Event.class, HttpEvent.class, RequestID.class, WebSocketEvent.class,
                 Page.class, BasicCredentials.class, Closables.class, DeferredComputationResult.class);
+        scope.bindTypesAllowingNulls(binder(), ArrayFormatting.class, InputStream.class);
         @SuppressWarnings("deprecation")
         com.mastfrog.acteur.ImplicitBindings implicit = appType.getAnnotation(com.mastfrog.acteur.ImplicitBindings.class);
         if (implicit != null) {
@@ -904,16 +906,16 @@ public class ServerModule<A extends Application> extends AbstractModule {
         private WebSocketFrameProvider {
         }
 
-            @Override
-            public WebSocketFrame get() {
-                Event evt = this.evt.get();
-                if (evt instanceof WebSocketEvent) {
-                    return ((WebSocketEvent) evt).request();
-                }
-                throw new IllegalStateException("No web socket event in scope");
+        @Override
+        public WebSocketFrame get() {
+            Event evt = this.evt.get();
+            if (evt instanceof WebSocketEvent) {
+                return ((WebSocketEvent) evt).request();
             }
-
+            throw new IllegalStateException("No web socket event in scope");
         }
+
+    }
 
     private static final class ProtocolProvider implements Provider<Protocol> {
 
@@ -1002,11 +1004,11 @@ public class ServerModule<A extends Application> extends AbstractModule {
         private PathProvider {
         }
 
-            @Override
-            public Path get() {
-                return evt.get().path();
-            }
+        @Override
+        public Path get() {
+            return evt.get().path();
         }
+    }
 
     private record MethodProvider(Provider<HttpEvent> evt) implements Provider<HttpMethod> {
 
@@ -1014,12 +1016,12 @@ public class ServerModule<A extends Application> extends AbstractModule {
         private MethodProvider {
         }
 
-            @Override
-            public HttpMethod get() {
-                return evt.get().method();
-            }
-
+        @Override
+        public HttpMethod get() {
+            return evt.get().method();
         }
+
+    }
 
     private record MethodProvider2(Provider<HttpEvent> evt) implements Provider<Method> {
 
@@ -1027,16 +1029,16 @@ public class ServerModule<A extends Application> extends AbstractModule {
         private MethodProvider2 {
         }
 
-            @Override
-            public Method get() {
-                HttpEvent e = evt.get();
-                if (e == null) {
-                    return null;
-                }
-                return e == null || !(e.method() instanceof Method) ? null : (Method) evt.get().method();
+        @Override
+        public Method get() {
+            HttpEvent e = evt.get();
+            if (e == null) {
+                return null;
             }
-
+            return e == null || !(e.method() instanceof Method) ? null : (Method) evt.get().method();
         }
+
+    }
 
     private record ChannelProvider(Provider<HttpEvent> evt) implements Provider<Channel> {
 
@@ -1044,11 +1046,11 @@ public class ServerModule<A extends Application> extends AbstractModule {
         private ChannelProvider {
         }
 
-            @Override
-            public Channel get() {
-                return evt.get().channel();
-            }
+        @Override
+        public Channel get() {
+            return evt.get().channel();
         }
+    }
 
     private static final class InvalidInputExceptionEvaluator extends ExceptionEvaluator {
 
@@ -1070,17 +1072,17 @@ public class ServerModule<A extends Application> extends AbstractModule {
     private record EventProvider(
             @SuppressWarnings("unchecked") Provider<Event> eventProvider) implements Provider<Event<?>> {
 
-            @SuppressWarnings("unchecked")
-            @Inject
-            private EventProvider(Provider<Event> eventProvider) {
-                this.eventProvider = eventProvider;
-            }
-
-            @Override
-            public Event<?> get() {
-                return eventProvider.get();
-            }
+        @SuppressWarnings("unchecked")
+        @Inject
+        private EventProvider(Provider<Event> eventProvider) {
+            this.eventProvider = eventProvider;
         }
+
+        @Override
+        public Event<?> get() {
+            return eventProvider.get();
+        }
+    }
 
     private record HttpProtocolRequestProvider(
             Provider<Event<?>> eventProvider) implements Provider<HttpProtocolRequest> {
@@ -1089,15 +1091,15 @@ public class ServerModule<A extends Application> extends AbstractModule {
         private HttpProtocolRequestProvider {
         }
 
-            @Override
-            public HttpProtocolRequest get() {
-                Event<?> evt = eventProvider.get();
-                if (evt instanceof HttpProtocolRequest) {
-                    return (HttpProtocolRequest) evt;
-                }
-                return null;
+        @Override
+        public HttpProtocolRequest get() {
+            Event<?> evt = eventProvider.get();
+            if (evt instanceof HttpProtocolRequest) {
+                return (HttpProtocolRequest) evt;
             }
+            return null;
         }
+    }
 
     private static final class ETL extends TypeLiteral<Event<?>> {
 
@@ -1317,44 +1319,44 @@ public class ServerModule<A extends Application> extends AbstractModule {
     }
 
     @SuppressWarnings("deprecation")
-        private record CookiesProvider(
+            private record CookiesProvider(
             Provider<HttpEvent> ev) implements Provider<Set<io.netty.handler.codec.http.Cookie>> {
 
         @Inject
         private CookiesProvider {
         }
 
-            @Override
-            public Set<io.netty.handler.codec.http.Cookie> get() {
-                HttpEvent evt = ev.get();
-                String h = evt.header(HttpHeaderNames.COOKIE.toString());
-                if (h != null) {
-                    @SuppressWarnings("deprecation")
-                    Set<io.netty.handler.codec.http.Cookie> result = io.netty.handler.codec.http.CookieDecoder.decode(h);
-                    if (result != null) {
-                        return result;
-                    }
+        @Override
+        public Set<io.netty.handler.codec.http.Cookie> get() {
+            HttpEvent evt = ev.get();
+            String h = evt.header(HttpHeaderNames.COOKIE.toString());
+            if (h != null) {
+                @SuppressWarnings("deprecation")
+                Set<io.netty.handler.codec.http.Cookie> result = io.netty.handler.codec.http.CookieDecoder.decode(h);
+                if (result != null) {
+                    return result;
                 }
-                return Collections.emptySet();
             }
+            return Collections.emptySet();
         }
+    }
 
     @SuppressWarnings("deprecation")
-        private record CookiesProvider2(
+            private record CookiesProvider2(
             Provider<HttpEvent> ev) implements Provider<Set<io.netty.handler.codec.http.cookie.Cookie>> {
 
         @Inject
         private CookiesProvider2 {
         }
 
-            @Override
-            public Set<io.netty.handler.codec.http.cookie.Cookie> get() {
-                HttpEvent evt = ev.get();
-                io.netty.handler.codec.http.cookie.Cookie[] cookies = evt.header(COOKIE_B);
-                return cookies == null || cookies.length == 0 ? Collections.emptySet()
-                        : setOf(cookies);
-            }
+        @Override
+        public Set<io.netty.handler.codec.http.cookie.Cookie> get() {
+            HttpEvent evt = ev.get();
+            io.netty.handler.codec.http.cookie.Cookie[] cookies = evt.header(COOKIE_B);
+            return cookies == null || cookies.length == 0 ? Collections.emptySet()
+                    : setOf(cookies);
         }
+    }
 
     static final class Uncaught implements UncaughtExceptionHandler {
 
@@ -1377,11 +1379,11 @@ public class ServerModule<A extends Application> extends AbstractModule {
         private UptimeProvider {
         }
 
-            @Override
-            public Duration get() {
-                return Duration.between(dt, ZonedDateTime.now());
-            }
+        @Override
+        public Duration get() {
+            return Duration.between(dt, ZonedDateTime.now());
         }
+    }
 
     protected void onInit(Settings settings) {
     }

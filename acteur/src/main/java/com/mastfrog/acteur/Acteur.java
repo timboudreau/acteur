@@ -675,7 +675,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
         public RespondWith(HttpResponseStatus status, Object msg) {
             super(false);
             if (page == null) {
-                throw new IllegalStateException("Called outside ActionsImpl.onEvent");
+                throw new IllegalStateException("Called outside of onEvent");
             }
             setResponseCode(status);
             if (msg != null) {

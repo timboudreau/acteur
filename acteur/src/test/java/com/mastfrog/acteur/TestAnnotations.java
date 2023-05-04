@@ -13,7 +13,6 @@ import com.mastfrog.http.harness.Assertions;
 import com.mastfrog.http.test.harness.acteur.HttpHarness;
 import com.mastfrog.http.test.harness.acteur.HttpTestHarnessModule;
 import io.netty.handler.codec.http.HttpResponseStatus;
-import java.io.IOException;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
@@ -36,27 +35,59 @@ public class TestAnnotations {
     private static final Duration TO = Duration.ofMillis(TIMEOUT);
 
     @Test
-    @Timeout(value = 1, unit = MINUTES)
-    public void test(HttpHarness harn) throws Throwable {
-        harn.get("one").applyingAssertions(a -> a.assertResponseCode(400)).assertAllSucceeded();
-        assertTrue(annotationHandlerCalled);
-        harn.get("one?foo=hey").applyingAssertions(a -> a.assertResponseCode(400)).assertAllSucceeded();
-        harn.get("one?foo=hey&bar=you").applyingAssertions(a -> a.assertOk().assertBody("one")).assertAllSucceeded();
-        harn.get("two").applyingAssertions(Assertions::assertBadRequest).assertAllSucceeded();
-        harn.get("two?baz=hey").applyingAssertions(a -> a.assertOk().assertBody("two")).assertAllSucceeded();
-        harn.get("two?quux=you").applyingAssertions(a -> a.assertOk().assertBody("two")).assertAllSucceeded();
-        harn.get("three").applyingAssertions(Assertions::assertNotFound).assertAllSucceeded();
-        harn.post("three").applyingAssertions(a -> a.assertOk().assertBody("three")).assertAllSucceeded();
-
-//        harn.get("one").setTimeout(TO).addQueryPair("foo", "hey").go().assertStatus(BAD_REQUEST);
-//        harn.get("one").setTimeout(TO).addQueryPair("foo", "hey").addQueryPair("bar", "you").go().assertStatus(OK).assertContent("one");
-//        harn.get("two").setTimeout(TO).go().assertStatus(BAD_REQUEST);
-//        harn.get("two").setTimeout(TO).addQueryPair("baz", "hey").go().assertStatus(OK).assertContent("two");
-//        harn.get("two").setTimeout(TO).addQueryPair("quux", "you").go().assertStatus(OK).assertContent("two");
-//        harn.get("three").setTimeout(TO).go().assertStatus(NOT_FOUND);
-//        harn.post("three").setTimeout(TO).go().assertStatus(OK).assertContent("three");
+    @Timeout(60)
+    public void testCorsHeadersGetsNoContent(HttpHarness harn) throws Throwable {
         // Also test that default CORS headers work
         harn.options("foo").applyingAssertions(Assertions::assertNoContent).assertAllSucceeded();
+    }
+
+    @Test
+    @Timeout(60)
+    public void testThreePost(HttpHarness harn) throws Throwable {
+        harn.post("three").applyingAssertions(a -> a.assertOk().assertBody("three")).assertAllSucceeded();
+    }
+
+    @Test
+    @Timeout(60)
+    public void testThreeGet(HttpHarness harn) throws Throwable {
+        harn.get("three").applyingAssertions(Assertions::assertNotFound).assertAllSucceeded();
+    }
+
+    @Test
+    @Timeout(60)
+    public void testTwoWithQuux(HttpHarness harn) throws Throwable {
+        harn.get("two?quux=you").applyingAssertions(a -> a.assertOk().assertBody("two")).assertAllSucceeded();
+    }
+
+    @Test
+    @Timeout(60)
+    public void testOne(HttpHarness harn) throws Throwable {
+        harn.get("one").applyingAssertions(a -> a.assertResponseCode(400)).assertAllSucceeded();
+        assertTrue(annotationHandlerCalled);
+    }
+
+    @Test
+    @Timeout(60)
+    public void testOneWithFoo(HttpHarness harn) throws Throwable {
+        harn.get("one?foo=hey").applyingAssertions(a -> a.assertResponseCode(400)).assertAllSucceeded();
+    }
+
+    @Test
+    @Timeout(60)
+    public void testOneWithFooAndBar(HttpHarness harn) throws Throwable {
+        harn.get("one?foo=hey&bar=you").applyingAssertions(a -> a.assertOk().assertBody("one")).assertAllSucceeded();
+    }
+
+    @Test
+    @Timeout(60)
+    public void testTwo(HttpHarness harn) throws Throwable {
+        harn.get("two").applyingAssertions(Assertions::assertBadRequest).assertAllSucceeded();
+    }
+
+    @Test
+    @Timeout(60)
+    public void testTwoWithBaz(HttpHarness harn) throws Throwable {
+        harn.get("two?baz=hey").applyingAssertions(a -> a.assertOk().assertBody("two")).assertAllSucceeded();
     }
 
     @Methods

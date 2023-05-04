@@ -50,6 +50,8 @@ import com.mastfrog.settings.Settings;
 import com.mastfrog.url.Path;
 import com.mastfrog.util.collections.ArrayUtils;
 import com.mastfrog.util.collections.CollectionUtils;
+import static com.mastfrog.util.collections.CollectionUtils.convertedIterator;
+import static com.mastfrog.util.collections.CollectionUtils.toIterable;
 import com.mastfrog.util.collections.Converter;
 import com.mastfrog.util.preconditions.Exceptions;
 import com.mastfrog.util.strings.Strings;
@@ -168,11 +170,11 @@ class PagesImpl2 {
                     return false;
                 }
                 // Test for gzip
-                if (Strings.charSequenceContains(seq, HttpHeaderValues.GZIP, debug)) {
+                if (Strings.charSequenceContains(seq, HttpHeaderValues.GZIP, true)) {
                     return false;
                 }
                 // Test for deflate
-                return !Strings.charSequenceContains(seq, HttpHeaderValues.DEFLATE, debug);
+                return !Strings.charSequenceContains(seq, HttpHeaderValues.DEFLATE, true);
             }
         }
         return true;
@@ -209,7 +211,7 @@ class PagesImpl2 {
             if (defaultContext != null && defaultContext.length > 0) {
                 pageIterator = new ScopeWrapIterator<>(application.getRequestScope(), pageIterator, defaultContext);
             }
-            pagesIterable = CollectionUtils.toIterable(CollectionUtils.convertedIterator(chainConverter, pageIterator));
+            pagesIterable = toIterable(convertedIterator(chainConverter, pageIterator));
         }
 
         CB callback = new CB(id, event, latch, channel, clos);

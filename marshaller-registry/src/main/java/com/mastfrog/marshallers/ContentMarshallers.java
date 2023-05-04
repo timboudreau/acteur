@@ -23,6 +23,8 @@
  */
 package com.mastfrog.marshallers;
 
+import com.mastfrog.util.collections.ArrayUtils;
+import static com.mastfrog.util.collections.ArrayUtils.append;
 import com.mastfrog.util.preconditions.Checks;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -69,10 +71,7 @@ public class ContentMarshallers<R, MyType extends ContentMarshallers> {
         if (hints.length == 0) {
             hints = new Object[] { type };
         } else {
-            Object[] newHints = new Object[hints.length + 1];
-            System.arraycopy(hints, 0, newHints, 0, hints.length);
-            newHints[newHints.length-1] = type;
-            hints = newHints;
+            hints = append(type, hints);
         }
         for (MarshallerEntry<?, R> e : entries) {
             if (e.match(type)) {

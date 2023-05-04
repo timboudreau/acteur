@@ -888,6 +888,9 @@ public class ActeurFactory {
         @Override
         public void describeYourself(Map<String, Object> into) {
             into.put("Always responds with", code.code() + " " + code.reasonPhrase());
+            if (msg != null) {
+                into.put("Message", msg);
+            }
         }
 
         @Override

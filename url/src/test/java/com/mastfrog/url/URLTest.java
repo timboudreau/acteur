@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URLEncoder;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import org.junit.Test;
 import static org.junit.Assert.*;
@@ -25,7 +26,14 @@ public class URLTest {
         assertEquals(Protocols.HTTP, u.getProtocol());
         assertEquals(Protocols.WS, u2.getProtocol());
     }
-    
+
+    @Test
+    public void testFromFile() throws MalformedURLException {
+        File f = new File(System.getProperty("java.io.tmpdir"));
+        URL u = URL.fromFile(f);
+        assertEquals(u.toJavaURL().toString(), f.toURI().toURL().toString());
+    }
+
     @Test
     public void testHostEquality() {
         Label l1 = new Label("one");
@@ -37,11 +45,18 @@ public class URLTest {
         assertEquals(l3, l4);
         assertEquals(l1, l4);
         assertEquals(l2, l4);
+
+        assertEquals(l1.hashCode(), l2.hashCode());
+        assertEquals(l2.hashCode(), l3.hashCode());
+        assertEquals(l3.hashCode(), l4.hashCode());
+        assertEquals(l1.hashCode(), l4.hashCode());
+        assertEquals(l2.hashCode(), l4.hashCode());
+
         Host one = Host.parse("WWW.Test.CoM");
         Host two = Host.parse("www.test.com");
         assertEquals(one, two);
     }
-    
+
     @Test(expected = InvalidInputException.class)
     public void testUrlWithNoHostIsInvalid() {
         URL url = URL.builder().addPathElement("invalid").create();
@@ -244,6 +259,73 @@ public class URLTest {
         url = url("http://tim:password@timboudreau.com/stuff/index.html?bar=baz;foo=bar#anchor");
         real = URL.fromJavaUrl(url);
         assertEquals("Expected\n;" + url + " but got " + real, url.toString(), real.toString());
+    }
+
+    @Test
+    public void testEqualsAndHashCode() {
+        URL u1 = URL.parse("http://www.example.com:8324/thing?a=b");
+        URL u2 = URL.parse("http://WWW.example.com:8324/thing?a=b");
+
+        assertEquals(u1, u2);
+        assertEquals(u1.hashCode(), u2.hashCode());
+
+        assertEquals(u1, u1);
+        assertNotEquals(u1, u1.toString());
+        assertNotEquals(u1, null);
+    }
+
+    @Test
+    public void testSimpleEquals() {
+        URL u1 = URL.parse("http://www.example.com:8324/thing?a=b");
+        URL u2 = URL.parse("http://WWW.example.com:8324/thing?a=b");
+
+        assertEquals(u1, u2);
+        assertEquals(u1.hashCode(), u2.hashCode());
+
+        assertEquals(u1, u1);
+        assertNotEquals(u1, u1.toString());
+        assertNotEquals(u1, null);
+
+        assertTrue(u2.simpleEquals(u1));
+        assertTrue(u1.simpleEquals(u1));
+
+        URL u3 = URL.parse("http://www.example.com:8324/thing#whatever");
+        URL u4 = URL.parse("http://WWW.example.com:8324/thing#whatever");
+
+        assertEquals(u3, u4);
+        assertEquals(u3.hashCode(), u4.hashCode());
+
+        assertTrue(u3.simpleEquals(u4));
+    }
+
+    @Test
+    public void testStripAnchor() {
+        URL u = URL.parse("http://www.example.com:8324/thing#whatever");
+        URL u1 = URL.parse("http://www.example.com:8324/thing");
+        assertEquals(u1, u.stripAnchor());
+    }
+
+    @Test
+    public void testStripQuery() {
+        URL u = URL.parse("http://foo.example:1123/whatever?this=that&you=me&whatever=I%20am%20a%20bike%20rack");
+        assertEquals(URL.parse("http://foo.example:1123/whatever"), u.stripQuery());
+    }
+
+    @Test
+    public void testToSimpleURL() {
+        URL u = URL.parse("http://blort:wuggles@foo.example/hello/there?you=me&foo=bar");
+        assertEquals(URL.parse("http://foo.example/hello/there"), u.toSimpleURL());
+    }
+
+    @Test
+    public void testGetParentUrl() {
+        URL u1 = URL.parse("https://foo.example/a/b/c/d");
+        assertEquals(URL.parse("https://foo.example/a/b/c"), u1.getParentURL());
+    }
+
+    @Test
+    public void testGetCharset() {
+        assertSame(URLBuilder.ISO_LATIN, URL.getURLEncoding());
     }
 
     @Test
@@ -807,31 +889,31 @@ public class URLTest {
         java.net.URL url = f.toURI().toURL();
         URL mine = URL.parse(url.toString());
 
-        assertEquals (url, mine.toJavaURL());
+        assertEquals(url, mine.toJavaURL());
 
         URL other = URL.fromJavaUrl(url);
-        assertEquals (url, other.toJavaURL());
+        assertEquals(url, other.toJavaURL());
 
-        File f1 = new File (mine.toJavaURL().toURI()).getCanonicalFile();
-        File f2 = new File (other.toJavaURL().toURI()).getCanonicalFile();
+        File f1 = new File(mine.toJavaURL().toURI()).getCanonicalFile();
+        File f2 = new File(other.toJavaURL().toURI()).getCanonicalFile();
 
-        assertEquals (f, f1);
-        assertEquals (f, f2);
+        assertEquals(f, f1);
+        assertEquals(f, f2);
 
-        f = new File (new java.net.URL("file:/tmp/1294067737125_0/ev1NYGFiVryRzOrUB3iZ2Pn8Tn0=").toURI());
+        f = new File(new java.net.URL("file:/tmp/1294067737125_0/ev1NYGFiVryRzOrUB3iZ2Pn8Tn0=").toURI());
 
         URL x = URL.fromJavaUrl(new java.net.URL("file:/tmp/1294067737125_0/ev1NYGFiVryRzOrUB3iZ2Pn8Tn0="));
-        assertEquals ("file:///tmp/1294067737125%5f0/ev1NYGFiVryRzOrUB3iZ2Pn8Tn0=", x.toString());
+        assertEquals("file:///tmp/1294067737125%5f0/ev1NYGFiVryRzOrUB3iZ2Pn8Tn0=", x.toString());
 
         URLBuilder b = URL.builder(x);
         b.addPathElement("xyz");
         URL y = b.create();
-        assertTrue (y.getProblems() + "", y.isValid());
-        
+        assertTrue(y.getProblems() + "", y.isValid());
+
         f = new File("/tmp/spaces in name");
         url = f.toURI().toURL();
         mine = URL.parse("file:/tmp/spaces in name");
-        assertEquals (url, mine.toJavaURL());
+        assertEquals(url, mine.toJavaURL());
     }
 //    
 //    @Test
@@ -856,7 +938,7 @@ public class URLTest {
         assertEquals(encoded, p.toString());
         Path p2 = Path.parse(encoded, true);
         assertEquals(orig, p2.toString());
-        assertEquals (p, p2);
+        assertEquals(p, p2);
     }
 
     @Test
@@ -864,7 +946,7 @@ public class URLTest {
         URL url = URL.parse("http://foo.com/foo/bar");
         url = url.withParameter("baz", "quux");
         assertEquals("http://foo.com/foo/bar?baz=quux", url.toString());
-        
+
         url = URL.parse("http://foo.com/foo/bar?monkey=beetle");
         url = url.withParameter("baz", "quux");
         assertEquals("http://foo.com/foo/bar?monkey=beetle&baz=quux", url.toString());
@@ -874,7 +956,7 @@ public class URLTest {
     public void testHyphenatedHost() throws Throwable {
         Label l = new Label("mail-vm");
         assertTrue(l.isValid());
-        
+
         Host host = Host.parse("mail-vm.timboudreau.org");
         assertTrue(host.isValid());
         assertNull(host.getProblems());
@@ -896,5 +978,5 @@ public class URLTest {
         assertEquals("/foo/bar?quux=baz&money=gone", q);
         assertEquals("http://timboudreau.com/foo/bar?quux=baz&money=gone", url.toString());
     }
-    
+
 }

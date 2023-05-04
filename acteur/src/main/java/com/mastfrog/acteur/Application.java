@@ -324,7 +324,7 @@ public class Application implements Iterable<Page> {
         Constructor<?>[] constructors = type.getDeclaredConstructors();
         boolean found = constructors.length == 0;
 
-        for (Constructor c : constructors) {
+        for (Constructor<?> c : constructors) {
             if (c.getParameterTypes() == null || c.getParameterTypes().length == 0) {
                 found = true;
             } else {

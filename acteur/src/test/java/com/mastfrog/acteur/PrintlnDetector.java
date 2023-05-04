@@ -35,15 +35,29 @@ public final class PrintlnDetector extends PrintStream {
 
     private final String[] patterns;
     private volatile boolean detected;
+    private final boolean err;
 
-    PrintlnDetector(PrintStream delegate, String... patterns) {
+    PrintlnDetector(boolean err, PrintStream delegate, String... patterns) {
         super(delegate);
+        this.err = err;
         this.patterns = patterns;
     }
 
     static void attach(String... patterns) {
-        PrintlnDetector det = new PrintlnDetector(System.out, patterns);
-        System.setOut(det);
+        attach(false, patterns);
+    }
+
+    static void attachErr(String... patterns) {
+        attach(true, patterns);
+    }
+
+    private static void attach(boolean err, String... patterns) {
+        PrintlnDetector det = new PrintlnDetector(err, err ? System.err : System.out, patterns);
+        if (err) {
+            System.setErr(det);
+        } else {
+            System.setOut(det);
+        }
     }
 
     private boolean check(Object x) {
@@ -64,7 +78,11 @@ public final class PrintlnDetector extends PrintStream {
         if (check(o)) {
             PrintStream real = ((PrintStream) super.out);
             new Exception("Matched").printStackTrace(real);
-            System.setOut(real);
+            if (err) {
+                System.setErr(real);
+            } else {
+                System.setOut(real);
+            }
         }
     }
 
