@@ -60,15 +60,15 @@ public class DecoratorWithOnBeforeEventTest {
         int nextThing = Thing.COUNTER.get() + 1;
 
         harn.get("/deco")
-                .applyingAssertions(
+                .asserting(
                         a -> a.assertOk()
                                 .assertHasHeader(THING_HEADER)
-                                .assertHeaderEquals("x-thing", "Thing-" + nextThing)
+                                .assertHeader("x-thing", "Thing-" + nextThing)
                                 .assertBody("Thing-" + nextThing)
                 ).assertAllSucceeded();
 
-        harn.get("/nothing/abcde").applyingAssertions(a -> a.assertNotFound()
-                .assertHasHeader(THING_HEADER).assertHeaderEquals("x-thing", "Thing-" + (nextThing + 1)))
+        harn.get("/nothing/abcde").asserting(a -> a.assertNotFound()
+                .assertHasHeader(THING_HEADER).assertHeader("x-thing", "Thing-" + (nextThing + 1)))
                 .assertAllSucceeded();
 
         synchronized (app) {

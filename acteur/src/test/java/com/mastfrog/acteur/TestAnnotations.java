@@ -19,7 +19,7 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 import java.lang.annotation.Target;
 import java.time.Duration;
 import java.util.List;
-import static java.util.concurrent.TimeUnit.MINUTES;
+
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
@@ -38,56 +38,56 @@ public class TestAnnotations {
     @Timeout(60)
     public void testCorsHeadersGetsNoContent(HttpHarness harn) throws Throwable {
         // Also test that default CORS headers work
-        harn.options("foo").applyingAssertions(Assertions::assertNoContent).assertAllSucceeded();
+        harn.options("foo").asserting(Assertions::assertNoContent).assertAllSucceeded();
     }
 
     @Test
     @Timeout(60)
     public void testThreePost(HttpHarness harn) throws Throwable {
-        harn.post("three").applyingAssertions(a -> a.assertOk().assertBody("three")).assertAllSucceeded();
+        harn.post("three").asserting(a -> a.assertOk().assertBody("three")).assertAllSucceeded();
     }
 
     @Test
     @Timeout(60)
     public void testThreeGet(HttpHarness harn) throws Throwable {
-        harn.get("three").applyingAssertions(Assertions::assertNotFound).assertAllSucceeded();
+        harn.get("three").asserting(Assertions::assertNotFound).assertAllSucceeded();
     }
 
     @Test
     @Timeout(60)
     public void testTwoWithQuux(HttpHarness harn) throws Throwable {
-        harn.get("two?quux=you").applyingAssertions(a -> a.assertOk().assertBody("two")).assertAllSucceeded();
+        harn.get("two?quux=you").asserting(a -> a.assertOk().assertBody("two")).assertAllSucceeded();
     }
 
     @Test
     @Timeout(60)
     public void testOne(HttpHarness harn) throws Throwable {
-        harn.get("one").applyingAssertions(a -> a.assertResponseCode(400)).assertAllSucceeded();
+        harn.get("one").asserting(a -> a.assertStatus(400)).assertAllSucceeded();
         assertTrue(annotationHandlerCalled);
     }
 
     @Test
     @Timeout(60)
     public void testOneWithFoo(HttpHarness harn) throws Throwable {
-        harn.get("one?foo=hey").applyingAssertions(a -> a.assertResponseCode(400)).assertAllSucceeded();
+        harn.get("one?foo=hey").asserting(a -> a.assertStatus(400)).assertAllSucceeded();
     }
 
     @Test
     @Timeout(60)
     public void testOneWithFooAndBar(HttpHarness harn) throws Throwable {
-        harn.get("one?foo=hey&bar=you").applyingAssertions(a -> a.assertOk().assertBody("one")).assertAllSucceeded();
+        harn.get("one?foo=hey&bar=you").asserting(a -> a.assertOk().assertBody("one")).assertAllSucceeded();
     }
 
     @Test
     @Timeout(60)
     public void testTwo(HttpHarness harn) throws Throwable {
-        harn.get("two").applyingAssertions(Assertions::assertBadRequest).assertAllSucceeded();
+        harn.get("two").asserting(Assertions::assertBadRequest).assertAllSucceeded();
     }
 
     @Test
     @Timeout(60)
     public void testTwoWithBaz(HttpHarness harn) throws Throwable {
-        harn.get("two?baz=hey").applyingAssertions(a -> a.assertOk().assertBody("two")).assertAllSucceeded();
+        harn.get("two?baz=hey").asserting(a -> a.assertOk().assertBody("two")).assertAllSucceeded();
     }
 
     @Methods

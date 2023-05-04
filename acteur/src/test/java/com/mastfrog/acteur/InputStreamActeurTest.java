@@ -51,9 +51,14 @@ public final class InputStreamActeurTest {
     @Timeout(30)
     public void testInputStreamIsHandled(HttpHarness harn) {
         harn.get("istream")
-                .applyingAssertions(a -> {
-                    a.assertHeaderEquals(CONTENT_TYPE.toString(), MimeType.OCTET_STREAM.toString())
+                .asserting(a -> {
+                    a.assertHeader(CONTENT_TYPE.toString(), MimeType.OCTET_STREAM.toString())
                             .assertOk()
+                            .assertChunk("Test chunks match batch size", chunk -> {
+                                // Value is set in InputStreamActeurTest.properties in test
+                                // resources, to be immune to changes in the default
+                                return chunk.remaining() <= 256;
+                            })
                             .assertPayload(data -> {
                                 return Arrays.equals(BYTES, data);
                             });

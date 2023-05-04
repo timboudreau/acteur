@@ -83,25 +83,25 @@ public class AsyncActeursTest {
     @Test
     public void testAsynchronous(HttpHarness harn) throws Throwable {
 
-        Thing t = harn.get("/p1").applyingAssertions(assertions -> {
+        Thing t = harn.get("/p1").asserting(assertions -> {
             assertions.assertOk();
         }).await().assertAllSucceeded().get(Thing.class);
 
         assertNotNull(t);
         assertEquals(Thing.last("p1a1"), t);
 
-        harn.get("/p2").applyingAssertions(asserts -> {
+        harn.get("/p2").asserting(asserts -> {
             asserts.assertVersion(HttpClient.Version.HTTP_1_1)
-                    .assertResponseCode(EXPECTATION_FAILED.code());
+                    .assertStatus(EXPECTATION_FAILED.code());
         }).assertAllSucceeded().get(ErrorMessage.class).assertMessage("p2a1");
 
-        harn.get("p3").applyingAssertions(asserts -> {
+        harn.get("p3").asserting(asserts -> {
             asserts.assertVersion(HttpClient.Version.HTTP_1_1)
-                    .assertResponseCode(INTERNAL_SERVER_ERROR.code());
+                    .assertStatus(INTERNAL_SERVER_ERROR.code());
         }).assertAllSucceeded().get(ErrorMessage.class).assertMessage("p3a1");
 
-        Map<String, Object> m = harn.get("/p4").applyingAssertions(asserts -> {
-            asserts.assertResponseCode(CREATED.code());
+        Map<String, Object> m = harn.get("/p4").asserting(asserts -> {
+            asserts.assertStatus(CREATED.code());
         }).assertAllSucceeded().get(StringObjectMap.class);
 
         assertEquals("foo", m.get("txt"));
@@ -110,15 +110,15 @@ public class AsyncActeursTest {
         Map<?, ?> m1 = (Map<?, ?>) m.get("thing");
         assertEquals("wubba", m1.get("name"));
 
-        harn.get("/p5").applyingAssertions(asserts -> {
-            asserts.assertResponseCode(INTERNAL_SERVER_ERROR.code());
+        harn.get("/p5").asserting(asserts -> {
+            asserts.assertStatus(INTERNAL_SERVER_ERROR.code());
         }).assertAllSucceeded().get(ErrorMessage.class).assertMessage("uh oh");
 
-        harn.get("p6").applyingAssertions(asserts -> {
-            asserts.assertResponseCode(INTERNAL_SERVER_ERROR.code());
+        harn.get("p6").asserting(asserts -> {
+            asserts.assertStatus(INTERNAL_SERVER_ERROR.code());
         }).assertAllSucceeded().get(ErrorMessage.class).assertMessage("uh oh");
 
-        String msg = harn.get("/p7").applyingAssertions(asserts -> {
+        String msg = harn.get("/p7").asserting(asserts -> {
             asserts.assertOk();
         }).assertAllSucceeded().get(String.class);
 
@@ -139,8 +139,8 @@ public class AsyncActeursTest {
 
         TIMER_REF = null;
 
-        harn.get("/p7?fail=true").applyingAssertions(asserts -> {
-            asserts.assertResponseCode(PAYMENT_REQUIRED.code())
+        harn.get("/p7?fail=true").asserting(asserts -> {
+            asserts.assertStatus(PAYMENT_REQUIRED.code())
                     .assertBody("Hey");
         }).assertAllSucceeded();
     }

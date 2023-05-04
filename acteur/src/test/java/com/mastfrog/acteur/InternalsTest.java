@@ -64,7 +64,7 @@ public class InternalsTest {
     @Test
     @Timeout(30)
     public void testHeadersSharedBetweenActeurs(HttpHarness harn) throws Throwable {
-        harn.get("shared").applyingAssertions(
+        harn.get("shared").asserting(
                 a -> a.assertHasHeader("x-expect")
                         .assertHasHeader(LAST_MODIFIED)
                         .assertOk()
@@ -78,7 +78,7 @@ public class InternalsTest {
     public void testDateHeaderHandling(HttpHarness harn) throws Throwable {
 
         ZonedDateTime when = harn.get("lm")
-                .applyingAssertions(a -> a.assertOk().assertHasHeader(LAST_MODIFIED)).assertAllSucceeded()
+                .asserting(a -> a.assertOk().assertHasHeader(LAST_MODIFIED)).assertAllSucceeded()
                 .get().headers().firstValue(LAST_MODIFIED.name().toString())
                 .map(LAST_MODIFIED::convert)
                 .orElseThrow(() -> new RuntimeException("No last modiefied header"));
@@ -86,19 +86,19 @@ public class InternalsTest {
         assertEquals(when.toInstant(), WHEN.toInstant());
 
         harn.get("lm").setHeader(IF_MODIFIED_SINCE, when)
-                .applyingAssertions(Assertions::assertNotModified)
+                .asserting(Assertions::assertNotModified)
                 .assertAllSucceeded();
 
         harn.get("lm").setHeader(IF_MODIFIED_SINCE, WHEN)
-                .applyingAssertions(Assertions::assertNotModified)
+                .asserting(Assertions::assertNotModified)
                 .assertAllSucceeded();
 
         harn.get("lm").setHeader(IF_MODIFIED_SINCE, WHEN.plus(Duration.ofHours(1)))
-                .applyingAssertions(Assertions::assertNotModified)
+                .asserting(Assertions::assertNotModified)
                 .assertAllSucceeded();
 
         harn.get("lm").setHeader(IF_MODIFIED_SINCE, WHEN.minus(Duration.ofHours(1)))
-                .applyingAssertions(Assertions::assertOk)
+                .asserting(Assertions::assertOk)
                 .assertAllSucceeded();
 
         assertTrue(HOOK_RAN.get() > 0, "Startup hook was not run");
@@ -108,7 +108,7 @@ public class InternalsTest {
     @Test
     @Timeout(30)
     public void testEmptyResponsesHaveZeroLengthContentLengthHeader(HttpHarness harn) throws Throwable {
-        String lenHeader = harn.get("/nothing").applyingAssertions(Assertions::assertOk)
+        String lenHeader = harn.get("/nothing").asserting(Assertions::assertOk)
                 .assertAllSucceeded().get().headers().firstValue(CONTENT_LENGTH.name().toString())
                 .orElse(null);
         assertEquals("0", lenHeader, "Should not have a length header");
@@ -117,7 +117,7 @@ public class InternalsTest {
     @Test
     @Timeout(30)
     public void testEmptyResponsesForContentlessCodesHaveNoContentLengthHeader(HttpHarness harn) throws Throwable {
-        String lenHeader = harn.get("/less").applyingAssertions(Assertions::assertNotModified)
+        String lenHeader = harn.get("/less").asserting(Assertions::assertNotModified)
                 .assertAllSucceeded().get().headers().firstValue(CONTENT_LENGTH.name().toString())
                 .orElse(null);
         assertNull(lenHeader, "Should not have a length header on a 304 response, but got " + lenHeader);
@@ -126,7 +126,7 @@ public class InternalsTest {
     @Test
     @Timeout(30)
     public void testNoContentResponseHasNoContentLength(HttpHarness harn) throws Throwable {
-        String lenHeader = harn.get("/evenless").applyingAssertions(Assertions::assertNoContent)
+        String lenHeader = harn.get("/evenless").asserting(Assertions::assertNoContent)
                 .assertAllSucceeded().get().headers().firstValue(CONTENT_LENGTH.name().toString())
                 .orElse(null);
         assertNull(lenHeader, "Should not have a length header on a no-content response, but got " + lenHeader);

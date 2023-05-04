@@ -14,7 +14,6 @@ import com.mastfrog.http.test.harness.acteur.HttpTestHarnessModule;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
-import static io.netty.channel.ChannelFutureListener.CLOSE;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import java.io.IOException;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -30,7 +29,7 @@ public class TestMultiplePages {
 
     @Test
     public void test(HttpHarness harn) throws InterruptedException, IOException {
-        harn.get("doesntmatter").applyingAssertions(Assertions::assertOk).assertAllSucceeded();
+        harn.get("doesntmatter").asserting(Assertions::assertOk).assertAllSucceeded();
     }
 
     static class M implements Module {

@@ -59,7 +59,7 @@ public class CookieTest {
     @Test
     @Timeout(60)
     public void testOneCookie(HttpHarness harn) throws Throwable {
-        HttpResponse<String> resp = harn.get("one").applyingAssertions(a -> a.assertHasHeader(SET_COOKIE_B)
+        HttpResponse<String> resp = harn.get("one").asserting(a -> a.assertHasHeader(SET_COOKIE_B)
                 .assertBody("Set one cookie")).assertAllSucceeded().get();
         resp.headers().allValues(SET_COOKIE_B.toString());
         List<Cookie> cookies = cookies(resp);
@@ -80,7 +80,7 @@ public class CookieTest {
     @Test
     @Timeout(60)
     public void testCookieEncoding(HttpHarness harn) throws Throwable {
-        HttpResponse<String> resp = harn.get("space").applyingAssertions(a -> a.assertHasHeader(SET_COOKIE_B)
+        HttpResponse<String> resp = harn.get("space").asserting(a -> a.assertHasHeader(SET_COOKIE_B)
                 .assertBody("Set encodable cookie")).assertAllSucceeded().get();
 
         List<Cookie> cookies = cookies(resp);
@@ -94,7 +94,7 @@ public class CookieTest {
     @Timeout(60)
     public void testMultipleCookies(HttpHarness harn) throws Throwable {
 
-        HttpResponse<String> resp = harn.get("multi").applyingAssertions(a -> a.assertHasHeader(SET_COOKIE_B)
+        HttpResponse<String> resp = harn.get("multi").asserting(a -> a.assertHasHeader(SET_COOKIE_B)
                 .assertBody("Set three cookies")).assertAllSucceeded().get();
 
         List<Cookie> all = cookies(resp);
@@ -121,7 +121,7 @@ public class CookieTest {
 
         Map<String, Object> m = harn.get("return")
                 .setHeader(COOKIE_B, all.toArray(Cookie[]::new))
-                .applyingAssertions(a -> a.assertOk().assertHasBody())
+                .asserting(a -> a.assertOk().assertHasBody())
                 .assertAllSucceeded().get(StringObjectMap.class);
 
         assertEquals(3, m.size(), "All cookies were not found: " + m);
@@ -133,7 +133,7 @@ public class CookieTest {
     @Test
     @Timeout(60)
     public void testCORSHandling(HttpHarness harn) throws Throwable {
-        harn.options("one").applyingAssertions(
+        harn.options("one").asserting(
                 a -> a.assertHasHeader(ACCESS_CONTROL_ALLOW)
                         .assertHasHeader(ACCESS_CONTROL_ALLOW_CREDENTIALS)
                         .assertHasHeader(ACCESS_CONTROL_ALLOW_ORIGIN)

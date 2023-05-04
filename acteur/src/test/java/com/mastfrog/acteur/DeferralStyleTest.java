@@ -25,7 +25,6 @@ package com.mastfrog.acteur;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.google.common.net.MediaType;
 import com.google.inject.Binder;
 import com.google.inject.Inject;
 import com.google.inject.Module;
@@ -43,9 +42,8 @@ import com.mastfrog.giulius.tests.anno.TestWith;
 import com.mastfrog.http.test.harness.acteur.HttpHarness;
 import com.mastfrog.http.test.harness.acteur.HttpTestHarnessModule;
 import com.mastfrog.mime.MimeType;
-import static com.mastfrog.mime.MimeType.JSON_UTF_8;
 import com.mastfrog.util.function.EnhCompletableFuture;
-import io.netty.handler.codec.http.HttpResponseStatus;
+
 import static io.netty.handler.codec.http.HttpResponseStatus.CREATED;
 import static io.netty.handler.codec.http.HttpResponseStatus.NON_AUTHORITATIVE_INFORMATION;
 import io.netty.util.concurrent.FastThreadLocalThread;
@@ -63,7 +61,7 @@ public final class DeferralStyleTest {
     @Test
     @Timeout(30)
     public void testCompletableFutureDeferralWithNormalCompletion(HttpHarness harn) throws Exception {
-        harn.get("one").applyingAssertions(a -> {
+        harn.get("one").asserting(a -> {
             a.assertCreated()
                     .assertBody(b -> {
                         return "D1 success".equals(b);
@@ -74,7 +72,7 @@ public final class DeferralStyleTest {
     @Test
     @Timeout(30)
     public void testCompletableFutureDeferralWithExceptionalCompletion(HttpHarness harn) throws Exception {
-        harn.get("two").applyingAssertions(a -> {
+        harn.get("two").asserting(a -> {
             a.assertGone()
                     .assertBody(b -> {
                         return "{\"error\":\"It is gone\",\"msg\":\"This is stuff\"}".equals(b);
@@ -85,9 +83,9 @@ public final class DeferralStyleTest {
     @Test
     @Timeout(30)
     public void testCompetableFutureDeferralWithCompletionObjectInjectedIntoNextActeur(HttpHarness harn) throws Exception {
-        harn.get("three").applyingAssertions(a -> {
-            a.assertResponseCode(NON_AUTHORITATIVE_INFORMATION.code())
-                    .assertHeaderEquals("content-type", "text/x-doohickey")
+        harn.get("three").asserting(a -> {
+            a.assertStatus(NON_AUTHORITATIVE_INFORMATION.code())
+                    .assertHeader("content-type", "text/x-doohickey")
                     .assertBody(b -> {
                         return "{\"intValue\":23,\"stringValue\":\"skiddoo\"}".equals(b);
                     });
@@ -97,7 +95,7 @@ public final class DeferralStyleTest {
     @Test
     @Timeout(30)
     public void testCompetableFutureDeferralWithCompletionObjectInjectedIntoNextActeurExceptional(HttpHarness harn, AtomicBoolean dhRan) throws Exception {
-        harn.get("four").applyingAssertions(a -> {
+        harn.get("four").asserting(a -> {
             a.assertGone()
                     .assertBody(b -> {
                         return "{\"error\":\"It is gone\",\"msg\":\"Blort\"}".equals(b);
@@ -109,9 +107,9 @@ public final class DeferralStyleTest {
     @Test
     @Timeout(30)
     public void testDeferralResumingViaResumer(HttpHarness harn) throws Exception {
-        harn.get("five").applyingAssertions(a -> {
-            a.assertResponseCode(NON_AUTHORITATIVE_INFORMATION.code())
-                    .assertHeaderEquals("content-type", "text/x-doohickey")
+        harn.get("five").asserting(a -> {
+            a.assertStatus(NON_AUTHORITATIVE_INFORMATION.code())
+                    .assertHeader("content-type", "text/x-doohickey")
                     .assertBody(b -> {
                         return "{\"intValue\":37,\"stringValue\":\"Stuff\"}".equals(b);
                     });
@@ -121,7 +119,7 @@ public final class DeferralStyleTest {
     @Test
     @Timeout(30)
     public void testDeferralWithExceptionInResumer(HttpHarness harn) throws Exception {
-        harn.get("six").applyingAssertions(a -> {
+        harn.get("six").asserting(a -> {
             a.assertGone()
                     .assertBody(b -> {
                         return "{\"error\":\"It is gone\",\"msg\":\"Glork\"}".equals(b);

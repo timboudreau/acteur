@@ -88,7 +88,7 @@ public class EarlyInterceptionTest {
 
         harn.post("/intercept", msg, UTF_8)
                 .setHeader(Headers.CONTENT_TYPE, PLAIN_TEXT_UTF_8)
-                .applyingAssertions(a -> a.assertOk().assertBody(expect))
+                .asserting(a -> a.assertOk().assertBody(expect))
                 .assertAllSucceeded();
 
         assertEquals(0, interceptedContent);

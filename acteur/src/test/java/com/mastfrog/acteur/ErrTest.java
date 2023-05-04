@@ -47,10 +47,10 @@ public class ErrTest {
     @Test
     public void testHeadersPropagateViaErr(HttpHarness harn) throws Throwable {
         harn.get("errant")
-                .applyingAssertions(
-                        a -> a.assertResponseCode(503)
+                .asserting(
+                        a -> a.assertStatus(503)
                                 .assertBody("{\"error\":\"Glorg\",\"whatever\":\"hey\"}")
-                                .assertHeaderEquals("x-fwee", "foober"))
+                                .assertHeader("x-fwee", "foober"))
                 .assertAllSucceeded();
     }
 
@@ -58,9 +58,9 @@ public class ErrTest {
     @Test
     public void testHeadersPropagateViaThrow(HttpHarness harn) throws Throwable {
         harn.get("throw")
-                .applyingAssertions(
-                        a -> a.assertResponseCode(502)
-                                .assertHeaderEquals("hork", "snorg")
+                .asserting(
+                        a -> a.assertStatus(502)
+                                .assertHeader("hork", "snorg")
                                 .assertBody("{\"error\":\"Woovle\"}"))
                 .assertAllSucceeded();
     }

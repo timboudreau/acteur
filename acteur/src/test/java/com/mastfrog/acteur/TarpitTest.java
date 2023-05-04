@@ -38,9 +38,9 @@ public class TarpitTest {
 
     @Test
     public void testTarpit(HttpHarness harn, Realm realm) throws Exception {
-        Optional<Realm> hdr = WWW_AUTHENTICATE.get(harn.get("foo").applyingAssertions(a -> a.assertUnauthorized()
+        Optional<Realm> hdr = WWW_AUTHENTICATE.get(harn.get("foo").asserting(a -> a.assertUnauthorized()
                 .assertHasHeader(WWW_AUTHENTICATE)
-                .assertHeaderEquals(WWW_AUTHENTICATE.toString(), "Basic realm=\"" + realm + "\"")
+                .assertHeader(WWW_AUTHENTICATE.toString(), "Basic realm=\"" + realm + "\"")
         ).assertAllSucceeded()
                 .get().headers().firstValue(WWW_AUTHENTICATE.toString()));
 
@@ -49,24 +49,24 @@ public class TarpitTest {
         BasicCredentials creds = new BasicCredentials("foober", "woober");
 
         long elapsed1 = benchmark(() -> harn.get("foo").setHeader(AUTHORIZATION, creds)
-                .applyingAssertions(Assertions::assertUnauthorized).assertAllSucceeded());
+                .asserting(Assertions::assertUnauthorized).assertAllSucceeded());
 
         System.out.println("---- Invalid auth 1: " + elapsed1 + "ms ----");
 
         long elapsed2 = benchmark(() -> harn.get("foo").setHeader(AUTHORIZATION, creds)
-                .applyingAssertions(Assertions::assertUnauthorized).assertAllSucceeded());
+                .asserting(Assertions::assertUnauthorized).assertAllSucceeded());
 
         System.out.println("---- Invalid auth 2: " + elapsed2 + "ms ----");
 
         assertTrue(elapsed2 > 1_000, "Second response should have been delayed at least 1 second.");
 
         long elapsed3 = benchmark(() -> harn.get("foo").setHeader(AUTHORIZATION, creds)
-                .applyingAssertions(Assertions::assertUnauthorized).assertAllSucceeded());
+                .asserting(Assertions::assertUnauthorized).assertAllSucceeded());
 
         System.out.println("---- Invalid auth 3: " + elapsed3 + "ms ----");
         assertTrue(elapsed3 > 2_000, "Second response should have been delayed at least 2 seconds.");
         long elapsed4 = benchmark(() -> harn.get("foo").setHeader(AUTHORIZATION, creds)
-                .applyingAssertions(Assertions::assertOk).assertAllSucceeded());
+                .asserting(Assertions::assertOk).assertAllSucceeded());
         System.out.println("---- Valid auth: " + elapsed1 + "ms ----");
         assertTrue(elapsed4 < elapsed3, "Successful auth should not be delayed");
     }

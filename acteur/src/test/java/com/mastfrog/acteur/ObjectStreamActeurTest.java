@@ -29,7 +29,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
-import com.google.inject.Scopes;
 import com.google.inject.Singleton;
 import static com.mastfrog.acteur.headers.Headers.CONTENT_TYPE;
 import static com.mastfrog.acteur.headers.Method.GET;
@@ -72,8 +71,17 @@ public class ObjectStreamActeurTest {
     @Test
     @Timeout(30)
     public void testStream(HttpHarness harn) throws IOException {
-        Thing[] l = harn.get("stream").applyingAssertions(a -> {
+        Thing[] l = harn.get("stream").asserting(a -> {
             a.assertOk().assertHasBody()
+                    // Because we only know if we're going over the batch size once
+                    // we *have* an object that will push the batch over it, the
+                    // actual maximum chunk size is, worst case, the batch size
+                    // PLUS the size of the item in the stream with the largest
+                    // serialized representation
+                    .assertChunk("Test chunk size roughly within range", chunk
+                            -> {
+                        return chunk.remaining() <= 532;
+                    })
                     .assertBody(b -> {
                         return !b.isEmpty() && b.startsWith("[{\"");
                     });
@@ -85,7 +93,7 @@ public class ObjectStreamActeurTest {
     @Test
     @Timeout(30)
     public void testStreamWithAlternateFormatting(HttpHarness harn) throws IOException {
-        HttpResponse<String> resp = harn.get("weirdstream").applyingAssertions(a -> {
+        HttpResponse<String> resp = harn.get("weirdstream").asserting(a -> {
             a.assertCreated().assertHasBody()
                     .assertBody(b -> {
                         return !b.isEmpty() && b.startsWith(">>{\"");
@@ -100,7 +108,7 @@ public class ObjectStreamActeurTest {
     @Test
     @Timeout(30)
     public void testDirectoryListing(HttpHarness harn, DirectoryOfStuff stuff, ObjectMapper mapper) throws IOException {
-        HttpResponse<String> resp = harn.get("dir").applyingAssertions(a -> {
+        HttpResponse<String> resp = harn.get("dir").asserting(a -> {
             a.assertOk().assertPayload(bytes -> {
                 try {
                     java.nio.file.Path[] paths = mapper.readValue(bytes, java.nio.file.Path[].class);

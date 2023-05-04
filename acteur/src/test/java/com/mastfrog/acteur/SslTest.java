@@ -46,7 +46,7 @@ public class SslTest {
     @Test
     @Timeout(35)
     public void testSsl(HttpHarness harn) {
-        harn.get("/test").applyingAssertions(
+        harn.get("/test").asserting(
                 a -> a.assertOk().assertHasBody()
                         .assertBody(StringPredicates.startsWith("https\n" + MESSAGE))
                         .assertHasHeader("X-Request-Encrypted")

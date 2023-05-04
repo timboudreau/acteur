@@ -34,8 +34,8 @@ public class ComprehensiveTest {
     @Timeout(TIMEOUT_SECONDS)
     public void testPlainHelp(HttpHarness harn) throws Throwable {
         HttpResponse<String> resp = harn.get("help")
-                .applyingAssertions(a -> a.assertOk()
-                .assertHeaderEquals("content-type", "application/json;charset=utf-8"))
+                .asserting(a -> a.assertOk()
+                .assertHeader("content-type", "application/json;charset=utf-8"))
                 .assertAllSucceeded().get();
 
         Map<String, Object> m = new ObjectMapper().readValue(resp.body(), StringObjectMap.class);
@@ -54,8 +54,8 @@ public class ComprehensiveTest {
     @Timeout(TIMEOUT_SECONDS)
     public void testHtmlHelp(HttpHarness harn) throws Throwable {
         HttpResponse<String> resp = harn.get("help?html=true")
-                .applyingAssertions(a -> a.assertOk()
-                .assertHeaderEquals("content-type", "text/html;charset=utf-8"))
+                .asserting(a -> a.assertOk()
+                .assertHeader("content-type", "text/html;charset=utf-8"))
                 .assertAllSucceeded().get();
         String body = resp.body();
         assertTrue(body.contains("<p>App that does lots of stuff"));
@@ -77,7 +77,7 @@ public class ComprehensiveTest {
     public void testEcho(HttpHarness harness) throws Throwable {
         harness.post("echo", "Echo this back to me", UTF_8)
                 .setHeader(CONTENT_TYPE, PLAIN_TEXT_UTF_8)
-                .applyingAssertions(asserts -> asserts
+                .asserting(asserts -> asserts
                 .assertOk()
                 .assertBody("Echo this back to me")
                 ).assertAllSucceeded();
@@ -86,7 +86,7 @@ public class ComprehensiveTest {
     @Test
     @Timeout(TIMEOUT_SECONDS)
     public void testIter(HttpHarness harness) throws Throwable {
-        harness.get("iter?iters=5").applyingAssertions(
+        harness.get("iter?iters=5").asserting(
                 a -> a.assertOk().assertBody(test("Iteration", 5)))
                 .assertAllSucceeded();
     }
@@ -94,7 +94,7 @@ public class ComprehensiveTest {
     @Test
     @Timeout(TIMEOUT_SECONDS)
     public void testIter2(HttpHarness harness) throws Throwable {
-        harness.get("iter?iters=7&msg=Hello%20").applyingAssertions(asserts
+        harness.get("iter?iters=7&msg=Hello%20").asserting(asserts
                 -> asserts.assertOk().assertBody(test("Hello", 7))
         ).assertAllSucceeded();
     }
@@ -102,7 +102,7 @@ public class ComprehensiveTest {
     @Test
     @Timeout(TIMEOUT_SECONDS)
     public void testDeferred(HttpHarness harness) throws Throwable {
-        harness.get("deferred").applyingAssertions(asserts
+        harness.get("deferred").asserting(asserts
                 -> asserts.assertBody("I guess it's okay now").assertOk()
         ).assertAllSucceeded();
     }
@@ -111,35 +111,35 @@ public class ComprehensiveTest {
     @Timeout(TIMEOUT_SECONDS)
     public void testNothing(HttpHarness harness) throws Throwable {
         harness.get("nothing")
-                .applyingAssertions(a -> a.assertResponseCode(PAYMENT_REQUIRED.code())
+                .asserting(a -> a.assertStatus(PAYMENT_REQUIRED.code())
                 .assertBody(b -> b != null)).assertAllSucceeded();
     }
 
     @Test
     @Timeout(TIMEOUT_SECONDS)
     public void testBranch1(HttpHarness harness) throws Throwable {
-        harness.get("branch?a=true").applyingAssertions(a -> a.assertOk().assertBody("A"))
+        harness.get("branch?a=true").asserting(a -> a.assertOk().assertBody("A"))
                 .assertAllSucceeded();
     }
 
     @Test
     @Timeout(TIMEOUT_SECONDS)
     public void testBranch2(HttpHarness harness) throws Throwable {
-        harness.get("branch").applyingAssertions(a -> a.assertOk().assertBody("B")).assertAllSucceeded();
+        harness.get("branch").asserting(a -> a.assertOk().assertBody("B")).assertAllSucceeded();
     }
 
     @Test
     @Timeout(TIMEOUT_SECONDS)
     public void testEcho2(HttpHarness harness) throws Throwable {
         harness.post("echo", "Echo this back to me", UTF_8)
-                .applyingAssertions(a -> a.assertOk().assertBody("Echo this back to me"))
+                .asserting(a -> a.assertOk().assertBody("Echo this back to me"))
                 .assertAllSucceeded();
     }
 
     @Test
     @Timeout(TIMEOUT_SECONDS)
     public void testDynamicActeur(HttpHarness harness) throws Throwable {
-        harness.get("dyn").applyingAssertions(a -> a.assertOk().assertBody("Dynamic acteur"))
+        harness.get("dyn").asserting(a -> a.assertOk().assertBody("Dynamic acteur"))
                 .assertAllSucceeded();
     }
 
@@ -147,7 +147,7 @@ public class ComprehensiveTest {
     @Timeout(TIMEOUT_SECONDS)
     public void testUnchunked(HttpHarness harness) throws Throwable {
         harness.get("unchunked?iters=7")
-                .applyingAssertions(a -> a.assertOk().assertBody(test("Iteration", 7)))
+                .asserting(a -> a.assertOk().assertBody(test("Iteration", 7)))
                 .assertAllSucceeded();
     }
 

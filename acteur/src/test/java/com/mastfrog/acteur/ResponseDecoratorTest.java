@@ -54,7 +54,7 @@ public class ResponseDecoratorTest {
     @Test
     public void testResponseDecorator(HttpHarness harn, RD rd) throws Throwable {
 
-        HttpResponse<String> resp = harn.get("/test").applyingAssertions(a -> a.assertOk()
+        HttpResponse<String> resp = harn.get("/test").asserting(a -> a.assertOk()
                 .assertHasHeader(SET_COOKIE_B_STRICT.toString())
                 .assertHasHeader("X-foo"))
                 .assertAllSucceeded()

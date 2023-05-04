@@ -62,7 +62,7 @@ public class AsyncAuthenticationModuleTest {
     @Test
     @Timeout(TIMEOUT)
     public void testNoAuth(HttpHarness harn) throws Exception {
-        harn.get("/noauth").applyingAssertions(a -> a.assertOk().assertBody("hello"))
+        harn.get("/noauth").asserting(a -> a.assertOk().assertBody("hello"))
                 .assertAllSucceeded();
     }
 
@@ -71,7 +71,7 @@ public class AsyncAuthenticationModuleTest {
     public void testAuthit1(HttpHarness harn) throws Exception {
         harn.get("/authit")
                 .setHeader(AUTHORIZATION.toStringHeader(), "Bearer abcd")
-                .applyingAssertions(a -> a.assertOk().assertBody("Hello Moe"))
+                .asserting(a -> a.assertOk().assertBody("Hello Moe"))
                 .assertAllSucceeded();
     }
 
@@ -80,7 +80,7 @@ public class AsyncAuthenticationModuleTest {
     public void testAuthit2(HttpHarness harn) throws Exception {
         harn.get("/authit")
                 .setHeader(AUTHORIZATION.toStringHeader(), "Bearer efgh")
-                .applyingAssertions(a -> a.assertOk().assertBody("Hello Curly"))
+                .asserting(a -> a.assertOk().assertBody("Hello Curly"))
                 .assertAllSucceeded();
     }
 
@@ -89,7 +89,7 @@ public class AsyncAuthenticationModuleTest {
     public void testBadAuth(HttpHarness harn) throws Exception {
         harn.get("/authit")
                 .setHeader(AUTHORIZATION.toStringHeader(), "Bearer ijkl")
-                .applyingAssertions(a -> a.assertResponseCode(EXPECTATION_FAILED.code())
+                .asserting(a -> a.assertStatus(EXPECTATION_FAILED.code())
                 .assertBody("You are bad.")).assertAllSucceeded();
 
     }
@@ -99,7 +99,7 @@ public class AsyncAuthenticationModuleTest {
     public void testUnknownAuth(HttpHarness harn) throws Exception {
         harn.get("/authit")
                 .setHeader(AUTHORIZATION.toStringHeader(), "Bearer wxyz")
-                .applyingAssertions(a -> a.assertResponseCode(UNAUTHORIZED.code())
+                .asserting(a -> a.assertStatus(UNAUTHORIZED.code())
                 .assertBody("Unknown user")).assertAllSucceeded();
     }
 
@@ -108,7 +108,7 @@ public class AsyncAuthenticationModuleTest {
     public void testSimulatedError(HttpHarness harn) throws Exception {
         harn.get("/authit")
                 .setHeader(AUTHORIZATION.toStringHeader(), "Bearer mnop")
-                .applyingAssertions(a -> a.assertResponseCode(INTERNAL_SERVER_ERROR.code()))
+                .asserting(a -> a.assertStatus(INTERNAL_SERVER_ERROR.code()))
                 .assertAllSucceeded();
     }
 
@@ -117,7 +117,7 @@ public class AsyncAuthenticationModuleTest {
     public void testMalformedAuthHeader(HttpHarness harn) throws Exception {
         harn.get("/authit")
                 .setHeader(AUTHORIZATION.toStringHeader(), "Gwerb")
-                .applyingAssertions(a -> a.assertResponseCode(UNAUTHORIZED.code()))
+                .asserting(a -> a.assertStatus(UNAUTHORIZED.code()))
                 .assertAllSucceeded();
     }
 
@@ -125,8 +125,8 @@ public class AsyncAuthenticationModuleTest {
     @Timeout(TIMEOUT)
     public void testNoAuthHeader(HttpHarness harn) throws Exception {
         harn.get("/authit")
-                .applyingAssertions(
-                        a -> a.assertResponseCode(UNAUTHORIZED.code()).assertBody("No auth header present")
+                .asserting(
+                        a -> a.assertStatus(UNAUTHORIZED.code()).assertBody("No auth header present")
                 ).assertAllSucceeded();
     }
 
@@ -135,7 +135,7 @@ public class AsyncAuthenticationModuleTest {
     public void testOptionalAuthWithHeader(HttpHarness harn) throws Exception {
         harn.get("/maybe")
                 .setHeader(AUTHORIZATION.toStringHeader(), "Bearer abcd")
-                .applyingAssertions(
+                .asserting(
                         a -> a.assertOk().assertBody("Goodbye Moe")
                 ).assertAllSucceeded();
     }
@@ -144,7 +144,7 @@ public class AsyncAuthenticationModuleTest {
     @Timeout(TIMEOUT)
     public void testOptionalAuthSansHeader(HttpHarness harn) throws Exception {
         harn.get("/maybe")
-                .applyingAssertions(a -> a.assertOk().assertBody("Goodbye Nobody"))
+                .asserting(a -> a.assertOk().assertBody("Goodbye Nobody"))
                 .assertAllSucceeded();
     }
 
@@ -153,8 +153,8 @@ public class AsyncAuthenticationModuleTest {
     public void testResponseExceptionIsProcessedToResponseCode(HttpHarness harn) throws Exception {
         harn.get("/authit")
                 .setHeader(AUTHORIZATION.toStringHeader(), "Bearer qrst")
-                .applyingAssertions(a -> a
-                .assertResponseCode(PAYMENT_REQUIRED.code())
+                .asserting(a -> a
+                .assertStatus(PAYMENT_REQUIRED.code())
                 .assertBody("{\"error\":\"Gimme money, that's what I want.\"}"))
                 .assertAllSucceeded();
     }

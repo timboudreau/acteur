@@ -66,9 +66,9 @@ public class PutTest {
     @Test
     @Timeout(60)
     public void testPuts(HttpHarness harn, Application application) throws Throwable {
-        harn.get("foo/bar/baz").applyingAssertions(a -> a.assertResponseCode(200).assertBody("Hello world"))
+        harn.get("foo/bar/baz").asserting(a -> a.assertStatus(200).assertBody("Hello world"))
                 .assertAllSucceeded();
-        harn.get("/").applyingAssertions(a -> a.assertResponseCode(200).assertBody("Hello world"))
+        harn.get("/").asserting(a -> a.assertStatus(200).assertBody("Hello world"))
                 .assertAllSucceeded();
 
         for (int i = 0; i < 2; i++) {
@@ -76,11 +76,11 @@ public class PutTest {
             harn.put("/", "Test " + i + " iter", UTF_8)
                     .setHeader(CONTENT_TYPE, PLAIN_TEXT_UTF_8)
                     .setHeader("X-Iteration", "" + i)
-                    .applyingAssertions(a -> a.assertOk()
+                    .asserting(a -> a.assertOk()
                     .assertBody("Test " + ix + " iter")).assertAllSucceeded();
 
         }
-        harn.get(veryLongUrl(35)).applyingAssertions(Assertions::assertOk).assertAllSucceeded();
+        harn.get(veryLongUrl(35)).asserting(Assertions::assertOk).assertAllSucceeded();
     }
 
     private String veryLongUrl(int amt) {

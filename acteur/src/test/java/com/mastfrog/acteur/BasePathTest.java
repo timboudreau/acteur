@@ -56,24 +56,24 @@ public class BasePathTest {
     @Test
     @Timeout(30)
     public void testUnqualifiedPath(HttpHarness harn) {
-        harn.get("foo").applyingAssertions(
-                a -> a.assertOk().assertHeaderEquals("X-Req-Path", "/")
+        harn.get("foo").asserting(
+                a -> a.assertOk().assertHeader("X-Req-Path", "/")
                         .assertBody("root:")).assertAllSucceeded();
     }
 
     @Test
     @Timeout(30)
     public void testTrailingSlashPath(HttpHarness harn) {
-        harn.get("foo/").applyingAssertions(
-                a -> a.assertOk().assertHeaderEquals("X-Req-Path", "/")
+        harn.get("foo/").asserting(
+                a -> a.assertOk().assertHeader("X-Req-Path", "/")
                         .assertBody("root:")).assertAllSucceeded();
     }
 
     @Test
     @Timeout(30)
     public void testLeadingAndTrailingSlashPath(HttpHarness harn) {
-        harn.get("/foo/").applyingAssertions(
-                a -> a.assertOk().assertHeaderEquals("X-Req-Path", "/")
+        harn.get("/foo/").asserting(
+                a -> a.assertOk().assertHeader("X-Req-Path", "/")
                         .assertBody("root:")).assertAllSucceeded();
     }
 
@@ -82,16 +82,16 @@ public class BasePathTest {
     public void testLeadingSlashPath(HttpHarness harn) {
         // XXX the new jdk http test harness will always prepend the
         // slash
-        harn.get("/foo").applyingAssertions(
-                a -> a.assertOk().assertHeaderEquals("X-Req-Path", "/")
+        harn.get("/foo").asserting(
+                a -> a.assertOk().assertHeader("X-Req-Path", "/")
                         .assertBody("root:")).assertAllSucceeded();
     }
 
     @Test
     @Timeout(30)
     public void testValidSubpath(HttpHarness harn) {
-        harn.get("foo/content/moo").applyingAssertions(
-                a -> a.assertOk().assertHeaderEquals("X-Req-Path", "content/moo")
+        harn.get("foo/content/moo").asserting(
+                a -> a.assertOk().assertHeader("X-Req-Path", "content/moo")
                         .assertBody("content/moo")).assertAllSucceeded();
     }
 
@@ -99,21 +99,21 @@ public class BasePathTest {
     @Timeout(30)
     public void testEmptyPath(HttpHarness harn) {
         // Paths below the base path should always return not found.
-        harn.get("").applyingAssertions(
+        harn.get("").asserting(
                 a -> a.assertNotFound()).assertAllSucceeded();
     }
 
     @Test
     @Timeout(30)
     public void testValidSubpathButAtTopLevel(HttpHarness harn) {
-        harn.get("content/x").applyingAssertions(a -> a.assertNotFound())
+        harn.get("content/x").asserting(a -> a.assertNotFound())
                 .assertAllSucceeded();
     }
 
     @Test
     @Timeout(30)
     public void testInvalidSubpath(HttpHarness harn) {
-        harn.get("foo/x/y/z").applyingAssertions(a -> a.assertNotFound())
+        harn.get("foo/x/y/z").asserting(a -> a.assertNotFound())
                 .assertAllSucceeded();
     }
 
