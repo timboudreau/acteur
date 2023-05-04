@@ -176,7 +176,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
         }
 
         @Override
-        public final Acteur getActeur() {
+        public Acteur getActeur() {
             return Acteur.this;
         }
 

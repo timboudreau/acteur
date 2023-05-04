@@ -23,7 +23,6 @@
  */
 package com.mastfrog.acteurbase;
 
-import com.mastfrog.acteurbase.ActeurState;
 import com.mastfrog.acteurbase.impl.Response;
 import com.mastfrog.acteurbase.impl.ResponseImpl;
 import java.util.List;
@@ -93,8 +92,8 @@ class TestCallback implements ChainCallback<AbstractActeur<Response, ResponseImp
             state = this.state;
         }
         Assert.assertNotNull(state);
-        Assert.assertNotNull(state.acteur);
-        Assert.assertTrue("Found " + state.acteur, type.isInstance(state.acteur));
+        Assert.assertNotNull(state.getActeur());
+        Assert.assertTrue("Found " + state.getActeur(), type.isInstance(state.getActeur()));
         return this;
     }
 

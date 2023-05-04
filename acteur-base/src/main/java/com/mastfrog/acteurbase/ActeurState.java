@@ -32,11 +32,10 @@ import java.util.Arrays;
  * @param <T> The public type
  * @param <R> The implementation type
  */
-public class ActeurState<T, R extends T> {
+public abstract class ActeurState<T, R extends T> {
 
     private final Object[] context;
     private final boolean rejected;
-    AbstractActeur<T, R, ?> acteur;
     protected Throwable creationStackTrace;
 
     private ActeurState(boolean rejected, Object... context) {
@@ -93,16 +92,15 @@ public class ActeurState<T, R extends T> {
 
     /**
      * Get the acteur that produced this state.
+     *
      * @return the acteur, never null
      */
-    protected AbstractActeur<T, R, ?> getActeur() {
-        return acteur;
-    }
+    protected abstract AbstractActeur<T, R, ?> getActeur();
 
     /**
-     * Determines if this state indicates successful conclusion of the
-     * work of the chain of acteurs that produced it.
-     * 
+     * Determines if this state indicates successful conclusion of the work of
+     * the chain of acteurs that produced it.
+     *
      * @return true if the {@link ActeurResponseFactory} associated with the
      * producing {@link AbstractActeur} says that the response object's state
      * indicates it is finished.
@@ -122,9 +120,9 @@ public class ActeurState<T, R extends T> {
     }
 
     /**
-     * Get the response object, if it has been created and if the 
+     * Get the response object, if it has been created and if the
      * {@link ActeurResponseFactory} says it has been modified.
-     * 
+     *
      * @return the response object or null
      */
     R response() {
@@ -133,7 +131,9 @@ public class ActeurState<T, R extends T> {
     }
 
     public String toString() {
-        return getClass().getName() + " rej? " + rejected + " for " + getActeur() + " with " + (context == null ? " (none0)" : Arrays.asList(context).toString());
+        return getClass().getName() + " rej? " + rejected + " for " + getActeur()
+                + " with " + (context == null ? " (none0)"
+                        : Arrays.asList(context).toString());
     }
 
 }

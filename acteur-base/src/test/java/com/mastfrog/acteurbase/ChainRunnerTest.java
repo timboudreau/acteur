@@ -201,7 +201,7 @@ public class ChainRunnerTest {
                 assertTrue(s.contains(XA2.class));
                 assertEquals(2, s.size());
             }
-            setState(new ActeurState<Response, ResponseImpl>("hello"));
+            setState(new AS("hello"));
         }
     }
 
@@ -211,7 +211,7 @@ public class ChainRunnerTest {
         @SuppressWarnings("deprecation")
         SecondA(String msg, Timer timer, Deferral defer) {
             response().add(Headers.CONTENT_ENCODING, "foo " + msg);
-            setState(new ActeurState<Response, ResponseImpl>(23));
+            setState(new AS(23));
             final Resumer resume = defer.defer();
             timer.schedule(new TimerTask() {
 
@@ -228,7 +228,7 @@ public class ChainRunnerTest {
         @Inject
         SecondWithoutTimeoutA(String msg) {
             response().add(Headers.CONTENT_ENCODING, "foo " + msg);
-            setState(new ActeurState<Response, ResponseImpl>(23));
+            setState(new AS(23));
         }
     }
 
@@ -238,7 +238,7 @@ public class ChainRunnerTest {
         @SuppressWarnings("unchecked")
         FinalA(String msg, Integer val, Chain chain) {
             response().add(Headers.ACCEPT, "3 ");
-            setState(new ActeurState<Response, ResponseImpl>(0.5F));
+            setState(new AS(0.5F));
             chain.add(AddedA.class);
             chain.add(ErrorA.class); // will not be called because AddedA sets teh response code
         }
@@ -249,7 +249,7 @@ public class ChainRunnerTest {
         @Inject
         AddedA(Float f) {
             response().setStatus(HttpResponseStatus.CREATED);
-            setState(new ActeurState<Response, ResponseImpl>(false));
+            setState(new AS(false));
         }
     }
 
@@ -258,21 +258,21 @@ public class ChainRunnerTest {
         EndA() {
             response().setMessage("foo");
             response().setStatus(HttpResponseStatus.OK);
-            setState(new ActeurState<Response, ResponseImpl>(false));
+            setState(new AS(false));
         }
     }
 
     static class XA1 extends A2 {
 
         XA1() {
-            setState(new ActeurState<Response, ResponseImpl>(false));
+            setState(new AS(false));
         }
     }
 
     static class XA2 extends A2 {
 
         XA2() {
-            setState(new ActeurState<Response, ResponseImpl>(true));
+            setState(new AS(true));
         }
     }
 

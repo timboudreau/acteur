@@ -81,7 +81,6 @@ public class AbstractActeur<T, R extends T, S extends ActeurState<T, R>> {
     protected void setState(S state) {
         Checks.notNull("state", state);
         this.state = state;
-        state.acteur = this;
     }
 
     /**

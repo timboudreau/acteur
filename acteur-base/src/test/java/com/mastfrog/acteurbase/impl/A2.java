@@ -34,20 +34,36 @@ import io.netty.handler.codec.http.HttpResponseStatus;
  */
 public class A2 extends AbstractActeur<Response, ResponseImpl, ActeurState<Response, ResponseImpl>> {
 
+    public class AS extends ActeurState<Response, ResponseImpl> {
+
+        public AS(Object... context) {
+            super(context);
+        }
+
+        public AS(boolean rejected) {
+            super(rejected);
+        }
+
+        @Override
+        protected AbstractActeur<Response, ResponseImpl, ?> getActeur() {
+            return A2.this;
+        }
+    }
+
     protected A2() {
         super(INSTANCE);
     }
 
     protected A2 reject() {
-        setState(new ActeurState<Response, ResponseImpl>(true));
+        setState(new AS(true));
         return this;
     }
 
     protected A2 next(Object... context) {
         if (context == null || context.length == 0) {
-            setState(new ActeurState<Response, ResponseImpl>(false));
+            setState(new AS(false));
         } else {
-            setState(new ActeurState<Response, ResponseImpl>(true));
+            setState(new AS(true));
         }
         return this;
     }
@@ -55,7 +71,7 @@ public class A2 extends AbstractActeur<Response, ResponseImpl, ActeurState<Respo
     protected A2 reply(HttpResponseStatus status, Object response) {
         response().setStatus(status);
         response().setMessage(response);
-        setState(new ActeurState<Response, ResponseImpl>(response == null ? new Object[0] : new Object[]{response}));
+        setState(new AS(response == null ? new Object[0] : new Object[]{response}));
         return this;
     }
 
