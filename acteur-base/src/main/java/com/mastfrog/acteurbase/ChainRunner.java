@@ -29,6 +29,7 @@ import com.mastfrog.acteurbase.Deferral.DeferredCode;
 import com.mastfrog.acteurbase.Deferral.Resumer;
 import com.mastfrog.function.misc.QuietAutoClosable;
 import com.mastfrog.giulius.scope.ReentrantScope;
+import com.mastfrog.util.collections.ArrayUtils;
 import com.mastfrog.util.preconditions.Checks;
 import com.mastfrog.util.preconditions.Exceptions;
 import java.util.Iterator;
@@ -56,8 +57,8 @@ public final class ChainRunner {
 
     private final ExecutorService svc;
     private final ReentrantScope scope;
-    private static final boolean firstSync = Boolean.getBoolean("acteur.chain.init.sync");
-    private static final boolean allSync = Boolean.getBoolean("acteur.unsupported.sync");
+    private static final boolean FIRST_SYNC = Boolean.getBoolean("acteur.chain.init.sync");
+    private static final boolean ALL_SYNC = Boolean.getBoolean("acteur.unsupported.sync");
 
     @Inject
     public ChainRunner(ExecutorService svc, ReentrantScope scope) {
@@ -87,12 +88,12 @@ public final class ChainRunner {
         ActeurInvoker<A, S, P, T, R> cc = new ActeurInvoker<>(svc, scope, chain, onDone, cancelled);
         // Enter the scope, with the Chain (so it can be dynamically added to)
         // and the deferral, which can be used to pause the chain
-        try ( QuietAutoClosable ac = scope.enter(chain, cc.deferral)) {
+        try (QuietAutoClosable ac = scope.enter(chain, cc.deferral)) {
             // Non-default:  Eliminates the possibility that payload bytes will be processed before
             // the headers, *if* the first acteur in the first chain fully processes the request
             // - useful for some applications that use @Early, and may provide
             // a slight performance boost
-            if (firstSync || allSync) {
+            if (FIRST_SYNC || ALL_SYNC) {
                 try {
                     cc.call();
                 } catch (Exception ex) {
@@ -171,21 +172,43 @@ public final class ChainRunner {
         }
 
         private void addToContext(ActeurState state) {
-            synchronized (this) {
-                addToContext(state.context());
+            addToContext(state.context());
+        }
+
+        private void addToContext(Object[] ctx) {
+            if (ctx != null && ctx.length > 0) {
+                synchronized (this) {
+                    if (this.state.length == 0) {
+                        this.state = ctx;
+                        return;
+                    }
+                    this.state = ArrayUtils.concatenate(this.state, ctx);
+                }
             }
         }
 
-        private synchronized void addToContext(Object[] ctx) {
-            if (ctx != null && ctx.length > 0) {
-                if (this.state.length == 0) {
-                    this.state = ctx;
-                    return;
+        synchronized QuietAutoClosable enterScopeIfState() {
+            // Optimization - only reenter the scope if we have some state
+            // from previous acteurs to incorporate into it
+            if (this.state.length == 0) {
+                return DummyAutoClosable.INSTANCE;
+            }
+            return scope.enter(this.state);
+        }
+
+        QuietAutoClosable enterScopeWithContextContribution() {
+            Object[] contribution = chain.getContextContribution();
+            if (contribution.length == 0) {
+                return DummyAutoClosable.INSTANCE;
+            }
+            return scope.enter(contribution);
+        }
+
+        void addResponse(R resp) {
+            if (resp != null) {
+                synchronized(this) {
+                    responses.add(resp);
                 }
-                Object[] nue = new Object[this.state.length + ctx.length];
-                System.arraycopy(this.state, 0, nue, 0, this.state.length);
-                System.arraycopy(ctx, 0, nue, this.state.length, ctx.length);
-                this.state = nue;
             }
         }
 
@@ -194,32 +217,24 @@ public final class ChainRunner {
             if (cancelled.get()) {
                 return null;
             }
-            try ( AutoCloseable ctx = scope.enter(chain.getContextContribution())) {
-                AutoCloseable ac = null;
-                // Optimization - only reenter the scope if we have some state
-                // from previous acteurs to incorporate into it
-                synchronized (this) {
-                    if (this.state.length > 0) {
-                        ac = scope.enter(this.state);
-                    }
-                }
-                S newState = null;
-                try {
-                    A a2 = null;
+            try (QuietAutoClosable ctx = enterScopeWithContextContribution()) {
+                S newState;
+                try (QuietAutoClosable ac = enterScopeIfState()) {
                     onDone.onBeforeRunOne(chain);
                     onDone.onBeforeRunOne(chain, responses);
                     // Instantiate the next acteur, most likely causing its
                     // constructor to set its state
-                    a2 = iter.next();
+                    A a2 = iter.next();
                     // Get the state, which may compute the state if it is lazy
                     newState = a2.getState();
                     onDone.onAfterRunOne(chain, a2, newState);
-                    // Add any objects it provided into the scope for the next
-                    // invocation
-                    addToContext(newState);
                     if (newState.isRejected()) {
                         onDone.onRejected(newState);
                         return null;
+                    } else {
+                        // Add any objects it provided into the scope for the next
+                        // invocation
+                        addToContext(newState);
                     }
                 } catch (Exception | Error e) {
                     Throwable t = e;
@@ -228,24 +243,13 @@ public final class ChainRunner {
                     }
                     onDone.onFailure(t);
                     return null;
-                } finally {
-                    if (ac != null) {
-                        ac.close();
-                    }
                 }
                 if (cancelled.get()) {
                     return null;
                 }
                 // Get the response, which may be null if it was untouched by the
                 // acteurs execution
-                R resp = newState.response();
-                if (resp != null) {
-                    // Add it into the set of response objects the OnDone will
-                    // coalesce
-                    synchronized (this) {
-                        responses.add(resp);
-                    }
-                }
+                addResponse(newState.response());
                 // See if we're done
                 if (!newState.isFinished()) {
                     // If no more Acteurs, tell the callback we give up
@@ -258,7 +262,7 @@ public final class ChainRunner {
                             code.run(this);
                         }
                     } else if (!cancelled.get()) {
-                        if (allSync) {
+                        if (ALL_SYNC) {
                             this.call();
                         } else {
                             svc.submit(scope.wrap(this));
@@ -267,7 +271,7 @@ public final class ChainRunner {
                 } else {
                     // Ensure any ResponseDecorators are run with full
                     // scope contents
-                    try ( QuietAutoClosable cl = scope.enter(state)) {
+                    try (QuietAutoClosable cl = enterScopeIfState()) {
                         onDone.onDone(newState, responses);
                     }
                 }
@@ -296,5 +300,16 @@ public final class ChainRunner {
                 }
             }
         }
+    }
+
+    static class DummyAutoClosable implements QuietAutoClosable {
+
+        static DummyAutoClosable INSTANCE = new DummyAutoClosable();
+
+        @Override
+        public void close() {
+            // do nothing
+        }
+
     }
 }

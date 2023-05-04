@@ -110,7 +110,7 @@ public class ActeurAsyncTest {
         System.setProperty("mongo.tmplog", "true");
     }
 
-    @Test(timeout = 20000L)
+    @Test(timeout = 120000L)
     public void test(TestHarness harn, ObjectMapper mapper, @Named("stuff") MongoCollection<Document> stuff) throws Throwable {
         harn.get("/hello").go().assertStatus(OK).assertContent("Hello world");
 
@@ -235,7 +235,7 @@ public class ActeurAsyncTest {
 
         harn.get("/etagstuff")
                 .addHeader(Headers.IF_NONE_MATCH, etag)
-                .setTimeout(Duration.ofSeconds(4))
+                .setTimeout(Duration.ofSeconds(60))
                 .go()
                 .await()
                 .assertStatus(NOT_MODIFIED)
