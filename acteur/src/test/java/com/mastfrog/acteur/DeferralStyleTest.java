@@ -38,6 +38,7 @@ import static com.mastfrog.acteur.headers.Method.GET;
 import com.mastfrog.acteur.server.ServerModule;
 import static com.mastfrog.acteur.server.ServerModule.BACKGROUND_THREAD_POOL_NAME;
 import com.mastfrog.acteurbase.Deferral;
+import com.mastfrog.acteurbase.Deferral.Resumer;
 import com.mastfrog.giulius.tests.anno.TestWith;
 import com.mastfrog.http.test.harness.acteur.HttpHarness;
 import com.mastfrog.http.test.harness.acteur.HttpTestHarnessModule;
@@ -47,7 +48,9 @@ import static io.netty.handler.codec.http.HttpResponseStatus.CREATED;
 import static io.netty.handler.codec.http.HttpResponseStatus.NON_AUTHORITATIVE_INFORMATION;
 import io.netty.util.concurrent.FastThreadLocalThread;
 import java.util.Objects;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
+import static java.util.concurrent.TimeUnit.MINUTES;
 import java.util.concurrent.atomic.AtomicBoolean;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -126,6 +129,18 @@ public final class DeferralStyleTest {
         }).assertAllSucceeded();
     }
 
+    @Test
+    @Timeout(30)
+    public void testDeferralReturningResumer(HttpHarness harn) throws Exception {
+        harn.get("seven").asserting(a -> {
+            a.assertStatus(NON_AUTHORITATIVE_INFORMATION.code())
+                    .assertHeader("content-type", "text/x-doohickey")
+                    .assertBody(b -> {
+                        return "{\"intValue\":55,\"stringValue\":\"Saves lives\"}".equals(b);
+                    });
+        }).assertAllSucceeded();
+    }
+
     static class M implements Module {
 
         @Override
@@ -147,6 +162,7 @@ public final class DeferralStyleTest {
             add(P4.class);
             add(P5.class);
             add(P6.class);
+            add(P7.class);
         }
     }
 
@@ -212,6 +228,18 @@ public final class DeferralStyleTest {
             add(D6.class);
             add(DoohickeyEmitter.class);
         }
+    }
+
+    static class P7 extends Page {
+
+        @Inject
+        P7(ActeurFactory f) {
+            add(f.matchMethods(GET));
+            add(f.matchPath("^seven$"));
+            add(D7.class);
+            add(DoohickeyEmitter.class);
+        }
+
     }
 
     static class D1 extends Acteur {
@@ -288,6 +316,33 @@ public final class DeferralStyleTest {
             });
             next();
         }
+    }
+
+    static class D7 extends Acteur {
+
+        private final CountDownLatch latch = new CountDownLatch(1);
+
+        @Inject
+        D7(Deferral def, @Named(BACKGROUND_THREAD_POOL_NAME) ExecutorService svc) {
+            add(CONTENT_TYPE, MimeType.parse("text/x-doohickey"));
+            Resumer r = def.defer();
+            svc.submit(() -> {
+                // Ensures we can't accidentally resume before the call
+                // to next() with the chain in an undefined state
+                latch.await(1, MINUTES);
+                Thread.sleep(100);
+                r.resume(new Doohickey(55, "Saves lives"));
+                return null;
+            });
+            next();
+        }
+
+        @Override
+        protected State getState() {
+            latch.countDown();
+            return super.getState();
+        }
+
     }
 
     static class DoohickeyEmitter extends Acteur {

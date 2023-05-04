@@ -32,18 +32,25 @@ package com.mastfrog.acteurbase;
 public interface Deferral {
 
     /**
-     * Defer execution
-     *
-     * @deprecated Use the overload which takes a DeferredCode; otherwise it is
-     * possible to resume before the calling method has exited, which can have
-     * unpredictable effects (the chain does not know it is deferred until the
-     * Acteur constructor has exited, but may be resumed sooner than that).
-     * @return A resumer which can restart exeution later
-     * @throws IllegalStateException if defer has already been called without
-     * a corresponding call to resume().
+     * Defer execution until the passed resumer is called.  <i>Prefer the
+     * overload that takes a <code>{@link DeferredCode}</code> in almost all
+     * circumstances. If you call
+     * <code>{@link Resumer#resume(java.lang.Object...)</code>
+     * <i>synchronously in an Acteur constructor</i> or <i><b>even in a
+     * background thread doing work that could <u>possibly</u> complete before
+     * the constructor does</i></b> it can crash badly, trying to resume the
+     * chain when it is not in-between steps.
+     * <p>
+     * The one use case for this method is where you have an object which you
+     * <i>must</i> use synchronously (like a <code>ChannelFutureListener</code>
+     * that is going to write a response), and you need to pass the
+     * <code>{@link Resumer}</code> as an argument to its constructor for some
+     * reason. Some dark corners of websocket support need this. Almost nothing
+     * else does.
+     * </p>
      */
-    @Deprecated
     public Resumer defer();
+
     /**
      * Defer execution until the resumer's resume() method is called. The
      * DeferredCode is guaranteed to be executed <i>after</i> the method that
@@ -54,15 +61,17 @@ public interface Deferral {
      * corresponding call to resume().
      */
     public Resumer defer(DeferredCode code);
-    
+
     /**
      * Code that should run <i>after</i> the acteur currently being run has
-     * exited.  It is possible for code that launches a background thread
-     * to complete and call resume() before the acteur constructor defer was
-     * called from completes running.  Using deferredCode guarantees that the
-     * code is run after the method defer was called from exits.
+     * exited. It is possible for code that launches a background thread to
+     * complete and call resume() before the acteur constructor defer was called
+     * from completes running. Using deferredCode guarantees that the code is
+     * run after the method defer was called from exits.
      */
+    @FunctionalInterface
     public interface DeferredCode {
+
         void run(Resumer resume) throws Exception;
     }
 
