@@ -10,9 +10,11 @@ import com.mastfrog.acteur.headers.Method;
 import static com.mastfrog.acteur.headers.Method.GET;
 import static com.mastfrog.acteur.headers.Method.PUT;
 import com.mastfrog.acteur.preconditions.Methods;
+import com.mastfrog.acteur.server.EventImplFactory;
 import com.mastfrog.acteur.server.ServerBuilder;
 import com.mastfrog.acteur.server.ServerModule;
 import com.mastfrog.acteur.util.RequestID;
+import com.mastfrog.function.misc.QuietAutoClosable;
 import com.mastfrog.giulius.tests.anno.TestWith;
 import com.mastfrog.http.harness.Assertions;
 import com.mastfrog.http.test.harness.acteur.HttpHarness;
@@ -24,6 +26,7 @@ import io.netty.handler.codec.http.FullHttpRequest;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import java.io.IOException;
 import static java.nio.charset.StandardCharsets.UTF_8;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
@@ -31,7 +34,7 @@ import org.junit.jupiter.api.Timeout;
  *
  * @author Tim Boudreau
  */
-@TestWith({HttpTestHarnessModule.class, SM.class}) // Use these Guice modules
+@TestWith({HttpTestHarnessModule.class, SM.class, SilentRequestLogger.class}) // Use these Guice modules
 public class PutTest {
 
     public static void main(String[] args) throws IOException, InterruptedException {
@@ -40,7 +43,7 @@ public class PutTest {
     }
 
     // Just subclasses ServerModule to provide the application class
-    static class SM extends ServerModule<EchoServer> implements RequestLogger {
+    static class SM extends ServerModule<EchoServer> {
 
         SM() {
             super(EchoServer.class, 2, 2, 3);
@@ -49,17 +52,6 @@ public class PutTest {
         @Override
         protected void configure() {
             super.configure();
-            bind(RequestLogger.class).toInstance(this);
-        }
-
-        @Override
-        public void onBeforeEvent(RequestID rid, Event<?> event) {
-            // do nothing
-        }
-
-        @Override
-        public void onRespond(RequestID rid, Event<?> event, HttpResponseStatus status) {
-            // do nothing
         }
     }
 
@@ -80,11 +72,29 @@ public class PutTest {
                     .assertBody("Test " + ix + " iter")).assertAllSucceeded();
 
         }
+    }
+
+    @Test
+    @Timeout(60)
+    public void testVeryLongUrl(HttpHarness harn) {
         harn.get(veryLongUrl(35)).asserting(Assertions::assertOk).assertAllSucceeded();
     }
 
     private String veryLongUrl(int amt) {
-        return "/0123456789".repeat(Math.max(0, amt));
+        return "/0123456789".repeat(Math.max(1, amt));
+    }
+
+    public static List<Object> acteursFor(Page page) {
+        return page.acteurs(false);
+    }
+
+    public static QuietAutoClosable setPage(Application app, Page p) {
+        p.setApplication(app);
+        return Page.set(p);
+    }
+
+    public static void installHelp(Application app) {
+        app.installHelp();
     }
 
     static class EchoServer extends Application {
@@ -146,7 +156,8 @@ public class PutTest {
                 out.write(buf.retainedDuplicate());
                 ran = true;
             } else {
-                throw new AssertionError("Not a FullHttpRequest: " + evt.request() + " " + evt.request().getClass().getName());
+                throw new AssertionError("Not a FullHttpRequest: " + evt.request()
+                        + " " + evt.request().getClass().getName());
             }
             return ResponseWriter.Status.NOT_DONE;
         }

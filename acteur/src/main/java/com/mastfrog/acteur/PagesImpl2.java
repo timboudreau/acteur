@@ -271,7 +271,7 @@ class PagesImpl2 {
 
         @Override
         public void onAfterRunOne(PageChain chain, Acteur acteur, ActeurState state) {
-            application.probe.onActeurWasRun(id, event, Page.get(), acteur, state);
+            application.probe.onActeurWasRun(id, event, chain.page, acteur, state);
             onAfterRunOne(chain, acteur);
         }
 

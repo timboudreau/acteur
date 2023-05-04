@@ -715,12 +715,8 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
      */
     protected class ConsumedState extends BaseState {
 
-        public ConsumedState(Object... context) {
+        public ConsumedState() {
             super(false);
-            Page page = Page.get();
-            if (page == null) {
-                throw new IllegalStateException("Called outside ActionsImpl.onEvent");
-            }
         }
     }
 
@@ -728,10 +724,6 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
 
         public ConsumedLockedState(Object... context) {
             super(context);
-            Page page = Page.get();
-            if (page == null) {
-                throw new IllegalStateException("Called outside ActionsImpl.onEvent");
-            }
         }
     }
 

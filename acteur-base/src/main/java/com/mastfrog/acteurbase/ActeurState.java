@@ -130,6 +130,7 @@ public abstract class ActeurState<T, R extends T> {
         return r != null && getActeur().factory.isModified(r) ? r : null;
     }
 
+    @Override
     public String toString() {
         return getClass().getName() + " rej? " + rejected + " for " + getActeur()
                 + " with " + (context == null ? " (none0)"

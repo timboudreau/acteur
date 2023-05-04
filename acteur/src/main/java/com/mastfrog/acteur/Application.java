@@ -306,6 +306,14 @@ public class Application implements Iterable<Page> {
         }
     }
 
+    final void installHelp() {
+        boolean wasPresent = pages.remove(helpPageType());
+        pages.add(0, helpPageType());
+        if (!wasPresent) {
+            filters.addNormalPage(helpPageType());
+        }
+    }
+
     @SuppressWarnings("unchecked")
     protected final void add(Page page) {
         if (page.getClass().getAnnotation(Early.class) != null) {

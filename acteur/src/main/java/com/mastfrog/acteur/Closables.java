@@ -84,7 +84,7 @@ public final class Closables {
         for (AutoCloseable clos : closeables) {
             if (clos instanceof RunnableWrapper) {
                 RunnableWrapper w = (RunnableWrapper) clos;
-                if (w.run == w.run) { // XXX what was this REALLY trying to do???
+                if (w.run == run) {
                     return this;
                 }
             }

@@ -17,7 +17,6 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 import java.lang.annotation.Target;
-import java.time.Duration;
 import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
@@ -29,9 +28,6 @@ import org.junit.jupiter.api.Timeout;
  */
 @TestWith({M.class, HttpTestHarnessModule.class, SilentRequestLogger.class})
 public class TestAnnotations {
-
-    private static final long TIMEOUT = 60_000;
-    private static final Duration TO = Duration.ofMillis(TIMEOUT);
 
     @Test
     @Timeout(60)
