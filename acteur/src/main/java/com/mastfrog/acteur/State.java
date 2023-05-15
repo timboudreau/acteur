@@ -40,7 +40,7 @@ public abstract class State extends ActeurState<Response, ResponseImpl> {
         super(rejected);
         page = Page.get();
         if (page == null) {
-            throw new IllegalStateException("Page not set");
+            throw new IllegalStateException("Page not set, or not in request context");
         }
     }
 
