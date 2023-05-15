@@ -96,7 +96,7 @@ final class HelpPage extends Page {
         }
 
         @Override
-        public BaseState getState() {
+        public State getState() {
             return new RespondWith(200);
         }
 

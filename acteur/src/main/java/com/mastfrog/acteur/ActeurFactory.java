@@ -149,7 +149,7 @@ public class ActeurFactory {
                         + event.method() + " not allowed.  Accepted methods are "
                         + Headers.ALLOW.toCharSequence(methods) + "\n"));
             }
-            return hasMethod ? new ConsumedState() : new RejectedState(this);
+            return hasMethod ? new ConsumedState(this) : new RejectedState(this);
         }
 
         @Override
@@ -189,7 +189,7 @@ public class ActeurFactory {
                         + event.method() + " not allowed.  Accepted methods are "
                         + Headers.ALLOW.toCharSequence(method) + "\n"));
             }
-            return hasMethod ? new ConsumedState() : new RejectedState(this);
+            return hasMethod ? new ConsumedState(this) : new RejectedState(this);
         }
 
         @Override
@@ -212,7 +212,7 @@ public class ActeurFactory {
                 if (event.path().getElements().length == length) {
                     return new RejectedState(this);
                 } else {
-                    return new ConsumedState();
+                    return new ConsumedState(this);
                 }
             }
 
@@ -233,7 +233,7 @@ public class ActeurFactory {
                 if (event.path().getElements().length < length) {
                     return new RejectedState(this);
                 } else {
-                    return new ConsumedState();
+                    return new ConsumedState(this);
                 }
             }
 
@@ -254,7 +254,7 @@ public class ActeurFactory {
                 if (event.path().getElements().length > length) {
                     return new RejectedState(this);
                 } else {
-                    return new ConsumedState();
+                    return new ConsumedState(this);
                 }
             }
 
@@ -495,7 +495,7 @@ public class ActeurFactory {
                     return new Acteur.RespondWith(Err.badRequest("Missing URL parameter '" + nm + "'\n"));
                 }
             }
-            return new Acteur.ConsumedState();
+            return new ConsumedState(this);
         }
 
         @Override
@@ -530,7 +530,7 @@ public class ActeurFactory {
                         }
                     }
                 }
-                return new Acteur.ConsumedState();
+                return new ConsumedState(this);
             }
 
             @Override
@@ -604,7 +604,7 @@ public class ActeurFactory {
                         }
                     }
                 }
-                return new Acteur.ConsumedState();
+                return new ConsumedState(this);
             }
         }
         return new NumberParameters();
@@ -630,7 +630,7 @@ public class ActeurFactory {
                                 e.getKey() + " not allowed in parameters\n"));
                     }
                 }
-                return new ConsumedState();
+                return new ConsumedState(this);
             }
 
             @Override
@@ -657,7 +657,7 @@ public class ActeurFactory {
                 for (String nm : names) {
                     String val = event.urlParameter(nm);
                     if (val != null) {
-                        return new ConsumedState();
+                        return new ConsumedState(this);
                     }
                 }
                 StringBuilder sb = new StringBuilder();
@@ -724,7 +724,7 @@ public class ActeurFactory {
                 pth = Strings.urlDecode(pth);
             }
             if (path.equals(pth)) {
-                return new ConsumedState();
+                return new ConsumedState(this);
             }
             return new RejectedState(this);
         }
@@ -768,7 +768,7 @@ public class ActeurFactory {
                 Pattern p = cache.getPattern(regex);
                 boolean matches = p.matcher(pth).matches();
                 if (matches) {
-                    return new ConsumedState();
+                    return new ConsumedState(this);
                 }
             }
             return new RejectedState(this);
@@ -910,7 +910,7 @@ public class ActeurFactory {
                     if (val < length) {
                         return new RespondWith(Err.badRequest("Request body must be > " + length + " characters"));
                     }
-                    return new ConsumedState();
+                    return new ConsumedState(this);
                 } catch (IOException ex) {
                     return Exceptions.chuck(ex);
                 }
@@ -929,7 +929,7 @@ public class ActeurFactory {
                         return new Acteur.RespondWith(new Err(HttpResponseStatus.REQUEST_ENTITY_TOO_LARGE,
                                 "Request body must be < " + length + " characters"));
                     }
-                    return new Acteur.ConsumedState();
+                    return new ConsumedState(this);
                 } catch (IOException ex) {
                     return Exceptions.chuck(ex);
                 }
@@ -952,7 +952,7 @@ public class ActeurFactory {
                                 + Arrays.asList(params)));
                     }
                 }
-                return new ConsumedState();
+                return new ConsumedState(this);
             }
         }
         return new RequireParametersIfMethodMatches();

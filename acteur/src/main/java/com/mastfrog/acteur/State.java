@@ -36,14 +36,6 @@ public abstract class State extends ActeurState<Response, ResponseImpl> {
 
     protected final Page page;
 
-    State(Object... context) {
-        super(context);
-        page = Page.get();
-        if (page == null) {
-            throw new IllegalStateException("Page not set");
-        }
-    }
-
     State(boolean rejected) {
         super(rejected);
         page = Page.get();

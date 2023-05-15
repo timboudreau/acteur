@@ -34,32 +34,9 @@ import java.util.Arrays;
  */
 public abstract class ActeurState<T, R extends T> {
 
-    private final Object[] context;
+    private static final Object[] NOTHING = new Object[0];
     private final boolean rejected;
     protected final Throwable creationStackTrace;
-
-    private ActeurState(boolean rejected, Object... context) {
-        this.context = context;
-        this.rejected = rejected;
-        boolean asserts = false;
-        assert asserts = true;
-        if (asserts) {
-            creationStackTrace = new Throwable();
-        } else {
-            creationStackTrace = null;
-        }
-    }
-
-    /**
-     * Create a state with the passed objects available for injection into
-     * subsequent acteurs in a chain.
-     *
-     * @param context Objects for injection to be passed between acteurs. The
-     * types of these need to be bound with Guice in the scope used with chains.
-     */
-    public ActeurState(Object... context) {
-        this(false, context);
-    }
 
     /**
      * Create a state with no context objects which either rejects or finishes
@@ -68,8 +45,15 @@ public abstract class ActeurState<T, R extends T> {
      * @param rejected If true, the acteur producing this state will be the last
      * one executed on this chain
      */
-    public ActeurState(boolean rejected) {
-        this(rejected, (Object[]) null);
+    protected ActeurState(boolean rejected) {
+        this.rejected = rejected;
+        boolean asserts = false;
+        assert asserts = true;
+        if (asserts) {
+            creationStackTrace = new Throwable();
+        } else {
+            creationStackTrace = null;
+        }
     }
 
     /**
@@ -89,7 +73,7 @@ public abstract class ActeurState<T, R extends T> {
      * @return An array of objects or null
      */
     protected Object[] context() {
-        return context;
+        return NOTHING;
     }
 
     /**
@@ -134,8 +118,9 @@ public abstract class ActeurState<T, R extends T> {
 
     @Override
     public String toString() {
+        Object[] context = context();
         return getClass().getName() + " rej? " + rejected + " for " + getActeur()
-                + " with " + (context == null ? " (none0)"
+                + " with " + (context == null || context.length == 0 ? " (none)"
                         : Arrays.asList(context).toString());
     }
 

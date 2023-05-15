@@ -162,7 +162,7 @@ public abstract class ClasspathResourcePage extends Page {
                 if (cachedSize != null) {
                     add(Headers.CONTENT_LENGTH, cachedSize);
                 }
-                setState(new ConsumedState());
+                next();
             } else {
                 setState(new RespondWith(HttpResponseStatus.NOT_FOUND, "No such page " + event.path()));
             }

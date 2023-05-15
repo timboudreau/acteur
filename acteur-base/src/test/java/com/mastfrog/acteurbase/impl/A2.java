@@ -36,12 +36,25 @@ public class A2 extends AbstractActeur<Response, ResponseImpl, ActeurState<Respo
 
     public class AS extends ActeurState<Response, ResponseImpl> {
 
+        private final Object[] context;
+
         public AS(Object... context) {
-            super(context);
+            super(false);
+            this.context = context;
         }
 
         public AS(boolean rejected) {
             super(rejected);
+            this.context = null;
+        }
+
+        @Override
+        protected Object[] context() {
+            return getContext();
+        }
+
+        public Object[] getContext() {
+            return context == null ? super.context() : context;
         }
 
         @Override

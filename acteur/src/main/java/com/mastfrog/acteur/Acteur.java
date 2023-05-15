@@ -24,7 +24,6 @@
 package com.mastfrog.acteur;
 
 import com.google.inject.Injector;
-import com.mastfrog.acteur.Acteur.BaseState;
 import com.mastfrog.acteur.errors.Err;
 import com.mastfrog.acteur.errors.ErrorRenderer;
 import com.mastfrog.acteur.errors.ErrorResponse;
@@ -159,9 +158,11 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
     class BaseState extends com.mastfrog.acteur.State {
 
         protected final Page page;
+        private Object[] context;
 
         BaseState(Object... context) {
-            super(context);
+            super(false);
+            this.context = context;
             page = Page.get();
             if (page == null) {
                 throw new IllegalStateException("Page not set");
@@ -174,6 +175,11 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
             if (page == null) {
                 throw new IllegalStateException("Page not set");
             }
+        }
+
+        @Override
+        protected Object[] context() {
+            return context == null ? super.context() : context;
         }
 
         @Override
@@ -379,13 +385,13 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
     }
 
     protected final Acteur next() {
-        setState(new ConsumedState());
+        setState(new ConsumedState(this));
         return this;
     }
 
     protected final Acteur next(Object... context) {
         if (context == null || context.length == 0) {
-            setState(new ConsumedState());
+            setState(new ConsumedState(this));
         } else {
             setState(new ConsumedLockedState(context));
         }
@@ -652,7 +658,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
      * A shorthand state for responding with a particular http response code and
      * optional message, which if non-string, will be rendered as JSON.
      */
-    public class RespondWith extends BaseState {
+    public class RespondWith extends com.mastfrog.acteur.State {
 
         public RespondWith(int status) {
             this(HttpResponseStatus.valueOf(status));
@@ -697,6 +703,11 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
         }
 
         @Override
+        public Acteur getActeur() {
+            return Acteur.this;
+        }
+
+        @Override
         public String toString() {
             return "Respond with " + getResponse().internalStatus() + " - "
                     + super.toString() + " - " + getResponse().getMessage();
@@ -730,10 +741,17 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
      * responding to the request. It may optionally include objects which should
      * be available for injection into subsequent acteurs.
      */
-    protected class ConsumedState extends BaseState {
+    protected static class ConsumedState extends com.mastfrog.acteur.State {
+        private final Acteur origin;
 
-        public ConsumedState() {
+        public ConsumedState(Acteur origin) {
             super(false);
+            this.origin = origin;
+        }
+
+        @Override
+        public Acteur getActeur() {
+            return origin;
         }
     }
 
@@ -754,6 +772,9 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
      */
     protected final <T extends ResponseWriter> Acteur setResponseWriter(Class<T> writerType) {
         Page page = Page.get();
+        if (page == null) {
+            throw new IllegalStateException("Not in context");
+        }
         Dependencies deps = page.getApplication().getDependencies();
         HttpEvent evt = deps.getInstance(HttpEvent.class);
         response();
@@ -770,6 +791,9 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
      */
     protected final <T extends ResponseWriter> Acteur setResponseWriter(T writer) {
         Page page = Page.get();
+        if (page == null) {
+            throw new IllegalStateException("Not in context");
+        }
         Dependencies deps = page.getApplication().getDependencies();
         HttpEvent evt = deps.getInstance(HttpEvent.class);
         response();
@@ -806,7 +830,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
 
         IWrapper(Class<T> listenerType, Page page) {
             assert page != null : "Called outside request scope";
-            this.page = page;
+            this.page = notNull("page", page);
             this.listenerType = notNull("listenerType", listenerType);
             Application app = page.getApplication();
             delegate = app.getRequestScope().wrap(this);
