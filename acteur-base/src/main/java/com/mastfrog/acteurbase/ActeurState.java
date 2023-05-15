@@ -112,6 +112,8 @@ public abstract class ActeurState<T, R extends T> {
      * @return the response object or null
      */
     R response() {
+        // getResponse() only returns non-null if the response was actually
+        // created by a write method.
         R r = getActeur().getResponse();
         return r != null && getActeur().factory.isModified(r) ? r : null;
     }

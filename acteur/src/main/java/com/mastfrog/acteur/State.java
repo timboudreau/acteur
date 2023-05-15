@@ -50,15 +50,20 @@ public abstract class State extends ActeurState<Response, ResponseImpl> {
     }
 
     /**
-     * Returns whether (and by which "page") the next event has to be processed
-     * prior to regular processing.
+     * Returns the page this Acteur was created in service of.
      *
-     * @return the locked widget; if null, then there is no prior widget
+     * @return the page
      */
     public final Page getLockedPage() {
         return page;
     }
 
+    /**
+     * Get any context objects that should be available for injection into
+     * Acteurs subsequent to the one that created this state.
+     *
+     * @return An array of objects, or null
+     */
     public final Object[] getContext() {
         return super.context();
     }

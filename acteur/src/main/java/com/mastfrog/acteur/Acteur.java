@@ -194,7 +194,6 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
      * processing the request as arguments, and they will be injected by Guice,
      * either from bindings the application was set up with, or objects provided
      * by other Acteurs which have already been run for this request.
-     *
      */
     protected Acteur() {
         super(INSTANCE);
@@ -718,7 +717,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
      * A state indicating the acteur neither accepts nor definitively refuses a
      * request.
      */
-    protected static class RejectedState extends com.mastfrog.acteur.State {
+    protected static final class RejectedState extends com.mastfrog.acteur.State {
 
         private final Acteur acteur;
 
@@ -741,7 +740,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
      * responding to the request. It may optionally include objects which should
      * be available for injection into subsequent acteurs.
      */
-    protected static class ConsumedState extends com.mastfrog.acteur.State {
+    protected static final class ConsumedState extends com.mastfrog.acteur.State {
         private final Acteur origin;
 
         public ConsumedState(Acteur origin) {
@@ -755,7 +754,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
         }
     }
 
-    protected class ConsumedLockedState extends BaseState {
+    protected final class ConsumedLockedState extends BaseState {
 
         public ConsumedLockedState(Object... context) {
             super(context);
@@ -773,7 +772,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
     protected final <T extends ResponseWriter> Acteur setResponseWriter(Class<T> writerType) {
         Page page = Page.get();
         if (page == null) {
-            throw new IllegalStateException("Not in context");
+            throw new IllegalStateException("Page null - called outside request scope");
         }
         Dependencies deps = page.getApplication().getDependencies();
         HttpEvent evt = deps.getInstance(HttpEvent.class);
@@ -792,7 +791,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
     protected final <T extends ResponseWriter> Acteur setResponseWriter(T writer) {
         Page page = Page.get();
         if (page == null) {
-            throw new IllegalStateException("Not in context");
+            throw new IllegalStateException("Page null - called outside request scope");
         }
         Dependencies deps = page.getApplication().getDependencies();
         HttpEvent evt = deps.getInstance(HttpEvent.class);
@@ -830,7 +829,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
 
         IWrapper(Class<T> listenerType, Page page) {
             assert page != null : "Called outside request scope";
-            this.page = notNull("page", page);
+            this.page = notNull("Page null - called outside request scope", page);
             this.listenerType = notNull("listenerType", listenerType);
             Application app = page.getApplication();
             delegate = app.getRequestScope().wrap(this);

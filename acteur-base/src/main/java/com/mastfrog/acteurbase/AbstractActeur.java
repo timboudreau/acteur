@@ -55,7 +55,7 @@ public class AbstractActeur<T, R extends T, S extends ActeurState<T, R>> {
      * If running with assertions enabled, this will be a throwable which can be
      * used to determine the instantiation point of this AbstractActeur.
      */
-    protected Throwable creationStackTrace;
+    protected final Throwable creationStackTrace;
 
     /**
      * Create a new AbstractActeur.
@@ -70,6 +70,8 @@ public class AbstractActeur<T, R extends T, S extends ActeurState<T, R>> {
         this.factory = factory;
         if (DEBUG) {
             creationStackTrace = new Throwable();
+        } else {
+            creationStackTrace = null;
         }
     }
 
@@ -91,7 +93,8 @@ public class AbstractActeur<T, R extends T, S extends ActeurState<T, R>> {
      */
     protected S getState() {
         if (state == null) {
-            throw new IllegalStateException("State not set in " + getClass().getName());
+            throw new IllegalStateException("State not set in "
+                    + getClass().getName(), creationStackTrace);
         }
         return state;
     }
@@ -112,7 +115,7 @@ public class AbstractActeur<T, R extends T, S extends ActeurState<T, R>> {
      * Getter for the response which will not create it if nothing else has
      * triggered its creation.
      *
-     * @return
+     * @return The response, if any has been created
      */
     protected R getResponse() {
         return response;
