@@ -44,7 +44,7 @@ public interface OnWebsocketConnect {
      * with the client initiating the websocket.
      * @return An object or array of objects which should be included in the
      * scope for injection into acteurs that follow the one which initiates the
-     * websocket.  Return null if you have noting to add into the request scope.
+     * websocket.  Return null if you have nothing to add into the request scope.
      */
     Object connected(HttpEvent evt, Channel channel);
 }

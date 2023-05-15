@@ -101,6 +101,11 @@
             <artifactId>giulius-junit5-tests</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>${mastfrog.groupId}</groupId>
+            <artifactId>giulius-help</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <inceptionYear>2011</inceptionYear>

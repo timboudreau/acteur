@@ -6,7 +6,7 @@ Acteur is a framework for writing async web server applications in Java.
 Asynchronous programming frequently gets derided as *too hard*, or
 *callback hell* and things like that.  And the industry has come up
 with various solutions to that perceived problem - for example 
-Javascript and Rust's async/await, JDK 21's green threads.
+Javascript and Rust's async/await, or JDK 21's green threads.
 
 The problem with both of those solutions is that they are solving *the
 wrong problem*.  The former is a way to pretend you're writing synchronous
@@ -266,6 +266,7 @@ result type as an argument.
 And that is exactly what the async Postgres and MongoDB support libraries for Acteur
 do.
 
+
 Design Philosophy
 -----------------
 
@@ -274,34 +275,13 @@ A few maxims guide the design of Acteur:
 * Stay out of the way
 * Objects are messages - the application author's own types, not a giant pile of abstractions we force on them
 * The power of a threading model is inversely proportional to its visibility to callers
-* Don't force the details on applications, but don't lock them away either - if you *want* to
+* Don't infantilize the application author:  If you *want* to
 grab hold of the raw socket and shovel bytes down it in Acteur, you can.  You shouldn't need to, but
 the framework isn't in the business of telling you what you can and can't do.
+* Don't boil the ocean - if Netty or some other library has a good abstraction for something,
+*use* it, don't create a wrapper
 
-Recipes
--------
 
-#### Ensuring Resource Cleanup On Abort
-
-Sometimes you'll open a stream or cursor or other finite resource that should be closed
-when the request cycle ends, even if that happens by the connection being abruptly closed.
-`Closables` is an object you can ask to have injected, which will run some code on connection
-closure.  Here's an example doing a directory listing:
-
-```java
-public class ListDirectory extends Acteur {
-   @Inject
-   ListDirectory(Path dir, Closables closer) throws IOException {
-     // Assume `dir` is computed by some preceding Acteur and passed along to us
-     Stream<Path> listing = Files.list(dir);
-     closer.add(listing::close);
-     next();
-   }
-}
-```
-
-#### Turning Exceptions Into Appropriate Error Responses
---------------------------------------------------------
 
 Original Readme
 ---------------

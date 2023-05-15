@@ -69,6 +69,8 @@ import io.netty.handler.codec.http.HttpRequest;
 import io.netty.handler.codec.http.HttpRequestDecoder;
 import io.netty.handler.codec.http.HttpResponse;
 import io.netty.handler.codec.http.HttpResponseEncoder;
+import io.netty.handler.logging.LogLevel;
+import io.netty.handler.logging.LoggingHandler;
 import io.netty.util.AsciiString;
 import io.netty.util.AttributeKey;
 import io.netty.util.ReferenceCounted;
@@ -87,6 +89,12 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
     private static final String SETTINGS_KEY_AGGREGATE_CHUNKS = "aggregateChunks";
     @Setting(type = BOOLEAN, value = "Debug: Enable extended logging of HTTP compression.", defaultValue = "false")
     private static final String SETTINGS_KEY_HTTP_COMPRESSION_DEBUG = "http.compression.debug";
+
+    private static final boolean DEFAULT_PIPELINE_DEBUG = false;
+    @Setting(type = BOOLEAN, value = "Debug: Add a Netty LoggingHandler to the pipeline",
+            defaultValue = "" + DEFAULT_PIPELINE_DEBUG)
+    public static final String SETTINGS_KEY_NETTY_PIPELINE_DEBUG = "pipeline.debug";
+
     static final boolean DEFAULT_AGGREGATE_CHUNKS = true;
     static final int DEFAULT_MAX_CONTENT_LENGTH = 1048576;
 
@@ -109,6 +117,7 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
     private final int compressionThreshold;
     private final boolean compressionCheckContentType;
     private final boolean compressionDebug;
+    private final boolean pipelineDebug;
 
     @Inject
     PipelineFactoryImpl(Provider<ChannelHandler> handler,
@@ -129,6 +138,7 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
         maxInitialLineLength = settings.getInt(SETTINGS_KEY_MAX_REQUEST_LINE_LENGTH, 4096);
         maxHeadersSize = settings.getInt(SETTINGS_KEY_MAX_HEADER_BUFFER_SIZE, 8192);
         maxChunkSize = settings.getInt(SETTINGS_KEY_MAX_CHUNK_SIZE, 8192);
+        pipelineDebug = settings.getBoolean(SETTINGS_KEY_NETTY_PIPELINE_DEBUG, DEFAULT_PIPELINE_DEBUG);
         this.earlyPages = earlyPages;
         this.application = application;
 
@@ -165,6 +175,11 @@ class PipelineFactoryImpl extends ChannelInitializer<SocketChannel> {
             decorator.onBeforeInstallSslHandler(pipeline);
             pipeline.addLast(PipelineDecorator.SSL_HANDLER, sslConfigProvider.get().newHandler(ch.alloc()));
         }
+
+        if (pipelineDebug) {
+            pipeline.addLast(new LoggingHandler(LogLevel.TRACE));
+        }
+
         decorator.onCreatePipeline(pipeline);
 
         ChannelHandler decoder = new HttpRequestDecoder(maxInitialLineLength, maxHeadersSize, maxChunkSize);

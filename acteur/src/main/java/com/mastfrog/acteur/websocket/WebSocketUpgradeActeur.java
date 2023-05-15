@@ -27,12 +27,14 @@ import com.mastfrog.acteur.Acteur;
 import com.mastfrog.acteur.HttpEvent;
 import com.mastfrog.acteur.Page;
 import com.mastfrog.acteur.headers.Headers;
+import static com.mastfrog.acteur.headers.Headers.stringHeader;
 import com.mastfrog.acteur.server.PathFactory;
 import com.mastfrog.acteur.spi.ApplicationControl;
 import com.mastfrog.acteurbase.Chain;
 import com.mastfrog.acteurbase.Deferral;
 import com.mastfrog.acteurbase.Deferral.Resumer;
 import com.mastfrog.giulius.annotations.Setting;
+import com.mastfrog.giulius.scope.ReentrantScope;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.url.Path;
 import com.mastfrog.url.Protocols;
@@ -48,6 +50,8 @@ import io.netty.handler.codec.http.websocketx.WebSocketVersion;
 import io.netty.util.AttributeKey;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import javax.inject.Inject;
 
@@ -82,13 +86,14 @@ import javax.inject.Inject;
  */
 public class WebSocketUpgradeActeur extends Acteur {
 
-    @Setting(value = "Websockets: Generate HTTPS URLs", type = Setting.ValueType.BOOLEAN)
-    public static final String SETTINGS_KEY_WEBSOCKET_SECURE_PROTOCOL = "websocket.secure.urls";
     public static final boolean DEFAULT_WEBSOCKET_SECURE_PROTOCOL = false;
+    @Setting(value = "Websockets: Generate HTTPS URLs", type = Setting.ValueType.BOOLEAN,
+            defaultValue = DEFAULT_WEBSOCKET_SECURE_PROTOCOL + "")
+    public static final String SETTINGS_KEY_WEBSOCKET_SECURE_PROTOCOL = "websocket.secure.urls";
 
-    @Setting(value = "Max bytes per websocket frame", type = Setting.ValueType.INTEGER, defaultValue = "5242880")
-    public static final String SETTINGS_KEY_WEBSOCKET_FRAME_MAX_LENGTH = "websocket.frame.max.bytes";
     public static final int DEFAULT_WEBSOCKET_FRAME_MAX_LENGTH = 5 * 1_024 * 1_024;
+    @Setting(value = "Max bytes per websocket frame", type = Setting.ValueType.INTEGER, defaultValue = "" + DEFAULT_WEBSOCKET_FRAME_MAX_LENGTH)
+    public static final String SETTINGS_KEY_WEBSOCKET_FRAME_MAX_LENGTH = "websocket.frame.max.bytes";
 
     public static final AttributeKey<Supplier<? extends Chain<? extends Acteur, ?>>> CHAIN_KEY
             = AttributeKey.valueOf(WebSocketUpgradeActeur.class, "websocket");
@@ -97,7 +102,8 @@ public class WebSocketUpgradeActeur extends Acteur {
 
     @Inject
     @SuppressWarnings({"unchecked", "deprecation"})
-    protected WebSocketUpgradeActeur(HttpEvent evt, PathFactory paths, Settings settings, Page page, Deferral defer, Chain chain, ApplicationControl ctrl, OnWebsocketConnect onConnect) {
+    protected WebSocketUpgradeActeur(HttpEvent evt, PathFactory paths, Settings settings, Page page,
+            Deferral defer, Chain chain, ApplicationControl ctrl, OnWebsocketConnect onConnect, ReentrantScope scope) {
         Path pth = paths.toExternalPath(evt.path());
         int max = settings.getInt(SETTINGS_KEY_WEBSOCKET_FRAME_MAX_LENGTH, DEFAULT_WEBSOCKET_FRAME_MAX_LENGTH);
 
@@ -109,22 +115,41 @@ public class WebSocketUpgradeActeur extends Acteur {
                 url.toString(), null, true, max);
         WebSocketServerHandshaker handshaker = wsFactory.newHandshaker(evt.request());
         if (handshaker == null) {
-            add(Headers.stringHeader(SEC_WEBSOCKET_VERSION), WebSocketVersion.V13.toHttpHeaderValue());
+            add(stringHeader(SEC_WEBSOCKET_VERSION), WebSocketVersion.V13.toHttpHeaderValue());
             reply(UPGRADE_REQUIRED);
         } else {
             ChannelFuture future = handshaker.handshake(evt.channel(), evt.request());
-            future.addListener((ChannelFutureListener) (ChannelFuture future1) -> {
-                if (future1.isSuccess()) {
-                    Channel ch = future1.channel();
+            AtomicReference<Channel> channel = new AtomicReference<>();
+            // Ensure that we call OnWebsocketConnect with the scope contents
+            // set as they were when this constructor was called
+            Runnable runConnect = scope.wrap(() -> {
+                Channel ch = channel.get();
+                try {
+                    System.out.println("CALL ONCONNECT " + onConnect);
                     Object a = onConnect.connected(evt, ch);
-                    Object b = connected(evt, ch); // allow subclasses
+                    Object b = connected(evt, channel.get());
                     ch.attr(CHAIN_KEY).set(chain.remnantSupplier(flatten(a, b)));
                     ch.attr(PAGE_KEY).set(page);
-                    return;
+                } catch (Exception | Error e) {
+                    System.out.println("HAVE ERROR - CLOSE");
+                    ch.close();
+                    ctrl.internalOnError(e);
+                }
+            });
+
+            future.addListener((ChannelFuture future1) -> {
+                Channel ch = future1.channel();
+                if (future1.isSuccess()) {
+                    channel.set(future1.channel());
+                    runConnect.run();
+//                    future1.addListener(ChannelFutureListener.CLOSE);
                 } else if (future1.cause() != null) {
                     ctrl.internalOnError(future1.cause());
+                    System.out.println("HAVE ERROR 2 CLOSE");
+                    if (ch.isOpen()) {
+                        future1.channel().close(); // probably is already, but be sure
+                    }
                 }
-                future1.addListener(ChannelFutureListener.CLOSE);
             });
             Resumer res = defer.defer(); // Intentionally never resume
             next();

@@ -72,5 +72,7 @@ public interface Chain<T, C extends Chain<T, C>> extends Iterable<T> {
      */
     C insert(T obj);
 
+    C insert(Class<? extends T> obj);
+
     Supplier<C> remnantSupplier(Object... scopeTypes);
 }

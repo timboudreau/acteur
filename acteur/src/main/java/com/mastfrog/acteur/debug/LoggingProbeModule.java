@@ -21,17 +21,21 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.mastfrog.acteur;
+package com.mastfrog.acteur.debug;
 
 import com.google.inject.Binder;
 import com.google.inject.Module;
-import com.mastfrog.acteur.debug.Probe;
+import com.mastfrog.acteur.Acteur;
+import com.mastfrog.acteur.Event;
+import com.mastfrog.acteur.Page;
 import com.mastfrog.acteur.util.RequestID;
 import com.mastfrog.acteurbase.ActeurState;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import java.text.MessageFormat;
 
 /**
+ * Guice module which binds {@link Probe} to an implementation that
+ * simply writes all activity to <code>System.out</code>.
  *
  * @author Tim Boudreau
  */

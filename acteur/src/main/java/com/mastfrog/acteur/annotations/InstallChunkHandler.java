@@ -23,6 +23,7 @@
  */
 package com.mastfrog.acteur.annotations;
 
+import com.mastfrog.abstractions.instantiate.Instantiator;
 import com.mastfrog.acteur.Acteur;
 import com.mastfrog.acteur.ChunkHandler;
 import com.mastfrog.acteur.HttpEvent;
@@ -32,7 +33,6 @@ import com.mastfrog.acteur.preconditions.Description;
 import com.mastfrog.acteur.server.PipelineDecorator;
 import com.mastfrog.acteur.spi.ApplicationControl;
 import com.mastfrog.acteurbase.Deferral;
-import com.mastfrog.giulius.Dependencies;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.DefaultHttpResponse;
 import io.netty.handler.codec.http.HttpMethod;
@@ -49,10 +49,8 @@ import javax.inject.Inject;
 public class InstallChunkHandler extends Acteur {
 
     @Inject
-    InstallChunkHandler(Page page, Deferral defer, HttpEvent evt, Dependencies deps, ApplicationControl ctrl) {
-        Object[] inject = new Object[0];
+    InstallChunkHandler(Page page, Deferral defer, HttpEvent evt, Instantiator deps, ApplicationControl ctrl) {
         if (Method.POST.name().equals(evt.method().name()) || Method.PUT.name().equals(evt.method().name()) || HttpMethod.PATCH.name().equals(evt.method().name())) {
-
             ChannelHandlerContext ctx = evt.ctx();
 
             Early early = page.getClass().getAnnotation(Early.class);
@@ -73,7 +71,7 @@ public class InstallChunkHandler extends Acteur {
                 send100Continue(ctx);
             }
         }
-        next(inject);
+        next();
     }
 
     private static void send100Continue(ChannelHandlerContext ctx) {

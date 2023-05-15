@@ -369,8 +369,12 @@ public class Application implements Iterable<Page> {
             Headers.write(X_PAGE, page.getClass().getName(), response);
         }
         Headers.write(X_REQ_ID, id.stringValue(), response);
-        if (corsEnabled) {
+
+        boolean stripCors = CORSResponseDecoratorImpl.isIgnoredStatus(response.status());
+        if (corsEnabled && !stripCors) {
             corsDecorator.decorateApplicationResponse(response, page);
+        } else {
+            CORSResponseDecoratorImpl.stripCorsHeaders(response);
         }
         return response;
     }

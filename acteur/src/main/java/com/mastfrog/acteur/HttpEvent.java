@@ -24,15 +24,19 @@
 package com.mastfrog.acteur;
 
 import com.mastfrog.acteur.headers.HeaderValueType;
+import com.mastfrog.acteur.headers.Headers;
 import com.mastfrog.acteur.request.HttpProtocolRequest;
 import com.mastfrog.acteur.util.HttpMethod;
 import com.mastfrog.url.Path;
 import io.netty.handler.codec.http.HttpRequest;
+import io.netty.handler.codec.http.cookie.Cookie;
 import java.io.IOException;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  *
@@ -202,6 +206,26 @@ public interface HttpEvent extends Event<HttpRequest>, HttpProtocolRequest {
         if (decode && result != null) {
             result = URLDecoder.decode(result, StandardCharsets.UTF_8);
         }
+        return result;
+    }
+
+    default Optional<Cookie> findCookie(String name) {
+        for (Cookie ck : allCookies()) {
+            if (name.equals(ck.name())) {
+                return Optional.of(ck);
+            }
+        }
+        return Optional.empty();
+    }
+
+    default List<Cookie> allCookies() {
+        List<Cookie[]> ck = headers(Headers.COOKIE_B);
+        List<Cookie> result = new ArrayList<>();
+        ck.forEach(cookies -> {
+            for (Cookie c : cookies) {
+                result.add(c);
+            }
+        });
         return result;
     }
 

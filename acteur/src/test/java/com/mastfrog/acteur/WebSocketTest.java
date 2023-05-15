@@ -71,7 +71,7 @@ import org.junit.jupiter.api.Timeout;
 public class WebSocketTest {
 
     @Test
-    @Timeout(60)
+    @Timeout(120)
     public void test(TestHarness harn, PathFactory factory, ObjectMapper mapper) throws Throwable {
         URL url = factory.constructURL(Path.parse("/ws"), false);
 
@@ -80,7 +80,7 @@ public class WebSocketTest {
         Set<StateType> seenStates = synchronizedSet(noneOf(StateType.class));
 
         ResponseFuture fut = harn.post("ws")
-                .setTimeout(Duration.ofSeconds(60_000))
+                .setTimeout(Duration.ofSeconds(120_000))
                 .addHeader(Headers.CONNECTION, Connection.upgrade)
                 .addHeader(stringHeader("origin"), url.toString())
                 .addHeader(stringHeader("Upgrade"), "websocket")

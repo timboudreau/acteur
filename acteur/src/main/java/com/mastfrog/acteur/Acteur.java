@@ -54,6 +54,7 @@ import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import static io.netty.handler.codec.http.HttpResponseStatus.BAD_REQUEST;
+import static io.netty.handler.codec.http.HttpResponseStatus.CREATED;
 import static io.netty.handler.codec.http.HttpResponseStatus.INTERNAL_SERVER_ERROR;
 import static io.netty.handler.codec.http.HttpResponseStatus.NOT_FOUND;
 import static io.netty.handler.codec.http.HttpResponseStatus.NO_CONTENT;
@@ -339,6 +340,16 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
 
     protected final Acteur ok() {
         setState(new RespondWith(OK));
+        return this;
+    }
+
+    protected final Acteur created(Object msg) {
+        setState(new RespondWith(CREATED, msg));
+        return this;
+    }
+
+    protected final Acteur created() {
+        setState(new RespondWith(CREATED));
         return this;
     }
 

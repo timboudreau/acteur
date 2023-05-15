@@ -76,6 +76,7 @@ import java.io.PrintStream;
 import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -674,6 +675,7 @@ class PagesImpl2 {
             for (int i = pos; i < types.size(); i++) {
                 rem.add(types.get(i));
             }
+            System.out.println("CONTEXT: " + Arrays.asList(context));
             return () -> {
                 List<Object> l = new ArrayList<>(rem);
                 PageChain chain = new PageChain(app, deps, scope, type, l, context);

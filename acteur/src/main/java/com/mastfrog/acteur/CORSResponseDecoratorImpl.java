@@ -47,10 +47,13 @@ import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_CORS_MAX_AGE_
 import static com.mastfrog.acteur.server.ServerModule.SETTINGS_KEY_CORS_REPLACE_ALLOW_HEADERS;
 import com.mastfrog.settings.Settings;
 import com.mastfrog.util.collections.CollectionUtils;
+import static com.mastfrog.util.collections.CollectionUtils.immutableSetOf;
 import static com.mastfrog.util.collections.CollectionUtils.setOf;
 import com.mastfrog.util.strings.Strings;
 import io.netty.handler.codec.http.HttpHeaderNames;
+import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpResponse;
+import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.util.AsciiString;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
@@ -71,6 +74,22 @@ final class CORSResponseDecoratorImpl implements CORSResponseDecorator {
     static final HeaderValueType<CharSequence> ALLOW_ORIGIN_STRING = ACCESS_CONTROL_ALLOW_ORIGIN.toStringHeader();
     static final HeaderValueType<CharSequence> ALLOW_HEADERS_STRING = ACCESS_CONTROL_ALLOW_HEADERS.toStringHeader();
     static final HeaderValueType<CharSequence> ALLOW_CREDENTIALS_STRING = ACCESS_CONTROL_ALLOW_CREDENTIALS.toStringHeader();
+    public static final Set<CharSequence> ALL_CORS_HEADERS = immutableSetOf(
+            HttpHeaderNames.ACCESS_CONTROL_ALLOW_CREDENTIALS,
+            HttpHeaderNames.ACCESS_CONTROL_ALLOW_HEADERS,
+            HttpHeaderNames.ACCESS_CONTROL_ALLOW_ORIGIN,
+            HttpHeaderNames.ACCESS_CONTROL_ALLOW_METHODS,
+            HttpHeaderNames.ACCESS_CONTROL_ALLOW_PRIVATE_NETWORK,
+            HttpHeaderNames.ACCESS_CONTROL_MAX_AGE
+    );
+
+    static void stripCorsHeaders(HttpResponse resp) {
+        HttpHeaders h = resp.headers();
+        for (CharSequence cs : ALL_CORS_HEADERS) {
+            h.remove(cs);
+        }
+        h.remove(HttpHeaderNames.ALLOW);
+    }
 
     final CharSequence hdrs;
     final Duration corsMaxAge;
@@ -107,6 +126,14 @@ final class CORSResponseDecoratorImpl implements CORSResponseDecorator {
 
     @Override
     public void decorateCorsPreflight(HttpEvent evt, Response resp, Page page) {
+        if (resp instanceof ResponseImpl impl) {
+            // Not-modified responses are intended to be as short as possible and
+            // do not need full CORS headers
+            if (isIgnoredStatus(impl.status)) {
+                return;
+            }
+        }
+
         Method[] methods = CORSResponseDecoratorImpl.methods;
         CORS cors = page.getClass().getAnnotation(CORS.class);
         CharSequence headers = this.hdrs;
@@ -156,6 +183,9 @@ final class CORSResponseDecoratorImpl implements CORSResponseDecorator {
 
     @Override
     public void decorateApplicationResponse(HttpResponse response) {
+        if (isIgnoredStatus(response.status())) {
+            return;
+        }
         if (!response.headers().contains(HttpHeaderNames.ACCESS_CONTROL_ALLOW_ORIGIN)) {
             write(Headers.ACCESS_CONTROL_ALLOW_ORIGIN.toStringHeader(), allowOrigin, response);
         }
@@ -166,10 +196,13 @@ final class CORSResponseDecoratorImpl implements CORSResponseDecorator {
 
     @Override
     public void decorateApplicationResponse(HttpResponse response, Page page) {
+        if (isIgnoredStatus(response.status())) {
+            return;
+        }
         CORS cors = page.getClass().getAnnotation(CORS.class);
         if (cors != null) {
             if (!response.headers().contains(HttpHeaderNames.ACCESS_CONTROL_ALLOW_ORIGIN)) {
-                write(Headers.ACCESS_CONTROL_ALLOW_ORIGIN.toStringHeader(), corsOrigin(cors), response);
+                write(ACCESS_CONTROL_ALLOW_ORIGIN.toStringHeader(), corsOrigin(cors), response);
             }
             int ma = cors.maxAgeSeconds();
             Duration maxAge;
@@ -183,6 +216,18 @@ final class CORSResponseDecoratorImpl implements CORSResponseDecorator {
             }
         } else {
             decorateApplicationResponse(response);
+        }
+    }
+
+    static boolean isIgnoredStatus(HttpResponseStatus status) {
+        if (null == status) {
+            return false;
+        }
+        switch (status.code()) {
+            case 304:
+                return true;
+            default:
+                return status.code() >= 400;
         }
     }
 

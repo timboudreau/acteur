@@ -28,6 +28,7 @@ import com.mastfrog.util.preconditions.Checks;
 import com.mastfrog.util.preconditions.Exceptions;
 import static com.mastfrog.util.strings.Strings.charSequencesEqual;
 import com.mastfrog.util.collections.CollectionUtils;
+import static com.mastfrog.util.preconditions.Checks.notNull;
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -47,9 +48,15 @@ import org.netbeans.validation.localization.LocalizationSupport;
  */
 public final class Path implements URLComponent, Iterable<PathElement> {
 
+    private static final Path EMPTY = new Path();
     private static final long serialVersionUID = 1L;
     private final PathElement[] elements;
     private final boolean illegal;
+
+    private Path() {
+        this.elements = new PathElement[0];
+        this.illegal = false;
+    }
 
     public Path(PathElement... elements) {
         Checks.notNull("elements", elements);
@@ -77,28 +84,29 @@ public final class Path implements URLComponent, Iterable<PathElement> {
     }
 
     public static Path parse(String path, boolean decode) {
-        Checks.notNull("path", path);
+        return parse((CharSequence) path, decode);
+    }
+
+    public static Path parse(CharSequence path, boolean decode) {
+        int len = notNull("path", path).length();
+        if (len == 0 || len == 1 && path.charAt(0) == '/') {
+            return EMPTY;
+        }
         //XXX handle relative paths
         List<PathElement> l = new ArrayList<>(12);
-        char[] ch = path.toCharArray();
         StringBuilder sb = new StringBuilder();
 
         // http://foo.com/relative/path/../../stuff = http://foo.com/stuff
         // http://foo.com/./,/stuff = http://foo.com/stuff
-//        boolean prevSlash = false;
         try {
-            for (int i = 0; i < ch.length; i++) {
-                char c = ch[i];
+            for (int i = 0; i < len; i++) {
+                char c = path.charAt(i);
                 switch (c) {
                     case '/':
                         if (i == 0) {
                             continue;
                         }
-//                        if (prevSlash) {
-//                            continue;
-//                        }
-//                        prevSlash = true;
-                        if (i == ch.length - 1) {
+                        if (i == len - 1) {
                             if (decode) {
                                 l.add(new PathElement(URLDecoder.decode(sb.toString(), "UTF-8"), true, decode));
                             } else {
@@ -115,7 +123,6 @@ public final class Path implements URLComponent, Iterable<PathElement> {
                         sb.setLength(0);
                         break;
                     default:
-//                        prevSlash = false;
                         sb.append(c);
                 }
             }
@@ -127,7 +134,7 @@ public final class Path implements URLComponent, Iterable<PathElement> {
                     l.add(new PathElement(sb.toString(), false));
                 }
             }
-            if (!l.isEmpty() && path.endsWith("/")) {
+            if (!l.isEmpty() && (len > 0 && path.charAt(len - 1) == '/')) {
                 PathElement el = l.get(l.size() - 1);
                 l.set(l.size() - 1, el.toTrailingSlashElement());
             }
@@ -148,6 +155,17 @@ public final class Path implements URLComponent, Iterable<PathElement> {
         }
         Path result = new Path(el.toArray(new PathElement[size()]));
         return result.equals(this) ? this : result;
+    }
+
+    /**
+     * Determine if this path and the path string have the same content,
+     * ignoring leading and trailing slashes in the input string.
+     *
+     * @param seq A string
+     * @return Whether or not this path is a match for it
+     */
+    public boolean is(CharSequence seq) {
+        return parse(seq.toString()).equals(this);
     }
 
     public Iterator<PathElement> iterator() {

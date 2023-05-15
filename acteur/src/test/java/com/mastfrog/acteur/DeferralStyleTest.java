@@ -261,7 +261,7 @@ public final class DeferralStyleTest {
         D2(@Named(BACKGROUND_THREAD_POOL_NAME) ExecutorService svc) {
             EnhCompletableFuture<?> fut = deferThenRespond(CREATED);
             svc.submit(() -> {
-                fut.completeExceptionally(new Thingamabob("This is stuff"));
+                fut.completeExceptionally(new NonExistentThingamabobException("This is stuff"));
                 return null;
             });
         }
@@ -287,7 +287,7 @@ public final class DeferralStyleTest {
             add(CONTENT_TYPE, MimeType.parse("text/x-doohickey"));
             EnhCompletableFuture<Doohickey> fut = defer();
             svc.submit(() -> {
-                fut.completeExceptionally(new Thingamabob("Blort"));
+                fut.completeExceptionally(new NonExistentThingamabobException("Blort"));
                 return null;
             });
         }
@@ -312,7 +312,7 @@ public final class DeferralStyleTest {
         D6(Deferral def) {
             add(CONTENT_TYPE, MimeType.parse("text/x-doohickey"));
             def.defer(resumer -> {
-                throw new Thingamabob("Glork");
+                throw new NonExistentThingamabobException("Glork");
             });
             next();
         }
@@ -362,9 +362,9 @@ public final class DeferralStyleTest {
         }
     }
 
-    static class Thingamabob extends RuntimeException {
+    static class NonExistentThingamabobException extends RuntimeException {
 
-        Thingamabob(String message) {
+        NonExistentThingamabobException(String message) {
             super(message);
         }
     }
@@ -378,7 +378,7 @@ public final class DeferralStyleTest {
 
         @Override
         public ErrorResponse evaluate(Throwable t, Acteur acteur, Page page, Event<?> evt) {
-            if (t instanceof Thingamabob) {
+            if (t instanceof NonExistentThingamabobException) {
                 return Err.gone("It is gone").put("msg", t.getMessage());
             }
             return null;

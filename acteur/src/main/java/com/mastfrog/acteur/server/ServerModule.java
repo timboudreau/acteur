@@ -108,6 +108,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.Thread.UncaughtExceptionHandler;
 import java.lang.reflect.InvocationTargetException;
+import java.net.InetSocketAddress;
 import java.net.SocketException;
 import java.nio.charset.Charset;
 import java.time.Duration;
@@ -453,7 +454,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
      * in minutes that the browser should regard the response as valid.
      */
     @Setting(value = "The max-age in minutes used in CORS responses if CORS handling is enabled",
-            type = Setting.ValueType.BOOLEAN)
+            type = Setting.ValueType.INTEGER)
     public static final String SETTINGS_KEY_CORS_MAX_AGE_MINUTES = "cors.max.age.minutes";
 
     /**
@@ -639,8 +640,13 @@ public class ServerModule<A extends Application> extends AbstractModule {
      * the
      * <a href="https://netty.io/4.1/api/io/netty/buffer/PooledByteBufAllocator.html">javadoc
      * for PooledByteBufAllocator</a>.
+     *
+     * @deprecated Netty has deprecated and ignores this setting for the pooled
+     * allocator
      */
-    @Setting(value = "Fine tuning if using CUSTOMIZED_POOLED_ALLOCATOR", type = Setting.ValueType.INTEGER)
+    @Deprecated
+    @Setting(value = "Fine tuning if using CUSTOMIZED_POOLED_ALLOCATOR", type = Setting.ValueType.INTEGER,
+            tier = TERTIARY)
     public static final String SETTINGS_KEY_CUSTOM_ALLOC_TINY_CACHE_SIZE = "custom.alloc.tiny.cache.size";
     /**
      * Fine tuning for using customized pooled byte buf allocator. Only relevant
@@ -807,7 +813,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
                 }
                 break;
             case BACKGROUND_THREAD_POOL_NAME:
-                bldr.withDefaultThreadCount(32)
+                bldr.withDefaultThreadCount(8)
                         .legacyThreadCountName(BACKGROUND_THREADS)
                         .workStealing();
 
@@ -879,10 +885,11 @@ public class ServerModule<A extends Application> extends AbstractModule {
         bind(Charset.class).toProvider(CharsetProvider.class);
         bind(ByteBufAllocator.class).toProvider(ByteBufAllocatorProvider.class);
         bind(new ETL()).toProvider(EventProvider.class).in(scope);
+        bind(InetSocketAddress.class).toProvider(InetSocketAddressProvider.class);
         bind(Codec.class).to(CodecImpl.class);
         bind(ApplicationControl.class).toProvider(ApplicationControlProvider.class).in(Scopes.SINGLETON);
-        bind(ExceptionEvaluatorRegistry.class).asEagerSingleton();
-        bind(InvalidInputExceptionEvaluator.class).asEagerSingleton();
+        bind(ExceptionEvaluatorRegistry.class).in(Scopes.SINGLETON);
+        bind(InvalidInputExceptionEvaluator.class).in(Scopes.SINGLETON);
         bind(Channel.class).toProvider(ChannelProvider.class);
         bind(HttpMethod.class).toProvider(MethodProvider.class);
         bind(Method.class).toProvider(MethodProvider2.class);
@@ -965,7 +972,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
         final NettyContentMarshallers marshallers;
 
         @Inject
-         MarshallersProvider(ObjectMapper mapper) {
+        MarshallersProvider(ObjectMapper mapper) {
             marshallers = NettyContentMarshallers.getDefault(mapper);
         }
 
@@ -1055,7 +1062,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
     private static final class InvalidInputExceptionEvaluator extends ExceptionEvaluator {
 
         @Inject
-         InvalidInputExceptionEvaluator(ExceptionEvaluatorRegistry registry) {
+        InvalidInputExceptionEvaluator(ExceptionEvaluatorRegistry registry) {
             super(registry);
         }
 
@@ -1110,7 +1117,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
         private final ApplicationControl control;
 
         @Inject
-         ApplicationControlProvider(Provider<Application> app) throws NoSuchMethodException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
+        ApplicationControlProvider(Provider<Application> app) throws NoSuchMethodException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
             // In order to separate the API and SPI of Application, so Application
             // is not polluted with methods a subclasser should never call,
             // we do this:
@@ -1131,7 +1138,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
         private final Provider<ObjectMapper> mapper;
 
         @Inject
-         CodecImpl(Provider<ObjectMapper> mapper) {
+        CodecImpl(Provider<ObjectMapper> mapper) {
             this.mapper = mapper;
         }
 
@@ -1154,6 +1161,22 @@ public class ServerModule<A extends Application> extends AbstractModule {
         public <T> byte[] writeValueAsBytes(T object) throws IOException {
             return mapper.get().writeValueAsBytes(object);
         }
+    }
+
+    static final class InetSocketAddressProvider implements Provider<InetSocketAddress> {
+
+        private final Provider<Event> eventProvider;
+
+        @Inject
+        InetSocketAddressProvider(Provider<Event> eventProvider) {
+            this.eventProvider = eventProvider;
+        }
+
+        @Override
+        public InetSocketAddress get() {
+            return (InetSocketAddress) eventProvider.get().remoteAddress();
+        }
+
     }
 
     @Singleton
@@ -1187,20 +1210,6 @@ public class ServerModule<A extends Application> extends AbstractModule {
         return this;
     }
 
-    /**
-     * Override to configure options on the bootstrap which will start the
-     * server. The default implementation sets up the allocator.
-     *
-     * @param bootstrap The server bootstrap
-     * @param settings The application settings
-     * @return The same bootstrap or optionally another one
-     * @deprecated Bind an instance of ServerBootstrapConfigurer instead
-     */
-    @Deprecated
-    protected ServerBootstrap configureServerBootstrap(ServerBootstrap bootstrap, Settings settings) {
-        return bootstrap;
-    }
-
     static final class NoOpServerBootstrapConfigurer implements ServerBootstrapConfigurer {
 
         @Inject
@@ -1220,7 +1229,6 @@ public class ServerModule<A extends Application> extends AbstractModule {
         int nDirectArena = settings.getInt(SETTINGS_KEY_CUSTOM_ALLOC_NUM_DIRECT_ARENAS, PooledByteBufAllocator.DEFAULT.numDirectArenas());
         int pageSize = settings.getInt(SETTINGS_KEY_CUSTOM_ALLOC_PAGE_SIZE, PooledByteBufAllocator.defaultPageSize());
         int maxOrder = settings.getInt(SETTINGS_KEY_CUSTOM_ALLOC_MAX_ORDER, PooledByteBufAllocator.defaultMaxOrder());
-        int tinyCacheSize = settings.getInt(SETTINGS_KEY_CUSTOM_ALLOC_TINY_CACHE_SIZE, PooledByteBufAllocator.defaultTinyCacheSize());
         int smallCacheSize = settings.getInt(SETTINGS_KEY_CUSTOM_ALLOC_SMALL_CACHE_SIZE, PooledByteBufAllocator.defaultSmallCacheSize());
         int normalCacheSize = settings.getInt(SETTINGS_KEY_CUSTOM_ALLOC_NORMAL_CACHE_SIZE, PooledByteBufAllocator.defaultNormalCacheSize());
         boolean useCacheForAllThreads = settings.getBoolean(SETTINGS_KEY_CUSTOM_ALLOC_USE_CACHE_ALL_THREADS, PooledByteBufAllocator.defaultUseCacheForAllThreads());
@@ -1231,7 +1239,6 @@ public class ServerModule<A extends Application> extends AbstractModule {
                 nDirectArena,
                 pageSize,
                 maxOrder,
-                tinyCacheSize,
                 smallCacheSize,
                 normalCacheSize,
                 useCacheForAllThreads,
@@ -1244,7 +1251,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
         private final ByteBufAllocator allocator;
 
         @Inject
-         ByteBufAllocatorProvider(Settings settings) {
+        ByteBufAllocatorProvider(Settings settings) {
             String s = settings.getString(BYTEBUF_ALLOCATOR_SETTINGS_KEY, DEFAULT_ALLOCATOR);
             boolean disableLeakDetector = settings.getBoolean(SETTINGS_KEY_DISABLE_LEAK_DETECTOR, DEFAULT_DISABLE_LEAK_DETECTOR);
             ByteBufAllocator result;
@@ -1314,7 +1321,7 @@ public class ServerModule<A extends Application> extends AbstractModule {
 
             settings.ifIntPresent(SETTINGS_KEY_SOCKET_WRITE_SPIN_COUNT, val -> result.childOption(ChannelOption.WRITE_SPIN_COUNT,
                     greaterThanZero(SETTINGS_KEY_SOCKET_WRITE_SPIN_COUNT, val)));
-            return bootstrapConfigurer.get().configureServerBootstrap(configureServerBootstrap(result, settings), settings);
+            return bootstrapConfigurer.get().configureServerBootstrap(result, settings);
         }
     }
 

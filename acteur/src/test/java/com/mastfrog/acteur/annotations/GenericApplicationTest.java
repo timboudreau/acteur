@@ -73,7 +73,6 @@ public class GenericApplicationTest {
                             assertNotNull(a);
                             String desc = i + ". " + a.getClass().getSimpleName()
                                     + " " + (a instanceof Class<?> ? ((Class<?>) a).getSimpleName() : a);
-//                            System.out.println(desc);
                             switch (i) {
                                 case 0:
                                     assertEquals("MatchPath", a.getClass().getSimpleName(), desc);

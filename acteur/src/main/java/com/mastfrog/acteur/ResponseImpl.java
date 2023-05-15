@@ -128,6 +128,10 @@ final class ResponseImpl extends Response {
         }
     }
 
+    HttpResponseStatus status() {
+        return status;
+    }
+
     boolean hasListener() {
         return listener != null;
     }

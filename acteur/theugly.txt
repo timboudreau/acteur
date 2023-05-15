@@ -1,4 +1,3 @@
-
 Bits of history that could be discarded:
 
  - Odd that decororateResponse, create404response take a Netty HttpResponse,
@@ -24,3 +23,5 @@ values for transfer-encoding;  and sending ByteBufs wreaks havoc with the
 HttpContentCompressor, and forces us to have a fork of HttpObjectAggregator.
 Supposedly this will improve in a threatened rewrite of Netty's HTTP codec,
 so support is still there - but that hasn't happened yet.
+
+- Why is Err / ErrorResponse not just a Response?

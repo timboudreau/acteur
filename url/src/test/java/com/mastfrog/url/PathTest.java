@@ -21,7 +21,6 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-
 package com.mastfrog.url;
 
 import static org.junit.Assert.assertEquals;
@@ -85,7 +84,7 @@ public class PathTest {
         assertEquals("", pth.toString());
         assertEquals("/", pth.toStringWithLeadingSlash());
     }
-    
+
     @Test
     public void testParsing() {
         Path pth = Path.parse("foo/bar/baz");
@@ -95,14 +94,14 @@ public class PathTest {
         assertEquals("baz", pth.getElement(2).toString());
         assertEquals("baz", pth.getLastElement().toString());
     }
-    
+
     @Test
     public void testInvalid() {
         Path pth = Path.parse("адресу/用");
         assertFalse(pth.isValid());
         assertFalse(pth.getElement(0).isValid());
     }
-    
+
     @Test
     public void testLeadingAndTrailingSlashesDontAffectEquality() {
         Path a = Path.parse("foo/bar/baz");
@@ -128,5 +127,38 @@ public class PathTest {
         assertNotEquals(b, f);
         assertNotEquals(c, f);
         assertNotEquals(d, f);
+    }
+
+    @Test
+    public void testPathIs() {
+        Path p = Path.parse("foo/bar/baz");
+        assertIs(p, "foo/bar/baz");
+        assertIs(p, "/foo/bar/baz");
+        assertIs(p, "foo/bar/baz/");
+        assertIs(p, "/foo/bar/baz/");
+
+        assertIsNot(p, "foo/bar/baz/pwee");
+        assertIsNot(p, "/foo/bar/baz/pwee");
+        assertIsNot(p, "/");
+        assertIsNot(p, "");
+    }
+
+    @Test
+    public void testEmptyPathIs() {
+        Path p = Path.parse("");
+        assertIs(p, "");
+        assertIs(p, "/");
+        assertIsNot(p, "/foo");
+    }
+
+    private void assertIs(Path p, String what) {
+        boolean ok = p.is(what);
+        assertTrue("Path " + p + " says it is not '" + what + "' but it should be.", ok);
+    }
+
+    private void assertIsNot(Path p, String what) {
+        boolean ok = p.is(what);
+        assertFalse("Path " + p + " says it IS '" + what + "' but it should NOT be.", ok);
+
     }
 }

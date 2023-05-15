@@ -137,6 +137,30 @@ public class ArrayChain<T, C extends ArrayChain<T, C>> implements Chain<T, C> {
     }
 
     @SuppressWarnings("unchecked")
+    public final C insert(Class<? extends T> type) {
+        Checks.notNull("type", type);
+        if (!this.type.isAssignableFrom(type)) {
+            throw new ConfigurationError(type.getName() + " is not a " + this.type.getName());
+        }
+        if ((type.getModifiers() & Modifier.ABSTRACT) != 0) {
+            throw new ConfigurationError(type + " is abstract");
+        }
+        if (type.isLocalClass()) {
+            throw new ConfigurationError(type + " is an inner class");
+        }
+        if (type.isArray()) {
+            throw new ConfigurationError(type + " is an array type");
+        }
+        if (type.isAnnotation()) {
+            throw new ConfigurationError(type + " is an annotation type");
+        }
+        int pos = chainPosition.get();
+        types.add(pos, type);
+        return (C) this;
+    }
+
+
+    @SuppressWarnings("unchecked")
     public final C add(T obj) {
         Checks.notNull("obj", obj);
         if (!validElement(obj)) {
