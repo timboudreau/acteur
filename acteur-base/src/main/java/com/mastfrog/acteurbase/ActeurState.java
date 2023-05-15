@@ -36,7 +36,7 @@ public abstract class ActeurState<T, R extends T> {
 
     private final Object[] context;
     private final boolean rejected;
-    protected Throwable creationStackTrace;
+    protected final Throwable creationStackTrace;
 
     private ActeurState(boolean rejected, Object... context) {
         this.context = context;
@@ -45,6 +45,8 @@ public abstract class ActeurState<T, R extends T> {
         assert asserts = true;
         if (asserts) {
             creationStackTrace = new Throwable();
+        } else {
+            creationStackTrace = null;
         }
     }
 
