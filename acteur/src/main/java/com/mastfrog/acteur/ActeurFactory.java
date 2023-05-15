@@ -149,7 +149,7 @@ public class ActeurFactory {
                         + event.method() + " not allowed.  Accepted methods are "
                         + Headers.ALLOW.toCharSequence(methods) + "\n"));
             }
-            return hasMethod ? new ConsumedState() : new RejectedState();
+            return hasMethod ? new ConsumedState() : new RejectedState(this);
         }
 
         @Override
@@ -189,7 +189,7 @@ public class ActeurFactory {
                         + event.method() + " not allowed.  Accepted methods are "
                         + Headers.ALLOW.toCharSequence(method) + "\n"));
             }
-            return hasMethod ? new ConsumedState() : new RejectedState();
+            return hasMethod ? new ConsumedState() : new RejectedState(this);
         }
 
         @Override
@@ -210,7 +210,7 @@ public class ActeurFactory {
             public com.mastfrog.acteur.State getState() {
                 HttpEvent event = ActeurFactory.this.event.get();
                 if (event.path().getElements().length == length) {
-                    return new RejectedState();
+                    return new RejectedState(this);
                 } else {
                     return new ConsumedState();
                 }
@@ -231,7 +231,7 @@ public class ActeurFactory {
             public com.mastfrog.acteur.State getState() {
                 HttpEvent event = ActeurFactory.this.event.get();
                 if (event.path().getElements().length < length) {
-                    return new RejectedState();
+                    return new RejectedState(this);
                 } else {
                     return new ConsumedState();
                 }
@@ -252,9 +252,9 @@ public class ActeurFactory {
             public com.mastfrog.acteur.State getState() {
                 HttpEvent event = ActeurFactory.this.event.get();
                 if (event.path().getElements().length > length) {
-                    return new Acteur.RejectedState();
+                    return new RejectedState(this);
                 } else {
-                    return new Acteur.ConsumedState();
+                    return new ConsumedState();
                 }
             }
 
@@ -426,7 +426,7 @@ public class ActeurFactory {
             } catch (InvalidInputException ex) {
                 setState(new Acteur.RespondWith(Err.badRequest(ex.getProblems().toString())));
             }
-            return new Acteur.RejectedState();
+            return new RejectedState(this);
         }
 
         @Override
@@ -726,7 +726,7 @@ public class ActeurFactory {
             if (path.equals(pth)) {
                 return new ConsumedState();
             }
-            return new RejectedState();
+            return new RejectedState(this);
         }
 
         @Override
@@ -771,7 +771,7 @@ public class ActeurFactory {
                     return new ConsumedState();
                 }
             }
-            return new RejectedState();
+            return new RejectedState(this);
         }
 
         @Override
@@ -974,7 +974,7 @@ public class ActeurFactory {
                     add(Headers.LOCATION, pf.toExternalPath(to).toURI());
                     return new RespondWith(SEE_OTHER);
                 } else {
-                    return new RejectedState();
+                    return new RejectedState(this);
                 }
             }
         }

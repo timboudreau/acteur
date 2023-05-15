@@ -374,7 +374,12 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
     }
 
     protected final Acteur reject() {
-        setState(new RejectedState());
+        setState(new RejectedState(this));
+        return this;
+    }
+
+    protected final Acteur next() {
+        setState(new ConsumedState());
         return this;
     }
 
@@ -414,7 +419,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
      * @return this
      * @since 2.4.1
      */
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "rawtypes"})
     protected final <T> Acteur continueAfter(ThrowingConsumer<EnhCompletableFuture<T>> c) {
         Dependencies deps = Page.get().getApplication().getDependencies();
         Chain chain = deps.getInstance(Chain.class);
@@ -459,7 +464,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
      * @return This acteur
      * @since 2.2.2
      */
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "rawtypes"})
     protected final Acteur continueAfter(boolean unwrapArrays, CompletionStage<?>... stages) {
         Checks.nonZero("stages", noNullElements("stages", notNull("stages", stages)).length);
         if (stages.length == 0) {
@@ -603,15 +608,14 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
      * @since 2.1.0
      * @return This acteur
      */
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "rawtypes"})
     protected final <T> Acteur then(CompletionStage<T> c, HttpResponseStatus successStatus) {
         logErrors(c);
         Dependencies deps = Page.get().getApplication().getDependencies();
         Chain chain = deps.getInstance(Chain.class);
         chain.add(DeferredComputationResultActeur.class);
-        return then((Resumer r) -> c.whenComplete((t, thrown) -> {
-            r.resume(new DeferredComputationResult(t, thrown, successStatus));
-        }));
+        return then((Resumer r) -> c.whenComplete((t, thrown)
+                -> r.resume(new DeferredComputationResult(t, thrown, successStatus))));
     }
 
     static final class CheckThrownActeur extends Acteur {
@@ -619,8 +623,7 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
         @Inject
         CheckThrownActeur(DeferredComputationResult res, ExceptionEvaluatorRegistry evals, HttpEvent evt) throws Throwable {
             if (res.thrown != null) {
-                if (res.thrown instanceof ResponseException) {
-                    ResponseException rex = (ResponseException) res.thrown;
+                if (res.thrown instanceof ResponseException rex) {
                     Map<CharSequence, CharSequence> hdrs = rex.headers();
                     if (!hdrs.isEmpty()) {
                         for (Map.Entry<CharSequence, CharSequence> e : hdrs.entrySet()) {
@@ -704,18 +707,21 @@ public abstract class Acteur extends AbstractActeur<Response, ResponseImpl, Stat
      * A state indicating the acteur neither accepts nor definitively refuses a
      * request.
      */
-    protected class RejectedState extends BaseState {
+    protected static class RejectedState extends com.mastfrog.acteur.State {
 
-        public RejectedState() {
+        private final Acteur acteur;
+
+        public RejectedState(Acteur acteur) {
             super(true);
+            this.acteur = acteur;
             if (page == null) {
                 throw new IllegalStateException("Called outside ActionsImpl.onEvent");
             }
         }
 
-        public RejectedState(HttpResponseStatus status) {
-            super(true);
-            setResponseCode(status);
+        @Override
+        public Acteur getActeur() {
+            return acteur;
         }
     }
 

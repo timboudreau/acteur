@@ -177,7 +177,7 @@ public class AppTest {
         ConvertHeadersAction(HttpEvent event) {
             ReqParams p = event.urlParametersAs(ReqParams.class);
             if (p == null) {
-                setState(new RejectedState());
+                reject();
             } else {
                 next(p);
             }
@@ -190,7 +190,7 @@ public class AppTest {
         ConvertBodyAction(HttpEvent event, ContentConverter cvt) throws Exception {
             Thing thing = cvt.readObject(event.content(), event.header(Headers.CONTENT_TYPE), Thing.class);
             if (thing == null) {
-                setState(new RejectedState());
+                reject();
             } else {
                 next(thing);
             }

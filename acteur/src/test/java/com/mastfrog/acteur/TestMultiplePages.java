@@ -75,7 +75,7 @@ public class TestMultiplePages {
     private static final class Rej extends Acteur {
 
         Rej() {
-            setState(new RejectedState());
+            reject();
         }
     }
 
