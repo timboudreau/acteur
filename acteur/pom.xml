@@ -44,6 +44,10 @@
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
+            <artifactId>thread-local</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
             <artifactId>acteur-headers</artifactId>
         </dependency>
         <dependency>
