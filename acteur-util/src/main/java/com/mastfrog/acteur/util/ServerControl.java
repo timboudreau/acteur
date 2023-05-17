@@ -1,6 +1,8 @@
 package com.mastfrog.acteur.util;
 
+import java.time.Duration;
 import java.util.concurrent.TimeUnit;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import java.util.concurrent.locks.Condition;
 
 /**
@@ -31,6 +33,10 @@ public interface ServerControl extends Condition {
      * @throws InterruptedException If something interrupts shutdown
      */
     void shutdown(boolean immediately) throws InterruptedException;
-    
+
     int getPort();
+
+    default void await(Duration dur) throws InterruptedException {
+        await(dur.toMillis(), MILLISECONDS);
+    }
 }

@@ -1,6 +1,7 @@
 package com.mastfrog.acteur.util;
 
 import com.mastfrog.settings.Settings;
+import com.mastfrog.util.preconditions.ConfigurationError;
 import com.mastfrog.util.strings.Strings;
 import com.mastfrog.util.strings.RandomStrings;
 import java.time.Duration;
@@ -27,6 +28,9 @@ public final class RotatingRealmProvider implements Provider<Realm> {
     @Inject
     RotatingRealmProvider(Settings s) {
         interval = Duration.of(s.getInt(SETTINGS_KEY_ROTATE_INTERVAL_MINUTES, DEFAULT_ROTATE_INTERVAL), ChronoUnit.MINUTES);
+        if (interval.isZero() || interval.isNegative()) {
+            throw new ConfigurationError("Realm rotation interval must be a positive number of minutes, but got " + interval);
+        }
         salt = rs.get(4);
     }
 

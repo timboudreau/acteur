@@ -40,6 +40,9 @@ import com.mastfrog.acteur.preconditions.ParametersMustBeNumbersIfPresent;
 import com.mastfrog.acteur.preconditions.Path;
 import com.mastfrog.acteur.preconditions.PathRegex;
 import com.mastfrog.acteur.preconditions.RequireAtLeastOneUrlParameterFrom;
+import com.mastfrog.acteur.preconditions.RequireContentType;
+import com.mastfrog.acteur.preconditions.RequireHeader;
+import com.mastfrog.acteur.preconditions.RequireHeaders;
 import com.mastfrog.acteur.preconditions.RequireParametersIfMethodMatches;
 import com.mastfrog.acteur.preconditions.RequiredUrlParameters;
 import static com.mastfrog.acteur.preconditions.RequiredUrlParameters.Combination.AT_LEAST_ONE;
@@ -47,8 +50,15 @@ import com.mastfrog.acteur.preconditions.UrlParametersMayNotBeCombined;
 import com.mastfrog.acteur.preconditions.UrlParametersMayNotBeCombinedSets;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.giulius.Ordered;
+import com.mastfrog.mime.MimeType;
 import com.mastfrog.settings.Settings;
+import com.mastfrog.util.collections.CollectionUtils;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Pattern;
 import javax.inject.Inject;
 
 /**
@@ -63,6 +73,8 @@ public final class BuiltInPageAnnotationHandler extends PageAnnotationHandler {
     private final Dependencies deps;
     private final ActeurFactory af;
     private final Settings settings;
+    private final Map<String, Pattern> patternCache = new ConcurrentHashMap<>();
+    private final Map<String, MimeType> mimeTypeCache = new ConcurrentHashMap<>();
 
     @SuppressWarnings("deprecation")
     private static final Class<?>[] TYPES = new Class<?>[]{Authenticated.class, AuthenticatedIf.class,
@@ -71,7 +83,8 @@ public final class BuiltInPageAnnotationHandler extends PageAnnotationHandler {
         RequireParametersIfMethodMatches.class, ParametersMustBeNumbersIfPresent.class,
         MinimumRequestBodyLength.class, MaximumRequestBodyLength.class,
         UrlParametersMayNotBeCombined.class, UrlParametersMayNotBeCombinedSets.class, CORS.class,
-        InjectUrlParametersAs.class, com.mastfrog.acteur.preconditions.BasicAuth.class, InjectRequestBodyAs.class
+        InjectUrlParametersAs.class, com.mastfrog.acteur.preconditions.BasicAuth.class, InjectRequestBodyAs.class,
+        RequireHeader.class
     };
 
     @Inject
@@ -86,6 +99,7 @@ public final class BuiltInPageAnnotationHandler extends PageAnnotationHandler {
     @SuppressWarnings("deprecation")
     public <T extends Page> boolean processAnnotations(T page, List<? super Acteur> acteurs) {
         Class<?> c = page.getClass();
+
         PathRegex regex = c.getAnnotation(PathRegex.class);
         int oldSize = acteurs.size();
         if (regex != null) {
@@ -103,6 +117,29 @@ public final class BuiltInPageAnnotationHandler extends PageAnnotationHandler {
         if (len != null) {
             acteurs.add(af.maximumPathLength(len.value()));
         }
+
+        RequireContentType mime = c.getAnnotation(RequireContentType.class);
+        if (mime != null) {
+            List<MimeType> types = new ArrayList<>(mime.value().length);
+            for (String v : mime.value()) {
+                types.add(mimeTypeCache.computeIfAbsent(v, v1 -> MimeType.parse(v1)));
+            }
+            acteurs.add(af.requireContentType(mime.whenHeaderAbsent(),
+                    mime.onNoMatch(), types.toArray(MimeType[]::new)));
+        }
+
+        RequireHeaders rhs = c.getAnnotation(RequireHeaders.class);
+        if (rhs != null) {
+            for (RequireHeader rh : rhs.value()) {
+                handleOneRequireHeaders(rh, acteurs);
+            }
+        }
+
+        RequireHeader rh = c.getAnnotation(RequireHeader.class);
+        if (rh != null) {
+            handleOneRequireHeaders(rh, acteurs);
+        }
+
         BannedUrlParameters banned = c.getAnnotation(BannedUrlParameters.class);
         if (banned != null) {
             acteurs.add(af.banParameters(banned.value()));
@@ -180,5 +217,15 @@ public final class BuiltInPageAnnotationHandler extends PageAnnotationHandler {
             acteurs.add(af.injectRequestBodyAsJSON(as.value()));
         }
         return oldSize != acteurs.size();
+    }
+
+    private void handleOneRequireHeaders(RequireHeader rh, List<? super Acteur> acteurs) {
+        if (rh.mustMatchPatterns().length == 0) {
+            acteurs.add(af.requireHeader(rh.value(), rh.whenAbsent()));
+        } else {
+            List<String> pats = Arrays.asList(rh.mustMatchPatterns());
+            List<? extends Pattern> patterns = CollectionUtils.converted(pats, p -> patternCache.computeIfAbsent(p, Pattern::compile));
+            acteurs.add(af.requireHeader(rh.value(), rh.whenAbsent(), patterns));
+        }
     }
 }

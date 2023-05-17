@@ -387,7 +387,10 @@ public class Application implements Iterable<Page> {
      */
     protected HttpResponse createNotFoundResponse(Event<?> event) {
         if (failureResponses != null) {
-            return failureResponses.createNotFoundResponse(event);
+            HttpResponse result = failureResponses.createNotFoundResponse(event);
+            if (result != null) {
+                return result;
+            }
         }
         String msg = "<html><head>"
                 + "<title>Not Found</title></head><body><h1>Not Found</h1>"

@@ -60,6 +60,7 @@ import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
+import static io.netty.channel.ChannelFutureListener.CLOSE;
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
 import io.netty.handler.codec.http.FullHttpResponse;
 import io.netty.handler.codec.http.HttpHeaderValues;
@@ -421,6 +422,23 @@ class PagesImpl2 {
                 if (!(thrwbl instanceof ResponseException && !(thrwbl instanceof InvalidInputException))) {
                     application.internalOnError(thrwbl);
                 }
+                if (application.failureResponses != null) {
+                    HttpResponse resp = application.failureResponses.createFallbackResponse(thrwbl);
+                    if (resp != null) {
+                        ChannelFuture fut = channel.writeAndFlush(resp)
+                                .addListener(lf -> {
+                                    if (lf.cause() != null) {
+                                        application.internalOnError(lf.cause());
+                                    }
+                                });
+                        if (event instanceof HttpEvent he) {
+                            if (!he.requestsConnectionStayOpen()) {
+                                fut.addListener(CLOSE);
+                            }
+                        }
+                        return;
+                    }
+                }
                 // V1.6 - we no longer have access to the page where the exception was
                 // thrown
                 ErrorPage pg = new ErrorPage();
@@ -444,10 +462,11 @@ class PagesImpl2 {
                 application.probe.onThrown(id, event, thrwbl);
                 try {
                     if (channel.isOpen()) {
-                        HttpResponse resp;
+                        HttpResponse resp = null;
                         if (application.failureResponses != null) {
                             resp = application.failureResponses.createFallbackResponse(ex);
-                        } else {
+                        }
+                        if (resp == null) {
                             ByteBuf buf;
                             if (renderStackTraces) {
                                 buf = channel.alloc().ioBuffer();

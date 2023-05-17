@@ -104,7 +104,7 @@ public final class GenericApplicationRuntimeTest {
         }).assertAllSucceeded();
     }
 
-    static class G extends GenericApplicationModule {
+    static class G extends GenericApplicationModule<A> {
 
         public G(Settings settings) {
             super(settings, A.class, new Class<?>[0]);

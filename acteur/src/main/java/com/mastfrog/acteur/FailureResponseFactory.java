@@ -34,7 +34,28 @@ import io.netty.handler.codec.http.HttpResponse;
  */
 public interface FailureResponseFactory {
 
+    /**
+     * Allows a custom response for 404's.
+     *
+     * @param evt The event
+     * @return A response
+     */
     HttpResponse createNotFoundResponse(Event<?> evt);
 
+    /**
+     * Create a response when an unexpected exception has been thrown by an
+     * acteur and not handled. This method can return null to use the built in
+     * response generation. It's main purpose is if you want to fully disable
+     * reporting about the kind of error in an internal server error for
+     * security reasons. To just handle certain types of exceptions, subclass
+     * ExceptionEvaluator register it, and intercept the types of Throwable
+     * you're interested in. Note that if this method returns non-null,
+     * ExceptionEvaluators will not be called, and this method has complete
+     * control over the respone, including response code and headers.
+     *
+     *
+     * @param thrown
+     * @return A response or null to use the default handling
+     */
     HttpResponse createFallbackResponse(Throwable thrown);
 }

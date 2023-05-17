@@ -27,20 +27,27 @@ import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import com.mastfrog.acteur.errors.Err;
 import com.mastfrog.acteur.headers.Headers;
+import static com.mastfrog.acteur.headers.Headers.CONTENT_TYPE;
 import com.mastfrog.acteur.headers.Method;
 import com.mastfrog.acteur.preconditions.Description;
+import com.mastfrog.acteur.preconditions.AbsenceAction;
+import static com.mastfrog.acteur.preconditions.AbsenceAction.CONTINUE;
 import com.mastfrog.acteur.server.PathFactory;
 import com.mastfrog.acteur.util.HttpMethod;
 import com.mastfrog.acteurbase.Chain;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.mime.MimeType;
+import com.mastfrog.mime.MimeTypeComponent;
 import com.mastfrog.url.Path;
+import static com.mastfrog.util.collections.CollectionUtils.map;
 import com.mastfrog.util.preconditions.Checks;
 import com.mastfrog.util.preconditions.Exceptions;
 import com.mastfrog.util.strings.Strings;
 import io.netty.handler.codec.http.HttpResponseStatus;
+import static io.netty.handler.codec.http.HttpResponseStatus.BAD_REQUEST;
 import static io.netty.handler.codec.http.HttpResponseStatus.SEE_OTHER;
 import io.netty.handler.codec.http.websocketx.WebSocketFrame;
+import io.netty.util.AsciiString;
 import io.netty.util.CharsetUtil;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -48,10 +55,16 @@ import java.io.PrintStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.Charset;
+import java.util.ArrayList;
 import java.util.Arrays;
+import static java.util.Arrays.asList;
+import static java.util.Collections.singletonMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.inject.Inject;
 import org.netbeans.validation.api.InvalidInputException;
@@ -301,7 +314,185 @@ public class ActeurFactory {
             add(Headers.LOCATION, location);
             return new RespondWith(status, "Redirecting to " + location);
         }
+    }
 
+    public Acteur requireHeader(String headerName, AbsenceAction action) {
+        AsciiString nm = AsciiString.cached(headerName);
+        return new RequiringHeader(deps, nm, action);
+    }
+
+    public Acteur requireHeader(String headerName, AbsenceAction action, Pattern... patterns) {
+        if (patterns.length == 0) {
+            return requireHeader(headerName, action);
+        }
+        return requireHeader(headerName, action, asList(patterns));
+    }
+
+    public Acteur requireHeader(String headerName, AbsenceAction action, List<? extends Pattern> patterns) {
+        if (patterns.isEmpty()) {
+            return requireHeader(headerName, action);
+        }
+        AsciiString nm = AsciiString.cached(headerName);
+        return new RequireHeaderWithPatterns(deps, nm, action, patterns);
+    }
+
+    @Description("Require that a header be present")
+    private static final class RequiringHeader extends Acteur {
+
+        private final Dependencies deps;
+        private final CharSequence header;
+        private final AbsenceAction action;
+
+        RequiringHeader(Dependencies deps, CharSequence header, AbsenceAction action) {
+            this.deps = deps;
+            this.header = header;
+            this.action = action;
+        }
+
+        @Override
+        public String toString() {
+            return "Require the header '" + header + "' or " + action.toString().toLowerCase();
+        }
+
+        @Override
+        public void describeYourself(Map<String, Object> into) {
+            into.put("Require a header", map("header").to(header.toString())
+                    .map("whenAbsent").finallyTo("action"));
+        }
+
+        @Override
+        protected State getState() {
+            HttpEvent evt = deps.getInstance(HttpEvent.class);
+            if (evt.header(header) != null) {
+                return new ConsumedState(this);
+            } else {
+                switch (action) {
+                    case BAD_REQUEST:
+                        return new RespondWith(BAD_REQUEST, map("error").finallyTo("Missing header '" + header + "'"));
+                    case CONTINUE:
+                        return new ConsumedState(this);
+                }
+                return new RejectedState(this);
+            }
+        }
+    }
+
+    @Description("Requiree that a header be present and match one or more regular expressions.")
+    private static final class RequireHeaderWithPatterns extends Acteur {
+
+        private final Dependencies deps;
+        private final CharSequence header;
+        private final List<? extends Pattern> patterns;
+        private final AbsenceAction action;
+
+        RequireHeaderWithPatterns(Dependencies deps, CharSequence header, AbsenceAction action, List<? extends Pattern> patterns) {
+            this.deps = deps;
+            this.header = header;
+            this.patterns = patterns;
+            this.action = action;
+        }
+
+        @Override
+        public void describeYourself(Map<String, Object> into) {
+            List<String> pats = new ArrayList<>(patterns.size());
+            for (Pattern p : patterns) {
+                pats.add(p.pattern());
+            }
+
+            into.put("Require a header", map("header").to(header.toString())
+                    .map("patterns").to(pats)
+                    .map("whenAbsent").finallyTo("action"));
+
+        }
+
+        @Override
+        protected State getState() {
+            String h = deps.getInstance(HttpEvent.class).header(header);
+            if (h == null) {
+                switch (action) {
+                    case BAD_REQUEST:
+                        return new RespondWith(BAD_REQUEST, map("error").finallyTo("Missing header '" + header + "'"));
+                    case CONTINUE:
+                        return new ConsumedState(this);
+                }
+                return new RejectedState(this);
+            }
+            for (Pattern p : patterns) {
+                Matcher m = p.matcher(h);
+                if (m.find()) {
+                    return new ConsumedState(this);
+                }
+            }
+            return new RespondWith(BAD_REQUEST, singletonMap("error", "Invalid header '" + h
+                    + "' for " + header));
+        }
+    }
+
+    public Acteur requireContentType(AbsenceAction whenHeaderAbsent, AbsenceAction whenUnmatched, MimeType... types) {
+        return new RequiringContentType(deps, whenHeaderAbsent, whenUnmatched, types);
+    }
+
+    @Description("Require a particular mime type or set thereof in the content-type header "
+            + "of inbound requests")
+    static class RequiringContentType extends Acteur {
+
+        private final Set<MimeType> types = new TreeSet<>();
+        private final AbsenceAction whenHeaderAbsent;
+        private final AbsenceAction whenUnmatched;
+        private final Dependencies deps;
+
+        public RequiringContentType(Dependencies deps, AbsenceAction whenHeaderAbsent, AbsenceAction whenUnmatched, MimeType... types) {
+            this.whenHeaderAbsent = whenHeaderAbsent;
+            this.whenUnmatched = whenUnmatched;
+            this.deps = deps;
+            this.types.addAll(Arrays.asList(types));
+        }
+
+        @Override
+        public String toString() {
+            return "Require content type " + Strings.join(", ", types);
+        }
+
+        private Set<String> typeStrings() {
+            // If the jackson-configuration library is not used, mime types will
+            // serialize as {} with Jackson by default, so convert to strings for
+            // JSON messages.
+            Set<String> result = new TreeSet<>();
+            types.forEach(t -> result.add(t.toString()));
+            return result;
+        }
+
+        @Override
+        public void describeYourself(Map<String, Object> into) {
+            into.put("Inbound content-type header must match", map("types").to(typeStrings())
+                    .map("whenHeaderAbsent").to(whenHeaderAbsent)
+                    .map("onMismatch").finallyTo(whenUnmatched));
+        }
+
+        @Override
+        protected State getState() {
+            MimeType header = deps.getInstance(HttpEvent.class).header(CONTENT_TYPE);
+            if (header == null) {
+                return new RejectedState(this);
+            } else {
+                if (types.contains(header)) {
+                    return new ConsumedState(this);
+                }
+                for (MimeType mt : types) {
+                    if (mt.isSameAs(header, MimeTypeComponent.PRIMARY_TYPE) && mt.isSameAs(header, MimeTypeComponent.SECONDARY_TYPE)) {
+                        return new ConsumedState(this);
+                    }
+                }
+                switch (whenHeaderAbsent) {
+                    case BAD_REQUEST:
+                        return new RespondWith(BAD_REQUEST, map("error").to("content-type header mismatch")
+                                .map("validOptions").finallyTo(Strings.join(", ", typeStrings())));
+                    case CONTINUE:
+                        return new ConsumedState(this);
+                }
+                return new RejectedState(this);
+            }
+        }
     }
 
     /**

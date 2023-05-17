@@ -108,6 +108,12 @@ public abstract class ErrorHandler {
         }
 
         @Override
+        protected int ordinal() {
+            Ordinal ord = getClass().getAnnotation(Ordinal.class);
+            return ord == null ? classDepth(type) : ord.value();
+        }
+
+        @Override
         protected final void handle(Throwable err, Consumer<Throwable> next) {
             if (type.isInstance(err)) {
                 if (!doHandle(type.cast(err))) {
@@ -129,5 +135,14 @@ public abstract class ErrorHandler {
 
         protected abstract boolean doHandle(T err);
 
+    }
+
+    static int classDepth(Class<?> type) {
+        int depth = 0;
+        while (type != null) {
+            depth++;
+            type = type.getSuperclass();
+        }
+        return depth;
     }
 }

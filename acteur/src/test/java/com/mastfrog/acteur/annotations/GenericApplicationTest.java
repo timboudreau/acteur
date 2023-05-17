@@ -1,5 +1,6 @@
 package com.mastfrog.acteur.annotations;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.inject.AbstractModule;
 import com.google.inject.TypeLiteral;
 import com.google.inject.name.Names;
@@ -13,12 +14,19 @@ import com.mastfrog.acteur.annotations.X.Wurg;
 import com.mastfrog.function.misc.QuietAutoClosable;
 import com.mastfrog.giulius.Dependencies;
 import com.mastfrog.giulius.tests.anno.TestWith;
+import com.mastfrog.jackson.configuration.JacksonConfigurer;
+import com.mastfrog.mime.MimeType;
+import com.mastfrog.mime.jackson.MimeJackson;
 import com.mastfrog.settings.Settings;
+import com.mastfrog.util.codec.Codec;
+import static com.mastfrog.util.collections.CollectionUtils.map;
+import com.mastfrog.util.collections.StringObjectMap;
 import com.mastfrog.util.strings.RandomStrings;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import static org.junit.jupiter.api.Assertions.*;
 import org.junit.jupiter.api.Test;
@@ -33,6 +41,9 @@ public class GenericApplicationTest {
 //            bind(String.class).annotatedWith(Names.named("realm")).toInstance("hellothere");
             bind(new TypeLiteral<Class<?>[]>() {
             }).annotatedWith(Names.named("excluded")).toInstance(new Class[0]);
+            ObjectMapper om
+                    = JacksonConfigurer.configureFromMetaInfServices(new ObjectMapper());
+            bind(ObjectMapper.class).toInstance(om);
         }
     }
 
@@ -43,6 +54,22 @@ public class GenericApplicationTest {
         assertNotNull(types, "Types is null");
         Set<Class<?>> expect = new LinkedHashSet<>(Arrays.asList(new Class<?>[]{String.class, Integer.class, RandomStrings.class, FakePage.Foo.Bar.class, FakePage.Foo.class}));
         assertEquals(types, expect, "GOT " + types);
+    }
+
+    @Test
+    public void testMimeTypeCanBeSerialized(ObjectMapper codec) throws IOException {
+        MimeJackson mj = new MimeJackson();
+        mj.configure(codec);
+        Map<String, Object> m = map("error").to("a thing happened").map("mimeType").finallyTo(MimeType.PLAIN_TEXT_UTF_8);
+        String json = codec.writeValueAsString(m);
+
+        System.out.println("WROTE JSON " + json);
+
+        StringObjectMap som = codec.readValue(json, StringObjectMap.class);
+
+        System.out.println("SOM " + som);
+        assertEquals(MimeType.PLAIN_TEXT_UTF_8.toString(), som.get("mimeType"));
+//        StringObjectMap m = codec.wr
     }
 
     @Test
