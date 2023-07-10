@@ -45,7 +45,10 @@ public final class EventChannelName {
 
     @Override
     public boolean equals(Object o) {
-        return o == this ? true : o instanceof EventChannelName && ((EventChannelName) o).name.equals(name);
+        return o == this ? true 
+                : o == null ? false
+                : o.getClass() == EventChannelName.class
+                && ((EventChannelName) o).name.equals(name);
     }
 
     @Override
