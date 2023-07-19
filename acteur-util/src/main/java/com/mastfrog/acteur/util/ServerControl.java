@@ -1,5 +1,6 @@
 package com.mastfrog.acteur.util;
 
+import static java.lang.Long.MAX_VALUE;
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
@@ -14,7 +15,7 @@ import java.util.concurrent.locks.Condition;
  *
  * @author Tim Boudreau
  */
-public interface ServerControl extends Condition {
+public interface ServerControl {
     /**
      * Shut down, waiting for thread pools to terminate and connections to
      * be closed (unlike getCondition().signal()).
@@ -39,4 +40,10 @@ public interface ServerControl extends Condition {
     default void await(Duration dur) throws InterruptedException {
         await(dur.toMillis(), MILLISECONDS);
     }
+
+    default void await() throws InterruptedException {
+        await(MAX_VALUE, MILLISECONDS);
+    }
+
+    boolean await(long time, TimeUnit unit) throws InterruptedException;
 }

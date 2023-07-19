@@ -268,7 +268,6 @@ final class ServerImpl implements Server {
             }
         }
 
-        @Override
         public void awaitUninterruptibly() {
             while (!isTerminated()) {
                 try {
@@ -280,38 +279,9 @@ final class ServerImpl implements Server {
         }
 
         @Override
-        public long awaitNanos(long nanosTimeout) throws InterruptedException {
-            waitClose.await(nanosTimeout, TimeUnit.NANOSECONDS);
-            return 0;
-        }
-
-        @Override
         public boolean await(long time, TimeUnit unit) throws InterruptedException {
             waitClose.await(time, unit);
             return isTerminated();
-        }
-
-        @Override
-        public boolean awaitUntil(Date deadline) throws InterruptedException {
-            long howLong = deadline.getTime() - System.currentTimeMillis();
-            if (howLong > 0) {
-                return await(howLong, TimeUnit.MILLISECONDS);
-            }
-            return isTerminated();
-        }
-
-        @Override
-        public void signal() {
-            signalAll();
-        }
-
-        @Override
-        public void signalAll() {
-            try {
-                shutdown(0, TimeUnit.MILLISECONDS, false);
-            } catch (InterruptedException ex) {
-                Logger.getLogger(ServerImpl.class.getName()).log(Level.SEVERE, null, ex);
-            }
         }
 
         @Override
