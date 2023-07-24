@@ -41,7 +41,7 @@ import com.mastfrog.acteurbase.ChainCallback;
 import com.mastfrog.acteurbase.ChainRunner;
 import com.mastfrog.acteurbase.ChainsRunner;
 import com.mastfrog.function.misc.QuietAutoClosable;
-import com.mastfrog.giulius.DeploymentMode;
+import com.mastfrog.shutdown.hooks.DeploymentMode;
 import com.mastfrog.giulius.annotations.Setting;
 import static com.mastfrog.giulius.annotations.Setting.ValueType.BOOLEAN;
 import com.mastfrog.giulius.scope.ReentrantScope;

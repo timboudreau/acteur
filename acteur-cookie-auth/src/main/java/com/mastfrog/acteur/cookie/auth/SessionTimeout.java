@@ -1,9 +1,8 @@
 package com.mastfrog.acteur.cookie.auth;
 
 import com.google.inject.Inject;
-import com.mastfrog.giulius.DeploymentMode;
 import com.mastfrog.settings.Settings;
-import com.mastfrog.util.preconditions.ConfigurationError;
+import com.mastfrog.shutdown.hooks.DeploymentMode;
 import java.time.Duration;
 import javax.inject.Singleton;
 

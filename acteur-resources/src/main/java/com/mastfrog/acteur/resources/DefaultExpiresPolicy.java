@@ -24,9 +24,9 @@
 package com.mastfrog.acteur.resources;
 
 import com.google.inject.Inject;
-import com.mastfrog.giulius.DeploymentMode;
 import com.mastfrog.mime.MimeType;
 import com.mastfrog.settings.Settings;
+import com.mastfrog.shutdown.hooks.DeploymentMode;
 import com.mastfrog.url.Path;
 import java.time.Duration;
 import java.time.ZonedDateTime;
