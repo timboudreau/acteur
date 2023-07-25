@@ -45,7 +45,7 @@ import com.mastfrog.util.preconditions.Checks;
  *
  * @author Tim Boudreau
  */
-public class AbstractActeur<T, R extends T, S extends ActeurState<T, R>> {
+public abstract class AbstractActeur<T, R extends T, S extends ActeurState<T, R>> {
 
     private S state;
     private R response;

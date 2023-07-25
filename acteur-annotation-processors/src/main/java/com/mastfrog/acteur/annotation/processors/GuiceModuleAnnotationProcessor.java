@@ -40,7 +40,6 @@ import javax.lang.model.element.Element;
 @ServiceProvider(Processor.class)
 @SupportedAnnotationTypes("com.mastfrog.acteur.annotations.GuiceModule")
 @SupportedSourceVersion(SourceVersion.RELEASE_17)
-
 public class GuiceModuleAnnotationProcessor extends AbstractLineOrientedRegistrationAnnotationProcessor {
 
     public static final String META_INF_PATH = "META-INF/http/modules.list";

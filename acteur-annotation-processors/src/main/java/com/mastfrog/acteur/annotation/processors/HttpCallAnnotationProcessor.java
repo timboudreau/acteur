@@ -345,34 +345,27 @@ public class HttpCallAnnotationProcessor extends IndexGeneratingProcessor<Line> 
 
     private void copyOneArgument(List<String> argDebugComments, String name, Object val, ClassBuilder.AnnotationBuilder<?> ab, ExecutableElement element, AtomicBoolean error, AnnotationUtils utils) {
         argDebugComments.add(" * " + name + " = " + val + " is " + (val == null ? "null" : val.getClass().getName()));
-        if (val instanceof List<?>) {
+        if (val instanceof List<?> list) {
             ab.addArrayArgument(name, avb -> {
-                List<?> l = (List<?>) val;
+                List<?> l = list;
                 for (Object o : l) {
                     addAnnotationArgument(argDebugComments, o, element, avb::expression);
                 }
             });
-        } else if (val instanceof AnnotationMirror) {
-            AnnotationMirror sub = (AnnotationMirror) val;
+        } else if (val instanceof AnnotationMirror sub) {
             AnnotationArgumentsInfo subArgs = arguments(sub, error, utils);
             ab.addAnnotationArgument(name, sub.getAnnotationType().toString(), abSub -> {
                 copyAnnotation(subArgs, argDebugComments, abSub, utils, error);
             });
         } else if (val instanceof TypeMirror) {
             ab.addClassArgument(name, val.toString());
-        } else if (val instanceof String) {
-            ab.addArgument(name, (String) val);
-        } else if (val instanceof Character) {
-            char c = (Character) val;
+        } else if (val instanceof String string) {
+            ab.addArgument(name, string);
+        } else if (val instanceof Character c) {
             switch (c) {
-                case '\\':
-                    ab.addExpressionArgument(name, "'\\\\'");
-                    break;
-                case '\'':
-                    ab.addExpressionArgument(name, "'\\''");
-                    break;
-                default:
-                    ab.addExpressionArgument(name, "'" + c + "'s");
+                case '\\' -> ab.addExpressionArgument(name, "'\\\\'");
+                case '\'' -> ab.addExpressionArgument(name, "'\\''");
+                default -> ab.addExpressionArgument(name, "'" + c + "'s");
             }
         } else {
             addAnnotationArgument(argDebugComments, val, element, v -> {
@@ -385,8 +378,7 @@ public class HttpCallAnnotationProcessor extends IndexGeneratingProcessor<Line> 
         argDebugComments.add("    ** " + o.getClass().getName());
         argDebugComments.add("    **** " + types(o));
         argDebugComments.add(" --------- " + o + " ---------");
-        if (o instanceof AnnotationValue) {
-            AnnotationValue av = (AnnotationValue) o;
+        if (o instanceof AnnotationValue av) {
 
             TypeMirror retType = element.getReturnType();
             argDebugComments.add("RET TYPE: " + retType);
@@ -395,8 +387,7 @@ public class HttpCallAnnotationProcessor extends IndexGeneratingProcessor<Line> 
             argDebugComments.add("     RET TYPE types " + types(retType));
             boolean isClass = false;
             String enumType = null;
-            if (retType instanceof ArrayType) {
-                ArrayType at = (ArrayType) retType;
+            if (retType instanceof ArrayType at) {
                 at.getComponentType();
                 argDebugComments.add("    COMPONENT TYPE " + at.getComponentType());
                 argDebugComments.add("       COMP TYPE kind " + at.getComponentType().getKind() + " types " + types(at.getComponentType()));
@@ -405,17 +396,12 @@ public class HttpCallAnnotationProcessor extends IndexGeneratingProcessor<Line> 
                 Element el = dt.asElement();
                 argDebugComments.add("        ELE KIND " + el.getKind() + " types " + types(el));
                 switch (el.getKind()) {
-                    case ENUM:
-                        enumType = dt.toString();
-                        break;
+                    case ENUM -> enumType = dt.toString();
                 }
-            } else if (retType instanceof DeclaredType) {
-                DeclaredType dt = (DeclaredType) retType;
+            } else if (retType instanceof DeclaredType dt) {
                 Element el = dt.asElement();
                 switch (el.getKind()) {
-                    case ENUM:
-                        enumType = dt.toString();
-                        break;
+                    case ENUM -> enumType = dt.toString();
                 }
             }
             if (enumType != null) {
@@ -438,19 +424,13 @@ public class HttpCallAnnotationProcessor extends IndexGeneratingProcessor<Line> 
             argDebugComments.add("  * OTYPES " + types(o));
             if (o instanceof TypeMirror) {
                 avb.accept(o + ".class");
-            } else if (o instanceof String) {
-                avb.accept(escapeAndQuoteString((String) o));
-            } else if (o instanceof Character) {
-                char c = (Character) o;
+            } else if (o instanceof String string) {
+                avb.accept(escapeAndQuoteString(string));
+            } else if (o instanceof Character c) {
                 switch (c) {
-                    case '\\':
-                        avb.accept("'\\\\'");
-                        break;
-                    case '\'':
-                        avb.accept("'\\''");
-                        break;
-                    default:
-                        avb.accept("'" + c + "'s");
+                    case '\\' -> avb.accept("'\\\\'");
+                    case '\'' -> avb.accept("'\\''");
+                    default -> avb.accept("'" + c + "'s");
                 }
             } else {
                 avb.accept(Objects.toString(o));

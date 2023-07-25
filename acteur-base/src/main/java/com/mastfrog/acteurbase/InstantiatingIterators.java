@@ -70,13 +70,13 @@ public final class InstantiatingIterators {
 
             @Override
             public T convert(Object t) {
-                if (t instanceof Class<?>) {
-                    return type.cast(deps.getInstance((Class<?>) t));
+                if (t instanceof Class<?> argType) {
+                    return type.cast(deps.getInstance(argType));
                 } else {
                     return type.cast(t);
                 }
             }
-        }, new PermissiveIterator<Object>(obj, position)));
+        }, new PermissiveIterator<>(obj, position)));
     }
 
     /**

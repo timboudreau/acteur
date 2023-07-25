@@ -55,8 +55,7 @@ public class ArrayChain<T, C extends ArrayChain<T, C>> implements Chain<T, C> {
             if (o == null) {
                 throw new ConfigurationError("Null in acteur list");
             }
-            if (o instanceof Class<?>) {
-                Class<?> c = (Class<?>) o;
+            if (o instanceof Class<?> c) {
                 if (!type.isAssignableFrom(c)) {
                     throw new ConfigurationError(c.getName() + " is not a subtype of " + type.getName());
                 }
@@ -91,6 +90,7 @@ public class ArrayChain<T, C extends ArrayChain<T, C>> implements Chain<T, C> {
     }
 
     @SuppressWarnings("unchecked")
+    @Override
     public final C add(Class<? extends T> type) {
         Checks.notNull("type", type);
         if (!this.type.isAssignableFrom(type)) {
@@ -116,8 +116,7 @@ public class ArrayChain<T, C extends ArrayChain<T, C>> implements Chain<T, C> {
         if (type.isInstance(obj)) {
             return true;
         }
-        if (obj instanceof Class<?>) {
-            Class<?> c = (Class<?>) obj;
+        if (obj instanceof Class<?> c) {
             if (type.isAssignableFrom(c)) {
                 return true;
             }
@@ -126,6 +125,7 @@ public class ArrayChain<T, C extends ArrayChain<T, C>> implements Chain<T, C> {
     }
 
     @SuppressWarnings("unchecked")
+    @Override
     public final C insert(T obj) {
         Checks.notNull("obj", obj);
         if (!validElement(obj)) {
@@ -137,6 +137,7 @@ public class ArrayChain<T, C extends ArrayChain<T, C>> implements Chain<T, C> {
     }
 
     @SuppressWarnings("unchecked")
+    @Override
     public final C insert(Class<? extends T> type) {
         Checks.notNull("type", type);
         if (!this.type.isAssignableFrom(type)) {
@@ -161,6 +162,7 @@ public class ArrayChain<T, C extends ArrayChain<T, C>> implements Chain<T, C> {
 
 
     @SuppressWarnings("unchecked")
+    @Override
     public final C add(T obj) {
         Checks.notNull("obj", obj);
         if (!validElement(obj)) {

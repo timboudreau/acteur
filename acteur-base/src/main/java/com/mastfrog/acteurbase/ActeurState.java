@@ -94,11 +94,11 @@ public abstract class ActeurState<T, R extends T> {
     public boolean isFinished() {
         AbstractActeur<T, R, ?> acteur = getActeur();
         if (getActeur() == null) {
-            IllegalStateException ex = new IllegalStateException(getClass().getName() + " does not have its acteur set");
+            IllegalStateException ex = new IllegalStateException(getClass().getName()
+                    + " does not have its acteur set");
             if (creationStackTrace != null) {
                 ex.initCause(creationStackTrace);
             }
-            ex.printStackTrace();
             throw ex;
         }
         R r = getActeur().getResponse();
