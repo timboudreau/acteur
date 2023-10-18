@@ -23,7 +23,6 @@
  */
 package com.mastfrog.marshallers;
 
-import com.mastfrog.util.collections.ArrayUtils;
 import static com.mastfrog.util.collections.ArrayUtils.append;
 import com.mastfrog.util.preconditions.Checks;
 import java.util.ArrayList;
